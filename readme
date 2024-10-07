@@ -1,0 +1,1 @@
+Current version is able to accurately calculate one-electron DKH2 integrals (including SRTP) and two-electron integrals, but SCF convergence has some trouble.
