@@ -159,13 +159,13 @@ module Hamiltonian
             exS0_5 = cmplx(0.0_dp,0.0_dp,dp)
             exSp0_5 = cmplx(0.0_dp,0.0_dp,dp)
             do loop_i = 1, basis_dimension
-				do loop_j = 1, basis_dimension
-					exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-					exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-					exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-					exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-				end do
-			end do
+                do loop_j = 1, basis_dimension
+                    exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+                    exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+                    exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+                    exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+                end do
+            end do
             write(60,'(A)') '   complete!'
             
             ! Lowdin orthogonalization of one-electron integrals
