@@ -1,0 +1,2034 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass beamer
+\begin_preamble
+\usetheme{Boadilla}
+\usecolortheme{default}
+\setbeamercovered{transparent}
+\usepackage{indentfirst}
+\usepackage{amsmath,amsfonts,amsthm,bm}
+\end_preamble
+\use_default_options false
+\begin_modules
+subequations
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "times" "default"
+\font_sans "lmss" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 2
+\use_package amssymb 2
+\use_package cancel 1
+\use_package esint 0
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 2
+\tocdepth 2
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+\begin_inset Flex Bold
+status open
+
+\begin_layout Plain Layout
+Derivation of SRTP-DKH Hamiltonian and 2-component electron correlation
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Author
+Liu Kunyu
+\end_layout
+
+\begin_layout Date
+04/05/24
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Contents
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+1 
+\series bold
+Derivation of SRTP-fpFW Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\series bold
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Description
+
+\series bold
+1.2 Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_deeper
+\begin_layout Description
+
+\color lightgray
+2 DKH transformation of 
+\series bold
+\color inherit
+SRTP-fpFW
+\series default
+\color lightgray
+ Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\color lightgray
+2.1 
+\series bold
+\color inherit
+SRTP-DKH2-1e Hamiltonian
+\end_layout
+
+\begin_layout Description
+
+\color lightgray
+2.2 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\end_deeper
+\begin_layout Description
+
+\color lightgray
+3 Modified DKH Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\color lightgray
+3.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Description
+
+\color lightgray
+3.2 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Block
+\begin_inset Argument 2
+status open
+
+\begin_layout Plain Layout
+Agreements
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\size small
+All derication is based on a.u., the charge and mass of electron is equal
+ to 1, the magnitude of spin angular momentum is equal to 1/2.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\size small
+Classical vector is represented as 
+\begin_inset Formula $\overrightarrow{\mathrm{a}}$
+\end_inset
+
+; vector operator is represented as 
+\begin_inset Formula $\mathbf{\hat{\mathbf{a}}}$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\end_deeper
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align block
+Second Relativized Thomas Precession (SRTP) Hamiltonian of single spin-1/2
+ electron is
+\end_layout
+
+\begin_layout Standard
+
+\size footnotesize
+\begin_inset Formula 
+\begin{equation}
+H_{\mathrm{SRTP}}=\frac{γ}{2β^{2}}\overrightarrow{S}_{γ}\cdot(\dot{\overrightarrow{β}}\times\overrightarrow{β})\frac{\frac{4}{3}γ^{2}(\overrightarrow{β}\cdot\overrightarrow{S})^{2}}{(1+\frac{4}{3}γ^{2}(\overrightarrow{β}\cdot\overrightarrow{S})^{2})^{\frac{3}{2}}}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align block
+this expression is fully classic.
+ 
+\size footnotesize
+
+\begin_inset Formula $γ,\overrightarrow{β},\overrightarrow{S},$
+\end_inset
+
+
+\family roman
+
+\begin_inset Formula $\dot{\overrightarrow{β}}$
+\end_inset
+
+
+\family default
+\size default
+ is the Lorentz factor, velocity, spin angular momentum and coordinate accelerat
+ion of electron, respectively.
+ 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $S_{γ,i}$
+\end_inset
+
+
+\family default
+\size default
+ is a vector related to spin and motion of electron:
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\begin_inset Formula 
+\begin{equation}
+S_{γ,\mathrm{i}}=\frac{1}{\sqrt{1-β_{\mathrm{i}}^{2}}}S_{\mathrm{i}}
+\end{equation}
+
+\end_inset
+
+
+\size default
+For the next step, a kinetic transformation is performed:
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align*}
+\dot{\overrightarrow{β}}\times\overrightarrow{β} & =\frac{1}{γc}\left(-\overrightarrow{\nabla}(V)+\overrightarrow{β}(\overrightarrow{β}\cdot\overrightarrow{\nabla}(V))\right)\times\overrightarrow{β}\\
+ & =-\frac{1}{γ^{2}c^{2}}(\overrightarrow{\nabla}(V)\times\overrightarrow{p})
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator parbreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align block
+For 
+\size footnotesize
+
+\begin_inset Formula $\overrightarrow{S}_{γ}$
+\end_inset
+
+
+\size default
+, we consider 
+\begin_inset Formula $\widehat{\beta}_{\mathrm{i}}$
+\end_inset
+
+in its contraction factor as the group velocity without Zitterbewegung
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\begin_inset Formula 
+\begin{equation}
+\widehat{S}_{γ,\mathrm{i}}=\frac{1}{2}\frac{1}{\sqrt{1-\widehat{\beta}_{\mathrm{i}}^{2}}}\widehat{\sigma}_{\mathrm{i}}=\frac{1}{2}\frac{1}{\sqrt{1-\frac{c^{2}}{\epsilon^{2}}\widehat{p}_{\mathrm{i}}^{2}}}\widehat{\sigma}_{\mathrm{i}}
+\end{equation}
+
+\end_inset
+
+
+\size default
+where 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+
+\begin_inset Formula $\epsilon$
+\end_inset
+
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+is the energy of electron, treatment of 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+
+\begin_inset Formula $\epsilon$
+\end_inset
+
+
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ will be discussed in next section.
+ Then SRTP Hamiltonian can be further operatorized as:
+\end_layout
+
+\begin_layout Standard
+\align block
+
+\size footnotesize
+\begin_inset Formula 
+\begin{equation}
+\widehat{H}_{\mathrm{SRTP}}=-\frac{1}{2}\left\{ \frac{\epsilon(\frac{\widehat{\boldsymbol{p}}}{c}\cdot\widehat{\boldsymbol{\sigma}})^{2}}{2c^{4}(\frac{\widehat{\boldsymbol{p}}}{c})^{2}\left(1+(\frac{\widehat{\boldsymbol{p}}}{c}\cdot\widehat{\boldsymbol{\sigma}})^{2}\right)^{\frac{3}{2}}},\widehat{\boldsymbol{S}}_{γ}\cdot(\boldsymbol{\nabla}(\widehat{V})\times\widehat{\boldsymbol{p}})\right\} 
+\end{equation}
+
+\end_inset
+
+
+\size default
+we ignore the contribution of magnetic field to SRTP term, it will be partially
+ compensated by the regularization of 
+\size footnotesize
+
+\begin_inset Formula $\widehat{\boldsymbol{p}}$
+\end_inset
+
+
+\size default
+ and 
+\size footnotesize
+
+\begin_inset Formula $\epsilon$
+\end_inset
+
+
+\size default
+.
+ This operatorization refers to the classical Thomas precession Hamiltonian
+ obtained from the fpFW transformation of Dirac equation.
+ (J.
+ Math.
+ Phys., 2003, 44(7): 2952–2966) Furthermore, fpFW is able to give an accurate
+ result of classical Thomas precession Hamiltonian, and more suitable for
+ bound states 
+\size footnotesize
+
+\begin_inset Formula $(\lambda_{\mathrm{B}}\sim l_{\mathrm{c}})$
+\end_inset
+
+
+\size default
+ compared to iterative FW transformation.
+ (J.
+ Math.
+ Phys., 2013, 176(2): 987-999)
+\end_layout
+
+\begin_layout Standard
+\align block
+This form of the SRTP Hamiltonian doesn't have a corresponding retarded
+ term, since it only contains electric interaction, which is instantaneous
+ interaction in Coulomb gauge.
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator parbreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Separator latexpar
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align block
+Additionally, mathematical form of 
+\size footnotesize
+
+\begin_inset Formula $\widehat{H}_{\mathrm{SRTP}}$
+\end_inset
+
+
+\size default
+ allows for no retarded term, similar to magnetic interaction spin-other-orbital
+ coupling term in fpFW Hamiltonian.
+\size footnotesize
+
+\begin_inset Formula 
+\[
+\widehat{H}_{\mathrm{SOC3-ret}}=\underset{\mu<\nu}{\sum}-\frac{2}{c^{2}r_{\mu\nu}^{3}}\frac{\left(\widehat{\boldsymbol{S}}_{\upsilon}\cdot\boldsymbol{r}_{\mu\nu}\right)\left(\boldsymbol{r}_{\mu\nu}\times\widehat{\boldsymbol{p}}_{\mu}\right)\cdot\boldsymbol{r}_{\mu\nu}}{r_{\mu\nu}^{2}}=0
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align block
+By decomposing the potential energy, the SRTP Hamiltonian are distinguished
+ into one-electron and two-electron terms as
+\size footnotesize
+
+\begin_inset Formula 
+\begin{equation}
+\widehat{H}_{\mathrm{SRTP1}}=-\frac{1}{2}\underset{\mathrm{nuc}}{\sum}\left\{ \frac{\epsilon\widehat{h}^{2}}{2c^{4}\left(1+(\frac{\widehat{\boldsymbol{p}}}{c}\cdot\widehat{\boldsymbol{\sigma}})^{2}\right)^{\frac{3}{2}}},\widehat{\boldsymbol{S}}_{γ}\cdot(\boldsymbol{\nabla}(\widehat{V})\times\widehat{\boldsymbol{p}})\right\} 
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+\widehat{H}_{\mathrm{SRTP2}}=\frac{1}{2}\underset{\mathrm{ele}}{\sum}\left\{ \frac{\epsilon\widehat{h}^{2}}{2c^{4}\left(1+(\frac{\widehat{\boldsymbol{p}}}{c}\cdot\widehat{\boldsymbol{\sigma}})^{2}\right)^{\frac{3}{2}}},\widehat{\boldsymbol{S}}_{γ}\cdot(\boldsymbol{\nabla}(\widehat{V})\times\widehat{\boldsymbol{p}})\right\} 
+\end{equation}
+
+\end_inset
+
+
+\family roman
+
+\begin_inset Formula $\widehat{h}$
+\end_inset
+
+
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+is the helicity operator, which eigenvalue is 
+\size footnotesize
+
+\begin_inset Formula $\pm1$
+\end_inset
+
+
+\size default
+.
+ Treatment of 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\widehat{h}^{2}$
+\end_inset
+
+
+\family default
+\size default
+ will be discussed in next section.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator parbreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian 
+\end_layout
+
+\end_inset
+
+
+\begin_inset Separator latexpar
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align block
+Since the denominator of the coefficient contains 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $(\frac{\widehat{\boldsymbol{p}}}{c})^{2}$
+\end_inset
+
+
+\family default
+\size default
+, although it converge at 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\frac{\overrightarrow{p}}{c}\rightarrow0$
+\end_inset
+
+
+\family default
+\size default
+, it's still impossible to perform a power series expansion at 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\frac{\overrightarrow{p}}{c}=0$
+\end_inset
+
+
+\family default
+\size default
+.
+ Fortunately, the helicity operator has an ideal property.
+\end_layout
+
+\begin_layout Theorem
+The square of helicity is equal to 1 in any case.
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align*}
+\widehat{h}^{2} & =\frac{(\widehat{\boldsymbol{p}}\cdot\widehat{\boldsymbol{S}})^{2}}{p^{2}S^{2}}\\
+ & =\stackrel[\mathrm{i}]{3}{\sum}\frac{-\partial_{\mathrm{i}}^{2}\sigma_{\mathrm{i}}^{2}-\stackrel[\mathrm{j<i}]{3}{\sum}\left\{ \partial_{\mathrm{i}}\sigma_{\mathrm{j}},\partial_{\mathrm{j}}\sigma_{\mathrm{i}}\right\} }{-\partial_{\mathrm{i}}^{2}}\\
+ & =\stackrel[\mathrm{i}]{3}{\sum}\frac{-\partial_{\mathrm{i}}^{2}-\stackrel[\mathrm{j<i}]{3}{\sum}\left\{ \sigma_{\mathrm{j}},\sigma_{\mathrm{i}}\right\} \partial_{\mathrm{i}}\partial_{\mathrm{j}}}{-\partial_{\mathrm{i}}^{2}}\\
+ & =1
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This is because the helicity and spin components of each state have only
+ two observations: 1 and -1, although the expectations are complex.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator parbreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Theorem
+The square of the spin component of each spin state measured from each direction
+ is 1.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+Define 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\left|1\right\rangle $
+\end_inset
+
+
+\family default
+\size default
+ and 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\left|-1\right\rangle $
+\end_inset
+
+
+\family default
+\size default
+ to be the eigenstates of arbitrarily oriented spin component 
+\size footnotesize
+
+\begin_inset Formula $\widehat{\sigma}_{\mathrm{i}}$
+\end_inset
+
+
+\size default
+, and 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\left|\chi\right\rangle $
+\end_inset
+
+
+\family default
+\size default
+ to be arbitrarily normalized spin state, 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\left|\chi\right\rangle =c_{1}\left|1\right\rangle +c_{2}\left|-1\right\rangle $
+\end_inset
+
+
+\family default
+\size default
+, we have
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align*}
+\left\langle \chi\right|\widehat{\sigma}_{\mathrm{i}}\left|\chi\right\rangle  & =c_{1}\widehat{\sigma}_{\mathrm{i}}\left|1\right\rangle +c_{2}\widehat{\sigma}_{\mathrm{i}}\left|-1\right\rangle \\
+ & =\left(c_{1}\left\langle 1\right|+c_{2}\left\langle -1\right|\right)\left(c_{1}\left|1\right\rangle -c_{2}\left|-1\right\rangle \right)\\
+ & =c_{1}^{2}-c_{2}^{2}\\
+\left\langle \chi\right|\widehat{\sigma}_{\mathrm{i}}^{2}\left|\chi\right\rangle  & =c_{1}\widehat{\sigma}_{\mathrm{i}}^{2}\left|1\right\rangle +c_{2}\widehat{\sigma}_{\mathrm{i}}^{2}\left|-1\right\rangle \\
+ & =\left(c_{1}\left\langle 1\right|+c_{2}\left\langle -1\right|\right)\left(c_{1}\left|1\right\rangle +c_{2}\left|-1\right\rangle \right)\\
+ & =c_{1}^{2}+c_{2}^{2}\\
+ & =1
+\end{align*}
+
+\end_inset
+
+
+\size default
+
+\begin_inset Separator latexpar
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+Bring above results into Eq.
+ (5), Eq.
+ (6) and simplify:
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align}
+\widehat{H}_{\mathrm{SRTP1}} & =-\frac{1}{2}\underset{\mathrm{nuc}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\mathop{\stackrel[\mathrm{i=1}]{3}{\sum}}\left(\epsilon_{\mathrm{i}}\widehat{\sigma}_{\mathrm{i}}\frac{\mathrm{Z}}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{p}})_{\mathrm{i}}\right)\right\} \nonumber \\
+ & =-\frac{1}{4}\underset{\mathrm{nuc}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})\right\} \\
+\widehat{H}_{\mathrm{SRTP2}} & =\frac{1}{2}\underset{\mathrm{ele}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\mathop{\stackrel[\mathrm{i=1}]{3}{\sum}}\left(\epsilon_{\mathrm{i}}\widehat{\sigma}_{\mathrm{i}}\frac{\mathrm{Z}}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{p}})_{\mathrm{i}}\right)\right\} \nonumber \\
+ & =\frac{1}{4}\underset{\mathrm{ele}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})\right\} 
+\end{align}
+
+\end_inset
+
+
+\size default
+which 
+\size footnotesize
+
+\begin_inset Formula $\widehat{\mathfrak{s}}_{\mathrm{i}}=\epsilon_{\mathrm{i}}\widehat{\sigma}_{\mathrm{i}}$
+\end_inset
+
+
+\size default
+ is Second Relativized Spin (SRS).
+ Consider the commutate relation 
+\size footnotesize
+
+\begin_inset Formula $\left[\mathrm{f}\left(\widehat{p}^{2},\widehat{p}_{\mathrm{i}}\right),\widehat{L}_{\mathrm{i}}\right]=0$
+\end_inset
+
+
+\size default
+, SRS-type SOC is still a self-adjoint operator.
+\size footnotesize
+
+\begin_inset Formula 
+\[
+\left(\widehat{\mathfrak{s}}\cdot\widehat{\boldsymbol{L}}\right)^{\dagger}=\widehat{\boldsymbol{L}}\cdot\widehat{\mathfrak{s}}=\widehat{\mathfrak{s}}\cdot\widehat{\boldsymbol{L}}
+\]
+
+\end_inset
+
+
+\size default
+This form of SRTP Hamiltonian is the bridge connects modified fpFW Hamiltonian
+ and Eq.
+ (1).
+ For further steps, we have to admit Eq.
+ (8) applies to the whole odd term contains canonical momentum, which means
+ 
+\family roman
+\size footnotesize
+
+\begin_inset Formula $\widehat{\boldsymbol{p}}_{\mathrm{i}}$
+\end_inset
+
+
+\family default
+\size default
+ in Eq.
+ (8) will be replaced by
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\series default
+\shape default
+\size footnotesize
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+
+\begin_inset Formula $\hat{\mathbf{\sigma}}_{\mathrm{i}}\widehat{\boldsymbol{\pi}}_{\mathrm{i}}$
+\end_inset
+
+
+\family default
+\size default
+ (ignore the coefficient of 
+\begin_inset Formula $\hat{\mathbf{\sigma}}_{\mathrm{i}}$
+\end_inset
+
+)
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+and introduce Darwin term
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align}
+\widehat{H}_{\mathrm{SRTP1}} & =-\frac{1}{4}\underset{\mathrm{nuc}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})-\overrightarrow{\boldsymbol{\nabla}}\cdot\overrightarrow{\boldsymbol{E}}\right\} \\
+\widehat{H}_{\mathrm{SRTP2}} & =\frac{1}{4}\underset{\mathrm{ele}}{\sum}\left\{ \frac{c^{2}}{4\epsilon^{2}},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})-\overrightarrow{\boldsymbol{\nabla}}\cdot\overrightarrow{\boldsymbol{E}}\right\} 
+\end{align}
+
+\end_inset
+
+
+\size default
+magnetic SOC term is related to kinetic term, follow the form 
+\begin_inset Formula $\left\{ \frac{1}{\epsilon},\widehat{\boldsymbol{\sigma}}\cdot\overrightarrow{\boldsymbol{H}}\right\} $
+\end_inset
+
+, it's two-electron term with 
+\begin_inset Formula $\overrightarrow{\boldsymbol{H}}$
+\end_inset
+
+ contains retarded magnetic interaction between electrons in absence of
+ external magnetic field.
+\end_layout
+
+\begin_layout Standard
+Additionally, we have to change the coefficient in Eq.
+ (9), (10), because the odd term will be zero and the energy-momentum relationsh
+ip will be correct if and only if we use the transformation 
+\begin_inset Formula $U^{\pm}=\frac{\epsilon+c^{2}\pm\beta\mathcal{O}}{\sqrt{2\epsilon\left(\epsilon+c^{2}\right)}}$
+\end_inset
+
+, it gives the coefficient as:
+\end_layout
+
+\end_deeper
+\begin_layout Frame
+
+\size footnotesize
+\begin_inset Formula 
+\begin{align}
+\widehat{H}_{\mathrm{SRTP1}} & =-\frac{1}{8}\underset{\mathrm{nuc}}{\sum}\left\{ \frac{c^{2}}{\epsilon(\epsilon+c^{2})},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{\mathrm{Z}}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})-\overrightarrow{\boldsymbol{\nabla}}\cdot\overrightarrow{\boldsymbol{E}}\right\} \\
+\widehat{H}_{\mathrm{SRTP2}} & =\frac{1}{8}\underset{\mathrm{ele}}{\sum}\left\{ \frac{c^{2}}{\epsilon(\epsilon+c^{2})},\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\boldsymbol{r}\times\widehat{\boldsymbol{\pi}})-\widehat{\mathfrak{\boldsymbol{s}}}\cdot\frac{1}{r^{3}}(\widehat{\boldsymbol{\pi}}\times\boldsymbol{r})-\overrightarrow{\boldsymbol{\nabla}}\cdot\overrightarrow{\boldsymbol{E}}\right\} 
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+this result can be seen as the conbination of the coefficient given by 
+\begin_inset Formula $\frac{\partial U}{\partial\theta}$
+\end_inset
+
+ and the SRS given by 
+\begin_inset Formula $\frac{\partial U}{\partial\varphi}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Frame
+It's worth to mention that the treatment of 
+\size footnotesize
+
+\begin_inset Formula $\epsilon$
+\end_inset
+
+
+\size default
+, if use the approximation 
+\size footnotesize
+
+\begin_inset Formula $\epsilon=\sqrt{c^{4}+\widehat{p}^{2}c^{2}}$
+\end_inset
+
+
+\size default
+, Eq.
+ (9) and Eq.
+ (10) contains only electronic and magnetic SOC terms; else if 
+\size footnotesize
+
+\begin_inset Formula $\epsilon=\sqrt{c^{4}+(\hat{\mathbf{\sigma}}\cdot\widehat{\boldsymbol{\pi}})^{2}c^{2}}$
+\end_inset
+
+, 
+\size default
+Eq.
+ (9) and Eq.
+ (10) contains also electronic-magnetic crossover SOC terms.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.2 
+\series bold
+Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Theorem
+
+\size footnotesize
+\begin_inset Formula $(\widehat{\boldsymbol{\mathfrak{a}}}\cdot\widehat{\boldsymbol{p}})(\widehat{\boldsymbol{\mathfrak{a}}}\cdot\widehat{\boldsymbol{q}})=\mathrm{i\widehat{\mathfrak{\boldsymbol{s}}}\cdot(\mathit{\widehat{\boldsymbol{q}}}\times\widehat{\boldsymbol{\mathit{p}}})}+\mathrm{spin.free.term}$
+\end_inset
+
+ 
+\size default
+is ture if and only if
+\size footnotesize
+ 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}=\sqrt{\frac{\epsilon_{\mathrm{j}}\epsilon_{\mathrm{k}}}{\epsilon_{\mathrm{i}}}}\widehat{\alpha}_{\mathrm{i}}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Theorem
+
+\size footnotesize
+\begin_inset Formula 
+\begin{align*}
+ & (\widehat{\boldsymbol{\mathfrak{a}}}\cdot\widehat{\boldsymbol{p}})(\widehat{\boldsymbol{\mathfrak{a}}}\cdot\widehat{\boldsymbol{q}})\\
+= & \widehat{\mathfrak{a}}_{x}\widehat{p}_{x}\widehat{\mathfrak{a}}_{x}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{x}\widehat{p}_{x}\widehat{\mathfrak{a}}_{y}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{x}\widehat{p}_{x}\widehat{\mathfrak{a}}_{z}\widehat{q}_{z}\\
+ & +\widehat{\mathfrak{a}}_{y}\widehat{p}_{y}\widehat{\mathfrak{a}}_{x}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{y}\widehat{p}_{y}\widehat{\mathfrak{a}}_{y}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{y}\widehat{p}_{y}\widehat{\mathfrak{a}}_{z}\widehat{q}_{z}\\
+ & +\widehat{\mathfrak{a}}_{z}\widehat{p}_{z}\widehat{\mathfrak{a}}_{x}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{z}\widehat{p}_{z}\widehat{\mathfrak{a}}_{y}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{z}\widehat{p}_{z}\widehat{\mathfrak{a}}_{z}\widehat{q}_{z}\\
+= & \widehat{\mathfrak{a}}_{x}\widehat{\mathfrak{a}}_{x}\widehat{p}_{x}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{x}\widehat{\mathfrak{a}}_{y}\widehat{p}_{x}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{x}\widehat{\mathfrak{a}}_{z}\widehat{p}_{x}\widehat{q}_{z}\\
+ & +\widehat{\mathfrak{a}}_{y}\widehat{\mathfrak{a}}_{x}\widehat{p}_{y}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{y}\widehat{\mathfrak{a}}_{y}\widehat{p}_{y}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{y}\widehat{\mathfrak{a}}_{z}\widehat{p}_{y}\widehat{q}_{z}\\
+ & +\widehat{\mathfrak{a}}_{z}\widehat{\mathfrak{a}}_{x}\widehat{p}_{z}\widehat{q}_{x}+\widehat{\mathfrak{a}}_{z}\widehat{\mathfrak{a}}_{y}\widehat{p}_{z}\widehat{q}_{y}+\widehat{\mathfrak{a}}_{z}\widehat{\mathfrak{a}}_{z}\widehat{p}_{z}\widehat{q}_{z}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Theorem
+
+\size footnotesize
+\begin_inset Formula $\widehat{\boldsymbol{\mathfrak{a}}}$
+\end_inset
+
+
+\size default
+ is Second Relativized Dirac Matrice(SRDM), 
+\size footnotesize
+as for 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}=\mathrm{f_{i}}(\epsilon)\widehat{\alpha}_{\mathrm{i}}$
+\end_inset
+
+, it's easy to get the 
+\begin_inset Formula $\epsilon_{\mathrm{i}}$
+\end_inset
+
+ as coefficeint of 
+\begin_inset Formula $\widehat{\sigma}_{\mathrm{i}}$
+\end_inset
+
+ with the anti-commutate relation of Pauli matrices if 
+\begin_inset Formula $\mathrm{f_{i}}(\epsilon)$
+\end_inset
+
+ satisfies ternary equations
+\begin_inset Formula 
+\[
+\mathrm{\forall\mathrm{i,j,k}:f_{i}}(\epsilon)\mathrm{f_{j}}(\epsilon)\equiv\epsilon_{\mathrm{k}}
+\]
+
+\end_inset
+
+it gives the only result 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}=\pm\sqrt{\frac{\epsilon_{\mathrm{j}}\epsilon_{\mathrm{k}}}{\epsilon_{\mathrm{i}}}}\widehat{\alpha}_{\mathrm{i}}$
+\end_inset
+
+, positive one will be adopted.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.2 
+\series bold
+Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset Formula $\mathrm{f_{i}}(\epsilon)$
+\end_inset
+
+ in previous derivation can be generalized to non-identity matrix operator,
+ since the matrice commutate with all alpha matrices has the form: 
+\begin_inset Formula 
+\[
+\mathrm{f_{i}}(\epsilon)=\left(\begin{array}{cccc}
+\widehat{m}_{\mathrm{i}} &  & \widehat{n}_{\mathrm{i}}\\
+ & \widehat{m}_{\mathrm{i}} &  & \widehat{n}_{\mathrm{i}}\\
+\widehat{n}_{\mathrm{i}} &  & \widehat{m}_{\mathrm{i}}\\
+ & \widehat{n}_{\mathrm{i}} &  & \widehat{m}_{\mathrm{i}}
+\end{array}\right)
+\]
+
+\end_inset
+
+which 
+\begin_inset Formula $m$
+\end_inset
+
+ and 
+\begin_inset Formula $n$
+\end_inset
+
+ are arbitrary operators.
+ The reason why we have to generalize 
+\begin_inset Formula $\mathrm{f_{i}}(\epsilon)$
+\end_inset
+
+ is that current 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}$
+\end_inset
+
+ do not satisfies the identity property of Dirac matrices, this makes the
+ scalar term in Pauli vector rule changed from original Darwin term, which
+ is not expected in SRTP Hamiltonian (SRTP is to modify the spin-dependent
+ Thomas precession).
+ Furthermore, unidentity 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}$
+\end_inset
+
+ makes the Dirac equation consists of 
+\begin_inset Formula $\widehat{\mathfrak{a}}_{\mathrm{i}}$
+\end_inset
+
+ no longer satisfies Lorentz invarient since the energy-momentum relationship
+ are destroyed.
+ Construct two sets of equations: 
+\begin_inset Formula 
+\[
+\forall\mathrm{i}:\begin{cases}
+\left\{ \widehat{m}_{\mathrm{i}},\widehat{n}_{\mathrm{i}}\right\} =0\\
+\widehat{m}_{\mathrm{i}}^{2}+\widehat{n}_{\mathrm{i}}^{2}=1
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\forall\mathrm{i,j,k}:\begin{cases}
+\widehat{m}_{\mathrm{i}}\widehat{n}_{\mathrm{j}}+\widehat{n}_{\mathrm{i}}\widehat{m}_{\mathrm{j}}=0\\
+\widehat{m}_{\mathrm{i}}\widehat{m}_{\mathrm{j}}+\widehat{n}_{\mathrm{i}}\widehat{n}_{\mathrm{j}}=\epsilon_{k}
+\end{cases}
+\]
+
+\end_inset
+
+first equations give 
+\begin_inset Formula $(\widehat{m}_{\mathrm{i}}+\widehat{n}_{\mathrm{i}})^{2}=1$
+\end_inset
+
+, second equations give 
+\begin_inset Formula $\widehat{m}_{\mathrm{i}}+\widehat{n}_{\mathrm{i}}=\pm\sqrt{\frac{\epsilon_{\mathrm{j}}\epsilon_{\mathrm{k}}}{\epsilon_{\mathrm{i}}}}$
+\end_inset
+
+, they are contradictory, therefore we can't find a fully consistent SRDM,
+ the only way is a hybrid treatment of scalar term and spin-dependent term,
+ except, magnetic SOC term will follow scalar term since the energy-momentum
+ relationship won't change.
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.2 
+\series bold
+Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+Back to Eq.
+ (11), (12), further 4-component coupling gives
+\size footnotesize
+
+\begin_inset Formula 
+\begin{align*}
+\widehat{\varepsilon}_{\mathrm{1}}^{1e}= & \widehat{\varepsilon}^{1e}-\frac{1}{4}\left[\frac{\epsilon+c^{2}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\left[\frac{\epsilon+c^{2}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\widehat{\varepsilon}^{1e}\right]\right]+\frac{1}{4}\left[\frac{\beta\mathcal{O}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\left[\frac{\beta\mathcal{O}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\widehat{\varepsilon}^{1e}\right]\right]\\
+\widehat{\varepsilon}_{\mathrm{1}}^{2e}= & \widehat{\varepsilon}^{2e}-\frac{1}{4}\left[\frac{\epsilon+c^{2}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\left[\frac{\epsilon+c^{2}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\widehat{\varepsilon}^{2e}\right]\right]+\frac{1}{4}\left[\frac{\beta\mathcal{O}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\left[\frac{\beta\mathcal{O}}{\sqrt{\epsilon\left(\epsilon+c^{2}\right)}},\widehat{\varepsilon}^{2e}\right]\right]
+\end{align*}
+
+\end_inset
+
+use 
+\begin_inset Formula $ABA=\frac{1}{2}\left\{ A^{2},B\right\} -\left[A,\left[A,B\right]\right]$
+\end_inset
+
+, the odd term still satisfy 
+\begin_inset Formula $\beta\mathcal{O}=-\mathcal{O}\beta$
+\end_inset
+
+ and 
+\begin_inset Formula $\left[A_{p},\mathcal{O}\right]=0$
+\end_inset
+
+, so SRTP-fpFW Hamiltonian has still the traditional form:
+\end_layout
+
+\begin_layout Frame
+
+\size footnotesize
+\begin_inset Formula 
+\begin{align}
+\varepsilon_{0} & =\beta\epsilon\\
+\varepsilon_{1} & =A_{p}\left(V+R_{p}VR_{p}\right)A_{p}\\
+\mathcal{O}_{1} & =\beta A_{p}\left[R_{p},V\right]A_{p}\\
+\varepsilon_{1}^{2e-C} & =\underset{\mathrm{i}<\mathrm{j}}{\sum}A_{\mathrm{i}}A_{\mathrm{j}}\left(V_{\mathrm{ij}}+R_{\mathrm{i}}V_{\mathrm{ij}}R_{\mathrm{i}}+R_{\mathrm{j}}V_{\mathrm{ij}}R_{\mathrm{j}}+R_{\mathrm{i}}R_{\mathrm{j}}V_{\mathrm{ij}}R_{\mathrm{i}}R_{\mathrm{j}}\right)A_{\mathrm{i}}A_{\mathrm{j}}\\
+\varepsilon_{1}^{2e-B} & =\underset{\mathrm{i}<\mathrm{j}}{\sum}A_{\mathrm{i}}A_{\mathrm{j}}\left(R_{\mathrm{i}}R_{\mathrm{j}}B_{\mathrm{ij}}+R_{\mathrm{i}}B_{\mathrm{ij}}R_{\mathrm{j}}+R_{\mathrm{j}}B_{\mathrm{ij}}R_{\mathrm{i}}+B_{\mathrm{ij}}R_{\mathrm{i}}R_{\mathrm{j}}\right)A_{\mathrm{i}}A_{\mathrm{j}}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+
+\size footnotesize
+which Eq.
+ (13) is kinetic term, 
+\begin_inset Formula $\epsilon=\sqrt{c^{4}+(\hat{\mathbf{\sigma}}\cdot\widehat{\boldsymbol{\pi}})^{2}c^{2}}$
+\end_inset
+
+; Eq.
+ (14) is first-order even term, 
+\begin_inset Formula $A_{p}=\sqrt{\frac{\epsilon+c^{2}}{2\epsilon}}$
+\end_inset
+
+, 
+\begin_inset Formula $R_{p}=\frac{c\mathfrak{\boldsymbol{a}}\cdot\boldsymbol{\pi}}{\epsilon+c^{2}}$
+\end_inset
+
+; Eq.
+ (15) is first-order odd term, Eq.
+ (16) is two-electron Coulomb interaction, Eq.
+ (17) is one-photon exchange correction (Breit term), 
+\begin_inset Formula $B_{\mathrm{ij}}=-\frac{1}{2r_{\mathrm{ij}}}\left(\mathfrak{s}_{\mathrm{i}}\cdot\mathfrak{s}_{\mathrm{j}}+\left(\mathfrak{s}_{\mathrm{i}}\cdot\bar{r}_{\mathrm{ij}}\right)\left(\mathfrak{s}_{\mathrm{j}}\cdot\bar{r}_{\mathrm{ij}}\right)\right)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+1.2 
+\series bold
+Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+The lead term of SRTP correction is in 
+\begin_inset Formula $c^{-4}$
+\end_inset
+
+ order, so it is necessary to consider the radiative correction (in order
+ of 
+\begin_inset Formula $c^{-3},c^{-4}$
+\end_inset
+
+, spin-dependent) phenomenologically, which is the anomalous magnetic moments
+ of electron.
+ 
+\size footnotesize
+According to Douglas and Kroll (Ann.
+ Phys., 1974, 82: 89-155), 
+\size default
+radiative correction only works on spin-dependent terms (not include scalar
+ terms), so we apply the same treatment to SRTP correction and radiative
+ correction, this makes the 
+\begin_inset Formula $\varepsilon_{1}$
+\end_inset
+
+ term becomes
+\end_layout
+
+\begin_layout Frame
+
+\size footnotesize
+\begin_inset Formula 
+\begin{align}
+\varepsilon_{1}^{R} & =A_{p}\left(V+R_{p}^{R}VR_{p}^{R}\right)A_{p}\\
+\varepsilon_{1}^{2e-C} & =\underset{\mathrm{i}<\mathrm{j}}{\sum}A_{\mathrm{i}}A_{\mathrm{j}}\left(V_{\mathrm{ij}}+R_{\mathrm{i}}^{R}V_{\mathrm{ij}}R_{\mathrm{i}}^{R}+R_{\mathrm{j}}^{R}V_{\mathrm{ij}}R_{\mathrm{j}}^{R}+R_{\mathrm{i}}^{R}R_{\mathrm{j}}^{R}V_{\mathrm{ij}}R_{\mathrm{i}}^{R}R_{\mathrm{j}}^{R}\right)A_{\mathrm{i}}A_{\mathrm{j}}\\
+\varepsilon_{1}^{2e-B} & =\underset{\mathrm{i}<\mathrm{j}}{\sum}A_{\mathrm{i}}A_{\mathrm{j}}\left(R_{\mathrm{i}}^{R}R_{\mathrm{j}}^{R}B_{\mathrm{ij}}^{R}+R_{\mathrm{i}}^{R}B_{\mathrm{ij}}^{R}R_{\mathrm{j}}^{R}+R_{\mathrm{j}}^{R}B_{\mathrm{ij}}^{R}R_{\mathrm{i}}^{R}+B_{\mathrm{ij}}^{R}R_{\mathrm{i}}^{R}R_{\mathrm{j}}^{R}\right)A_{\mathrm{i}}A_{\mathrm{j}}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+
+\size footnotesize
+which 
+\begin_inset Formula $R_{p}^{R}=\frac{c\mathfrak{\boldsymbol{a}}^{R}\cdot\boldsymbol{\pi}}{\epsilon+c^{2}},\mathfrak{\boldsymbol{a}}_{\mathrm{i}}^{R}=\left(\sqrt{\frac{\epsilon_{\mathrm{j}}\epsilon_{\mathrm{k}}}{\epsilon_{\mathrm{i}}}}+\sqrt{\frac{1}{2\pi c}-0.328\frac{1}{\pi^{2}c^{2}}}\right)\mathfrak{\alpha}_{\mathrm{i}};B_{\mathrm{ij}}^{R}=-\frac{1}{2r_{\mathrm{ij}}}\left(\mathfrak{s}_{\mathrm{i}}^{R}\cdot\mathfrak{s}_{\mathrm{j}}^{R}+\left(\mathfrak{s}_{\mathrm{i}}^{R}\cdot\bar{r}_{\mathrm{ij}}\right)\left(\mathfrak{s}_{\mathrm{j}}^{R}\cdot\bar{r}_{\mathrm{ij}}\right)\right),\mathfrak{s}_{\mathrm{x}}^{R}=\left(\epsilon_{\mathrm{x}}+\frac{1}{2\pi c}-0.328\frac{1}{\pi^{2}c^{2}}\right)\sigma_{\mathrm{x}}$
+\end_inset
+
+.
+ 
+\size default
+The cross term between SRTP correction and anomalous magnetic moment correction
+ is not needed when higher order terms are not considered.
+ In addition, other QED effects such as multiphoton exchange also have an
+ effect on spin-dependent terms, which will not be considered in this paper.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+Contents
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\color lightgray
+1 Derivation of 
+\series bold
+\color inherit
+SRTP-fpFW
+\series default
+\color lightgray
+ Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\color lightgray
+1.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Description
+
+\color lightgray
+1.2 
+\series bold
+\color inherit
+Back to SRTP-fpFW Hamiltonian
+\end_layout
+
+\end_deeper
+\begin_layout Description
+
+\series bold
+2 DKH transformation of SRTP-fpFW Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+2.1
+\series bold
+ SRTP-DKH2-1e Hamiltonian
+\end_layout
+
+\begin_layout Description
+2.2 
+\series bold
+SRTP-DKH2-2e Hamiltonian
+\end_layout
+
+\end_deeper
+\begin_layout Description
+
+\color lightgray
+3 Modified DKH Hamiltonian
+\end_layout
+
+\begin_deeper
+\begin_layout Description
+
+\color lightgray
+3.1 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Description
+
+\color lightgray
+3.2 Operatorization of SRTP Hamiltonian
+\end_layout
+
+\begin_layout Block
+\begin_inset Argument 2
+status open
+
+\begin_layout Plain Layout
+Agreements
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\size small
+All derication is based on a.u., the charge and mass of electron is equal
+ to 1, the magnitude of spin angular momentum is equal to 1/2.
+ 
+\end_layout
+
+\begin_layout Itemize
+
+\size small
+Classical vector is represented as 
+\begin_inset Formula $\overrightarrow{\mathrm{a}}$
+\end_inset
+
+; vector operator is represented as 
+\begin_inset Formula $\mathbf{\hat{\mathbf{a}}}$
+\end_inset
+
+.
+\end_layout
+
+\end_deeper
+\end_deeper
+\end_deeper
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-1e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+For ease of the subsequent derivation, the one-electron SRTP-fpFW Hamiltonian
+ must be expressed in terms of momentum representation, the kernel of the
+ momentum representation of 
+\begin_inset Formula $\varepsilon_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathcal{O}_{1}$
+\end_inset
+
+ should be expressed as
+\begin_inset Formula 
+\begin{align}
+\varepsilon_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right) & =A_{p}V_{pp^{\prime}}A_{p^{\prime}}+A_{p}R_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}\\
+\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right) & =\beta A_{p}R_{p}V_{pp^{\prime}}A_{p^{\prime}}-\beta A_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}\\
+V_{pp^{\prime}} & =-\mathrm{Z}\sqrt{\frac{2}{\pi}}\frac{1}{\left(\boldsymbol{p}-\boldsymbol{p}^{\prime}\right)^{2}}\nonumber 
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+According to Hess(J.
+ Chem.
+ Phys., 2002, 117: 9215–9226)(Recent Advances in Relativistic Molecular Theory,
+ 2004, 137–190), the optimized Douglas Kroll Hess transformation follows
+ the form
+\begin_inset Formula 
+\begin{align*}
+H_{\mathrm{DKH2-1e}} & =\left(a_{0}+\stackrel[k=1]{\infty}{\sum}a_{k}W_{1}^{k}\right)\left(\varepsilon_{0}+\varepsilon_{1}+\mathcal{O}_{1}\right)\left(a_{0}+\stackrel[k=1]{\infty}{\sum}\left(-1\right)^{k}a_{k}W_{1}^{k}\right)\\
+ & =\varepsilon_{0}+\varepsilon_{1}+\varepsilon_{2}+\varepsilon_{3}+\stackrel[\mathrm{k}=4]{\infty}{\sum}\mathcal{\epsilon}_{\mathrm{k}}^{(2)}+\stackrel[\mathrm{k}=4]{\infty}{\sum}\mathcal{O}_{\mathrm{k}}^{(2)}\\
+W_{1} & =\frac{a_{0}}{a_{1}}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}=\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}
+\end{align*}
+
+\end_inset
+
+We use the optimal unitary transformation as DKH transformation, the coefficient
+ is set as 
+\begin_inset Formula $U^{\mathrm{opt}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Graphics
+	filename picture/DKcoefficient.jpg
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-1e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+After the DKH2 transformation, only 
+\begin_inset Formula $\varepsilon_{2}$
+\end_inset
+
+ and 
+\begin_inset Formula $\varepsilon_{3}$
+\end_inset
+
+ can be determined.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\varepsilon_{2}\varphi\left(\boldsymbol{p}\right)= & \frac{1}{2}\left[W_{1},\mathcal{O}_{1}\right]\varphi\left(\boldsymbol{p}\right)\\
+= & \frac{1}{2}W_{1}\mathcal{O}_{1}\varphi\left(\boldsymbol{p}\right)-\frac{1}{2}\mathcal{O}_{1}W_{1}\varphi\left(\boldsymbol{p}\right)\\
+= & \frac{1}{2}\left(\int\mathrm{d}\boldsymbol{p}^{\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}\int\mathrm{d}\boldsymbol{p}^{\prime\prime}\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)\varphi\left(\boldsymbol{p}^{\prime\prime}\right)\right)\\
+ & -\frac{1}{2}\left(\int\mathrm{d}\boldsymbol{p}^{\prime}\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)\int\mathrm{d}\boldsymbol{p}^{\prime\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{\epsilon^{\prime}+\epsilon^{\prime\prime}}\varphi\left(\boldsymbol{p}^{\prime\prime}\right)\right)\\
+= & \frac{1}{2}\left(\iint\mathrm{d}\boldsymbol{p}^{\prime}\mathrm{d}\boldsymbol{p}^{\prime\prime}\left[\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)-\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{\epsilon^{\prime}+\epsilon^{\prime\prime}}\right]\varphi\left(\boldsymbol{p}^{\prime\prime}\right)\right)
+\end{align*}
+
+\end_inset
+
+its kernel reads
+\begin_inset Formula 
+\begin{align*}
+\varepsilon_{2}\left(\boldsymbol{p},\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)= & \beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{2\left(\epsilon+\epsilon^{\prime}\right)}\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)-\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}\\
+= & \frac{\left(A_{p}R_{p}V_{pp^{\prime}}A_{p^{\prime}}-A_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}\right)\left(\beta A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}-\beta A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}\right)}{2\left(\epsilon+\epsilon^{\prime}\right)}\\
+ & -\frac{\left(\beta A_{p}R_{p}V_{pp^{\prime}}A_{p^{\prime}}-\beta AV_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}\right)\left(A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}-A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}\right)}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}
+\end{align*}
+
+\end_inset
+
+For the case of no external magnetic field (excluding Breit term), 
+\begin_inset Formula $\left[A_{p},R_{p}\right]=0$
+\end_inset
+
+, it gives
+\begin_inset Formula 
+\begin{align*}
+\varepsilon_{2}\left(\boldsymbol{p},\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)= & -\beta\frac{A_{p}R_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon+\epsilon^{\prime}\right)}+\beta\frac{A_{p}R_{p}V_{pp^{\prime}}A_{p^{\prime}}A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon+\epsilon^{\prime}\right)}\\
+ & +\beta\frac{A_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon+\epsilon^{\prime}\right)}-\beta\frac{A_{p}V_{pp^{\prime}}A_{p^{\prime}}A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon+\epsilon^{\prime}\right)}\\
+ & -\beta\frac{A_{p}R_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}+\beta\frac{A_{p}R_{p}V_{pp^{\prime}}A_{p^{\prime}}A_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}\\
+ & +\beta\frac{A_{p}V_{pp^{\prime}}R_{p^{\prime}}A_{p^{\prime}}A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}-\beta\frac{A_{p}V_{pp^{\prime}}A_{p^{\prime}}A_{p^{\prime}}R_{p^{\prime}}V_{p^{\prime}p^{\prime\prime}}R_{p^{\prime\prime}}A_{p^{\prime\prime}}}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-1e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Formula 
+\begin{align*}
+\varepsilon_{3}\varphi\left(\boldsymbol{p}\right)= & \frac{1}{2}\left[W_{1},\left[W_{1},\varepsilon_{1}\right]\right]\varphi\left(\boldsymbol{p}\right)\\
+= & \frac{1}{2}W_{1}W_{1}\varepsilon_{1}\varphi\left(\boldsymbol{p}\right)-W_{1}\varepsilon_{1}W_{1}\varphi\left(\boldsymbol{p}\right)+\frac{1}{2}\varepsilon_{1}W_{1}W_{1}\\
+= & \frac{1}{2}\left(\int\mathrm{d}\boldsymbol{p}^{\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}\int\mathrm{d}\boldsymbol{p}^{\prime\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{\epsilon^{\prime}+\epsilon^{\prime\prime}}\int\mathrm{d}\boldsymbol{p}^{\prime\prime\prime}\varepsilon_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)\varphi\left(\boldsymbol{p}^{\prime\prime\prime}\right)\right)\\
+ & -\left(\int\mathrm{d}\boldsymbol{p}^{\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}\int\mathrm{d}\boldsymbol{p}^{\prime\prime}\varepsilon_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)\int\mathrm{d}\boldsymbol{p}^{\prime\prime\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)}{\epsilon^{\prime\prime}+\epsilon^{\prime\prime\prime}}\varphi\left(\boldsymbol{p}^{\prime\prime\prime}\right)\right)\\
+ & +\frac{1}{2}\left(\int\mathrm{d}\boldsymbol{p}^{\prime}\varepsilon_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)\int\mathrm{d}\boldsymbol{p}^{\prime\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{\epsilon^{\prime}+\epsilon^{\prime\prime}}\int\mathrm{d}\boldsymbol{p}^{\prime\prime\prime}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)}{\epsilon^{\prime\prime}+\epsilon^{\prime\prime\prime}}\varphi\left(\boldsymbol{p}^{\prime\prime\prime}\right)\right)
+\end{align*}
+
+\end_inset
+
+its kernel reads
+\begin_inset Formula 
+\begin{align*}
+\varepsilon_{3}\left(\boldsymbol{p},\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)= & \beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{2\left(\epsilon+\epsilon^{\prime}\right)}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{\epsilon^{\prime}+\epsilon^{\prime\prime}}\varepsilon_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)\\
+ & -\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)}{\epsilon+\epsilon^{\prime}}\varepsilon_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)}{\epsilon^{\prime\prime}+\epsilon^{\prime\prime\prime}}\\
+ & +\varepsilon_{1}\left(\boldsymbol{p},\boldsymbol{p}^{\prime}\right)\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime},\boldsymbol{p}^{\prime\prime}\right)}{2\left(\epsilon^{\prime}+\epsilon^{\prime\prime}\right)}\beta\frac{\mathcal{O}_{1}\left(\boldsymbol{p}^{\prime\prime},\boldsymbol{p}^{\prime\prime\prime}\right)}{\epsilon^{\prime\prime}+\epsilon^{\prime\prime\prime}}
+\end{align*}
+
+\end_inset
+
+Clearly 
+\begin_inset Formula $\varepsilon_{2}$
+\end_inset
+
+ is of order 
+\begin_inset Formula $c^{-4}$
+\end_inset
+
+ and 
+\begin_inset Formula $\varepsilon_{3}$
+\end_inset
+
+ is of order 
+\begin_inset Formula $c^{-6}$
+\end_inset
+
+, we have no need to consider terms higher than order 
+\begin_inset Formula $c^{-4}$
+\end_inset
+
+.
+ Therefore, for one-electron term, only 
+\begin_inset Formula $\varepsilon_{0},\varepsilon_{1},\varepsilon_{2}$
+\end_inset
+
+ is considered, and 
+\begin_inset Formula $\varepsilon_{2}$
+\end_inset
+
+ does not take into account the influence of SRTP effect.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-2e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+For the DKHn Hamiltonian, the two-electron DKH transformation entail much
+ smaller effects on the relative energy and electronic structure than the
+ one-electron DKH transformation, despit they have the same c-order.
+ Considering the complexity of the two-electron integrals, we push the two-elect
+ron term only to order 
+\begin_inset Formula $c^{-2}$
+\end_inset
+
+, which means that only the fpFW-2e (Coulomb and Breit) term and the DKH2-2e
+ (Coulomb) term are considered.
+\begin_inset Formula 
+\begin{align}
+\varepsilon_{\mathrm{1-2e},C} & =\underset{i<j}{\sum}A_{i}A_{j}\left[\frac{1}{r_{ij}}+R_{i}\frac{1}{r_{ij}}R_{i}+R_{j}\frac{1}{r_{ij}}R_{j}\right]A_{i}A_{j}\\
+\varepsilon_{\mathrm{1-2e},B} & =\underset{i<j}{\sum}A_{i}A_{j}\left[R_{i}R_{j}\widetilde{B}_{ij}+R_{i}\widetilde{B}_{ij}R_{j}+R_{j}\widetilde{B}_{ij}R_{i}+\widetilde{B}_{ij}R_{i}R_{j}\right]A_{i}A_{j}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+which 
+\begin_inset Formula $\widetilde{B}_{ij}=-\frac{1}{2r_{ij}}\left(\boldsymbol{\sigma}_{i}\cdot\boldsymbol{\sigma}_{j}+\left(\boldsymbol{\sigma}_{i}\cdot\hat{\boldsymbol{r}}_{ij}\right)\left(\boldsymbol{\sigma}_{j}\cdot\hat{\boldsymbol{r}}_{ij}\right)\right)$
+\end_inset
+
+,
+\size footnotesize
+
+\begin_inset Formula $A=\sqrt{\frac{\epsilon+c^{2}}{2\epsilon}}$
+\end_inset
+
+, 
+\begin_inset Formula $R=\frac{c\mathfrak{\boldsymbol{\alpha}}\cdot\boldsymbol{p}}{\epsilon+c^{2}}$
+\end_inset
+
+, this is 
+\begin_inset Formula $c^{-2}$
+\end_inset
+
+ order truncation of Eq.
+ (19) and Eq.
+ (20).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-2e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+In order to truncate at 
+\begin_inset Formula $c^{-2}$
+\end_inset
+
+, the two-electron DKH2 transformation is performed only for the 
+\begin_inset Formula $\frac{1}{r_{ij}}$
+\end_inset
+
+ term, then the first order odd term is truncated to: 
+\begin_inset Formula 
+\[
+\mathcal{O}_{1-2e}=\underset{i<j}{\sum}A_{i}A_{j}\left(-\left[\frac{1}{r_{ij}},\beta_{i}R_{i}\right]-\left[\frac{1}{r_{ij}},\beta_{j}R_{j}\right]\right)A_{i}A_{j}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+thus
+\end_layout
+
+\begin_layout Frame
+\begin_inset Formula 
+\begin{align}
+H_{\mathrm{DKH2-2e}}= & \left(1+W_{1-2e}\right)\left(\varepsilon_{1-2e}+\mathcal{O}_{1-2e}\right)\left(1-W_{1-2e}\right)\\
+= & \varepsilon_{1-2e}-\varepsilon_{1-2e}W_{1-2e}+\mathcal{O}_{1-2e}-\mathcal{O}_{1-2e}W_{1-2e}\nonumber \\
+ & +W_{1-2e}\varepsilon_{1-2e}-W_{1-2e}\varepsilon_{1-2e}W_{1-2e}\nonumber \\
+ & +W_{1-2e}\mathcal{O}_{1-2e}-W_{1-2e}\mathcal{O}_{1-2e}W_{1-2e}\nonumber 
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Formula $W_{1-2e}$
+\end_inset
+
+ satisfies
+\begin_inset Formula 
+\[
+\mathcal{O}_{1-2e}+W_{1-2e}\varepsilon_{1-2e}-\varepsilon_{1-2e}W_{1-2e}=0
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Formula $W_{1-2e}$
+\end_inset
+
+ is given by
+\begin_inset Formula 
+\[
+W_{1-2e}=\beta_{i}\frac{\mathcal{O}_{1-2e}}{2g_{ij}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+SRTP-DKH2-2e Hamiltonian
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+its even term reads(truncate at 
+\begin_inset Formula $c^{-2}$
+\end_inset
+
+)
+\begin_inset Formula 
+\begin{align}
+\varepsilon_{\mathrm{2-2e}}= & W_{1-2e}\mathcal{O}_{1-2e}-\mathcal{O}_{1-2e}W_{1-2e}\nonumber \\
+= & \frac{\mathcal{O}_{1-2e}^{2}}{g_{ij}}\nonumber \\
+= & \beta_{i}\frac{A_{i}A_{j}\left(\left[\frac{1}{r_{ij}},\beta_{i}R_{i}\right]+\left[\frac{1}{r_{ij}},\beta_{j}R_{j}\right]\right)A_{i}A_{j}A_{i}A_{j}\left(\left[\frac{1}{r_{ij}},\beta_{i}R_{i}\right]+\left[\frac{1}{r_{ij}},\beta_{j}R_{j}\right]\right)A_{i}A_{j}}{g_{ij}}\nonumber \\
+= & \beta_{i}\frac{A_{i}A_{j}\left(\frac{1}{r_{ij}}\beta_{i}R_{i}-\beta_{i}R_{i}\frac{1}{r_{ij}}+\frac{1}{r_{ij}}\beta_{j}R_{j}-\beta_{j}R_{j}\frac{1}{r_{ij}}\right)A_{i}A_{j}A_{i}A_{j}\left(\frac{1}{r_{ij}}\beta_{i}R_{i}-\beta_{i}R_{i}\frac{1}{r_{ij}}+\frac{1}{r_{ij}}\beta_{j}R_{j}-\beta_{j}R_{j}\frac{1}{r_{ij}}\right)A_{i}A_{j}}{g_{ij}}
+\end{align}
+
+\end_inset
+
+To summarize, the two-electron DKH integral is
+\end_layout
+
+\begin_layout Frame
+\begin_inset Formula 
+\[
+H_{\mathrm{DKH2-2e}}=\varepsilon_{\mathrm{1-2e},C}+\varepsilon_{\mathrm{1-2e},B}+\varepsilon_{\mathrm{2-2e}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Separator plain
+\end_inset
+
+
+\end_layout
+
+\begin_layout Frame
+\begin_inset Argument 4
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
