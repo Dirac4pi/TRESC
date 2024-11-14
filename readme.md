@@ -15,24 +15,24 @@ Current version of program has **NOT** been tested on any test set since it's st
 * calculate $$\left< s^2 \right> \left( L\ddot{o}wdin \right)$$, energy components and orbital components;
 # Characteristic
 ## SRTP
-Second Relativized Thomas Precession(SRTP) is to conbine the Lorentz vector feature of spin 4-vector (0,$$\vec{s}$$) and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
+Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
-!(.\\docs\\figure_1.png)
-Its mathematical form can be given directly as a nonlinear equation  
-$$
-\vec{s}\prime=\left( \begin{matrix}
+![image](docs/figure_1.png)
+Its mathematical form can be given directly as a nonlinear equation
+$$\vec{s}\prime=\left( \begin{matrix}
 	1&		0&		0&		0\\
 	0&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{x}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta\\
 	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{y}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta\\
 	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{z}^{2}}{\beta ^2} \right] \zeta\\
-\end{matrix} \right) \vec{s}
+\end{matrix} \right) \vec{s}$$
+which
+$$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
+This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
+![image](docs/figure_2.png)
+After some derivation, the contribution of the Thomas precession to electron energy $$U_{\mathrm{SRTP}}$$ at low speed can be modified as
 $$
-which $$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$. This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
-!(.\\docs\\figure_2.png)
-After some derivation, the contribution of the Thomas precession to electron energy $$U_{\mathrm{Thomas}}$$ at low speed can be modified as
-$$
-U_{\mathrm{Thomas}}=\frac{\gamma}{2\beta ^2}\vec{\mathrm{s}}_{\gamma}\cdot \left( \dot{\vec{\beta}}\times \vec{\beta} \right) \frac{\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}{s^2\left( 1-\beta ^2 \right) +\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}
+U_{\mathrm{SRTP}}=\frac{\gamma}{2\beta ^2}\vec{\mathrm{s}}_{\gamma}\cdot \left( \dot{\vec{\beta}}\times \vec{\beta} \right) \frac{\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}{s^2\left( 1-\beta ^2 \right) +\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}
 $$
 which $$\mathrm{s}_{\gamma ,i}=\frac{1}{\sqrt{s^2+\gamma ^2\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}}\frac{1}{\sqrt{1-\beta _{i}^{2}}}\mathrm{s}_i$$. Then quantization and use the Pauli vector rule yields the modified Dirac matrix 
 $$
