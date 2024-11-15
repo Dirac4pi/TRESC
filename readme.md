@@ -21,12 +21,11 @@ Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transf
 ![image](docs/figure_1.png)
 Its mathematical form can be given directly as a nonlinear equation  
 $$\vec{s}\prime=\left( \begin{matrix}
-	1&		0&		0&		0\\
-	0&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{x}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta\\
-	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{y}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta\\
-	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{z}^{2}}{\beta ^2} \right] \zeta\\
+	1&		0&		0&		0\\\\
+	0&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{x}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta\\\\
+	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{y}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta\\\\
+	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{z}^{2}}{\beta ^2} \right] \zeta\\\\
 \end{matrix} \right) \vec{s}$$
-test $$\vec{s}/s$$ test
 which
 $$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
 This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
