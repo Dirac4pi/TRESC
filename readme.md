@@ -18,9 +18,9 @@ Current version of program has **NOT** been tested on any test set since it's st
 Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
-<img src="https://github.com/Dirac4pi/TRESC/docs/figure_1.png" width="400px">
+![image](docs/figure_1.png)
 Its mathematical form can be given directly as a nonlinear equation  
-<img src="https://github.com/Dirac4pi/TRESC/docs/figure_1.png" width="200px">
+![image](docs/formula_1.png =300*100)
 which
 $$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
 This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
