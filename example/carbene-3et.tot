@@ -1,0 +1,710 @@
+Job execution start: 2024.11.15  18:41
+This file is the output file of job E:\TRESC\examples\ca
+Program/version: TRESC/development
+ 
+Acknowledge: 
+   TRESC is a 2-component DKH2 Hartree-Fock molecular self-consistent field
+   calculation program, use Cartesian basis functions for all basis.
+   Make sure you have installed Gaussian and set the environment variables.
+   During the calculation, Converged orbital coefficients from Gaussian will
+   be used to assign the initial density matrix, see 'Gaujob.gjf'.
+ 
+Packages used: 
+   LAPACK: linear algebra routines
+   BLAS: basic vector and matrix operations
+ 
+Module Atoms:
+   input basis set file path: E:\TRESC\examples\carbene-3et\dkh-def2-svp-o.gbs  
+   -------------------------<BASIS>-------------------------
+    H     0
+                      l = 0
+   exp:     13.01070100      coe:      0.03912825
+   exp:      1.96225720      coe:      0.28558405
+   exp:      0.44453796      coe:      0.76899086
+                      l = 0
+   exp:      0.12194962      coe:      1.00000000
+                      l = 1
+   exp:      0.80000000      coe:      1.00000000
+ 
+    C     0
+                      l = 0
+   exp:   1238.40169380      coe:      0.00595997
+   exp:    186.29004992      coe:      0.04226211
+   exp:     42.25117635      coe:      0.18665752
+   exp:     11.67655793      coe:      0.46758159
+   exp:      3.59305065      coe:      0.44228973
+                      l = 0
+   exp:      0.40245147      coe:      1.00000000
+                      l = 0
+   exp:      0.13090183      coe:     -1.00000000
+                      l = 1
+   exp:      9.46809706      coe:      0.05702946
+   exp:      2.01035451      coe:      0.31304715
+   exp:      0.54771005      coe:      0.76051353
+                      l = 1
+   exp:      0.15268614      coe:      1.00000000
+                      l = 2
+   exp:      0.80000000      coe:      1.00000000
+ 
+ 
+   input geometry file path: E:\TRESC\examples\carbene-3et\carbene-3et.tip     
+   -------------------------<GEOMETRY>-------------------------
+    C       0.0000       0.0000       0.1948
+    H       0.0000       1.8829      -0.5843
+    H       0.0000      -1.8829      -0.5843
+   scalar/spinor basis dimension:   25 /  50
+   Cartesian type basis (6D,10F,18G) used.
+   -------------------------<KEYWORDS>-------------------------
+   Spin multiplicity is changed to  3
+   DKH2 Hamiltonian will be considered.
+   finite nuclear effect will be considered
+   Avoid spin multiplicity mutations.
+All calculation settings are default except for printing above, exit module Atoms
+Module Hamiltonian:
+   -----<INTEGRALS>-----
+   QED effect considered: radiative correction(c^-3, c^-4, spin-dependent).
+   1e DKH transformation: scalar terms up to c^-2 order, spin-dependent
+   terms up to c^-4 order.
+   Incompleteness of basis may increase error in Fock construction since RI is involved.
+   threads using:  7 CPU threads: 20
+   stack size: 4000 MB
+   one electron integral calculation
+   complete! stored in:
+   i_j, i_p2_j, i_V_j, i_pVp_j (9 matrices)
+   S^(-1/2) calculation
+   complete! smallest eigenvalue =     0.026915
+   Lowdin orthogonalization of all one-electron integrals
+   complete! integral matrices modified.
+   <AOi|p^2|AOj> diagonalization
+   complete!  25 eigenvalues found.
+All 1e DKH2 integrals are calculated, exit module Hamiltonian.
+Module SCF:
+   construct one electron Fock matrix
+   complete! stored in Fock1
+   calculate nuclear repulsion energy
+   complete! nuclear repulsive energy: (A.U.)   6.1544919
+   SCF maxiter: 128;  convergence tolerance:  0.1000000E-07
+   nodiis =  8;  subsp =  5;  damp =    0.700000;  cutdiis =  0.1000000E+00
+   -------------------------<SCF>-------------------------
+ 
+ 
+   SCF iter   1
+   read density matrix from Gaussian checkpoint file
+   complete! stored in rou_m
+   construct two electron Fock matrix
+   --- Schwarz screening of <ij||kl>
+   --- complete! cutoff:  0.10E-07; stored in swintegral
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411648 <Sz> =  0.500
+   --- LUMO   9    0.132809 <Sz> = -0.500
+   --- gap      0.544457
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.576942
+   --- electron kinetic energy   38.984465
+   --- electron-nuclear attraction energy  -84.173624
+   --- spin-orbital coupling energy   -0.033545
+   --- -<V/T>     1.997410
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.917022
+   construct density matrix
+   --- <S**2>  2.01636
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+   --- no DIIS acceleration
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   2
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411244 <Sz> =  0.500
+   --- LUMO   9    0.133086 <Sz> = -0.500
+   --- gap      0.544331
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.582262
+   --- electron kinetic energy   38.984583
+   --- electron-nuclear attraction energy  -84.174934
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997300
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.912853; delta E =   0.4169001E-02
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.236867E-03
+   --- RMSDP 0.142117E-04
+   --- <S**2>  2.01636
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   3
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411361 <Sz> =  0.500
+   --- LUMO   9    0.132967 <Sz> = -0.500
+   --- gap      0.544328
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581058
+   --- electron kinetic energy   38.985134
+   --- electron-nuclear attraction energy  -84.172356
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997309
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913761; delta E =  -0.9070933E-03
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.110991E-03
+   --- RMSDP 0.470674E-05
+   --- <S**2>  2.01635
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   4
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132984 <Sz> = -0.500
+   --- gap      0.544315
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581290
+   --- electron kinetic energy   38.985098
+   --- electron-nuclear attraction energy  -84.172085
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913571; delta E =   0.1892358E-03
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.226912E-04
+   --- RMSDP 0.174571E-05
+   --- <S**2>  2.01635
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   5
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411334 <Sz> =  0.500
+   --- LUMO   9    0.132977 <Sz> = -0.500
+   --- gap      0.544311
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581227
+   --- electron kinetic energy   38.985127
+   --- electron-nuclear attraction energy  -84.171853
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913614; delta E =  -0.4246567E-04
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.128880E-04
+   --- RMSDP 0.930378E-06
+   --- <S**2>  2.01634
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   6
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411332 <Sz> =  0.500
+   --- LUMO   9    0.132977 <Sz> = -0.500
+   --- gap      0.544309
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581234
+   --- electron kinetic energy   38.985127
+   --- electron-nuclear attraction energy  -84.171790
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913606; delta E =   0.8125654E-05
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.568928E-05
+   --- RMSDP 0.536286E-06
+   --- <S**2>  2.01634
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   7
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411332 <Sz> =  0.500
+   --- LUMO   9    0.132976 <Sz> = -0.500
+   --- gap      0.544307
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581229
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171753
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.2240129E-05
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.347942E-05
+   --- RMSDP 0.317577E-06
+   --- <S**2>  2.01634
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   8
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132976 <Sz> = -0.500
+   --- gap      0.544307
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581227
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171735
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =   0.1990583E-06
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.202469E-05
+   --- RMSDP 0.193463E-06
+   --- <S**2>  2.01634
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter   9
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581226
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171724
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.2070000E-06
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.125711E-05
+   --- RMSDP 0.119483E-06
+   --- <S**2>  2.01634
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  10
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581226
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171717
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.5581120E-07
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.783420E-06
+   --- RMSDP 0.747071E-07
+   --- <S**2>  2.01633
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  11
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581225
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171712
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.5045860E-07
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.494906E-06
+   --- RMSDP 0.470637E-07
+   --- <S**2>  2.01633
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  12
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581225
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171710
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.2866430E-07
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.315489E-06
+   --- RMSDP 0.298114E-07
+   --- <S**2>  2.01633
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  13
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581225
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171708
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.1902052E-07
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.202864E-06
+   --- RMSDP 0.189507E-07
+   --- <S**2>  2.01633
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  14
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411331 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581225
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171707
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.1203121E-07
+   convergence tolerance not met
+   construct density matrix
+   --- maxDP 0.130189E-06
+   --- RMSDP 0.120761E-07
+   --- <S**2>  2.01633
+   --- total alpha electron   5.00000
+   --- total beta electron   3.00000
+   complete! stored in rou_m
+   DIIS information
+    --- DIIS cutted
+   -------------------------------------------------------------
+ 
+ 
+   SCF iter  15
+   construct two electron Fock matrix
+   complete! stored in Fock2
+   diagonalization of Fock matrix
+   complete!   50 eigenvectors found
+   frontier orbital energy (A.U.)
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
+   calculate energy components (A.U.)
+   --- electron repulsive energy   37.581225
+   --- electron kinetic energy   38.985130
+   --- electron-nuclear attraction energy  -84.171706
+   --- spin-orbital coupling energy   -0.033547
+   --- -<V/T>     1.997305
+   MO coefficient dump to .ao2mo file
+   SCF energy (A.U.) =   -38.913608; delta E =  -0.7752185E-08
+   convergence tolerance met, SCF done!
+   -------------------------------------------------------------
+ 
+ 
+   DKH2 Hartree-Fock SCF succeed!
+ 
+   -------------------------------------------------------------
+                       MOLECULAR INFO
+   -------------------------------------------------------------
+   electronic energy / Eh                        ...  -38.913608
+   nuclear repulsive energy / Eh                 ...    6.154492
+   electron repulsive energy / Eh                ...   37.581225
+   electron kinetic energy / Eh                  ...   38.985130
+   electron-nuclear attraction energy / Eh       ...  -84.171706
+   spin-orbital coupling energy / Eh             ...   -0.033547
+   Virial ratio                                  ...    1.997305
+ 
+   Note: relativistic calculation cause the Virial ratio
+   to deviate (usually below) 2.0.
+ 
+   total alpha electron                          ...    5.000000
+   total alpha electron                          ...    3.000000
+   <Sz*(Sz+1)> / hbar**2                         ...    2.000000
+   <S**2> / hbar**2                              ...    2.016334
+ 
+   Note: <S**2> may be contaminated by electron correlation,
+   discussion of SOC suggests <S**2> data of 1e orbitals.
+ 
+ 
+   -------------------------------------------------------------
+                     CANONICAL MO INFO
+   -------------------------------------------------------------
+   HOMO-007   energy / Eh                       ...   -11.275951
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #01 L=0      C #01    ( 0.000000, 0.976271)
+              ---  A #02 L=0      C #01    ( 0.000000, 0.201891)
+   HOMO-006   energy / Eh                       ...   -11.227821
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #01 L=0      C #01    (-0.977132, 0.000000)
+              ---  B #02 L=0      C #01    (-0.198261, 0.000000)
+   HOMO-005   energy / Eh                       ...    -0.937305
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #01 L=0      C #01    ( 0.000000, 0.142270)
+              ---  A #02 L=0      C #01    (-0.000000,-0.448309)
+              ---  A #03 L=0      C #01    ( 0.000000, 0.423175)
+              ---  A #10 L=2      C #01    (-0.000000,-0.286811)
+              ---  A #11 L=2      C #01    (-0.000000,-0.330530)
+              ---  A #12 L=2      C #01    (-0.000000,-0.294661)
+              ---  A #01 L=0      H #02    (-0.000000,-0.275065)
+              ---  A #02 L=0      H #02    (-0.000000,-0.272692)
+              ---  A #01 L=0      H #03    (-0.000000,-0.275065)
+              ---  A #02 L=0      H #03    (-0.000000,-0.272692)
+   HOMO-004   energy / Eh                       ...    -0.767328
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #01 L=0      C #01    ( 0.124406, 0.000000)
+              ---  B #02 L=0      C #01    (-0.383644,-0.000000)
+              ---  B #03 L=0      C #01    ( 0.380416,-0.000000)
+              ---  B #06 L=1      C #01    ( 0.155443,-0.000000)
+              ---  B #09 L=1      C #01    ( 0.108627,-0.000000)
+              ---  B #10 L=2      C #01    (-0.215963,-0.000000)
+              ---  B #11 L=2      C #01    (-0.342318, 0.000000)
+              ---  B #12 L=2      C #01    (-0.238358, 0.000000)
+              ---  B #01 L=0      H #02    (-0.346498,-0.000000)
+              ---  B #02 L=0      H #02    (-0.302476, 0.000000)
+              ---  B #01 L=0      H #03    (-0.346498, 0.000000)
+              ---  B #02 L=0      H #03    (-0.302476,-0.000000)
+   HOMO-003   energy / Eh                       ...    -0.620003
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #05 L=1      C #01    (-0.000000, 0.581040)
+              ---  A #08 L=1      C #01    (-0.000000, 0.473431)
+              ---  A #01 L=0      H #02    (-0.000000, 0.403191)
+              ---  A #02 L=0      H #02    (-0.000000, 0.211651)
+              ---  A #01 L=0      H #03    ( 0.000000,-0.403191)
+              ---  A #02 L=0      H #03    ( 0.000000,-0.211651)
+   HOMO-002   energy / Eh                       ...    -0.588319
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #05 L=1      C #01    ( 0.543817, 0.000000)
+              ---  B #08 L=1      C #01    ( 0.468555, 0.000000)
+              ---  B #01 L=0      H #02    ( 0.423595, 0.000000)
+              ---  B #02 L=0      H #02    ( 0.229511, 0.000000)
+              ---  B #01 L=0      H #03    (-0.423595,-0.000000)
+              ---  B #02 L=0      H #03    (-0.229511, 0.000000)
+   HOMO-001   energy / Eh                       ...    -0.449431
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #02 L=0      C #01    ( 0.000000,-0.118380)
+              ---  A #03 L=0      C #01    (-0.000000, 0.124962)
+              ---  A #06 L=1      C #01    ( 0.000000,-0.698614)
+              ---  A #09 L=1      C #01    ( 0.000000,-0.606509)
+              ---  A #01 L=0      H #02    (-0.000000, 0.174297)
+              ---  A #01 L=0      H #03    (-0.000000, 0.174297)
+   HOMO       energy / Eh                       ...    -0.411330
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #04 L=1      C #01    ( 0.738834, 0.000000)
+              ---  A #07 L=1      C #01    ( 0.644094, 0.000000)
+              ---  A #03 L=1      H #02    ( 0.139984, 0.000000)
+              ---  A #03 L=1      H #03    ( 0.139984, 0.000000)
+   LUMO       energy / Eh                       ...     0.132975
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #02 L=0      C #01    ( 0.174161, 0.000000)
+              ---  B #03 L=0      C #01    (-0.294444, 0.000000)
+              ---  B #06 L=1      C #01    ( 0.485211, 0.000000)
+              ---  B #09 L=1      C #01    ( 0.729089, 0.000000)
+              ---  B #10 L=2      C #01    ( 0.144799,-0.000000)
+              ---  B #12 L=2      C #01    ( 0.122906,-0.000000)
+              ---  B #01 L=0      H #02    (-0.113556, 0.000000)
+              ---  B #05 L=1      H #02    ( 0.123349,-0.000000)
+              ---  B #01 L=0      H #03    (-0.113556, 0.000000)
+              ---  B #05 L=1      H #03    ( 0.123349, 0.000000)
+   LUMO+001   energy / Eh                       ...     0.157943
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #04 L=1      C #01    (-0.000000, 0.547840)
+              ---  B #07 L=1      C #01    (-0.000000, 0.808215)
+              ---  B #03 L=1      H #02    (-0.000000, 0.152590)
+              ---  B #03 L=1      H #03    (-0.000000, 0.152590)
+   LUMO+002   energy / Eh                       ...     0.202006
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #02 L=0      C #01    (-0.000000,-0.234588)
+              ---  A #03 L=0      C #01    ( 0.000000, 0.189937)
+              ---  A #06 L=1      C #01    ( 0.000000, 0.168156)
+              ---  A #09 L=1      C #01    ( 0.000000, 0.110158)
+              ---  A #10 L=2      C #01    (-0.000000,-0.222896)
+              ---  A #12 L=2      C #01    (-0.000000,-0.180623)
+              ---  A #01 L=0      H #02    ( 0.000000, 0.120046)
+              ---  A #02 L=0      H #02    ( 0.000000, 0.568573)
+              ---  A #04 L=1      H #02    ( 0.000000, 0.230875)
+              ---  A #01 L=0      H #03    ( 0.000000, 0.120046)
+              ---  A #02 L=0      H #03    ( 0.000000, 0.568573)
+              ---  A #04 L=1      H #03    (-0.000000,-0.230875)
+   LUMO+003   energy / Eh                       ...     0.228243
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...    -0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  B #02 L=0      C #01    ( 0.232067,-0.000000)
+              ---  B #03 L=0      C #01    (-0.202896, 0.000000)
+              ---  B #06 L=1      C #01    (-0.224878, 0.000000)
+              ---  B #09 L=1      C #01    (-0.211172, 0.000000)
+              ---  B #10 L=2      C #01    ( 0.202567,-0.000000)
+              ---  B #12 L=2      C #01    ( 0.179092,-0.000000)
+              ---  B #02 L=0      H #02    (-0.552460, 0.000000)
+              ---  B #04 L=1      H #02    (-0.235892, 0.000000)
+              ---  B #02 L=0      H #03    (-0.552460, 0.000000)
+              ---  B #04 L=1      H #03    ( 0.235892,-0.000000)
+   LUMO+004   energy / Eh                       ...     0.254815
+              <S**2> / hbar**2                  ...     0.750000
+              <Sz> / hbar                       ...     0.500000
+   			  --- orb-in-atom  atom-in-mol      RE        IM
+              ---  A #05 L=1      C #01    ( 0.000000,-0.344410)
+              ---  A #15 L=2      C #01    ( 0.000000,-0.105145)
+              ---  A #02 L=0      H #02    (-0.000000, 0.615925)
+              ---  A #04 L=1      H #02    (-0.000000, 0.174385)
+              ---  A #05 L=1      H #02    ( 0.000000,-0.151925)
+              ---  A #02 L=0      H #03    ( 0.000000,-0.615925)
+              ---  A #04 L=1      H #03    (-0.000000, 0.174385)
+              ---  A #05 L=1      H #03    (-0.000000, 0.151925)
+ 
+exit module SCF
+ 
+---------<NORMAL TERMINATION>---------
+Job  cpu  time:  0 h 0 min24 s
+Job clock time:  0 h 0 min13 s

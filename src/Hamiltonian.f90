@@ -241,6 +241,7 @@ module Hamiltonian
             allocate(Lowdin(basis_dimension,basis_dimension))
             allocate(supLowdin(basis_dimension,basis_dimension))
             allocate(S0_5(basis_dimension,basis_dimension))
+            allocate(Sp0_5(basis_dimension,basis_dimension))
             allocate(evl(basis_dimension))
             allocate(work(1))
             allocate(iwork(1))
@@ -297,7 +298,6 @@ module Hamiltonian
 	            end do
             end do
             write(60,'(A,F12.6)') '   complete! smallest eigenvalue = ',smallest_evl
-            
             ! Lowdin orthogonalization of one-electron integrals
             ! transpose(S0_5)(S0_5)=I
             write(60,'(A)') '   Lowdin orthogonalization of all one-electron integrals'

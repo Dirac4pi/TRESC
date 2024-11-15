@@ -510,11 +510,11 @@ module SCF
         write(60,*)
         write(60,*)
         if (abs(molE - molE_pre) < conver_tol .and. loop_i < maxiter) then
-            if (DKH_order == 0) write(60,'(a)') '   DKH0 Hartree-Fock SCF failed!'
-            if (DKH_order == 2) write(60,'(a)') '   DKH2 Hartree-Fock SCF failed!'
-        else
             if (DKH_order == 0) write(60,'(a)') '   DKH0 Hartree-Fock SCF succeed!'
             if (DKH_order == 2) write(60,'(a)') '   DKH2 Hartree-Fock SCF succeed!'
+        else
+            if (DKH_order == 0) write(60,'(a)') '   DKH0 Hartree-Fock SCF failed!'
+            if (DKH_order == 2) write(60,'(a)') '   DKH2 Hartree-Fock SCF failed!'
         end if
         ! print final wave function information
         write(60,*)
@@ -673,16 +673,16 @@ module SCF
             allocate(rou_m(2*basis_dimension,2*basis_dimension))
             Nalpha = (electron_count - (spin_mult - 1)) / 2 + (spin_mult - 1)
             Nbeta = (electron_count - (spin_mult - 1)) / 2
-            open(61, file = 'E:\TRESC\examples\Fe(CN)6\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
+            open(61, file = 'E:\TRESC\examples\carbene-3et\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
             if (ios /= 0) then
-                call system('rwfdump E:\TRESC\examples\Fe(CN)6\Gaujob.chk E:\TRESC\examples\Fe(CN)6\Gaualpha.itm 524R')
-                open(61, file = 'E:\TRESC\examples\Fe(CN)6\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
+                call system('rwfdump E:\TRESC\examples\carbene-3et\Gaujob.chk E:\TRESC\examples\carbene-3et\Gaualpha.itm 524R')
+                open(61, file = 'E:\TRESC\examples\carbene-3et\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
                 if (ios /= 0) call terminate('Cannot generate Gaussian alpha orbital for initial density matrix')
             end if
-            open(62, file = 'E:\TRESC\examples\Fe(CN)6\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
+            open(62, file = 'E:\TRESC\examples\carbene-3et\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
             if (ios /= 0) then
-                call system('rwfdump E:\TRESC\examples\Fe(CN)6\Gaujob.chk E:\TRESC\examples\Fe(CN)6\Gaubeta.itm 526R')
-                open(62, file = 'E:\TRESC\examples\Fe(CN)6\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
+                call system('rwfdump E:\TRESC\examples\carbene-3et\Gaujob.chk E:\TRESC\examples\carbene-3et\Gaubeta.itm 526R')
+                open(62, file = 'E:\TRESC\examples\carbene-3et\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
                 if (ios /= 0) call terminate('Cannot generate Gaussian beta orbital for initial density matrix')
             end if
             do while(.true.)

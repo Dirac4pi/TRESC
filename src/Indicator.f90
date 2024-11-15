@@ -68,8 +68,8 @@ module Indicator
     subroutine elec_stc_calc()
         implicit none
         integer :: cmd_count, molstat, basstat
-        character(len = 50) :: address_molecular = 'E:\TRESC\examples\Fe(CN)6\Fe(CN)6.tip'
-        character(len = 50) :: address_basis = 'E:\TRESC\examples\Fe(CN)6\dkh-def2-svp-o-noF.gbs'
+        character(len = 50) :: address_molecular = 'E:\TRESC\examples\carbene-3et\carbene-3et.tip'
+        character(len = 50) :: address_basis = 'E:\TRESC\examples\carbene-3et\dkh-def2-svp-o.gbs'
         cmd_count = command_argument_count()
         if (cmd_count /= 2 .and. cmd_count /= 0) then
             write(*,*) 'Error: number of command line arguments is greater or less than 2'
