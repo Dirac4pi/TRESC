@@ -20,7 +20,7 @@ To accomplish this, the author carried out a new kinematic and dynamic study of 
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
 ![image](docs/figure_1.png)
 Its mathematical form can be given directly as a nonlinear equation  
-![image](docs/formula_1.png =300*100)
+![image](docs/formula_1.png =300x100)
 which
 $$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
 This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
