@@ -20,16 +20,16 @@ To accomplish this, the author carried out a new kinematic and dynamic study of 
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
 ![image](docs/figure_1.png)
 Its mathematical form can be given directly as a nonlinear equation  
-![image](docs/formula_1.png =300x100)
-which
-$$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
-This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
-After some derivation, the contribution of the Thomas precession to electron energy $$U_{\mathrm{SRTP}}$$ at low speed can be modified as
-$$
-U_{\mathrm{SRTP}}=\frac{\gamma}{2\beta ^2}\vec{\mathrm{s}}_{\gamma}\cdot \left( \dot{\vec{\beta}}\times \vec{\beta} \right) \frac{\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}{s^2\left( 1-\beta ^2 \right) +\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}
-$$
-which $$\mathrm{s}_{\gamma ,i}=\frac{1}{\sqrt{s^2+\gamma ^2\left( \vec{\beta}\cdot \vec{\mathrm{s}} \right) ^2}}\frac{1}{\sqrt{1-\beta _{i}^{2}}}\mathrm{s}_i$$. Then quantization and use the Pauli vector rule yields the modified Dirac matrix 
+![image](docs/formula_1.png)
+which  
 ![image](docs/formula_2.png)
+This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.
+After some derivation, the contribution of the Thomas precession to electron energy at low speed can be modified as  
+![image](docs/formula_3.png) 
+which  
+![image](docs/formula_4.png)
+Then quantization and use the Pauli vector rule yields the modified Dirac matrix  
+![image](docs/formula_5.png)
 this formular leads to the modified electron spinor wave function through DKH transformation.  
 In addition, SRTP effect is of order $$c^{-4}$$, one have to consider other terms of order $$\geqslant c^{-4}$$ before it, including radiation effect. Moreover, the lowest order of SRTP still requires the computation of integrals like $$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, it has a small effect on results but will significantly increases the one-electron integral cost.  
 SRTP is currently the author's conjecture with no evidence support, if you're interested, try keyword 'SRTP' when doing DKH2 calculation.
