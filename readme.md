@@ -19,7 +19,6 @@ Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector fea
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
 ![image](docs/figure_1.png)
-test $$\vec{s}/s$$ test
 Its mathematical form can be given directly as a nonlinear equation  
 $$\vec{s}\prime=\left( \begin{matrix}
 	1&		0&		0&		0\\
@@ -27,6 +26,7 @@ $$\vec{s}\prime=\left( \begin{matrix}
 	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _y}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{y}^{2}}{\beta ^2} \right] \zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta\\
 	0&		\frac{\left( \gamma -1 \right) \beta _x\beta _z}{\beta ^2}\zeta&		\frac{\left( \gamma -1 \right) \beta _y\beta _z}{\beta ^2}\zeta&		\left[ 1+\frac{\left( \gamma -1 \right) \beta _{z}^{2}}{\beta ^2} \right] \zeta\\
 \end{matrix} \right) \vec{s}$$
+test $$\vec{s}/s$$ test
 which
 $$\zeta =\left( 1+\left( s_x\gamma \beta _x+s_y\gamma \beta _y+s_z\gamma \beta _z \right) ^2 \right) ^{-1/2}$$
 This newly-defined transformation is kinematic, but it will change the form of Thomas precession dynamically since Thomas precession is related to the intrinsic property of reference frame transformation.  
