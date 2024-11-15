@@ -19,6 +19,9 @@ Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector fea
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
 ![image](docs/figure_1.png)
+$$
+a + b
+$$
 Its mathematical form can be given directly as a nonlinear equation  
 $$\vec{s}\prime=\left( \begin{matrix}
 	1&		0&		0&		0\\
