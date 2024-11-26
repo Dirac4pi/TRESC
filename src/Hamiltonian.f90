@@ -115,14 +115,28 @@ module Hamiltonian
             write(60,'(A)') 'Module Hamiltonian: one electron integral calculation'
             write(60,'(A)') '   -------------------------<INTEGRALS>-------------------------'
             write(60,'(A)') '   current use of twofold Fock matrix causes scalar SCF convergence harder.'
-            !-----------------------------------------------
-            ! 1e integral calculation 
+            ! OpenMP set up
             cpu_threads = omp_get_num_procs()
             write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
             if (cpu_threads <= threads_use) then
-                write(*,*) 'Warning! Calculation will be performed serially, CPU threads is',cpu_threads
-                write(60,'(a)') '   calculation will be performed SERIALLY!'
+                write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
+                write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
+            else
+                write(60,'(a,i5,a)') '   stack size:',stacksize,' MB'
+                write(stackchar,'(i5)',iostat = ios) stacksize
+                if (ios /= 0) call terminate("stack size setting should be written as 'stack=n'(MB)")
+                stackchar = adjustL(adjustR(stackchar)//'M')
+                call system('set OMP_STACKSIZE '//stackchar)
+                loop_i = omp_get_proc_bind()
+                if (loop_i == 0) then
+                    write(60,'(a)') '   processor bind OFF'
+                else
+                    loop_i = omp_get_num_places()
+                    write(60,'(a,i2,a)') '   processor bind ON, ',loop_i,'places'
+                end if
             end if
+            !-----------------------------------------------
+            ! 1e integral calculation 
             write(60,'(A)') '   one electron integral calculation'
             call assign_matrices_1e()
             write(60,'(A)') '   complete! integral stored in: i_p2_j, i_V_j'
@@ -216,19 +230,28 @@ module Hamiltonian
             write(60,'(A)') '   1e DKH transformation: scalar terms up to c^-2 order, spin-dependent'
             write(60,'(A)') '   terms up to c^-4 order.'
             write(60,'(A)') '   Incompleteness of basis may increase error in Fock construction since RI is involved.'
-            !-----------------------------------------------
-            ! 1e integral calculation
+            ! OpenMP set up
             cpu_threads = omp_get_num_procs()
             write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
-            write(60,'(a,i5,a)') '   stack size:',stacksize,' MB'
-            write(stackchar,'(i5)',iostat = ios) stacksize
-            if (ios /= 0) call terminate("stack size setting should be written as 'stack=n'(MB)")
-            stackchar = adjustL(adjustR(stackchar)//'M')
-            call system('set OMP_STACKSIZE '//stackchar)
             if (cpu_threads <= threads_use) then
                 write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
                 write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
+            else
+                write(60,'(a,i5,a)') '   stack size:',stacksize,' MB'
+                write(stackchar,'(i5)',iostat = ios) stacksize
+                if (ios /= 0) call terminate("stack size setting should be written as 'stack=n'(MB)")
+                stackchar = adjustL(adjustR(stackchar)//'M')
+                call system('set OMP_STACKSIZE '//stackchar)
+                loop_i = omp_get_proc_bind()
+                if (loop_i == 0) then
+                    write(60,'(a)') '   processor bind OFF'
+                else
+                    loop_i = omp_get_num_places()
+                    write(60,'(a,i2,a)') '   processor bind ON, ',loop_i,'places'
+                end if
             end if
+            !-----------------------------------------------
+            ! 1e integral calculation
             write(60,'(A)') '   one electron integral calculation'
             call assign_matrices_1e()
             write(60,'(A)') '   complete! stored in:'
