@@ -54,6 +54,7 @@ module Fundamentals
     real(dp) :: prtlev = 0.1                                      ! print level (minimun coefficient of AO will be printed in output file)
     real(dp) :: cutdiis = 1E-5                                    ! cut DIIS when threshold is reached
     logical :: keepspin = .false.                                 ! whether to avoid spin multiplicity mutations in case of degenerate frontier orbitals
+    logical :: d4 = .false.                                       ! whether to use DFT-D4 dispersion correction
     !------------------<module Radiation>------------------
     
     contains
@@ -71,7 +72,7 @@ module Fundamentals
         integer,dimension(8) :: values
         if (index(address_molecular,".tip") /= 0) then
             address_output = address_molecular(1:index(address_molecular,".tip") - 1)
-            job_name = address_molecular(1 : index(address_molecular,".tip") - 1 )
+            job_name = address_molecular(1 : index(address_molecular,".tip") - 1)
             open(60, file = trim(address_output)//".tot", status = "replace", action = "write")
             open(64, file = trim(address_output)//".ao2mo",Access = 'direct', form = 'unformatted', RecL = 16, status = "replace", action = "write")
         else

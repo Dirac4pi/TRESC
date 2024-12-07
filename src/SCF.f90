@@ -82,6 +82,7 @@ module SCF
     real(dp) :: V                                                    ! electron-nuclear attraction energy
     real(dp) :: ESOC                                                 ! SOC energy
     real(dp) :: ESR                                                  ! second relativistic Thomas precession energy
+    real(dp) :: emd4                                                 ! dispersion energy calculated by DFT-D4
 
     ! DIIS Ax=B
     complex(dp),allocatable :: rou_pre(:,:)                          ! privious rou_m of current iteration
@@ -518,10 +519,14 @@ module SCF
         end if
         ! print final wave function information
         write(60,*)
+        if (d4) then
+            emd4 = dftd4('hf')
+            molE = molE + emd4
+        end if
         write(60,'(a)') '   -------------------------------------------------------------'
         write(60,'(a)') '                       MOLECULAR INFO'
         write(60,'(a)') '   -------------------------------------------------------------'
-        write(60,'(a,f12.6)') '   electronic energy / Eh                        ...',molE
+        write(60,'(a,f12.6)') '   total electronic energy / Eh                  ...',molE
         write(60,'(a,f12.6)') '   nuclear repulsive energy / Eh                 ...',nucE
         write(60,'(a,f12.6)') '   electron repulsive energy / Eh                ...',eleE
         write(60,'(a,f12.6)') '   electron kinetic energy / Eh                  ...',T
@@ -530,6 +535,7 @@ module SCF
             write(60,'(a,f12.6)') '   spin-orbital coupling energy / Eh             ...',ESOC
             if (SRTP_type) write(60,'(a,f12.6)') '   SRTP energy / Eh                              ...',ESR
         end if
+        if (d4) write(60,'(a,f12.6)') '   dispersion energy (DFT-D4) / Eh               ...',emd4
         if (DKH_order == 0) then
             write(60,'(a,f12.6)') '   Virial ratio                                  ...',-(molE-T)/T
         else if (DKH_order == 2) then

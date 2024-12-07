@@ -555,6 +555,9 @@ module Atoms
                     else if (trim(keyword) == 'keepspin') then
 				        keepspin = .true.
 				        write(60,"(a)") "   Avoid spin multiplicity mutations."
+                    else if (trim(keyword) == 'd4') then
+				        d4 = .true.
+				        write(60,"(a)") "   DFT-D4 dispersion correction will be considered."
 	                else
 	                	call terminate('unknown keyword detected in module SCF')
 	                end if
@@ -604,5 +607,31 @@ module Atoms
         if (damp > 1.0 .or. damp < 0.0) call terminate('damp shall be in range [0,1]')
     end subroutine read_keywords
     
+    !-----------------------------------------------------------------------
+    ! calculate D4 dispersion correction by DFT-D4
     
+    function dftd4(method) result(emd4)
+        implicit none
+        character(len = *),intent(in) :: method
+        character :: ccharge
+        real(dp) :: emd4
+        write(ccharge,"(I1)") charge
+        call system('set OMP_NUM_THREADS=4')
+        call system('set OMP_STACKSIZE=100M')
+        ! take .tip file as input file of DFT-D4
+        call system('dftd4 '//job_name//'.tip --func'//method//' --chrg '//ccharge)
+        if (index(job_name,"\") /= 0) then
+            open(20,file = job_name(1 : index(job_name,"\",back=.true.))//'.EDISP',status = "old",action = "read",iostat = ios)
+        else
+            open(20,file = '.EDISP',status = "old",action = "read",iostat = ios)
+        end if
+        if (ios /= 0) then
+            write(60,'(a)') 'Warning: DFT-D4 call failed with EMPTY dispersion correction!'
+            emd4 = 0
+            return
+        end if
+        read(20,*) emd4
+        close(20)
+        return
+    end function dftd4
 end module Atoms

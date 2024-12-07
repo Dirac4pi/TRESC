@@ -13,6 +13,7 @@ Current version of program has **NOT** been tested on any test set since it's st
 * linear algebra in SCF is computed by subroutine from LAPACK;
 * both 1e and 2e integrals support OpenMP parallel computation;
 * calculate $$\left< s^2 \right> \left( L\ddot{o}wdin \right)$$, energy components and orbital components;
+* support dispersion correction via DFT-D4 program developed by Grimme's group;
 # Characteristic
 ## SRTP
 Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
