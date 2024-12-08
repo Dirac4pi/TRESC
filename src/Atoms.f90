@@ -613,13 +613,17 @@ module Atoms
     function dftd4(method) result(emd4)
         implicit none
         character(len = *),intent(in) :: method
-        character :: ccharge
+        character :: ch1
+        character(len=2) :: ch2
         real(dp) :: emd4
-        write(ccharge,"(I1)") charge
+        write(ch1,"(I1)") charge
         call system('set OMP_NUM_THREADS=4')
         call system('set OMP_STACKSIZE=100M')
         ! take .tip file as input file of DFT-D4
-        call system('dftd4 '//job_name//'.tip --func'//method//' --chrg '//ccharge)
+        call system('dftd4 '//job_name//'.tip --func'//method//' --chrg '//ch1)
+        write(ch2,"(I2)") threads_use
+        call system('set OMP_NUM_THREADS='//ch2)
+        call system('set OMP_STACKSIZE '//stackchar)
         if (index(job_name,"\") /= 0) then
             open(20,file = job_name(1 : index(job_name,"\",back=.true.))//'.EDISP',status = "old",action = "read",iostat = ios)
         else
@@ -627,6 +631,7 @@ module Atoms
         end if
         if (ios /= 0) then
             write(60,'(a)') 'Warning: DFT-D4 call failed with EMPTY dispersion correction!'
+            write(*,'(a)') 'TRESC: Warning! DFT-D4 call failed with EMPTY dispersion correction!'
             emd4 = 0
             return
         end if

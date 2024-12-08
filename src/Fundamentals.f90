@@ -17,7 +17,7 @@ module Fundamentals
     real(sp),private :: cpu_time1, cpu_time2                      ! job cpu time
     integer :: threads_use = 8                                    ! Number of threads be used
     integer :: cpu_threads                                        ! Number of threads in CPU
-    integer :: stacksize = 2000                                   ! stack size of each thread (MB)
+    integer :: stacksize = 1000                                   ! stack size of each thread (MB)
     character(len = 6) :: stackchar
     
     
