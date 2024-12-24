@@ -1,0 +1,20 @@
+%mem=1500MB
+%nprocshared=4
+! Don't change the checkpoint file name, move it to TRESC working directory when Gaussian finishes its job
+%chk=carbene-3et.chk
+! No matter closed-shell or open-shell calculation, always unrestricted
+! print one-electron integrals: iop(3/33=1)
+! print two-electron integrals: iop(3/33=3) extralinks(L316) scf=conventional noraff
+! print 1e,2e Fock matrices: iop(5/33=5)
+# uhf/gen 6d 10f nosymm iop(3/32=2,3/27=9) int=nobasistransform
+
+Title Card Required
+
+! charge and spin multiplicity must be the same as TRESC calculation
+0 3
+ C                  0.00000000    0.00000000    0.10307000
+ H                  0.00000000    0.99638600   -0.30921000
+ H                  0.00000000   -0.99638600   -0.30921000
+
+@E:\TRESC\TRESC\basis\DKH-def2-SVP.gbs
+

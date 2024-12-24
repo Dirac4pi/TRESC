@@ -75,8 +75,8 @@ module SCF
     
     ! orbital energy and molecular energy
     real(dp),allocatable :: orbE(:)                                  ! orbital energy
-    real(dp) :: molE_pre, molE                                     	 ! molecular energy
-    real(dp) :: nucE   												 ! nuclear repulsion energy
+    real(dp) :: molE_pre, molE                                       ! molecular energy
+    real(dp) :: nucE                                                 ! nuclear repulsion energy
     real(dp) :: eleE                                                 ! electron repulsion energy
     real(dp) :: T                                                    ! kinetic energy
     real(dp) :: V                                                    ! electron-nuclear attraction energy
@@ -87,12 +87,12 @@ module SCF
     ! DIIS Ax=B
     complex(dp),allocatable :: rou_pre(:,:)                          ! privious rou_m of current iteration
     complex(dp),allocatable :: rou_history(:,:,:)                    ! coefficients of subsp iteration
-	complex(dp),allocatable :: Rsd(:,:,:)                            ! residuals of rou_m
-	complex(dp),allocatable :: DIISmat(:,:)                          ! A
+    complex(dp),allocatable :: Rsd(:,:,:)                            ! residuals of rou_m
+    complex(dp),allocatable :: DIISmat(:,:)                          ! A
     complex(dp),allocatable :: DIISwork(:)
     integer :: lDIISwork
-	integer,allocatable :: ipiv(:)
-	integer :: DIIsinfo
+    integer,allocatable :: ipiv(:)
+    integer :: DIIsinfo
     
     
     !--------------<DEBUG>--------------
@@ -100,13 +100,15 @@ module SCF
     real(dp),allocatable :: focksum(:)
     real(dp) :: gaufock(5)
     integer :: rdd
-    	
+        
     
     contains
 
 !------------------------------------------------------------
 ! standard Hartree Fock SCF procedure based on the Pulay (DIIS) mixing method for DKH0 & DKH2 Hamiltonian 
-    subroutine DKH_Hartree_Fock()
+    subroutine DKH_Hartree_Fock(keep, kill)
+        integer,intent(in) :: keep                                    ! initialization level
+        logical,intent(in) :: kill                                    ! whether to kill the whole program after SCF process
         integer :: iatom, ishell
         write(60,'(a)') 'Module SCF:'
         write(60,'(a)') '   construct one electron Fock matrix'
@@ -115,12 +117,12 @@ module SCF
         write(60,'(a)') '   calculate nuclear repulsion energy'
         nucE = 0.0_dp
         do loop_i = 1, atom_count
-        	do loop_j = loop_i + 1, atom_count
-        		nucE = nucE + (real(molecular(loop_i) % atom_number) * real(molecular(loop_j) % atom_number))/sqrt(&
-				(molecular(loop_i) % nucleus_position(1) - molecular(loop_j) % nucleus_position(1))**2 + &
-				(molecular(loop_i) % nucleus_position(2) - molecular(loop_j) % nucleus_position(2))**2 + &
-				(molecular(loop_i) % nucleus_position(3) - molecular(loop_j) % nucleus_position(3))**2)
-			end do
+            do loop_j = loop_i + 1, atom_count
+                nucE = nucE + (real(molecular(loop_i) % atom_number) * real(molecular(loop_j) % atom_number))/sqrt(&
+                (molecular(loop_i) % nucleus_position(1) - molecular(loop_j) % nucleus_position(1))**2 + &
+                (molecular(loop_i) % nucleus_position(2) - molecular(loop_j) % nucleus_position(2))**2 + &
+                (molecular(loop_i) % nucleus_position(3) - molecular(loop_j) % nucleus_position(3))**2)
+            end do
         end do
         if (isnan(nucE)) call terminate('nuclear repulsive energy anomaly, possibly due to overlapping atomic coordinates')
         write(60,'(a45,f12.7)') '   complete! nuclear repulsive energy: (A.U.)', nucE
@@ -166,131 +168,131 @@ module SCF
             
             !---------------------<DEBUG>---------------------
             ! print Fock and check with Gaussian Fock
-			!call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exSp0_5, 2*basis_dimension, Fock1, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
-			!call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSp0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock1, 2*basis_dimension)
-			!call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exSp0_5, 2*basis_dimension, Fock2, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
-			!call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSp0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock2, 2*basis_dimension)
-			!allocate(fockerr(basis_dimension))
-			!allocate(focksum(basis_dimension))
-			!fockerr = 0.0_dp
-			!focksum = 0.0_dp
-			!write(60,*) 'Fock2(alpha)'
-			!open(111,file='E:\TRESC\Fe(CN)6\Fock2alpha.out',action='read')
-			!outeralpha: do loop_j=1, basis_dimension, 5
-			!	read(111,*)
-			!	do loop_k=loop_j, basis_dimension
-			!		if (loop_j+loop_k > 2*basis_dimension) exit outeralpha
-			!		if (loop_k == loop_j) then
-			!			read(111,*) rdd, gaufock(1)
-			!		else if (loop_k == loop_j + 1) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2)
-			!		else if (loop_k == loop_j + 2) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3)
-			!		else if (loop_k == loop_j + 3) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3), gaufock(4)
-			!		else
-			!			read(111,*) rdd, gaufock
-			!		end if
-			!		do loop_m=1, min(loop_k-loop_j+1,5)
-			!			if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m))&
-			!				/abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))) >= 0.01 .and. &
-			!				abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))) >= 1E-7) then
-			!				if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.1) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '             ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
-			!				else if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.01) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '         ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
-			!				else if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.001) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '     ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
-			!				else
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), ' ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
-			!				end if
-			!			end if
-			!			Fock(2*loop_k-1,2*(loop_j+loop_m-1)-1) = cmplx(gaufock(loop_m),0.0,dp)
-			!			Fock(2*(loop_j+loop_m-1)-1,2*loop_k-1) = cmplx(gaufock(loop_m),0.0,dp)
-			!			fockerr(loop_k) = fockerr(loop_k) + real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
-			!			focksum(loop_k) = focksum(loop_k) + gaufock(loop_m)
-			!		end do
-			!	end do
-			!end do outeralpha
-			!write(60,*)
-			!write(60,*)
-			!write(60,*) '        Focksum           Fockerr'
-			!do loop_j=1, basis_dimension
-			!	write(60,'(i3,f12.7,a,f12.7)') loop_j, Focksum(loop_j), '   ', Fockerr(loop_j)
-			!end do
-			!close(111)
-			!fockerr = 0.0_dp
-			!focksum = 0.0_dp
-			!write(60,*) 'Fock2(beta)'
-			!open(111,file='E:\TRESC\Fe(CN)6\Fock2beta.out',action='read')
-			!outerbeta: do loop_j=1, basis_dimension, 5
-			!	read(111,*)
-			!	do loop_k=loop_j, basis_dimension
-			!		if (loop_j+loop_k > 2*basis_dimension) exit outerbeta
-			!		if (loop_k == loop_j) then
-			!			read(111,*) rdd, gaufock(1)
-			!		else if (loop_k == loop_j + 1) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2)
-			!		else if (loop_k == loop_j + 2) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3)
-			!		else if (loop_k == loop_j + 3) then
-			!			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3), gaufock(4)
-			!		else
-			!			read(111,*) rdd, gaufock
-			!		end if
-			!		do loop_m=1, min(loop_k-loop_j+1,5)
-			!			if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m))&
-			!				/abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))) >= 0.01 .and. &
-			!				abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))) >= 1E-7) then
-			!				if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.1) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '             ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
-			!				else if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.01) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '         ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
-			!				else if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.001) then
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), '     ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
-			!				else
-			!					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
-			!						'  ',gaufock(loop_m), ' ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
-			!				end if
-			!			end if
-			!			Fock(2*loop_k,2*(loop_j+loop_m-1)) = cmplx(gaufock(loop_m),0.0,dp)
-			!			Fock(2*(loop_j+loop_m-1),2*loop_k) = cmplx(gaufock(loop_m),0.0,dp)
-			!			fockerr(loop_k) = fockerr(loop_k) + real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
-			!			focksum(loop_k) = focksum(loop_k) + gaufock(loop_m)
-			!		end do
-			!	end do
-			!end do outerbeta
-			!write(60,*)
-			!write(60,*)
-			!write(60,*) '   Focksum           Fockerr'
-			!do loop_j=1, basis_dimension
-			!	if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.1) then
-			!		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '             ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
-			!	else if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.01) then
-			!		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '         ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
-			!	else if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.001) then
-			!		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '     ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
-			!	else
-			!		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), ' ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
-			!	end if
-			!end do
-			!close(111)
-			!deallocate(fockerr)
-			!deallocate(focksum)
-   !         call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exS0_5, 2*basis_dimension, Fock, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
-			!call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exS0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock, 2*basis_dimension)
-			!do loop_j=1, 2*basis_dimension
-			!	do loop_k=1, loop_j-1
-			!		Fock(loop_j,loop_k) = cmplx(0.0,0.0,dp)
-			!	end do
-			!end do
+            !call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exSp0_5, 2*basis_dimension, Fock1, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
+            !call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSp0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock1, 2*basis_dimension)
+            !call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exSp0_5, 2*basis_dimension, Fock2, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
+            !call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSp0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock2, 2*basis_dimension)
+            !allocate(fockerr(basis_dimension))
+            !allocate(focksum(basis_dimension))
+            !fockerr = 0.0_dp
+            !focksum = 0.0_dp
+            !write(60,*) 'Fock2(alpha)'
+            !open(111,file='E:\TRESC\Fe(CN)6\Fock2alpha.out',action='read')
+            !outeralpha: do loop_j=1, basis_dimension, 5
+            !	read(111,*)
+            !	do loop_k=loop_j, basis_dimension
+            !		if (loop_j+loop_k > 2*basis_dimension) exit outeralpha
+            !		if (loop_k == loop_j) then
+            !			read(111,*) rdd, gaufock(1)
+            !		else if (loop_k == loop_j + 1) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2)
+            !		else if (loop_k == loop_j + 2) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3)
+            !		else if (loop_k == loop_j + 3) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3), gaufock(4)
+            !		else
+            !			read(111,*) rdd, gaufock
+            !		end if
+            !		do loop_m=1, min(loop_k-loop_j+1,5)
+            !			if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m))&
+            !				/abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))) >= 0.01 .and. &
+            !				abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))) >= 1E-7) then
+            !				if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.1) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '             ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
+            !				else if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.01) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '         ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
+            !				else if (abs(real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)) >= 0.001) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '     ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
+            !				else
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), ' ',real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
+            !				end if
+            !			end if
+            !			Fock(2*loop_k-1,2*(loop_j+loop_m-1)-1) = cmplx(gaufock(loop_m),0.0,dp)
+            !			Fock(2*(loop_j+loop_m-1)-1,2*loop_k-1) = cmplx(gaufock(loop_m),0.0,dp)
+            !			fockerr(loop_k) = fockerr(loop_k) + real(Fock2(2*loop_k-1,2*(loop_j+loop_m-1)-1))-gaufock(loop_m)
+            !			focksum(loop_k) = focksum(loop_k) + gaufock(loop_m)
+            !		end do
+            !	end do
+            !end do outeralpha
+            !write(60,*)
+            !write(60,*)
+            !write(60,*) '        Focksum           Fockerr'
+            !do loop_j=1, basis_dimension
+            !	write(60,'(i3,f12.7,a,f12.7)') loop_j, Focksum(loop_j), '   ', Fockerr(loop_j)
+            !end do
+            !close(111)
+            !fockerr = 0.0_dp
+            !focksum = 0.0_dp
+            !write(60,*) 'Fock2(beta)'
+            !open(111,file='E:\TRESC\Fe(CN)6\Fock2beta.out',action='read')
+            !outerbeta: do loop_j=1, basis_dimension, 5
+            !	read(111,*)
+            !	do loop_k=loop_j, basis_dimension
+            !		if (loop_j+loop_k > 2*basis_dimension) exit outerbeta
+            !		if (loop_k == loop_j) then
+            !			read(111,*) rdd, gaufock(1)
+            !		else if (loop_k == loop_j + 1) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2)
+            !		else if (loop_k == loop_j + 2) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3)
+            !		else if (loop_k == loop_j + 3) then
+            !			read(111,*) rdd, gaufock(1), gaufock(2), gaufock(3), gaufock(4)
+            !		else
+            !			read(111,*) rdd, gaufock
+            !		end if
+            !		do loop_m=1, min(loop_k-loop_j+1,5)
+            !			if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m))&
+            !				/abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))) >= 0.01 .and. &
+            !				abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))) >= 1E-7) then
+            !				if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.1) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '             ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
+            !				else if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.01) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '         ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
+            !				else if (abs(real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)) >= 0.001) then
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), '     ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
+            !				else
+            !					write(60,'(i3,a,i1,a,i3,a,i1,a,f12.7,a,f12.7)') loop_k, ' L=',basis_inf(loop_k)%L-1,'  ',loop_j+loop_m-1, ' L=',basis_inf(loop_j+loop_m-1)%L-1,&
+            !						'  ',gaufock(loop_m), ' ',real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
+            !				end if
+            !			end if
+            !			Fock(2*loop_k,2*(loop_j+loop_m-1)) = cmplx(gaufock(loop_m),0.0,dp)
+            !			Fock(2*(loop_j+loop_m-1),2*loop_k) = cmplx(gaufock(loop_m),0.0,dp)
+            !			fockerr(loop_k) = fockerr(loop_k) + real(Fock2(2*loop_k,2*(loop_j+loop_m-1)))-gaufock(loop_m)
+            !			focksum(loop_k) = focksum(loop_k) + gaufock(loop_m)
+            !		end do
+            !	end do
+            !end do outerbeta
+            !write(60,*)
+            !write(60,*)
+            !write(60,*) '   Focksum           Fockerr'
+            !do loop_j=1, basis_dimension
+            !	if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.1) then
+            !		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '             ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
+            !	else if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.01) then
+            !		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '         ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
+            !	else if (abs(Fockerr(loop_j)/Focksum(loop_j)) >= 0.001) then
+            !		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), '     ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
+            !	else
+            !		write(60,'(i3,f12.7,a,f12.7,a,i1,a,i2)') loop_j, Focksum(loop_j), ' ', Fockerr(loop_j), '  L=', basis_inf(loop_j)%L-1, '  A=', basis_inf(loop_j)%atom
+            !	end if
+            !end do
+            !close(111)
+            !deallocate(fockerr)
+            !deallocate(focksum)
+            !call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), exS0_5, 2*basis_dimension, Fock, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper3, 2*basis_dimension)
+            !call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exS0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), Fock, 2*basis_dimension)
+            !do loop_j=1, 2*basis_dimension
+            !	do loop_k=1, loop_j-1
+            !		Fock(loop_j,loop_k) = cmplx(0.0,0.0,dp)
+            !	end do
+            !end do
             !---------------------<DEBUG>---------------------
             
             
@@ -316,9 +318,9 @@ module SCF
                 call terminate('Fock matrix diagonalization failure, internal error of zheevr')
             end if
             if (evl_count_f < 2*basis_dimension) then
-				call terminate('number of MO less than 2*basis_dimension')
-			else
-				write(60,'(a,i5,a)') '   complete!',evl_count_f,' eigenvectors found'
+                call terminate('number of MO less than 2*basis_dimension')
+            else
+                write(60,'(a,i5,a)') '   complete!',evl_count_f,' eigenvectors found'
             end if
             ! frontier orbital energy
             write(60,'(a)') '   frontier orbital energy (A.U.)'
@@ -336,27 +338,27 @@ module SCF
             call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, Fock2, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
             call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
             do loop_j = 1, electron_count
-				eleE = eleE + real(oper4(loop_j,loop_j))
+                eleE = eleE + real(oper4(loop_j,loop_j))
             end do
             write(60,'(a,f12.6)') '   --- electron repulsive energy', eleE
                 ! calculate molE
                 if (loop_i /= 1) molE_pre = molE
                 molE = nucE - eleE/2.0_dp
-			    do loop_j = 1, electron_count
-				    molE = molE + orbE(loop_j)
+                do loop_j = 1, electron_count
+                    molE = molE + orbE(loop_j)
                 end do
             T = 0.0_dp
             call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exi_T_j, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
             call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
             do loop_j = 1, electron_count
-				T = T + real(oper4(loop_j,loop_j))
+                T = T + real(oper4(loop_j,loop_j))
             end do
             write(60,'(a,f12.6)') '   --- electron kinetic energy', T
             V = 0.0_dp
             call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exi_V_j, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
             call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
             do loop_j = 1, electron_count
-				V = V + real(oper4(loop_j,loop_j))
+                V = V + real(oper4(loop_j,loop_j))
             end do
             write(60,'(a,f12.6)') '   --- electron-nuclear attraction energy', V
             if (DKH_order == 2) then
@@ -364,7 +366,7 @@ module SCF
                 call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSOC, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
                 call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
                 do loop_j = 1, electron_count
-				    ESOC = ESOC + real(oper4(loop_j,loop_j))
+                    ESOC = ESOC + real(oper4(loop_j,loop_j))
                 end do
                 write(60,'(a,f12.6)') '   --- spin-orbital coupling energy', ESOC
                 if (SRTP_type) then
@@ -372,7 +374,7 @@ module SCF
                     call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSR, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
                     call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
                     do loop_j = 1, electron_count
-				        ESR = ESR + real(oper4(loop_j,loop_j))
+                        ESR = ESR + real(oper4(loop_j,loop_j))
                     end do
                     write(60,'(a,f12.6)') '   --- second relativistic Thomas precession energy', ESR
                 end if
@@ -385,11 +387,7 @@ module SCF
             ! de-Lowdin orthogonalization
             call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exS0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), AO2MO, 2*basis_dimension)
             write(60,'(a)') '   MO coefficient dump to .ao2mo file'
-            do loop_j = 1, 2*basis_dimension
-                do loop_k = 1, 2*basis_dimension
-                    write(64,rec = 1+2*basis_dimension*(loop_j-1)+loop_k)  AO2MO(loop_j,loop_k)
-                end do
-            end do
+            call dump_matrix_cmplx(name='ao2mo', m=AO2MO, dm=2*basis_dimension)
             ! convergence check
             if (loop_i == 1) then
                 write(60,'(a,f12.6)') '   SCF energy (A.U.) = ',molE
@@ -413,72 +411,72 @@ module SCF
                 cycle
             end if
             ! generate next AO2MO by DIIS method
-			if (loop_i <= nodiis - subsp) then
+            if (loop_i <= nodiis - subsp) then
                 write(60,'(a)') '   --- no DIIS acceleration'
-			else if (nodiis - subsp < loop_i .and. loop_i <= nodiis) then
-				! update Rsd
-				do loop_j = 1, 2*basis_dimension
+            else if (nodiis - subsp < loop_i .and. loop_i <= nodiis) then
+                ! update Rsd
+                do loop_j = 1, 2*basis_dimension
                     do loop_k = 1, 2*basis_dimension
-					    Rsd(loop_i-(nodiis-subsp), loop_j, loop_k) = rou_m(loop_j, loop_k) - rou_pre(loop_j, loop_k)
+                        Rsd(loop_i-(nodiis-subsp), loop_j, loop_k) = rou_m(loop_j, loop_k) - rou_pre(loop_j, loop_k)
                     end do
-				end do
-				! update rou_history
-				do loop_j = 1, 2*basis_dimension
-					do loop_k = 1, 2*basis_dimension
-						rou_history(loop_i-(nodiis-subsp), loop_j, loop_k) = rou_m(loop_j, loop_k)
-					end do
+                end do
+                ! update rou_history
+                do loop_j = 1, 2*basis_dimension
+                    do loop_k = 1, 2*basis_dimension
+                        rou_history(loop_i-(nodiis-subsp), loop_j, loop_k) = rou_m(loop_j, loop_k)
+                    end do
                 end do
                 write(60,'(a,i2,a,i2)') '   --- DIIS subspace filling ',loop_i-(nodiis-subsp),'/',subsp
-			else
-				! update Rsd
-				do loop_j = 2, subsp
-					do loop_k = 1, 2*basis_dimension
-                        do loop_l = 1, 2*basis_dimension
-						    Rsd(loop_j - 1, loop_k, loop_l) = Rsd(loop_j, loop_k, loop_l)
-                        end do
-					end do
-				end do
-				do loop_j = 1, 2*basis_dimension
+            else
+                ! update Rsd
+                do loop_j = 2, subsp
                     do loop_k = 1, 2*basis_dimension
-					    Rsd(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k) - rou_pre(loop_j, loop_k)
+                        do loop_l = 1, 2*basis_dimension
+                            Rsd(loop_j - 1, loop_k, loop_l) = Rsd(loop_j, loop_k, loop_l)
+                        end do
                     end do
-				end do
-				! update rou_history
-				do loop_j = 2, subsp
-					do loop_k = 1, 2*basis_dimension
-						do loop_l = 1, 2*basis_dimension
-							rou_history(loop_j - 1, loop_k, loop_l) = rou_history(loop_j, loop_k, loop_l)
-						end do
-					end do
-				end do
-				do loop_j = 1, 2*basis_dimension
-					do loop_k = 1, 2*basis_dimension
-						rou_history(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k)
-					end do
-				end do
-				! construct DIISmat
-				DIISmat = cmplx(0.0,0.0,dp)
-				do loop_j = 1, subsp
-					do loop_k = 1, subsp
-						do loop_l = 1, 2*basis_dimension
-                            do loop_m = 1, 2*basis_dimension
-							    DIISmat(loop_j, loop_k) = DIISmat(loop_j, loop_k) + conjg(Rsd(loop_j, loop_l, loop_m))*Rsd(loop_k, loop_l, loop_m)
-                            end do
-						end do
-					end do
-				end do
-				do loop_j = 1, subsp
-					DIISmat(subsp+1, loop_j) = cmplx(1.0,0.0,dp)
-					DIISmat(loop_j, subsp+1) = cmplx(1.0,0.0,dp)
                 end do
-				! solveg residual equation
-				! dgesv and dspsv will cause V_Integral_2e conflict for unknown reason
-				! since DIISmat (and its inverse) is real symmetric, plus the column vector is simple, use the inverse of DIISmat to solve directly
+                do loop_j = 1, 2*basis_dimension
+                    do loop_k = 1, 2*basis_dimension
+                        Rsd(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k) - rou_pre(loop_j, loop_k)
+                    end do
+                end do
+                ! update rou_history
+                do loop_j = 2, subsp
+                    do loop_k = 1, 2*basis_dimension
+                        do loop_l = 1, 2*basis_dimension
+                            rou_history(loop_j - 1, loop_k, loop_l) = rou_history(loop_j, loop_k, loop_l)
+                        end do
+                    end do
+                end do
+                do loop_j = 1, 2*basis_dimension
+                    do loop_k = 1, 2*basis_dimension
+                        rou_history(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k)
+                    end do
+                end do
+                ! construct DIISmat
+                DIISmat = cmplx(0.0,0.0,dp)
+                do loop_j = 1, subsp
+                    do loop_k = 1, subsp
+                        do loop_l = 1, 2*basis_dimension
+                            do loop_m = 1, 2*basis_dimension
+                                DIISmat(loop_j, loop_k) = DIISmat(loop_j, loop_k) + conjg(Rsd(loop_j, loop_l, loop_m))*Rsd(loop_k, loop_l, loop_m)
+                            end do
+                        end do
+                    end do
+                end do
+                do loop_j = 1, subsp
+                    DIISmat(subsp+1, loop_j) = cmplx(1.0,0.0,dp)
+                    DIISmat(loop_j, subsp+1) = cmplx(1.0,0.0,dp)
+                end do
+                ! solveg residual equation
+                ! dgesv and dspsv will cause V_Integral_2e conflict for unknown reason
+                ! since DIISmat (and its inverse) is real symmetric, plus the column vector is simple, use the inverse of DIISmat to solve directly
                 call zgetrf(subsp+1, subsp+1, DIISmat, subsp+1, ipiv, DIISinfo)
                 if (DIISinfo < 0) then
-	                call terminate('DIIS solution failure, illegal input of dgetrf')
-	            else if (DIISinfo > 0) then
-	                call terminate('DIIS solution failure, internal error of dgetrf')
+                    call terminate('DIIS solution failure, illegal input of dgetrf')
+                else if (DIISinfo > 0) then
+                    call terminate('DIIS solution failure, internal error of dgetrf')
                 end if
                 allocate(DIISwork(1))
                 call zgetri(subsp+1, DIISmat, subsp+1, ipiv, DIISwork, -1, DIISinfo)
@@ -487,19 +485,19 @@ module SCF
                 allocate(DIISwork(lDIISwork))
                 call zgetri(subsp+1, DIISmat, subsp+1, ipiv, DIISwork, lDIISwork, DIISinfo)
                 deallocate(DIISwork)
-				if (DIISinfo < 0) then
-	                call terminate('DIIS solution failure, illegal input of dgetri')
-	            else if (DIISinfo > 0) then
-	                call terminate('DIIS solution failure, internal error of dgetri')
+                if (DIISinfo < 0) then
+                    call terminate('DIIS solution failure, illegal input of dgetri')
+                else if (DIISinfo > 0) then
+                    call terminate('DIIS solution failure, internal error of dgetri')
                 end if
-	            ! generate new rou_m
-	            rou_m = cmplx(0.0_dp,0.0_dp,dp)
-	            do loop_j = 1, subsp
-	            	do loop_k = 1, 2*basis_dimension
-		            	do loop_l = 1, 2*basis_dimension
-							rou_m(loop_k,loop_l) = rou_m(loop_k,loop_l) + DIISmat(loop_j,subsp+1) * (rou_history(loop_j,loop_k,loop_l) + damp*Rsd(loop_j,loop_k,loop_l))
-						end do
-					end do
+                ! generate new rou_m
+                rou_m = cmplx(0.0_dp,0.0_dp,dp)
+                do loop_j = 1, subsp
+                    do loop_k = 1, 2*basis_dimension
+                        do loop_l = 1, 2*basis_dimension
+                            rou_m(loop_k,loop_l) = rou_m(loop_k,loop_l) + DIISmat(loop_j,subsp+1) * (rou_history(loop_j,loop_k,loop_l) + damp*Rsd(loop_j,loop_k,loop_l))
+                        end do
+                    end do
                 end do
                 write(60,'(a,f10.6,a,f10.6)') '   --- predicted residual', -real(DIISmat(subsp+1,subsp+1)), ',',-aimag(DIISmat(subsp+1,subsp+1))
                 do loop_j = 1, subsp
@@ -507,7 +505,6 @@ module SCF
                 end do
             end if
         end do
-        close(64)
         write(60,*)
         write(60,*)
         if (abs(molE - molE_pre) < conver_tol .and. loop_i < maxiter) then
@@ -517,12 +514,13 @@ module SCF
             if (DKH_order == 0) write(60,'(a)') '   DKH0 Hartree-Fock SCF failed!'
             if (DKH_order == 2) write(60,'(a)') '   DKH2 Hartree-Fock SCF failed!'
         end if
-        ! print final wave function information
-        write(60,*)
         if (d4) then
             emd4 = dftd4('hf')
             molE = molE + emd4
         end if
+        ! print final wave function information
+        write(60,*)
+        write(60,*)
         write(60,'(a)') '   -------------------------------------------------------------'
         write(60,'(a)') '                       MOLECULAR INFO'
         write(60,'(a)') '   -------------------------------------------------------------'
@@ -559,13 +557,13 @@ module SCF
         write(60,'(a)') '   -------------------------------------------------------------'
         write(60,'(a)') '                     CANONICAL MO INFO'
         write(60,'(a)') '   -------------------------------------------------------------'
-		do loop_i = 1, electron_count
+        do loop_i = 1, electron_count
             if (loop_i < electron_count) then
                 call calc_S2HForb(loop_i)
-				write(60,'(a,i3.3,a,f12.6)') '   HOMO-', electron_count-loop_i, '   energy / Eh                       ... ', orbE(loop_i)
+                write(60,'(a,i3.3,a,f12.6)') '   HOMO-', electron_count-loop_i, '   energy / Eh                       ... ', orbE(loop_i)
                 write(60,'(a,f12.6)') '              <S**2> / hbar**2                  ... ', S__2orb
                 write(60,'(a,f12.6)') '              <Sz> / hbar                       ... ', Szorb
-                write(60,'(a)') '   			  --- orb-in-atom  atom-in-mol      RE        IM'
+                write(60,'(a)') '                 --- orb-in-atom  atom-in-mol      RE        IM'
                 iatom = 1
                 ishell = 1
                 do loop_j = 1, basis_dimension
@@ -588,7 +586,7 @@ module SCF
                 write(60,'(a,a,f12.6)') '   HOMO    ', '   energy / Eh                       ... ', orbE(loop_i)
                 write(60,'(a,f12.6)') '              <S**2> / hbar**2                  ... ', S__2orb
                 write(60,'(a,f12.6)') '              <Sz> / hbar                       ... ', Szorb
-                write(60,'(a)') '   			  --- orb-in-atom  atom-in-mol      RE        IM'
+                write(60,'(a)') '                 --- orb-in-atom  atom-in-mol      RE        IM'
                 iatom = 1
                 ishell = 1
                 do loop_j = 1, basis_dimension
@@ -614,7 +612,7 @@ module SCF
                 write(60,'(a,a,f12.6)') '   LUMO    ', '   energy / Eh                       ... ', orbE(loop_i)
                 write(60,'(a,f12.6)') '              <S**2> / hbar**2                  ... ', S__2orb
                 write(60,'(a,f12.6)') '              <Sz> / hbar                       ... ', Szorb
-                write(60,'(a)') '   			  --- orb-in-atom  atom-in-mol      RE        IM'
+                write(60,'(a)') '                 --- orb-in-atom  atom-in-mol      RE        IM'
                 iatom = 1
                 ishell = 1
                 do loop_j = 1, basis_dimension
@@ -634,10 +632,10 @@ module SCF
                 end do
             else
                 call calc_S2HForb(loop_i)
-				write(60,'(a,i3.3,a,f12.6)') '   LUMO+', loop_i-electron_count-1, '   energy / Eh                       ... ', orbE(loop_i)
+                write(60,'(a,i3.3,a,f12.6)') '   LUMO+', loop_i-electron_count-1, '   energy / Eh                       ... ', orbE(loop_i)
                 write(60,'(a,f12.6)') '              <S**2> / hbar**2                  ... ', S__2orb
                 write(60,'(a,f12.6)') '              <Sz> / hbar                       ... ', Szorb
-                write(60,'(a)') '   			  --- orb-in-atom  atom-in-mol      RE        IM'
+                write(60,'(a)') '                 --- orb-in-atom  atom-in-mol      RE        IM'
                 iatom = 1
                 ishell = 1
                 do loop_j = 1, basis_dimension
@@ -657,8 +655,56 @@ module SCF
                 end do
             end if
         end do
+        AO2MO = oper3
         write(60,*)
         write(60,'(a)') 'exit module SCF'
+        
+        ! initialization
+        deallocate(exi_T_j)
+        deallocate(exi_V_j)
+        deallocate(oper)
+        deallocate(oper4)
+        deallocate(oper6)
+        deallocate(isupp_ev_f)
+        deallocate(Rsd)
+        deallocate(DIISmat)
+        deallocate(ipiv)
+        deallocate(rou_history)
+        deallocate(rou_pre)
+        deallocate(Fock2_mic)
+        deallocate(Fock2_assigned)
+        deallocate(swintegral)
+        deallocate(Fock1)
+        deallocate(Fock2)
+        deallocate(i_V_j)
+        deallocate(i_j)
+        deallocate(i_p2_j)
+        deallocate(S0_5)
+        deallocate(exS0_5)
+        if (keep == 0) then
+            deallocate(shell_in_element)
+            deallocate(atom_basis)
+            deallocate(basis_inf)
+            deallocate(molecular)
+            deallocate(AO2MO)
+            deallocate(rou_m)
+            deallocate(Fock)
+            deallocate(orbE)
+            deallocate(oper3)
+        end if
+        ndschwarz = .true.
+        ini_rou = .true.
+        if (DKH_order == 2) then
+            deallocate(exSOC)
+            deallocate(AO2p2)
+            deallocate(evl_p2)
+            if (SRTP_type) deallocate(exSR)
+        end if
+        if (kill) then
+            call terminate('normal')
+        else
+            call terminate('keep')
+        end if
     end subroutine DKH_Hartree_Fock
     
 !------------------------------------------------------------
@@ -671,101 +717,119 @@ module SCF
         character(len = 512) :: line_str
         if (ini_rou) then
             ini_rou = .false.
-            allocate(AO2MO(2*basis_dimension,2*basis_dimension))
-            allocate(Gaualpha(basis_dimension*basis_dimension))
-            allocate(Gaubeta(basis_dimension*basis_dimension))
-            allocate(AO2MOalpha(basis_dimension,basis_dimension))
-            allocate(AO2MObeta(basis_dimension,basis_dimension))
             allocate(rou_m(2*basis_dimension,2*basis_dimension))
             Nalpha = (electron_count - (spin_mult - 1)) / 2 + (spin_mult - 1)
             Nbeta = (electron_count - (spin_mult - 1)) / 2
-            open(61, file = 'E:\TRESC\examples\carbene-3et\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
-            if (ios /= 0) then
-                call system('rwfdump E:\TRESC\examples\carbene-3et\Gaujob.chk E:\TRESC\examples\carbene-3et\Gaualpha.itm 524R')
-                open(61, file = 'E:\TRESC\examples\carbene-3et\Gaualpha.itm', status = 'old', action = 'read', iostat = ios)
-                if (ios /= 0) call terminate('Cannot generate Gaussian alpha orbital for initial density matrix')
-            end if
-            open(62, file = 'E:\TRESC\examples\carbene-3et\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
-            if (ios /= 0) then
-                call system('rwfdump E:\TRESC\examples\carbene-3et\Gaujob.chk E:\TRESC\examples\carbene-3et\Gaubeta.itm 526R')
-                open(62, file = 'E:\TRESC\examples\carbene-3et\Gaubeta.itm', status = 'old', action = 'read', iostat = ios)
-                if (ios /= 0) call terminate('Cannot generate Gaussian beta orbital for initial density matrix')
-            end if
-            do while(.true.)
-                read(61,'(a512)') line_str
-                if (index(line_str,'Dump of file') /= 0) exit
-            end do
-            if (index(line_str(index(line_Str,'length')-4:index(line_Str,'length')-2),'524') == 0) call terminate('Gaussian alpha orbital coefficient should be RWF 524')
-            read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),'(I)',iostat = ios) mat_dimension
-            if (ios /= 0) call terminate('Unmatched Gaualpha content')
-            if (mat_dimension /= basis_dimension*basis_dimension) call terminate('Gaussian alpha orbital dimension not match')
-            do ploop_i=1,basis_dimension*basis_dimension/5
-                read(61,*) rdMO
-                Gaualpha((ploop_i-1)*5 + 1) = rdMO(1)
-                Gaualpha((ploop_i-1)*5 + 2) = rdMO(2)
-                Gaualpha((ploop_i-1)*5 + 3) = rdMO(3)
-                Gaualpha((ploop_i-1)*5 + 4) = rdMO(4)
-                Gaualpha((ploop_i-1)*5 + 5) = rdMO(5)
-            end do
-            ploop_i = ploop_i - 5
-            if (mod(basis_dimension*basis_dimension,5) /= 0) then
-                if (mod(basis_dimension*basis_dimension,5) == 1) read(61,*) Gaualpha(ploop_i*5 + 1)
-                if (mod(basis_dimension*basis_dimension,5) == 2) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2)
-                if (mod(basis_dimension*basis_dimension,5) == 3) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3)
-                if (mod(basis_dimension*basis_dimension,5) == 4) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3),Gaualpha(ploop_i*5 + 4)
-            end if
-            AO2MOalpha = transpose(reshape(Gaualpha,[basis_dimension,basis_dimension]))
-            close(61)
-            do while(.true.)
-                read(62,'(a512)') line_str
-                if (index(line_str,'Dump of file') /= 0) exit
-            end do
-            if (index(line_str(index(line_Str,'length')-4:index(line_Str,'length')-2),'526') == 0) call terminate('Gaussian beta orbital coefficient should be RWF 526')
-            read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),'(I)',iostat = ios) mat_dimension
-            if (ios /= 0) call terminate('Unmatched Gaubeta content')
-            if (mat_dimension /= basis_dimension*basis_dimension) call terminate('Gaussian beta orbital dimension not match')
-            do ploop_i=1,basis_dimension*basis_dimension/5
-                read(62,*) rdMO
-                Gaubeta((ploop_i-1)*5 + 1) = rdMO(1)
-                Gaubeta((ploop_i-1)*5 + 2) = rdMO(2)
-                Gaubeta((ploop_i-1)*5 + 3) = rdMO(3)
-                Gaubeta((ploop_i-1)*5 + 4) = rdMO(4)
-                Gaubeta((ploop_i-1)*5 + 5) = rdMO(5)
-            end do
-            ploop_i = ploop_i - 5
-            if (mod(basis_dimension*basis_dimension,5) /= 0) then
-                if (mod(basis_dimension*basis_dimension,5) == 1) read(62,*) Gaubeta(ploop_i*5 + 1)
-                if (mod(basis_dimension*basis_dimension,5) == 2) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2)
-                if (mod(basis_dimension*basis_dimension,5) == 3) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3)
-                if (mod(basis_dimension*basis_dimension,5) == 4) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3),Gaubeta(ploop_i*5 + 4)
-            end if
-            AO2MObeta = transpose(reshape(Gaubeta,[basis_dimension,basis_dimension]))
-            close(62)
-            deallocate(Gaualpha)
-            deallocate(Gaubeta)
-            rou_m = cmplx(0.0_dp,0.0_dp,dp)
-            do ploop_i = 1,basis_dimension
-                do ploop_j = 1,basis_dimension
-                    do ploop_k = 1,Nalpha
-                        rou_m(2*ploop_i-1,2*ploop_j-1) = rou_m(2*ploop_i-1,2*ploop_j-1) + AO2MOalpha(ploop_k,ploop_i)*AO2MOalpha(ploop_k,ploop_j)
-                    end do
-                    do ploop_k = 1,Nbeta
-                        rou_m(2*ploop_i,2*ploop_j) = rou_m(2*ploop_i,2*ploop_j) + AO2MObeta(ploop_k,ploop_i)*AO2MObeta(ploop_k,ploop_j)
+            
+            ! read MO coefficient
+            if (guess_type == 'gaussian') then
+                allocate(AO2MO(2*basis_dimension,2*basis_dimension))
+                allocate(Gaualpha(basis_dimension*basis_dimension))
+                allocate(Gaubeta(basis_dimension*basis_dimension))
+                allocate(AO2MOalpha(basis_dimension,basis_dimension))
+                allocate(AO2MObeta(basis_dimension,basis_dimension))
+                open(61, file = trim(address_job)//'.gaualpha', status = 'old', action = 'read', iostat = ios)
+                if (ios /= 0) then
+                    call system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaualpha 524R')
+                    open(61, file = trim(address_job)//'.gaualpha', status = 'old', action = 'read', iostat = ios)
+                    if (ios /= 0) call terminate('Cannot generate Gaussian alpha orbital for initial density matrix')
+                end if
+                open(62, file = trim(address_job)//'.gaubeta', status = 'old', action = 'read', iostat = ios)
+                if (ios /= 0) then
+                    call system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaubeta 526R')
+                    open(62, file = trim(address_job)//'.gaubeta', status = 'old', action = 'read', iostat = ios)
+                    if (ios /= 0) call terminate('Cannot generate Gaussian beta orbital for initial density matrix')
+                end if
+                do
+                    read(61,'(a512)') line_str
+                    if (index(line_str,'Dump of file') /= 0) exit
+                end do
+                if (index(line_str(index(line_Str,'length')-4:index(line_Str,'length')-2),'524') == 0) call terminate('Gaussian alpha orbital coefficient should be RWF 524')
+                read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),'(I)',iostat = ios) mat_dimension
+                if (ios /= 0) call terminate('Unmatched Gaualpha content')
+                if (mat_dimension /= basis_dimension*basis_dimension) then
+                    write(*,*) mat_dimension, basis_dimension
+                    call terminate('Gaussian alpha orbital dimension not match')
+                end if
+                do ploop_i=1,basis_dimension*basis_dimension/5
+                    read(61,*) rdMO
+                    Gaualpha((ploop_i-1)*5 + 1) = rdMO(1)
+                    Gaualpha((ploop_i-1)*5 + 2) = rdMO(2)
+                    Gaualpha((ploop_i-1)*5 + 3) = rdMO(3)
+                    Gaualpha((ploop_i-1)*5 + 4) = rdMO(4)
+                    Gaualpha((ploop_i-1)*5 + 5) = rdMO(5)
+                end do
+                ploop_i = ploop_i - 5
+                if (mod(basis_dimension*basis_dimension,5) /= 0) then
+                    if (mod(basis_dimension*basis_dimension,5) == 1) read(61,*) Gaualpha(ploop_i*5 + 1)
+                    if (mod(basis_dimension*basis_dimension,5) == 2) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2)
+                    if (mod(basis_dimension*basis_dimension,5) == 3) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3)
+                    if (mod(basis_dimension*basis_dimension,5) == 4) read(61,*) Gaualpha(ploop_i*5 + 1),Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3),Gaualpha(ploop_i*5 + 4)
+                end if
+                AO2MOalpha = transpose(reshape(Gaualpha,[basis_dimension,basis_dimension]))
+                close(61)
+                do
+                    read(62,'(a512)') line_str
+                    if (index(line_str,'Dump of file') /= 0) exit
+                end do
+                if (index(line_str(index(line_Str,'length')-4:index(line_Str,'length')-2),'526') == 0) call terminate('Gaussian beta orbital coefficient should be RWF 526')
+                read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),'(I)',iostat = ios) mat_dimension
+                if (ios /= 0) call terminate('Unmatched Gaubeta content')
+                if (mat_dimension /= basis_dimension*basis_dimension) call terminate('Gaussian beta orbital dimension not match')
+                do ploop_i=1,basis_dimension*basis_dimension/5
+                    read(62,*) rdMO
+                    Gaubeta((ploop_i-1)*5 + 1) = rdMO(1)
+                    Gaubeta((ploop_i-1)*5 + 2) = rdMO(2)
+                    Gaubeta((ploop_i-1)*5 + 3) = rdMO(3)
+                    Gaubeta((ploop_i-1)*5 + 4) = rdMO(4)
+                    Gaubeta((ploop_i-1)*5 + 5) = rdMO(5)
+                end do
+                ploop_i = ploop_i - 5
+                if (mod(basis_dimension*basis_dimension,5) /= 0) then
+                    if (mod(basis_dimension*basis_dimension,5) == 1) read(62,*) Gaubeta(ploop_i*5 + 1)
+                    if (mod(basis_dimension*basis_dimension,5) == 2) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2)
+                    if (mod(basis_dimension*basis_dimension,5) == 3) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3)
+                    if (mod(basis_dimension*basis_dimension,5) == 4) read(62,*) Gaubeta(ploop_i*5 + 1),Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3),Gaubeta(ploop_i*5 + 4)
+                end if
+                AO2MObeta = transpose(reshape(Gaubeta,[basis_dimension,basis_dimension]))
+                close(62)
+                deallocate(Gaualpha)
+                deallocate(Gaubeta)
+                AO2MO = cmplx(0.0_dp,0.0_dp,dp)
+                do ploop_i = 1, basis_dimension
+                    do ploop_j = 1, basis_dimension
+                        AO2MO(2*ploop_i-1,2*ploop_j-1) = AO2MOalpha(ploop_i,ploop_j)
+                        AO2MO(2*ploop_i,2*ploop_j) = AO2MObeta(ploop_i,ploop_j)
                     end do
                 end do
-            end do
-            AO2MO = cmplx(0.0_dp,0.0_dp,dp)
-            do ploop_i = 1, basis_dimension
-                do ploop_j = 1, basis_dimension
-                    AO2MO(2*ploop_i-1,2*ploop_j-1) = AO2MOalpha(ploop_i,ploop_j)
-                    AO2MO(2*ploop_i,2*ploop_j) = AO2MObeta(ploop_i,ploop_j)
+                rou_m = cmplx(0.0_dp,0.0_dp,dp)
+                do ploop_i = 1,basis_dimension
+                    do ploop_j = 1,basis_dimension
+                        do ploop_k = 1,Nalpha
+                            rou_m(2*ploop_i-1,2*ploop_j-1) = rou_m(2*ploop_i-1,2*ploop_j-1) + AO2MOalpha(ploop_k,ploop_i)*AO2MOalpha(ploop_k,ploop_j)
+                        end do
+                        do ploop_k = 1,Nbeta
+                            rou_m(2*ploop_i,2*ploop_j) = rou_m(2*ploop_i,2*ploop_j) + AO2MObeta(ploop_k,ploop_i)*AO2MObeta(ploop_k,ploop_j)
+                        end do
+                    end do
                 end do
-            end do
-            deallocate(AO2MOalpha)
-            deallocate(AO2MObeta)
+                deallocate(AO2MOalpha)
+                deallocate(AO2MObeta)
+            else if (guess_type == 'read') then
+                call read_matrix_cmplx(name='ao2mo', m=AO2MO, dm=mat_dimension)
+                if (mat_dimension /= 2*basis_dimension) call terminate('basis dimension in .ao2mo file mismatch with current job')
+                rou_m = cmplx(0.0_dp,0.0_dp,dp)
+                do ploop_i = 1, 2*basis_dimension
+                    do ploop_j = 1, 2*basis_dimension
+                        do ploop_k = 1, electron_count
+                            rou_m(ploop_i,ploop_j) = rou_m(ploop_i,ploop_j) + AO2MO(ploop_k,ploop_i)*conjg(AO2MO(ploop_k,ploop_j))
+                        end do
+                    end do
+                end do
+            end if
         else
             rou_pre = rou_m
-        	rou_m = cmplx(0.0_dp,0.0_dp,dp)
+            rou_m = cmplx(0.0_dp,0.0_dp,dp)
             do ploop_i = 1, 2*basis_dimension
                 do ploop_j = 1, 2*basis_dimension
                     do ploop_k = 1, electron_count
@@ -1390,7 +1454,7 @@ module SCF
         real(dp),allocatable :: swcoefficient_i(:)                  ! coefficient of |AOi> for schwarz screening
         real(dp),allocatable :: swcoefficient_j(:)                  ! coefficient of |AOj> for schwarz screening
         if (ndschwarz) then
-        	ndschwarz = .false.
+            ndschwarz = .false.
             write(60,'(a)') '   --- Schwarz screening of <ij||kl>'
             allocate(Fock2(2*basis_dimension,2*basis_dimension))
             allocate(swintegral(basis_dimension,basis_dimension))
@@ -1437,14 +1501,14 @@ module SCF
                         do swloop_n = 1, contraction_j
                             do swloop_o = 1, contraction_i
                                 do swloop_p = 1, contraction_j
-							        if (L_i >= L_j) then
-								        swintegral_mic = swcoefficient_i(swloop_m) * swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * swcoefficient_j(swloop_p) * &
-								        V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), &
-									        swexponents_i(swloop_m),swexponents_j(swloop_n),swexponents_i(swloop_o),swexponents_j(swloop_p),coordinate_i,coordinate_j,coordinate_i,coordinate_j)
-							        else
-								        swintegral_mic = swcoefficient_i(swloop_m) * swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * swcoefficient_j(swloop_p) * &
-								        V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), &
-									        swexponents_j(swloop_n),swexponents_i(swloop_m),swexponents_j(swloop_p),swexponents_i(swloop_o),coordinate_j,coordinate_i,coordinate_j,coordinate_i)
+                                    if (L_i >= L_j) then
+                                        swintegral_mic = swcoefficient_i(swloop_m) * swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * swcoefficient_j(swloop_p) * &
+                                        V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), &
+                                            swexponents_i(swloop_m),swexponents_j(swloop_n),swexponents_i(swloop_o),swexponents_j(swloop_p),coordinate_i,coordinate_j,coordinate_i,coordinate_j)
+                                    else
+                                        swintegral_mic = swcoefficient_i(swloop_m) * swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * swcoefficient_j(swloop_p) * &
+                                        V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), &
+                                            swexponents_j(swloop_n),swexponents_i(swloop_m),swexponents_j(swloop_p),swexponents_i(swloop_o),coordinate_j,coordinate_i,coordinate_j,coordinate_i)
                                     end if
                                     swintegral(swloop_i,swloop_j) = swintegral(swloop_i,swloop_j) + swintegral_mic
                                 end do
@@ -1528,26 +1592,26 @@ module SCF
                         end do
                         coordinate_l = molecular(basis_inf(dloop_l) % atom) % nucleus_position
                         integral = 0.0_dp
-        				!================================================<ij||kl>================================================
+                        !================================================<ij||kl>================================================
                         do dloop_m = 1, contraction_i
                             do dloop_n = 1, contraction_j
                                 do dloop_o = 1, contraction_k
                                     do dloop_p = 1, contraction_l
-	                                    if (L_i >= L_j .and. L_k >= L_l) then
-	                                        integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
-	                                        	V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l), &
-	                                            exponents_i(dloop_m),exponents_j(dloop_n),exponents_k(dloop_o),exponents_l(dloop_p),coordinate_i,coordinate_j,coordinate_k,coordinate_l)
-	                                    else if (L_i >= L_j .and. L_k < L_l) then
-											integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
-                                            	V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k), &
+                                        if (L_i >= L_j .and. L_k >= L_l) then
+                                            integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
+                                                V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l), &
+                                                exponents_i(dloop_m),exponents_j(dloop_n),exponents_k(dloop_o),exponents_l(dloop_p),coordinate_i,coordinate_j,coordinate_k,coordinate_l)
+                                        else if (L_i >= L_j .and. L_k < L_l) then
+                                            integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
+                                                V_Integral_2e(AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k), &
                                                 exponents_i(dloop_m),exponents_j(dloop_n),exponents_l(dloop_p),exponents_k(dloop_o),coordinate_i,coordinate_j,coordinate_l,coordinate_k)
-	                                    else if (L_i < L_j .and. L_k >= L_l) then
-											integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
-                                            	V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l), &
+                                        else if (L_i < L_j .and. L_k >= L_l) then
+                                            integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
+                                                V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l), &
                                                 exponents_j(dloop_n),exponents_i(dloop_m),exponents_k(dloop_o),exponents_l(dloop_p),coordinate_j,coordinate_i,coordinate_k,coordinate_l)
-	                                    else
-											integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
-                                            	V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k), &
+                                        else
+                                            integral = integral + coefficient_i(dloop_m) * coefficient_j(dloop_n) * coefficient_k(dloop_o) * coefficient_l(dloop_p) * &
+                                                V_Integral_2e(AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k), &
                                                 exponents_j(dloop_n),exponents_i(dloop_m),exponents_l(dloop_p),exponents_k(dloop_o),coordinate_j,coordinate_i,coordinate_l,coordinate_k)
                                         end if
                                         !----------<DEBUG>----------
@@ -1709,14 +1773,14 @@ module SCF
     end subroutine Fock2e
 
     !------------------------------------------------------------
-	! transfer alternating zero matrix to block matrix
+    ! transfer alternating zero matrix to block matrix
     subroutine atnz2block(atnz, dm)
-    	integer, intent(in) :: dm
-    	integer :: aloop_i, aloop_j
+        integer, intent(in) :: dm
+        integer :: aloop_i, aloop_j
         complex(dp) :: atnz(dm,dm), aoper(dm,dm)
-    	if (dm <= 1 .or. mod(dm,2) /= 0) call terminate('atnz2block called incorrectly')
-		aoper = atnz
-		do aloop_i = 1, dm
+        if (dm <= 1 .or. mod(dm,2) /= 0) call terminate('atnz2block called incorrectly')
+        aoper = atnz
+        do aloop_i = 1, dm
             do aloop_j = 1, dm
                 if (aloop_i <= dm/2) then
                     if (aloop_j <= dm/2) then
@@ -1736,7 +1800,7 @@ module SCF
     end subroutine atnz2block
     
     !------------------------------------------------------------
-	! calculate <S**2> based on oper3 generated by Hartree-Fock SCF
+    ! calculate <S**2> based on oper3 generated by Hartree-Fock SCF
     ! divide all occupied orbitals into two sets of alpha, beta orbitals with their original coefficients, then use the UHF method to solve Lowdin <S**2>.
     subroutine calc_S2HF()
         integer cloop_i, cloop_j, cloop_k                                           ! cloop is loop variables only for calc_S2HF routine
@@ -1783,7 +1847,7 @@ module SCF
     end subroutine calc_S2HF
     
     !------------------------------------------------------------
-	! calculate <S**2> of certain orbital based on oper3 generated by Hartree-Fock SCF
+    ! calculate <S**2> of certain orbital based on oper3 generated by Hartree-Fock SCF
     subroutine calc_S2HForb(orbnum)
         integer,intent(in) :: orbnum
         integer :: zloop_i, zloop_j                                  ! zloop is loop variables only for calc_S2HForb routine
@@ -1805,4 +1869,153 @@ module SCF
         S__2orb = 3.0/4.0 + totalphaorb*(totalphaorb-1.0)/2.0 + totbetaorb*(totbetaorb-1.0)/2.0 - real(supp1*supp2)
         Szorb = (totalphaorb-totbetaorb)/2.0_dp
     end subroutine calc_S2HForb
+    
+    !-----------------------------------------------------------------------
+    ! dump molecular orbital information to .molden file
+    subroutine dump_molden()
+        integer :: channel, dmi, dmj, dmk
+        if (.not. allocated(AO2MO)) call terminate('dump molecular orbital failed, AO2MO = NULL')
+        
+        
+        ! molden file contains the real part of molecular orbital
+        open(newunit=channel, file=trim(address_job)//'-real.molden', status='replace', action='write', iostat=ios)
+        if (ios /= 0) call terminate('dump .molden failed')
+        write(channel, '(a)') '[Molden Format]'
+        write(channel, '(a)') '[Title]'
+        write(channel, '(a)') 'molden file contains the real of molecular orbital of '//trim(address_molecular)
+        write(channel, *)
+        ! molecular geometry
+        write(channel, '(a)') '[Atoms] AU'
+        do dmi = 1, atom_count
+            write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
+                dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
+                molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
+        end do
+        ! basis of each atom
+        write(channel, '(a)') '[GTO]'
+        do dmi = 1, atom_count
+            write(channel, '(i3,i2)') dmi, 0
+            do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
+                if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 0) then
+                    write(channel, '(a2,i2,a)') 's', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 1) then
+                    write(channel, '(a2,i2,a)') 'p', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 2) then
+                    write(channel, '(a2,i2,a)') 'd', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 3) then
+                    write(channel, '(a2,i2,a)') 'f', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 4) then
+                    write(channel, '(a2,i2,a)') 'g', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                end if
+                do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
+                    write(channel, '(f13.7,f13.7)') atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
+                        atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+                end do
+            end do
+            write(channel, *)
+        end do
+        write(channel, '(a)') '[6D]'
+        write(channel, '(a)') '[10F]'
+        write(channel, '(a)') '[15G]'
+        ! MO coefficient
+        write(channel, '(a)') '[MO]'
+        do dmi = 1, basis_dimension
+            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+            write(channel, '(a)') 'Spin= Alpha'
+            call calc_S2HForb(dmi)
+            if (dmi <= electron_count) then
+                write(channel, '(a7,f12.6)') 'Occup=', 0.5 + Szorb
+            else
+                write(channel, '(a)') 'Occup= 0.00'
+            end if
+            do dmj = 1, basis_dimension
+                write(channel, '(i4,f20.12)') dmj, real(AO2MO(2*dmj-1, dmi))
+            end do
+        end do
+        do dmi = 1, basis_dimension
+            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+            write(channel, '(a)') 'Spin= Beta'
+            call calc_S2HForb(dmi)
+            if (dmi <= electron_count) then
+                write(channel, '(a7,f12.6)') 'Occup=', 0.5 - Szorb
+            else
+                write(channel, '(a)') 'Occup= 0.00'
+            end if
+            do dmj = 1, basis_dimension
+                write(channel, '(i4,f20.12)') dmj, real(AO2MO(2*dmj, dmi))
+            end do
+        end do
+        close(channel)
+        
+        ! molden file contains the maginary part of molecular orbital
+        open(newunit=channel, file=trim(address_job)//'-img.molden', status='replace', action='write', iostat=ios)
+        if (ios /= 0) call terminate('dump .molden failed')
+        write(channel, '(a)') '[Molden Format]'
+        write(channel, '(a)') '[Title]'
+        write(channel, '(a)') 'molden file contains the maginary part of molecular orbital of '//trim(address_molecular)
+        write(channel, *)
+        ! molecular geometry
+        write(channel, '(a)') '[Atoms] AU'
+        do dmi = 1, atom_count
+            write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
+                dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
+                molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
+        end do
+        ! basis of each atom
+        write(channel, '(a)') '[GTO]'
+        do dmi = 1, atom_count
+            write(channel, '(i3,i2)') dmi, 0
+            do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
+                if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 0) then
+                    write(channel, '(a2,i2,a)') 's', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 1) then
+                    write(channel, '(a2,i2,a)') 'p', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 2) then
+                    write(channel, '(a2,i2,a)') 'd', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 3) then
+                    write(channel, '(a2,i2,a)') 'f', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 4) then
+                    write(channel, '(a2,i2,a)') 'g', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                end if
+                do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
+                    write(channel, '(f13.7,f13.7)') atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
+                        atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+                end do
+            end do
+            write(channel, *)
+        end do
+        write(channel, '(a)') '[6D]'
+        write(channel, '(a)') '[10F]'
+        write(channel, '(a)') '[15G]'
+        ! MO coefficient
+        write(channel, '(a)') '[MO]'
+        do dmi = 1, basis_dimension
+            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+            write(channel, '(a)') 'Spin= Alpha'
+            call calc_S2HForb(dmi)
+            if (dmi <= electron_count) then
+                write(channel, '(a7,f12.6)') 'Occup=', 0.5 + Szorb
+            else
+                write(channel, '(a)') 'Occup= 0.000'
+            end if
+            do dmj = 1, basis_dimension
+                write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj-1, dmi))
+            end do
+        end do
+        do dmi = 1, basis_dimension
+            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+            write(channel, '(a)') 'Spin= Beta'
+            call calc_S2HForb(dmi)
+            if (dmi <= electron_count) then
+                write(channel, '(a7,f12.6)') 'Occup=', 0.5 - Szorb
+            else
+                write(channel, '(a)') 'Occup= 0.000'
+            end if
+            do dmj = 1, basis_dimension
+                write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj, dmi))
+            end do
+        end do
+        close(channel)
+    end subroutine dump_molden
+    
 end module SCF

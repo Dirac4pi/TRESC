@@ -15,7 +15,11 @@ Current version of program has **NOT** been tested on any test set since it's st
 * calculate $$\left< s^2 \right> \left( L\ddot{o}wdin \right)$$, energy components and orbital components;
 * support dispersion correction via DFT-D4 program developed by Grimme's group;
 # Characteristic
-## SRTP
+## Visualisation of 2-component complex MO
+Molecular orbitals can be exported to a molden format file containing alpha and beta components. Based on this, one can generate a cube format file for the specified orbital and then use `/scripts/2cvis.py` to plot the amplitude and phase distributions of alpha and beta components (a total of 4). The results are as follows:  
+![image](docs/figure_5.png) 
+It's the HOMO orbital of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
+## A special Hamiltonian: SRTP
 Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
@@ -33,7 +37,7 @@ Then quantization and use the Pauli vector rule yields the modified Dirac matrix
 ![image](docs/formula_5.png)  
 This formular leads to the modified electron spinor wave function through DKH transformation.  
 In addition, SRTP effect is of order $$c^{-4}$$, one have to consider other terms of order $$\geqslant c^{-4}$$ before it, including radiation effect. Moreover, the lowest order of SRTP still requires the computation of integrals like $$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, it has a small effect on results but will significantly increases the one-electron integral cost.  
-SRTP is currently the author's conjecture with no evidence support, if you're interested, try keyword 'SRTP' when doing DKH2 calculation.
+SRTP is currently the author's conjecture with no evidence support, if you're interested, try keyword `SRTP` when performing DKH2 calculation.
 # Upcoming
 * support for DFT calculation;
 * calculate 2e SOC by SOMF approach;

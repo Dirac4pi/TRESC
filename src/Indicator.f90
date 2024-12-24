@@ -8,6 +8,7 @@ module Indicator
     use Hamiltonian
     use SCF
     contains
+    
 !-----------------------------------------------------------------------
 ! test of subroutine V_Integral_1e from module Hamiltonian
     
@@ -28,6 +29,7 @@ module Indicator
         cod_j_inp(3) = 3.59
         write(*,*) V_Integral_1e(Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i_inp,cod_j_inp,0.0_dp)
     end subroutine V_Integral_1e_test
+    
 !-----------------------------------------------------------------------
 ! test of subroutine V_Integral_2e from module Hamiltonian
     
@@ -57,106 +59,69 @@ module Indicator
         cod_l(2) = 0.845838045467446
         cod_l(3) = 0.000000000000000E+000
         
-        write(*,*) 3.14124139088628 * 1.78055309907994 * 6.081100279080574E-002 * 1.78055309907994 * V_Integral_2e(fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i,cod_j,cod_k,cod_l)
+        write(*,*) 3.14124139088628 * 1.78055309907994 * 6.081100279080574E-002 * 1.78055309907994 *& 
+            V_Integral_2e(fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i,cod_j,cod_k,cod_l)
     end subroutine V_Integral_2e_test
         
-        
 !-----------------------------------------------------------------------
-! standard input process control
-! DO NOT use universal loop variables
+! standard single-configuration calculation
+! do NOT use universal loop variables
     
-    subroutine elec_stc_calc()
+    subroutine sconf_calc(keep, kill)
         implicit none
-        integer :: cmd_count, molstat, basstat
-        character(len = 50) :: address_molecular = 'E:\TRESC\examples\carbene-3et\carbene-3et.tip'
-        character(len = 50) :: address_basis = 'E:\TRESC\examples\carbene-3et\dkh-def2-svp-o.gbs'
+        integer,intent(in) :: keep                                    ! initialization level
+        logical,intent(in) :: kill                                    ! whether to kill the whole program after SCF process
+        integer :: cmd_count, molstat
+        ! get .xyz file address
         cmd_count = command_argument_count()
-        if (cmd_count /= 2 .and. cmd_count /= 0) then
-            write(*,*) 'Error: number of command line arguments is greater or less than 2'
+        if (cmd_count == 0) then
+            write(*,*) 'TRESC error: no argument received'
+            pause
+            stop
+        else if (cmd_count >= 2) then
+            write(*,*) 'TRESC error: too many arguments'
+            pause
             stop
         end if
-        if (cmd_count == 2) then
         call get_command_argument(1, address_molecular, status=molstat)
-            if (molstat > 0) then
-                write(*,*) 'Error: molecular adress argument retrieval fails'
-                stop
-            else if (molstat < 0) then
-                write(*,*) 'Error: molecular adress argument too long'
-                stop
-            end if
-            call get_command_argument(2, address_basis, status=basstat)
-            if (basstat > 0) then
-                write(*,*) 'Error: basis set adress argument retrieval fails'
-                stop
-            else if (basstat < 0) then
-                write(*,*) 'Error: basis set adress argument too long'
-                stop
-            end if
+        if (molstat > 0) then
+            write(*,*) 'TRESC error: molecular adress retrieval fails'
+            pause
+            stop
+        else if (molstat < 0) then
+            write(*,*) 'TRESC error: molecular adress too long'
+            pause
+            stop
         end if
-        call generate_tot(address_molecular)                                         ! generate .tot file before doing anything
-        call read_gbs(address_basis)                                                 ! read basis set file before read geometry file
-        call read_geometry(address_molecular)
-        call input_print(address_basis, address_molecular)
-        call read_keywords(address_molecular)
-        if (DKH_order == 0) then
+        ! get information from .gbs and .xyz files
+        call generate_tot()
+        call read_keywords()
+        call read_gbs()
+        call read_geometry()
+        call input_check()
+        call input_print()
+        ! Hartree-Fock SCF process
+        if (DKH_order == 0 .or. DKH_order == 2) then
             call DKH_Hamiltonian()
-            call DKH_Hartree_Fock()
+            if (molden) then
+                call DKH_Hartree_Fock(keep = 1,kill = .false.)
+                call dump_molden()
+                pause
+                stop
+            else
+                call DKH_Hartree_Fock(keep,kill)
+            end if
         else if (DKH_order == 1) then
             write(60,*)
             write(60,'(A)') 'Module Hamiltonian: The SRTP effect requires at least a second-order'
             write(60,'(A)') '   DKH Hamiltonian to be accurately described, since the lead term of'
             write(60,'(A)') '   SRTP effect expanded at c=0 is in order c^-4. Only DKH2+ Hamiltonian'
             write(60,'(A)') '   guarantees the completeness of the expansion term at order c^-4.'
-            call terminate('fpFW Hamiltonian is not supported by current version')
-        else if (DKH_order == 2) then
-            call DKH_Hamiltonian()
-            call DKH_Hartree_Fock()
+            call terminate('fpFW Hamiltonian is not supported')
         else
             call terminate('DKH_order is set incorrectly')
         end if
-        ! initialization
-        deallocate(shell_in_element)
-        deallocate(atom_basis)
-        deallocate(molecular)
-        deallocate(AO2MO)
-        deallocate(rou_m)
-        deallocate(i_j)
-        deallocate(i_V_j)
-        deallocate(i_p2_j)
-        deallocate(S0_5)
-        deallocate(exS0_5)
-        deallocate(Fock1)
-        deallocate(Fock2)
-        deallocate(Fock)
-        deallocate(exi_T_j)
-        deallocate(exi_V_j)
-        deallocate(oper)
-        deallocate(oper3)
-        deallocate(oper4)
-        deallocate(oper6)
-        deallocate(orbE)
-        deallocate(isupp_ev_f)
-        deallocate(Rsd)
-        deallocate(DIISmat)
-        deallocate(ipiv)
-        deallocate(rou_history)
-        deallocate(rou_pre)
-        deallocate(Fock2_mic)
-        deallocate(Fock2_assigned)
-        deallocate(swintegral)
-        deallocate(basis_inf)
-        ndschwarz = .true.
-        ini_rou = .true.
-        if (DKH_order == 2) then
-            deallocate(exSOC)
-            deallocate(AO2p2)
-            deallocate(evl_p2)
-            if (SRTP_type) then
-                deallocate(exSR)
-            end if
-        end if
-        call terminate('normal')
-    end subroutine elec_stc_calc
+    end subroutine sconf_calc
     
     
 end module Indicator

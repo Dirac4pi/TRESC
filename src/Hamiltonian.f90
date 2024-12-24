@@ -13,7 +13,7 @@ module Hamiltonian
 !-----------------------------------------------------------------------
 ! AO basis definations
     integer :: info                                                  ! information of calling lapack functions
-    ! sequence consistent in .chk file
+    ! sequence consistent in .chk file (and in Multiwfn)
     character(len=4),parameter :: AO_xyz_factor(5,15) = (/   &       ! (L,M)
     '    '  ,  'x   '  ,  'xx  '  ,  'xxx '  ,  'zzzz'   ,   &       ! M=1   <-S
     '    '  ,  'y   '  ,  'yy  '  ,  'yyy '  ,  'yzzz'   ,   &       ! M=2
@@ -122,11 +122,6 @@ module Hamiltonian
                 write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
                 write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
             else
-                write(60,'(a,i5,a)') '   stack size:',stacksize,' MB'
-                write(stackchar,'(i5)',iostat = ios) stacksize
-                if (ios /= 0) call terminate("stack size setting should be written as 'stack=n'(MB)")
-                stackchar = adjustL(adjustR(stackchar)//'M')
-                call system('set OMP_STACKSIZE '//stackchar)
                 loop_i = omp_get_proc_bind()
                 if (loop_i == 0) then
                     write(60,'(a)') '   processor bind OFF'
@@ -194,13 +189,13 @@ module Hamiltonian
             allocate(exSp0_5(2*basis_dimension,2*basis_dimension))
             exS0_5 = cmplx(0.0_dp,0.0_dp,dp)
             exSp0_5 = cmplx(0.0_dp,0.0_dp,dp)
-	        do loop_i = 1, basis_dimension
-	            do loop_j = 1, basis_dimension
-	                exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-	                exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+            do loop_i = 1, basis_dimension
+                do loop_j = 1, basis_dimension
+                    exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+                    exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
                     exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-	                exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-	            end do
+                    exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+                end do
             end do
             write(60,'(A,F12.6)') '   complete! smallest eigenvalue = ',smallest_evl
             
@@ -237,11 +232,6 @@ module Hamiltonian
                 write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
                 write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
             else
-                write(60,'(a,i5,a)') '   stack size:',stacksize,' MB'
-                write(stackchar,'(i5)',iostat = ios) stacksize
-                if (ios /= 0) call terminate("stack size setting should be written as 'stack=n'(MB)")
-                stackchar = adjustL(adjustR(stackchar)//'M')
-                call system('set OMP_STACKSIZE '//stackchar)
                 loop_i = omp_get_proc_bind()
                 if (loop_i == 0) then
                     write(60,'(a)') '   processor bind OFF'
@@ -312,13 +302,13 @@ module Hamiltonian
             allocate(exSp0_5(2*basis_dimension,2*basis_dimension))
             exS0_5 = cmplx(0.0_dp,0.0_dp,dp)
             exSp0_5 = cmplx(0.0_dp,0.0_dp,dp)
-	        do loop_i = 1, basis_dimension
-	            do loop_j = 1, basis_dimension
-	                exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-	                exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+            do loop_i = 1, basis_dimension
+                do loop_j = 1, basis_dimension
+                    exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
+                    exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
                     exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-	                exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-	            end do
+                    exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+                end do
             end do
             write(60,'(A,F12.6)') '   complete! smallest eigenvalue = ',smallest_evl
             ! Lowdin orthogonalization of one-electron integrals
@@ -522,7 +512,7 @@ module Hamiltonian
             end if
             L_i = atom_basis(molecular(atom_i) % basis_number + shell_i - 1) % angular_quantum_number + 1
             M_i = loop_i - shell_start_i + 1
-			! prepare for openMP parallel computation
+            ! prepare for openMP parallel computation
             basis_inf(loop_i) % atom = atom_i
             basis_inf(loop_i) % shell = shell_i
             basis_inf(loop_i) % L = L_i
@@ -1142,51 +1132,51 @@ module Hamiltonian
         coordinate(3) = coordinate(3) - coordinate_j(3)
         ! binomial expansion -x
         do gloop_i = 0, m_x_i
-        	do gloop_j = 0, m_x_i - gloop_i + m_x_j                 		 ! iterative solution of integral x^m*exp(-b*(x-x0)^2)
-        		if (gloop_j == 0) then
-        			integral_x_mic = sqrt(pi/expo)
-        		else if(gloop_j == 1) then
-        			integral_x_mic_pre = integral_x_mic
-        			integral_x_mic = coordinate(1) * integral_x_mic_pre
-                else
-        			integral_x_mic_pre_pre = integral_x_mic_pre
+            do gloop_j = 0, m_x_i - gloop_i + m_x_j                 		 ! iterative solution of integral x^m*exp(-b*(x-x0)^2)
+                if (gloop_j == 0) then
+                    integral_x_mic = sqrt(pi/expo)
+                else if(gloop_j == 1) then
                     integral_x_mic_pre = integral_x_mic
-        			integral_x_mic = coordinate(1) * integral_x_mic_pre + (real(gloop_j-1)*integral_x_mic_pre_pre)/(2.0_dp*expo)
-        		end if
+                    integral_x_mic = coordinate(1) * integral_x_mic_pre
+                else
+                    integral_x_mic_pre_pre = integral_x_mic_pre
+                    integral_x_mic_pre = integral_x_mic
+                    integral_x_mic = coordinate(1) * integral_x_mic_pre + (real(gloop_j-1)*integral_x_mic_pre_pre)/(2.0_dp*expo)
+                end if
             end do
-        	integral_x = integral_x + binomialcoe(m_x_i,gloop_i) * (-coordinate_i_pos(1))**(gloop_i) * integral_x_mic
+            integral_x = integral_x + binomialcoe(m_x_i,gloop_i) * (-coordinate_i_pos(1))**(gloop_i) * integral_x_mic
         end do
         ! binomial expansion -y
         do gloop_i = 0, m_y_i
-        	do gloop_j = 0, m_y_i - gloop_i + m_y_j
-        		if (gloop_j == 0) then
-        			integral_y_mic = sqrt(pi/expo)
-        		else if(gloop_j == 1) then
-        			integral_y_mic_pre = integral_y_mic
-        			integral_y_mic = coordinate(2) * integral_y_mic_pre
-                else
-        			integral_y_mic_pre_pre = integral_y_mic_pre
+            do gloop_j = 0, m_y_i - gloop_i + m_y_j
+                if (gloop_j == 0) then
+                    integral_y_mic = sqrt(pi/expo)
+                else if(gloop_j == 1) then
                     integral_y_mic_pre = integral_y_mic
-        			integral_y_mic = coordinate(2) * integral_y_mic_pre + (real(gloop_j-1)*integral_y_mic_pre_pre)/(2.0_dp*expo)	
-        		end if
-        	end do
-        	integral_y = integral_y + binomialcoe(m_y_i,gloop_i) * (-coordinate_i_pos(2))**(gloop_i) * integral_y_mic
+                    integral_y_mic = coordinate(2) * integral_y_mic_pre
+                else
+                    integral_y_mic_pre_pre = integral_y_mic_pre
+                    integral_y_mic_pre = integral_y_mic
+                    integral_y_mic = coordinate(2) * integral_y_mic_pre + (real(gloop_j-1)*integral_y_mic_pre_pre)/(2.0_dp*expo)	
+                end if
+            end do
+            integral_y = integral_y + binomialcoe(m_y_i,gloop_i) * (-coordinate_i_pos(2))**(gloop_i) * integral_y_mic
         end do
         ! binomial expansion -z
         do gloop_i = 0, m_z_i
-        	do gloop_j = 0, m_z_i - gloop_i + m_z_j
-        		if (gloop_j == 0) then
-        			integral_z_mic = sqrt(pi/expo)
-        		else if(gloop_j == 1) then
-        			integral_z_mic_pre = integral_z_mic
-        			integral_z_mic = coordinate(3) * integral_z_mic_pre
+            do gloop_j = 0, m_z_i - gloop_i + m_z_j
+                if (gloop_j == 0) then
+                    integral_z_mic = sqrt(pi/expo)
+                else if(gloop_j == 1) then
+                    integral_z_mic_pre = integral_z_mic
+                    integral_z_mic = coordinate(3) * integral_z_mic_pre
                 else
                     integral_z_mic_pre_pre = integral_z_mic_pre
-        			integral_z_mic_pre = integral_z_mic
-        			integral_z_mic = coordinate(3) * integral_z_mic_pre + (real(gloop_j-1)*integral_z_mic_pre_pre)/(2.0_dp*expo)	
-        		end if
-        	end do
-        	integral_z = integral_z + binomialcoe(m_z_i,gloop_i) * (-coordinate_i_pos(3))**(gloop_i) * integral_z_mic
+                    integral_z_mic_pre = integral_z_mic
+                    integral_z_mic = coordinate(3) * integral_z_mic_pre + (real(gloop_j-1)*integral_z_mic_pre_pre)/(2.0_dp*expo)	
+                end if
+            end do
+            integral_z = integral_z + binomialcoe(m_z_i,gloop_i) * (-coordinate_i_pos(3))**(gloop_i) * integral_z_mic
         end do
         Gaussian_Product_Integral = coefficient * integral_x * integral_y * integral_z
         return
@@ -1246,25 +1236,25 @@ module Hamiltonian
             if(fac_j(vloop_i:vloop_i) == 'z') m_z_j = m_z_j + 1
         end do
         if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 10) then
-			tayeps = 5
-			xts = 0.01
+            tayeps = 5
+            xts = 0.01
         else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 15) then
-			tayeps = 8
-			xts = 0.1
-		else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 25) then
-			tayeps = 15
-			xts = 1.0
-		else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 35) then
-			tayeps = 20
-			xts = 1.0
-		else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 40) then
-			tayeps = 25
-			xts = 3.0
-		else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 50) then
-			tayeps = 30
-			xts = 4.0
-		else
-			call terminate('Excessive number of iterations, modify the source code according to the test of Error_in_t_integration.py')
+            tayeps = 8
+            xts = 0.1
+        else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 25) then
+            tayeps = 15
+            xts = 1.0
+        else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 35) then
+            tayeps = 20
+            xts = 1.0
+        else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 40) then
+            tayeps = 25
+            xts = 3.0
+        else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 50) then
+            tayeps = 30
+            xts = 4.0
+        else
+            call terminate('Excessive number of iterations, modify the source code according to the test of Error_in_t_integration.py')
         end if
         allocate(NX_mic(tayeps))
         allocate(NX_mic_pre(tayeps))
@@ -1300,7 +1290,7 @@ module Hamiltonian
                 t2pb_mic_pre_pre = 0.0_dp
                 do vloop_mic = 0, m_x_i + m_x_j - vloop_i - vloop_j
                     if (vloop_mic == 0) then
-        			    t2pb_mic(1) = sqrt(pi)
+                        t2pb_mic(1) = sqrt(pi)
                     else if(vloop_mic == 1) then
                         t2pb_mic_pre(1) = sqrt(pi)
                         t2pb_mic = 0.0_dp
@@ -1310,7 +1300,7 @@ module Hamiltonian
                         t2pb_mic_pre = t2pb_mic
                         t2pb_mic = 0.0_dp
                         do vloop_mic_pre = 0, vloop_mic
-                        	t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + 0.5_dp * real(vloop_mic-1) * t2pb_mic_pre_pre(vloop_mic_pre+1)
+                            t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + 0.5_dp * real(vloop_mic-1) * t2pb_mic_pre_pre(vloop_mic_pre+1)
                             t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + cod(1) * expo * t2pb_mic_pre(vloop_mic_pre+1)
                         end do
                     end if
@@ -1339,7 +1329,7 @@ module Hamiltonian
                 t2pb_mic_pre_pre = 0.0_dp
                 do vloop_mic = 0, m_y_i + m_y_j - vloop_i - vloop_j
                     if (vloop_mic == 0) then
-        			    t2pb_mic(1) = sqrt(pi)
+                        t2pb_mic(1) = sqrt(pi)
                     else if(vloop_mic == 1) then
                         t2pb_mic_pre(1) = sqrt(pi)
                         t2pb_mic = 0.0_dp
@@ -1378,7 +1368,7 @@ module Hamiltonian
                 t2pb_mic_pre_pre = 0.0_dp
                 do vloop_mic = 0, m_z_i + m_z_j - vloop_i - vloop_j
                     if (vloop_mic == 0) then
-        			    t2pb_mic(1) = sqrt(pi)
+                        t2pb_mic(1) = sqrt(pi)
                     else if(vloop_mic == 1) then
                         t2pb_mic_pre(1) = sqrt(pi)
                         t2pb_mic = 0.0_dp
@@ -1439,38 +1429,38 @@ module Hamiltonian
                         vloop_mic = 0
                         do while(vloop_mic <= 2 * vloop_i - vloop_j - vloop_k)
                             if (vloop_mic == 0) then 
-						        do vloop_o=1,tayeps
-							        NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*(1.0_dp/(real(2*vloop_o+1)*factorial(vloop_o)))
-                    	        end do
+                                do vloop_o=1,tayeps
+                                    NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*(1.0_dp/(real(2*vloop_o+1)*factorial(vloop_o)))
+                                end do
                             else if(vloop_mic == 1) then
                                 NX_mic_pre = NX_mic
-                    	        do vloop_o=1,tayeps
-							        NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*(1.0_dp/(factorial(vloop_o+1)))
-                    	        end do
+                                do vloop_o=1,tayeps
+                                    NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*(1.0_dp/(factorial(vloop_o+1)))
+                                end do
                             else
                                 NX_mic_pre_pre = NX_mic_pre
                                 NX_mic_pre = NX_mic
-						        do vloop_o=1,tayeps-1
-							        NX_mic(vloop_o)=((-1.0_dp)**(vloop_o)*(0.5_dp/(factorial(vloop_o+1)))+(NX_mic_pre_pre(vloop_o+1))/2.0_dp) * real(vloop_mic+1)
-                    	        end do
-                    	        NX_mic(tayeps)=((-1.0_dp)**tayeps*(0.5_dp/(factorial(tayeps+1)))) * real(vloop_mic+1)
+                                do vloop_o=1,tayeps-1
+                                    NX_mic(vloop_o)=((-1.0_dp)**(vloop_o)*(0.5_dp/(factorial(vloop_o+1)))+(NX_mic_pre_pre(vloop_o+1))/2.0_dp) * real(vloop_mic+1)
+                                end do
+                                NX_mic(tayeps)=((-1.0_dp)**tayeps*(0.5_dp/(factorial(tayeps+1)))) * real(vloop_mic+1)
                             end if
                             vloop_mic = vloop_mic + 1
                         end do
                         if (2 * vloop_i - vloop_j - vloop_k == 0) then
                             integral_mic = 0.0_dp
-					        do vloop_o=1,tayeps
-						        integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(1.0_dp/(real(2*(vloop_o)-1)*factorial(vloop_o-1)))
+                            do vloop_o=1,tayeps
+                                integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(1.0_dp/(real(2*(vloop_o)-1)*factorial(vloop_o-1)))
                             end do
-			            else if (2 * vloop_i - vloop_j - vloop_k == 1) then
+                        else if (2 * vloop_i - vloop_j - vloop_k == 1) then
                             integral_mic = 0.0_dp
-					        do vloop_o=1,tayeps
-						        integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(0.5_dp/factorial(vloop_o))
+                            do vloop_o=1,tayeps
+                                integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(0.5_dp/factorial(vloop_o))
                             end do
-			            else
-					        integral_mic = 0.0_dp
-					        do vloop_o=1,tayeps
-						        integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(0.5_dp/factorial(vloop_o))&
+                        else
+                            integral_mic = 0.0_dp
+                            do vloop_o=1,tayeps
+                                integral_mic = integral_mic + (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*(0.5_dp/factorial(vloop_o))&
                                     + (expo*R2)**(vloop_o-1)*NX_mic_pre_pre(vloop_o)/2.0_dp
                             end do
                         end if
@@ -1613,575 +1603,575 @@ module Hamiltonian
         Gx = (ai * aj / (ai + aj)) * (xi - xj)**2 + (ak * al / (ak + al)) * (xk - xl)**2
         Gy = (ai * aj / (ai + aj)) * (yi - yj)**2 + (ak * al / (ak + al)) * (yk - yl)**2
         Gz = (ai * aj / (ai + aj)) * (zi - zj)**2 + (ak * al / (ak + al)) * (zk - zl)**2
-		! Rys quadrature scheme for low angular momentum Gaussian functions
+        ! Rys quadrature scheme for low angular momentum Gaussian functions
         if (int((nxi+nxj+nxk+nxl+nyi+nyj+nyk+nyl+nzi+nzj+nzk+nzl)/2.0)+1 <= 5) then
-        	nroots = int((nxi+nxj+nxk+nxl+nyi+nyj+nyk+nyl+nzi+nzj+nzk+nzl)/2.0)+1
+            nroots = int((nxi+nxj+nxk+nxl+nyi+nyj+nyk+nyl+nzi+nzj+nzk+nzl)/2.0)+1
             allocate(PL(1))
-			allocate(Ix(1))
-			allocate(Ixtrans(nxl+1, 1))
-			allocate(Iy(1))
-			allocate(Iytrans(nyl+1, 1))
-			allocate(Iz(1))
-			allocate(Iztrans(nzl+1, 1))
-			allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, 1))
-			allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, 1))
-			allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, 1))
-			call GRysroots(nroots, X, u, w)                                 ! rys_roots (libcint), GRysroots (GAMESS)
-			integral = 0.0_dp
-			do rloop_i = 1, nroots
+            allocate(Ix(1))
+            allocate(Ixtrans(nxl+1, 1))
+            allocate(Iy(1))
+            allocate(Iytrans(nyl+1, 1))
+            allocate(Iz(1))
+            allocate(Iztrans(nzl+1, 1))
+            allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, 1))
+            allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, 1))
+            allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, 1))
+            call GRysroots(nroots, X, u, w)                                 ! rys_roots (libcint), GRysroots (GAMESS)
+            integral = 0.0_dp
+            do rloop_i = 1, nroots
                 !t2 = u(rloop_i) / (rou + u(rloop_i))					    ! for rys_roots
                 t2 = u(rloop_i)                                            ! for GRysroots
-	        	!---------------------------Gnmx---------------------------
-	        	Gnmx = 0.0_dp
-				Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx)
-				do rloop_j = 2, nxi + nxj + 1
-		            if (rloop_j == 2) then
-		                Gnmx(2,1,1) = Gnmx(2,1,1) + Gnmx(1,1,1)*(xA-xi) + Gnmx(1,1,1)*(B*(xB-xA)/(A+B)) * t2
-		            else
-		            	Gnmx(rloop_j,1,1) = Gnmx(rloop_j,1,1) + &
-		            		Gnmx(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + & ! coefficient real() start at 0
-		              		Gnmx(rloop_j-1,1,1) * (xA - xi)
-		                Gnmx(rloop_j,1,1) = Gnmx(rloop_j,1,1) - &
-		                	Gnmx(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                 	Gnmx(rloop_j-1,1,1) * (B*(xB-xA)/(A+B)) * t2
+                !---------------------------Gnmx---------------------------
+                Gnmx = 0.0_dp
+                Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx)
+                do rloop_j = 2, nxi + nxj + 1
+                    if (rloop_j == 2) then
+                        Gnmx(2,1,1) = Gnmx(2,1,1) + Gnmx(1,1,1)*(xA-xi) + Gnmx(1,1,1)*(B*(xB-xA)/(A+B)) * t2
+                    else
+                        Gnmx(rloop_j,1,1) = Gnmx(rloop_j,1,1) + &
+                            Gnmx(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + & ! coefficient real() start at 0
+                            Gnmx(rloop_j-1,1,1) * (xA - xi)
+                        Gnmx(rloop_j,1,1) = Gnmx(rloop_j,1,1) - &
+                            Gnmx(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                            Gnmx(rloop_j-1,1,1) * (B*(xB-xA)/(A+B)) * t2
                     end if
                 end do
-	        	do rloop_j = 2, nxk + nxl + 1
-		            if (rloop_j == 2) then
-		                Gnmx(1,2,1) = Gnmx(1,2,1) + Gnmx(1,1,1)*(xB-xk) + Gnmx(1,1,1)*(A*(xA-xB)/(A+B)) * t2
-		            else
-		                Gnmx(1,rloop_j,1) = Gnmx(1,rloop_j,1) + &
-							Gnmx(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
-							Gnmx(1,rloop_j-1,1) * (xB - xk)
-						Gnmx(1,rloop_j,1) = Gnmx(1,rloop_j,1) - &
-							Gnmx(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
-							Gnmx(1,rloop_j-1,1) * (A*(xA-xB)/(A+B)) * t2
-		            end if
+                do rloop_j = 2, nxk + nxl + 1
+                    if (rloop_j == 2) then
+                        Gnmx(1,2,1) = Gnmx(1,2,1) + Gnmx(1,1,1)*(xB-xk) + Gnmx(1,1,1)*(A*(xA-xB)/(A+B)) * t2
+                    else
+                        Gnmx(1,rloop_j,1) = Gnmx(1,rloop_j,1) + &
+                            Gnmx(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
+                            Gnmx(1,rloop_j-1,1) * (xB - xk)
+                        Gnmx(1,rloop_j,1) = Gnmx(1,rloop_j,1) - &
+                            Gnmx(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
+                            Gnmx(1,rloop_j-1,1) * (A*(xA-xB)/(A+B)) * t2
+                    end if
                 end do
-		        do rloop_j = 2, nxk + nxl + 1
-	            	do rloop_k = 2, nxi + nxj + 1
-		                if (rloop_k == 2) then
-		                    Gnmx(2,rloop_j,1) = Gnmx(2,rloop_j,1) + &
-		                        Gnmx(1,rloop_j,1) * (xA - xi)
-		                    Gnmx(2,rloop_j,1) = Gnmx(2,rloop_j,1) + &
-		                        Gnmx(1,rloop_j,1) * (B*(xB-xA)/(A+B)) * t2 + &
-		                        Gnmx(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
-		                else
-		                    Gnmx(rloop_k,rloop_j,1) = Gnmx(rloop_k,rloop_j,1) + &
-		                        Gnmx(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
-		                        Gnmx(rloop_k-1,rloop_j,1) * (xA - xi)
-		                    Gnmx(rloop_k,rloop_j,1) = Gnmx(rloop_k,rloop_j,1) - &
-		                        Gnmx(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                        Gnmx(rloop_k-1,rloop_j,1) * (B*(xB-xA)/(A+B)) * t2 + &
-		                        Gnmx(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
-		                end if
-		            end do
-                end do
-		        !---------------------------Gnmy---------------------------
-				Gnmy = 0.0_dp
-				Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)
-				do rloop_j = 2, nyi + nyj + 1
-		            if (rloop_j == 2) then
-		                Gnmy(2,1,1) = Gnmy(2,1,1) + Gnmy(1,1,1)*(yA-yi) + Gnmy(1,1,1)*(B*(yB-yA)/(A+B)) * t2
-		            else
-		            	Gnmy(rloop_j,1,1) = Gnmy(rloop_j,1,1) + &
-		            		Gnmy(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + &
-		              		Gnmy(rloop_j-1,1,1) * (yA - yi)
-		                Gnmy(rloop_j,1,1) = Gnmy(rloop_j,1,1) - &
-		                	Gnmy(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                 	Gnmy(rloop_j-1,1,1) * (B*(yB-yA)/(A+B)) * t2
-		            end if
-                end do
-	        	do rloop_j = 2, nyk + nyl + 1
-		            if (rloop_j == 2) then
-		                Gnmy(1,2,1) = Gnmy(1,2,1) + Gnmy(1,1,1)*(yB-yk) + Gnmy(1,1,1)*(A*(yA-yB)/(A+B)) * t2
-		            else
-		                Gnmy(1,rloop_j,1) = Gnmy(1,rloop_j,1) + &
-							Gnmy(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
-							Gnmy(1,rloop_j-1,1) * (yB - yk)
-						Gnmy(1,rloop_j,1) = Gnmy(1,rloop_j,1) - &
-							Gnmy(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
-							Gnmy(1,rloop_j-1,1) * (A*(yA-yB)/(A+B)) * t2
-		            end if
-                end do
-		        do rloop_j = 2, nyk + nyl + 1
-	            	do rloop_k = 2, nyi + nyj + 1
-		                if (rloop_k == 2) then
-		                    Gnmy(2,rloop_j,1) = Gnmy(2,rloop_j,1) + &
-		                        Gnmy(1,rloop_j,1) * (yA - yi)
-		                    Gnmy(2,rloop_j,1) = Gnmy(2,rloop_j,1) + &
-		                        Gnmy(1,rloop_j,1) * (B*(yB-yA)/(A+B)) * t2 + &
-		                        Gnmy(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
-		                else
-		                    Gnmy(rloop_k,rloop_j,1) = Gnmy(rloop_k,rloop_j,1) + &
-		                        Gnmy(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
-		                        Gnmy(rloop_k-1,rloop_j,1) * (yA - yi)
-		                    Gnmy(rloop_k,rloop_j,1) = Gnmy(rloop_k,rloop_j,1) - &
-		                        Gnmy(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                        Gnmy(rloop_k-1,rloop_j,1) * (B*(yB-yA)/(A+B)) * t2 + &
-		                        Gnmy(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                do rloop_j = 2, nxk + nxl + 1
+                    do rloop_k = 2, nxi + nxj + 1
+                        if (rloop_k == 2) then
+                            Gnmx(2,rloop_j,1) = Gnmx(2,rloop_j,1) + &
+                                Gnmx(1,rloop_j,1) * (xA - xi)
+                            Gnmx(2,rloop_j,1) = Gnmx(2,rloop_j,1) + &
+                                Gnmx(1,rloop_j,1) * (B*(xB-xA)/(A+B)) * t2 + &
+                                Gnmx(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                        else
+                            Gnmx(rloop_k,rloop_j,1) = Gnmx(rloop_k,rloop_j,1) + &
+                                Gnmx(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
+                                Gnmx(rloop_k-1,rloop_j,1) * (xA - xi)
+                            Gnmx(rloop_k,rloop_j,1) = Gnmx(rloop_k,rloop_j,1) - &
+                                Gnmx(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                                Gnmx(rloop_k-1,rloop_j,1) * (B*(xB-xA)/(A+B)) * t2 + &
+                                Gnmx(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
                         end if
-		            end do
+                    end do
                 end do
-		        !---------------------------Gnmz---------------------------
-				Gnmz = 0.0_dp
-				Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz)
-				do rloop_j = 2, nzi + nzj + 1
-		            if (rloop_j == 2) then
-		                Gnmz(2,1,1) = Gnmz(2,1,1) + Gnmz(1,1,1)*(zA-zi) + Gnmz(1,1,1)*(B*(zB-zA)/(A+B)) * t2
-		            else
-		            	Gnmz(rloop_j,1,1) = Gnmz(rloop_j,1,1) + &
-		            		Gnmz(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + &
-		              		Gnmz(rloop_j-1,1,1) * (zA - zi)
-		                Gnmz(rloop_j,1,1) = Gnmz(rloop_j,1,1) - &
-		                	Gnmz(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                 	Gnmz(rloop_j-1,1,1) * (B*(zB-zA)/(A+B)) * t2
-		            end if
-	        	end do
-	        	do rloop_j = 2, nzk + nzl + 1
-		            if (rloop_j == 2) then
-		                Gnmz(1,2,1) = Gnmz(1,2,1) + Gnmz(1,1,1)*(zB-zk) + Gnmz(1,1,1)*(A*(zA-zB)/(A+B)) * t2
-		            else
-		                Gnmz(1,rloop_j,1) = Gnmz(1,rloop_j,1) + &
-							Gnmz(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
-							Gnmz(1,rloop_j-1,1) * (zB - zk)
-						Gnmz(1,rloop_j,1) = Gnmz(1,rloop_j,1) - &
-							Gnmz(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
-							Gnmz(1,rloop_j-1,1) * (A*(zA-zB)/(A+B)) * t2
-		            end if
-		        end do
-		        do rloop_j = 2, nzk + nzl + 1
-	            	do rloop_k = 2, nzi + nzj + 1
-		                if (rloop_k == 2) then
-		                    Gnmz(2,rloop_j,1) = Gnmz(2,rloop_j,1) + &
-		                        Gnmz(1,rloop_j,1) * (zA - zi)
-		                    Gnmz(2,rloop_j,1) = Gnmz(2,rloop_j,1) + &
-		                        Gnmz(1,rloop_j,1) * (B*(zB-zA)/(A+B)) * t2 + &
-		                        Gnmz(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
-		                else
-		                    Gnmz(rloop_k,rloop_j,1) = Gnmz(rloop_k,rloop_j,1) + &
-		                        Gnmz(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
-		                        Gnmz(rloop_k-1,rloop_j,1) * (zA - zi)
-		                    Gnmz(rloop_k,rloop_j,1) = Gnmz(rloop_k,rloop_j,1) - &
-		                        Gnmz(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
-		                        Gnmz(rloop_k-1,rloop_j,1) * (B*(zB-zA)/(A+B)) * t2 + &
-		                        Gnmz(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
-		                end if
-		            end do
-		        end do
-				!---------------------------Ix---------------------------
-				Ixtrans = 0.0_dp
-				Ix = 0.0_dp
-				do rloop_k = 1, nxl + 1
-					do rloop_j = 0, nxj
-						Ixtrans(rloop_k,1) = Ixtrans(rloop_k,1) + &
-							binomialcoe(nxj, rloop_j) * (xi-xj)**(rloop_j) * Gnmx(nxi+nxj+1-rloop_j, nxk+nxl+1-(rloop_k-1), 1)
-					end do
+                !---------------------------Gnmy---------------------------
+                Gnmy = 0.0_dp
+                Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)
+                do rloop_j = 2, nyi + nyj + 1
+                    if (rloop_j == 2) then
+                        Gnmy(2,1,1) = Gnmy(2,1,1) + Gnmy(1,1,1)*(yA-yi) + Gnmy(1,1,1)*(B*(yB-yA)/(A+B)) * t2
+                    else
+                        Gnmy(rloop_j,1,1) = Gnmy(rloop_j,1,1) + &
+                            Gnmy(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + &
+                            Gnmy(rloop_j-1,1,1) * (yA - yi)
+                        Gnmy(rloop_j,1,1) = Gnmy(rloop_j,1,1) - &
+                            Gnmy(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                            Gnmy(rloop_j-1,1,1) * (B*(yB-yA)/(A+B)) * t2
+                    end if
                 end do
-				do rloop_j = 0, nxl
-					Ix(1) = Ix(1) + binomialcoe(nxl,rloop_j) * (xk-xl)**(rloop_j) * Ixtrans(rloop_j+1, 1)
-				end do
-				!---------------------------Iy---------------------------
-				Iytrans = 0.0_dp
-				Iy = 0.0_dp
-				do rloop_k = 1, nyl + 1
-					do rloop_j = 0, nyj
-						Iytrans(rloop_k,1) = Iytrans(rloop_k,1) + &
-							binomialcoe(nyj, rloop_j) * (yi-yj)**(rloop_j) * Gnmy(nyi+nyj+1-rloop_j, nyk+nyl+1-(rloop_k-1), 1)
-					end do
+                do rloop_j = 2, nyk + nyl + 1
+                    if (rloop_j == 2) then
+                        Gnmy(1,2,1) = Gnmy(1,2,1) + Gnmy(1,1,1)*(yB-yk) + Gnmy(1,1,1)*(A*(yA-yB)/(A+B)) * t2
+                    else
+                        Gnmy(1,rloop_j,1) = Gnmy(1,rloop_j,1) + &
+                            Gnmy(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
+                            Gnmy(1,rloop_j-1,1) * (yB - yk)
+                        Gnmy(1,rloop_j,1) = Gnmy(1,rloop_j,1) - &
+                            Gnmy(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
+                            Gnmy(1,rloop_j-1,1) * (A*(yA-yB)/(A+B)) * t2
+                    end if
                 end do
-				do rloop_j = 0, nyl
-					Iy(1) = Iy(1) + binomialcoe(nyl,rloop_j) * (yk-yl)**(rloop_j) * Iytrans(rloop_j+1, 1)
+                do rloop_j = 2, nyk + nyl + 1
+                    do rloop_k = 2, nyi + nyj + 1
+                        if (rloop_k == 2) then
+                            Gnmy(2,rloop_j,1) = Gnmy(2,rloop_j,1) + &
+                                Gnmy(1,rloop_j,1) * (yA - yi)
+                            Gnmy(2,rloop_j,1) = Gnmy(2,rloop_j,1) + &
+                                Gnmy(1,rloop_j,1) * (B*(yB-yA)/(A+B)) * t2 + &
+                                Gnmy(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                        else
+                            Gnmy(rloop_k,rloop_j,1) = Gnmy(rloop_k,rloop_j,1) + &
+                                Gnmy(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
+                                Gnmy(rloop_k-1,rloop_j,1) * (yA - yi)
+                            Gnmy(rloop_k,rloop_j,1) = Gnmy(rloop_k,rloop_j,1) - &
+                                Gnmy(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                                Gnmy(rloop_k-1,rloop_j,1) * (B*(yB-yA)/(A+B)) * t2 + &
+                                Gnmy(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                        end if
+                    end do
                 end do
-				!---------------------------Iz---------------------------
-				Iztrans = 0.0_dp
-				Iz = 0.0_dp
-				do rloop_k = 1, nzl + 1
-					do rloop_j = 0, nzj
-						Iztrans(rloop_k,1) = Iztrans(rloop_k,1) + &
-							binomialcoe(nzj, rloop_j) * (zi-zj)**(rloop_j) * Gnmz(nzi+nzj+1-rloop_j, nzk+nzl+1-(rloop_k-1), 1)
-					end do
-				end do
-				do rloop_j = 0, nzl
-					Iz(1) = Iz(1) + binomialcoe(nzl,rloop_j) * (zk-zl)**(rloop_j) * Iztrans(rloop_j+1, 1)
+                !---------------------------Gnmz---------------------------
+                Gnmz = 0.0_dp
+                Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz)
+                do rloop_j = 2, nzi + nzj + 1
+                    if (rloop_j == 2) then
+                        Gnmz(2,1,1) = Gnmz(2,1,1) + Gnmz(1,1,1)*(zA-zi) + Gnmz(1,1,1)*(B*(zB-zA)/(A+B)) * t2
+                    else
+                        Gnmz(rloop_j,1,1) = Gnmz(rloop_j,1,1) + &
+                            Gnmz(rloop_j-2,1,1) * real(rloop_j-2)/(2.0_dp*A) + &
+                            Gnmz(rloop_j-1,1,1) * (zA - zi)
+                        Gnmz(rloop_j,1,1) = Gnmz(rloop_j,1,1) - &
+                            Gnmz(rloop_j-2,1,1) * real(rloop_j-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                            Gnmz(rloop_j-1,1,1) * (B*(zB-zA)/(A+B)) * t2
+                    end if
                 end do
-				!---------------------------PL---------------------------
-				PL(1) = Ix(1) * Iy(1) * Iz(1) * 2.0_dp * sqrt(rou/pi)
-				integral = integral + w(rloop_i)*PL(1)
-			end do
-			V_Integral_2e = integral
-			deallocate(PL)
-			deallocate(Ix)
-			deallocate(Ixtrans)
-			deallocate(Iy)
-			deallocate(Iytrans)
-			deallocate(Iz)
-			deallocate(Iztrans)
-			deallocate(Gnmx)
-			deallocate(Gnmy)
-			deallocate(Gnmz)
-			return
-		! direct integral for high angular momentum Gaussian functions		
+                do rloop_j = 2, nzk + nzl + 1
+                    if (rloop_j == 2) then
+                        Gnmz(1,2,1) = Gnmz(1,2,1) + Gnmz(1,1,1)*(zB-zk) + Gnmz(1,1,1)*(A*(zA-zB)/(A+B)) * t2
+                    else
+                        Gnmz(1,rloop_j,1) = Gnmz(1,rloop_j,1) + &
+                            Gnmz(1,rloop_j-2,1) * real(rloop_j-2)/(2.0_dp*B) + &
+                            Gnmz(1,rloop_j-1,1) * (zB - zk)
+                        Gnmz(1,rloop_j,1) = Gnmz(1,rloop_j,1) - &
+                            Gnmz(1,rloop_j-2,1) * real(rloop_j-2)*A/(2.0_dp*B*(A+B)) * t2 + &
+                            Gnmz(1,rloop_j-1,1) * (A*(zA-zB)/(A+B)) * t2
+                    end if
+                end do
+                do rloop_j = 2, nzk + nzl + 1
+                    do rloop_k = 2, nzi + nzj + 1
+                        if (rloop_k == 2) then
+                            Gnmz(2,rloop_j,1) = Gnmz(2,rloop_j,1) + &
+                                Gnmz(1,rloop_j,1) * (zA - zi)
+                            Gnmz(2,rloop_j,1) = Gnmz(2,rloop_j,1) + &
+                                Gnmz(1,rloop_j,1) * (B*(zB-zA)/(A+B)) * t2 + &
+                                Gnmz(1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                        else
+                            Gnmz(rloop_k,rloop_j,1) = Gnmz(rloop_k,rloop_j,1) + &
+                                Gnmz(rloop_k-2,rloop_j,1) * real(rloop_k-2)/(2.0_dp*A) + &
+                                Gnmz(rloop_k-1,rloop_j,1) * (zA - zi)
+                            Gnmz(rloop_k,rloop_j,1) = Gnmz(rloop_k,rloop_j,1) - &
+                                Gnmz(rloop_k-2,rloop_j,1) * real(rloop_k-2)*B/(2.0_dp*A*(A+B)) * t2 + &
+                                Gnmz(rloop_k-1,rloop_j,1) * (B*(zB-zA)/(A+B)) * t2 + &
+                                Gnmz(rloop_k-1,rloop_j-1,1) * real(rloop_j-1)/(2.0_dp*(A+B)) * t2
+                        end if
+                    end do
+                end do
+                !---------------------------Ix---------------------------
+                Ixtrans = 0.0_dp
+                Ix = 0.0_dp
+                do rloop_k = 1, nxl + 1
+                    do rloop_j = 0, nxj
+                        Ixtrans(rloop_k,1) = Ixtrans(rloop_k,1) + &
+                            binomialcoe(nxj, rloop_j) * (xi-xj)**(rloop_j) * Gnmx(nxi+nxj+1-rloop_j, nxk+nxl+1-(rloop_k-1), 1)
+                    end do
+                end do
+                do rloop_j = 0, nxl
+                    Ix(1) = Ix(1) + binomialcoe(nxl,rloop_j) * (xk-xl)**(rloop_j) * Ixtrans(rloop_j+1, 1)
+                end do
+                !---------------------------Iy---------------------------
+                Iytrans = 0.0_dp
+                Iy = 0.0_dp
+                do rloop_k = 1, nyl + 1
+                    do rloop_j = 0, nyj
+                        Iytrans(rloop_k,1) = Iytrans(rloop_k,1) + &
+                            binomialcoe(nyj, rloop_j) * (yi-yj)**(rloop_j) * Gnmy(nyi+nyj+1-rloop_j, nyk+nyl+1-(rloop_k-1), 1)
+                    end do
+                end do
+                do rloop_j = 0, nyl
+                    Iy(1) = Iy(1) + binomialcoe(nyl,rloop_j) * (yk-yl)**(rloop_j) * Iytrans(rloop_j+1, 1)
+                end do
+                !---------------------------Iz---------------------------
+                Iztrans = 0.0_dp
+                Iz = 0.0_dp
+                do rloop_k = 1, nzl + 1
+                    do rloop_j = 0, nzj
+                        Iztrans(rloop_k,1) = Iztrans(rloop_k,1) + &
+                            binomialcoe(nzj, rloop_j) * (zi-zj)**(rloop_j) * Gnmz(nzi+nzj+1-rloop_j, nzk+nzl+1-(rloop_k-1), 1)
+                    end do
+                end do
+                do rloop_j = 0, nzl
+                    Iz(1) = Iz(1) + binomialcoe(nzl,rloop_j) * (zk-zl)**(rloop_j) * Iztrans(rloop_j+1, 1)
+                end do
+                !---------------------------PL---------------------------
+                PL(1) = Ix(1) * Iy(1) * Iz(1) * 2.0_dp * sqrt(rou/pi)
+                integral = integral + w(rloop_i)*PL(1)
+            end do
+            V_Integral_2e = integral
+            deallocate(PL)
+            deallocate(Ix)
+            deallocate(Ixtrans)
+            deallocate(Iy)
+            deallocate(Iytrans)
+            deallocate(Iz)
+            deallocate(Iztrans)
+            deallocate(Gnmx)
+            deallocate(Gnmy)
+            deallocate(Gnmz)
+            return
+        ! direct integral for high angular momentum Gaussian functions		
         else
-	        ! Ix(ni+nj,0,nk+nl,0,u)
-	        allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, nxi+nxj+1+nxk+nxl+1))
-	        allocate(Ixtrans(nxl+1, nxi+nxj+1+nxk+nxl+1))
-	        allocate(Ix(nxi+nxj+1+nxk+nxl+1))
-	        allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, nyi+nyj+1+nyk+nyl+1))
-	        allocate(Iytrans(nyl+1, nyi+nyj+1+nyk+nyl+1))
-	        allocate(Iy(nyi+nyj+1+nyk+nyl+1))
-	        allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, nzi+nzj+1+nzk+nzl+1))
-	        allocate(Iztrans(nzl+1, nzi+nzj+1+nzk+nzl+1))
-	        allocate(Iz(nzi+nzj+1+nzk+nzl+1))
-	        if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 15) then
-				tayeps = 8
-				xts = 0.1
-			else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 25) then
-				tayeps = 15
-				xts = 1.0
-			else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 35) then
-				tayeps = 20
-				xts = 1.0
-			else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 40) then
-				tayeps = 25
-				xts = 3.0
-			else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 50) then
-				tayeps = 30
-				xts = 4.0
-			else
-				call terminate('Excessive number of iterations, modify source code according to the results of Error_in_t_integration.py')
-	        end if
-			Gnmx = 0.0_dp
-        	Gnmy = 0.0_dp
-        	Gnmz = 0.0_dp
-	        Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx) ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
-	        do rloop_i = 2, nxi + nxj + 1
-	            if (rloop_i == 2) then
-	                Gnmx(2,1,1) = Gnmx(2,1,1) + Gnmx(1,1,1) * (xA - xi)
-	                Gnmx(2,1,2) = Gnmx(2,1,2) + Gnmx(1,1,1) * (B*(xB-xA)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmx(rloop_i,1,rloop_j) = Gnmx(rloop_i,1,rloop_j) + &
-	                    	Gnmx(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                    	Gnmx(rloop_i-1,1,rloop_j) * (xA - xi)
-	                    Gnmx(rloop_i,1,rloop_j + 1) = Gnmx(rloop_i,1,rloop_j + 1) - &
-	                    	Gnmx(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                    	Gnmx(rloop_i-1,1,rloop_j) * (B*(xB-xA)/(A+B))
-	                end do
-	            end if
-	        end do
-	        do rloop_i = 2, nxk + nxl + 1
-	            if (rloop_i == 2) then
-	                Gnmx(1,2,1) = Gnmx(1,2,1) + Gnmx(1,1,1) * (xB - xk)
-	                Gnmx(1,2,2) = Gnmx(1,2,2) + Gnmx(1,1,1) * (A*(xA-xB)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmx(1,rloop_i,rloop_j) = Gnmx(1,rloop_i,rloop_j) + &
-	                    	Gnmx(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
-	                    	Gnmx(1,rloop_i-1,rloop_j) * (xB - xk)
-	                    Gnmx(1,rloop_i,rloop_j + 1) = Gnmx(1,rloop_i,rloop_j + 1) - &
-	                    	Gnmx(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
-	                    	Gnmx(1,rloop_i-1,rloop_j) * (A*(xA-xB)/(A+B))
-	                end do
-	            end if
-	        end do
-	        ! use G(n+1,m) recursion only, xA and xB are asymmetric
-	        ! --------------------------------------------------------------------------------------
-	        do rloop_k = 2, nxk + nxl + 1
-	            do rloop_i = 2, nxi + nxj + 1
-	                if (rloop_i == 2) then
-	                    do rloop_j = 1, rloop_k
-	                        Gnmx(2,rloop_k,rloop_j) = Gnmx(2,rloop_k,rloop_j) + &
-	                        	Gnmx(1,rloop_k,rloop_j) * (xA - xi)
-	                        Gnmx(2,rloop_k,rloop_j + 1) = Gnmx(2,rloop_k,rloop_j + 1) + &
-	                        	Gnmx(1,rloop_k,rloop_j) * (B*(xB-xA)/(A+B)) + &
-	                        	Gnmx(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                else
-	                    do rloop_j = 1, rloop_i + rloop_k - 2
-	                        Gnmx(rloop_i,rloop_k,rloop_j) = Gnmx(rloop_i,rloop_k,rloop_j) + &
-	                        	Gnmx(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                        	Gnmx(rloop_i-1,rloop_k,rloop_j) * (xA - xi)
-	                        Gnmx(rloop_i,rloop_k,rloop_j + 1) = Gnmx(rloop_i,rloop_k,rloop_j + 1) - &
-	                        	Gnmx(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                        	Gnmx(rloop_i-1,rloop_k,rloop_j) * (B*(xB-xA)/(A+B)) + &
-	                        	Gnmx(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                end if
-	            end do
-	        end do
-	        ! --------------------------------------------------------------------------------------
-	        ! Iy(ni+nj,0,nk+nl,0,u)
-	        Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)! reduce the factor (1-t^2)^(1/2)*eyp(-Dy*t^2)
-	        do rloop_i = 2, nyi + nyj + 1
-	            if (rloop_i == 2) then
-	                Gnmy(2,1,1) = Gnmy(2,1,1) + Gnmy(1,1,1) * (yA - yi)
-	                Gnmy(2,1,2) = Gnmy(2,1,2) + Gnmy(1,1,1) * (B*(yB-yA)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmy(rloop_i,1,rloop_j) = Gnmy(rloop_i,1,rloop_j) + &
-	                    	Gnmy(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                    	Gnmy(rloop_i-1,1,rloop_j) * (yA - yi)
-	                    Gnmy(rloop_i,1,rloop_j + 1) = Gnmy(rloop_i,1,rloop_j + 1) - &
-	                    	Gnmy(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                    	Gnmy(rloop_i-1,1,rloop_j) * (B*(yB-yA)/(A+B))
-	                end do
-	            end if
-	        end do
-	        do rloop_i = 2, nyk + nyl + 1
-	            if (rloop_i == 2) then
-	                Gnmy(1,2,1) = Gnmy(1,2,1) + Gnmy(1,1,1) * (yB - yk)
-	                Gnmy(1,2,2) = Gnmy(1,2,2) + Gnmy(1,1,1) * (A*(yA-yB)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmy(1,rloop_i,rloop_j) = Gnmy(1,rloop_i,rloop_j) + &
-	                    	Gnmy(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
-	                    	Gnmy(1,rloop_i-1,rloop_j) * (yB - yk)
-	                    Gnmy(1,rloop_i,rloop_j + 1) = Gnmy(1,rloop_i,rloop_j + 1) - &
-	                    	Gnmy(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
-	                    	Gnmy(1,rloop_i-1,rloop_j) * (A*(yA-yB)/(A+B))
-	                end do
-	            end if
-	        end do
-	        do rloop_k = 2, nyk + nyl + 1
-	            do rloop_i = 2, nyi + nyj + 1
-	                if (rloop_i == 2) then
-	                    do rloop_j = 1, rloop_k
-	                        Gnmy(2,rloop_k,rloop_j) = Gnmy(2,rloop_k,rloop_j) + &
-	                        	Gnmy(1,rloop_k,rloop_j) * (yA - yi)
-	                        Gnmy(2,rloop_k,rloop_j + 1) = Gnmy(2,rloop_k,rloop_j + 1) + &
-	                        	Gnmy(1,rloop_k,rloop_j) * (B*(yB-yA)/(A+B)) + &
-	                        	Gnmy(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                else
-	                    do rloop_j = 1, rloop_i + rloop_k - 2
-	                        Gnmy(rloop_i,rloop_k,rloop_j) = Gnmy(rloop_i,rloop_k,rloop_j) + &
-	                        	Gnmy(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                        	Gnmy(rloop_i-1,rloop_k,rloop_j) * (yA - yi)
-	                        Gnmy(rloop_i,rloop_k,rloop_j + 1) = Gnmy(rloop_i,rloop_k,rloop_j + 1) - &
-	                        	Gnmy(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                        	Gnmy(rloop_i-1,rloop_k,rloop_j) * (B*(yB-yA)/(A+B)) + &
-	                        	Gnmy(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                end if
-	            end do
-	        end do
-	        ! Iz(ni+nj,0,nk+nl,0,u)
-	        Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz) ! reduce the factor (1-t^2)^(1/2)*ezp(-Dz*t^2)
-	        do rloop_i = 2, nzi + nzj + 1
-	            if (rloop_i == 2) then
-	                Gnmz(2,1,1) = Gnmz(2,1,1) + Gnmz(1,1,1) * (zA - zi)
-	                Gnmz(2,1,2) = Gnmz(2,1,2) + Gnmz(1,1,1) * (B*(zB-zA)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmz(rloop_i,1,rloop_j) = Gnmz(rloop_i,1,rloop_j) + &
-	                    	Gnmz(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                    	Gnmz(rloop_i-1,1,rloop_j) * (zA - zi)
-	                    Gnmz(rloop_i,1,rloop_j + 1) = Gnmz(rloop_i,1,rloop_j + 1) - &
-	                    	Gnmz(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                    	Gnmz(rloop_i-1,1,rloop_j) * (B*(zB-zA)/(A+B))
-	                end do
-	            end if
-	        end do
-	        do rloop_i = 2, nzk + nzl + 1
-	            if (rloop_i == 2) then
-	                Gnmz(1,2,1) = Gnmz(1,2,1) + Gnmz(1,1,1) * (zB - zk)
-	                Gnmz(1,2,2) = Gnmz(1,2,2) + Gnmz(1,1,1) * (A*(zA-zB)/(A+B))
-	            else
-	                do rloop_j = 1, rloop_i - 1
-	                    Gnmz(1,rloop_i,rloop_j) = Gnmz(1,rloop_i,rloop_j) + &
-	                    	Gnmz(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
-	                    	Gnmz(1,rloop_i-1,rloop_j) * (zB - zk)
-	                    Gnmz(1,rloop_i,rloop_j + 1) = Gnmz(1,rloop_i,rloop_j + 1) - &
-	                    	Gnmz(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
-	                    	Gnmz(1,rloop_i-1,rloop_j) * (A*(zA-zB)/(A+B))
-	                end do
-	            end if
-	        end do
-	        do rloop_k = 2, nzk + nzl + 1
-	            do rloop_i = 2, nzi + nzj + 1
-	                if (rloop_i == 2) then
-	                    do rloop_j = 1, rloop_k
-	                        Gnmz(2,rloop_k,rloop_j) = Gnmz(2,rloop_k,rloop_j) + &
-	                        	Gnmz(1,rloop_k,rloop_j) * (zA - zi)
-	                        Gnmz(2,rloop_k,rloop_j + 1) = Gnmz(2,rloop_k,rloop_j + 1) + &
-	                        	Gnmz(1,rloop_k,rloop_j) * (B*(zB-zA)/(A+B)) + &
-	                        	Gnmz(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                else
-	                    do rloop_j = 1, rloop_i + rloop_k - 2
-	                        Gnmz(rloop_i,rloop_k,rloop_j) = Gnmz(rloop_i,rloop_k,rloop_j) + &
-	                        	Gnmz(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
-	                        	Gnmz(rloop_i-1,rloop_k,rloop_j) * (zA - zi)
-	                        Gnmz(rloop_i,rloop_k,rloop_j + 1) = Gnmz(rloop_i,rloop_k,rloop_j + 1) - &
-	                        	Gnmz(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
-	                        	Gnmz(rloop_i-1,rloop_k,rloop_j) * (B*(zB-zA)/(A+B)) + &
-	                        	Gnmz(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
-	                    end do
-	                end if
-	            end do
-            end do
-	        ! transfer from xi to xj, xk to xl
-	        Ixtrans = 0.0_dp
-	        Ix = 0.0_dp
-	        do rloop_k = 1, nxl + 1
-	            do rloop_i = 0, nxj
-		            do rloop_j = 1, nxi + nxj + 1 + nxk + nxl + 1
-			            Ixtrans(rloop_k,rloop_j) = Ixtrans(rloop_k,rloop_j) + &
-			            	binomialcoe(nxj,rloop_i) * (xi-xj)**(rloop_i) * Gnmx(nxi+nxj+1-rloop_i, nxk+nxl+1-(rloop_k-1),rloop_j)
-		            end do
-	            end do
-	        end do
-	        do rloop_i = 0, nxl
-		        do rloop_j = 1, nxi + nxj + 1 + nxk + nxl + 1
-	                Ix(rloop_j) = Ix(rloop_j) + binomialcoe(nxl,rloop_i) * (xk-xl)**(rloop_i) * Ixtrans(rloop_i + 1,rloop_j)
-		        end do
-	        end do
-	        ! transfer from yi to yj, yk to yl
-	        Iytrans = 0.0_dp
-	        Iy = 0.0_dp
-	        do rloop_k = 1, nyl + 1
-	            do rloop_i = 0, nyj
-		            do rloop_j = 1, nyi + nyj + 1 + nyk + nyl + 1
-			            Iytrans(rloop_k,rloop_j) = Iytrans(rloop_k,rloop_j) + &
-			            	binomialcoe(nyj,rloop_i) * (yi-yj)**(rloop_i) * Gnmy(nyi+nyj+1-rloop_i, nyk+nyl+1-(rloop_k-1),rloop_j)
-		            end do
-	            end do
-	        end do
-	        do rloop_i = 0, nyl
-		        do rloop_j = 1, nyi + nyj + 1 + nyk + nyl + 1
-	                Iy(rloop_j) = Iy(rloop_j) + binomialcoe(nyl,rloop_i) * (yk-yl)**(rloop_i) * Iytrans(rloop_i + 1,rloop_j)
-		        end do
-	        end do
-	        ! transfer from zi to zj, zk to zl
-	        Iztrans = 0.0_dp
-	        Iz = 0.0_dp
-	        do rloop_k = 1, nzl + 1
-	            do rloop_i = 0, nzj
-		            do rloop_j = 1, nzi + nzj + 1 + nzk + nzl + 1
-			            Iztrans(rloop_k,rloop_j) = Iztrans(rloop_k,rloop_j) + &
-			            	binomialcoe(nzj,rloop_i) * (zi-zj)**(rloop_i) * Gnmz(nzi+nzj+1-rloop_i, nzk+nzl+1-(rloop_k-1),rloop_j)
-		            end do
-	            end do
-	        end do
-	        do rloop_i = 0, nzl
-		        do rloop_j = 1, nzi + nzj + 1 + nzk + nzl + 1
-	                Iz(rloop_j) = Iz(rloop_j) + binomialcoe(nzl,rloop_i) * (zk-zl)**(rloop_i) * Iztrans(rloop_i + 1,rloop_j)
-		        end do
-            end do
-	        ! product of Ix, Iy, Iz
-	        allocate(PL(nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1))
-	        PL = 0.0_dp
-	        !do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
-	        !    rloop_j = 1
-	        !    rloop_k = 1
-	        !    do while(rloop_i+2 - rloop_j - rloop_k >= 1 .and. rloop_j <= nyi + nyj + 1 + nyk + nyl + 1)
-	        !        do while(rloop_i+2 - rloop_j - rloop_k >= 1 .and. rloop_k <= nzi + nzj + 1 + nzk + nzl + 1)
-	        !            if (rloop_i+2 - rloop_j - rloop_k <= nxi + nxj + 1 + nxk + nxl + 1) then
-	        !                PL(rloop_i) = PL(rloop_i) + Ix(rloop_i+2 - rloop_j - rloop_k) * Iy(rloop_j) * Iz(rloop_k)
-	        !            end if
-	        !            rloop_k = rloop_k + 1
-	        !        end do
-	        !        rloop_j = rloop_j + 1
-	        !        rloop_k = 1
-	        !    end do
-	        !end do
-	        
-	        do rloop_i = 0, nxi + nxj + 1 + nxk + nxl
-	            do rloop_j = 0, nyi + nyj + 1 + nyk + nyl
-	                do rloop_k = 0, nzi + nzj + 1 + nzk + nzl
-	                    PL(rloop_i + rloop_j + rloop_k + 1) = PL(rloop_i + rloop_j + rloop_k + 1)&
-	                        + Ix(rloop_i+1) * Iy(rloop_j+1) * Iz(rloop_k+1)
-	                end do
-	            end do
-	        end do
-	        PL = PL * 2.0_dp * sqrt(rou/pi)
-	        ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
-	        integral = 0.0_dp
-	        if (abs(X) < 1E-13) then 
-	            do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
-	                integral_mic = 1.0_dp / (real(2*rloop_i-2) + 1.0_dp)
-	                integral = integral + PL(rloop_i) * integral_mic
-	            end do
-	        else if (abs(X) <= xts) then
-	        	allocate(NX_mic(tayeps))
-	        	allocate(NX_mic_pre(tayeps))
-	        	allocate(NX_mic_pre_pre(tayeps))
-	            rloop_i = 1
-	            do while(rloop_i <= nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1)
-	                rloop_j = 0
-	                do while(rloop_j <= 2 * rloop_i - 2)
-	                    if (rloop_j == 0) then ! sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
-							do rloop_k=1,tayeps
-								NX_mic(rloop_k)=(-1.0_dp)**(rloop_k)*(1.0_dp/(real(2*rloop_k+1)*factorial(rloop_k)))
-	                    	end do
-	                    else if(rloop_j == 1) then ! (1.0_dp - exp(-X)) / (2.0_dp * X)
-	                        NX_mic_pre = NX_mic
-	                    	do rloop_k=1,tayeps
-								NX_mic(rloop_k)=(-1.0_dp)**(rloop_k)*(1.0_dp/(factorial(rloop_k+1)))
-	                    	end do
-	                    else ! (-exp(-X) + real(rloop_j - 1) * integral_mic_pre_pre) / (2.0_dp * X)
-	                        NX_mic_pre_pre = NX_mic_pre
-	                        NX_mic_pre = NX_mic
-							do rloop_k=1,tayeps-1
-								NX_mic(rloop_k)=((-1.0_dp)**(rloop_k)*(0.5_dp/(factorial(rloop_k+1)))+(NX_mic_pre_pre(rloop_k+1))/2.0_dp) * real(rloop_j+1)
-	                    	end do
-	                    	NX_mic(tayeps)=((-1.0_dp)**tayeps*(0.5_dp/(factorial(tayeps+1)))) * real(rloop_j+1)
-	                    end if
-	                    rloop_j = rloop_j + 1
-	                end do
-	                if (2 * rloop_i - 2 == 0) then
-	                    integral_mic = 0.0_dp
-						do rloop_k=1,tayeps
-							integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(1.0_dp/(real(2*(rloop_k)-1)*factorial(rloop_k-1)))
-	                    end do
-				    else if (2 * rloop_i - 2 == 1) then
-	                    integral_mic = 0.0_dp
-						do rloop_k=1,tayeps
-							integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(0.5_dp/factorial(rloop_k))
-	                    end do
-				    else
-						integral_mic = 0.0_dp
-						do rloop_k=1,tayeps
-							integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(0.5_dp/factorial(rloop_k))&
-	                            + X**(rloop_k-1)*NX_mic_pre_pre(rloop_k)/2.0_dp
-	                    end do
-	                end if
-	                integral = integral + PL(rloop_i) * integral_mic
-	                rloop_i = rloop_i + 1
-	            end do
-	            deallocate(NX_mic)
-	        	deallocate(NX_mic_pre)
-	        	deallocate(NX_mic_pre_pre)
-	        else
-	            do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
-	                do rloop_j = 0, 2*rloop_i - 2
-	                    if (rloop_j == 0) then
-	                        integral_mic = sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
-	                    else if(rloop_j == 1) then
-	                        integral_mic_pre = integral_mic
-	                        integral_mic = (1.0_dp - exp(-X)) / (2.0_dp * X)
-	                    else
-	                        integral_mic_pre_pre = integral_mic_pre
-	                        integral_mic_pre = integral_mic
-						    integral_mic = (-exp(-X) + real(rloop_j - 1) * integral_mic_pre_pre) / (2.0_dp * X)
-	                    end if
-	                end do
-	                integral = integral + PL(rloop_i) * integral_mic
-	            end do
+            ! Ix(ni+nj,0,nk+nl,0,u)
+            allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, nxi+nxj+1+nxk+nxl+1))
+            allocate(Ixtrans(nxl+1, nxi+nxj+1+nxk+nxl+1))
+            allocate(Ix(nxi+nxj+1+nxk+nxl+1))
+            allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, nyi+nyj+1+nyk+nyl+1))
+            allocate(Iytrans(nyl+1, nyi+nyj+1+nyk+nyl+1))
+            allocate(Iy(nyi+nyj+1+nyk+nyl+1))
+            allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, nzi+nzj+1+nzk+nzl+1))
+            allocate(Iztrans(nzl+1, nzi+nzj+1+nzk+nzl+1))
+            allocate(Iz(nzi+nzj+1+nzk+nzl+1))
+            if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 15) then
+                tayeps = 8
+                xts = 0.1
+            else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 25) then
+                tayeps = 15
+                xts = 1.0
+            else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 35) then
+                tayeps = 20
+                xts = 1.0
+            else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 40) then
+                tayeps = 25
+                xts = 3.0
+            else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 50) then
+                tayeps = 30
+                xts = 4.0
+            else
+                call terminate('Excessive number of iterations, modify source code according to the results of Error_in_t_integration.py')
             end if
-	        V_Integral_2e = integral
-	        deallocate(PL)
-	        deallocate(Gnmx)
-	        deallocate(Ixtrans)
-	        deallocate(Ix)
-	        deallocate(Gnmy)
-	        deallocate(Iytrans)
-	        deallocate(Iy)
-	        deallocate(Gnmz)
-	        deallocate(Iztrans)
-	        deallocate(Iz)
-	        return
-	    end if
+            Gnmx = 0.0_dp
+            Gnmy = 0.0_dp
+            Gnmz = 0.0_dp
+            Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx) ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
+            do rloop_i = 2, nxi + nxj + 1
+                if (rloop_i == 2) then
+                    Gnmx(2,1,1) = Gnmx(2,1,1) + Gnmx(1,1,1) * (xA - xi)
+                    Gnmx(2,1,2) = Gnmx(2,1,2) + Gnmx(1,1,1) * (B*(xB-xA)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmx(rloop_i,1,rloop_j) = Gnmx(rloop_i,1,rloop_j) + &
+                            Gnmx(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                            Gnmx(rloop_i-1,1,rloop_j) * (xA - xi)
+                        Gnmx(rloop_i,1,rloop_j + 1) = Gnmx(rloop_i,1,rloop_j + 1) - &
+                            Gnmx(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                            Gnmx(rloop_i-1,1,rloop_j) * (B*(xB-xA)/(A+B))
+                    end do
+                end if
+            end do
+            do rloop_i = 2, nxk + nxl + 1
+                if (rloop_i == 2) then
+                    Gnmx(1,2,1) = Gnmx(1,2,1) + Gnmx(1,1,1) * (xB - xk)
+                    Gnmx(1,2,2) = Gnmx(1,2,2) + Gnmx(1,1,1) * (A*(xA-xB)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmx(1,rloop_i,rloop_j) = Gnmx(1,rloop_i,rloop_j) + &
+                            Gnmx(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
+                            Gnmx(1,rloop_i-1,rloop_j) * (xB - xk)
+                        Gnmx(1,rloop_i,rloop_j + 1) = Gnmx(1,rloop_i,rloop_j + 1) - &
+                            Gnmx(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
+                            Gnmx(1,rloop_i-1,rloop_j) * (A*(xA-xB)/(A+B))
+                    end do
+                end if
+            end do
+            ! use G(n+1,m) recursion only, xA and xB are asymmetric
+            ! --------------------------------------------------------------------------------------
+            do rloop_k = 2, nxk + nxl + 1
+                do rloop_i = 2, nxi + nxj + 1
+                    if (rloop_i == 2) then
+                        do rloop_j = 1, rloop_k
+                            Gnmx(2,rloop_k,rloop_j) = Gnmx(2,rloop_k,rloop_j) + &
+                                Gnmx(1,rloop_k,rloop_j) * (xA - xi)
+                            Gnmx(2,rloop_k,rloop_j + 1) = Gnmx(2,rloop_k,rloop_j + 1) + &
+                                Gnmx(1,rloop_k,rloop_j) * (B*(xB-xA)/(A+B)) + &
+                                Gnmx(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    else
+                        do rloop_j = 1, rloop_i + rloop_k - 2
+                            Gnmx(rloop_i,rloop_k,rloop_j) = Gnmx(rloop_i,rloop_k,rloop_j) + &
+                                Gnmx(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                                Gnmx(rloop_i-1,rloop_k,rloop_j) * (xA - xi)
+                            Gnmx(rloop_i,rloop_k,rloop_j + 1) = Gnmx(rloop_i,rloop_k,rloop_j + 1) - &
+                                Gnmx(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                                Gnmx(rloop_i-1,rloop_k,rloop_j) * (B*(xB-xA)/(A+B)) + &
+                                Gnmx(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    end if
+                end do
+            end do
+            ! --------------------------------------------------------------------------------------
+            ! Iy(ni+nj,0,nk+nl,0,u)
+            Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)! reduce the factor (1-t^2)^(1/2)*eyp(-Dy*t^2)
+            do rloop_i = 2, nyi + nyj + 1
+                if (rloop_i == 2) then
+                    Gnmy(2,1,1) = Gnmy(2,1,1) + Gnmy(1,1,1) * (yA - yi)
+                    Gnmy(2,1,2) = Gnmy(2,1,2) + Gnmy(1,1,1) * (B*(yB-yA)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmy(rloop_i,1,rloop_j) = Gnmy(rloop_i,1,rloop_j) + &
+                            Gnmy(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                            Gnmy(rloop_i-1,1,rloop_j) * (yA - yi)
+                        Gnmy(rloop_i,1,rloop_j + 1) = Gnmy(rloop_i,1,rloop_j + 1) - &
+                            Gnmy(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                            Gnmy(rloop_i-1,1,rloop_j) * (B*(yB-yA)/(A+B))
+                    end do
+                end if
+            end do
+            do rloop_i = 2, nyk + nyl + 1
+                if (rloop_i == 2) then
+                    Gnmy(1,2,1) = Gnmy(1,2,1) + Gnmy(1,1,1) * (yB - yk)
+                    Gnmy(1,2,2) = Gnmy(1,2,2) + Gnmy(1,1,1) * (A*(yA-yB)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmy(1,rloop_i,rloop_j) = Gnmy(1,rloop_i,rloop_j) + &
+                            Gnmy(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
+                            Gnmy(1,rloop_i-1,rloop_j) * (yB - yk)
+                        Gnmy(1,rloop_i,rloop_j + 1) = Gnmy(1,rloop_i,rloop_j + 1) - &
+                            Gnmy(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
+                            Gnmy(1,rloop_i-1,rloop_j) * (A*(yA-yB)/(A+B))
+                    end do
+                end if
+            end do
+            do rloop_k = 2, nyk + nyl + 1
+                do rloop_i = 2, nyi + nyj + 1
+                    if (rloop_i == 2) then
+                        do rloop_j = 1, rloop_k
+                            Gnmy(2,rloop_k,rloop_j) = Gnmy(2,rloop_k,rloop_j) + &
+                                Gnmy(1,rloop_k,rloop_j) * (yA - yi)
+                            Gnmy(2,rloop_k,rloop_j + 1) = Gnmy(2,rloop_k,rloop_j + 1) + &
+                                Gnmy(1,rloop_k,rloop_j) * (B*(yB-yA)/(A+B)) + &
+                                Gnmy(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    else
+                        do rloop_j = 1, rloop_i + rloop_k - 2
+                            Gnmy(rloop_i,rloop_k,rloop_j) = Gnmy(rloop_i,rloop_k,rloop_j) + &
+                                Gnmy(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                                Gnmy(rloop_i-1,rloop_k,rloop_j) * (yA - yi)
+                            Gnmy(rloop_i,rloop_k,rloop_j + 1) = Gnmy(rloop_i,rloop_k,rloop_j + 1) - &
+                                Gnmy(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                                Gnmy(rloop_i-1,rloop_k,rloop_j) * (B*(yB-yA)/(A+B)) + &
+                                Gnmy(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    end if
+                end do
+            end do
+            ! Iz(ni+nj,0,nk+nl,0,u)
+            Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz) ! reduce the factor (1-t^2)^(1/2)*ezp(-Dz*t^2)
+            do rloop_i = 2, nzi + nzj + 1
+                if (rloop_i == 2) then
+                    Gnmz(2,1,1) = Gnmz(2,1,1) + Gnmz(1,1,1) * (zA - zi)
+                    Gnmz(2,1,2) = Gnmz(2,1,2) + Gnmz(1,1,1) * (B*(zB-zA)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmz(rloop_i,1,rloop_j) = Gnmz(rloop_i,1,rloop_j) + &
+                            Gnmz(rloop_i-2,1,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                            Gnmz(rloop_i-1,1,rloop_j) * (zA - zi)
+                        Gnmz(rloop_i,1,rloop_j + 1) = Gnmz(rloop_i,1,rloop_j + 1) - &
+                            Gnmz(rloop_i-2,1,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                            Gnmz(rloop_i-1,1,rloop_j) * (B*(zB-zA)/(A+B))
+                    end do
+                end if
+            end do
+            do rloop_i = 2, nzk + nzl + 1
+                if (rloop_i == 2) then
+                    Gnmz(1,2,1) = Gnmz(1,2,1) + Gnmz(1,1,1) * (zB - zk)
+                    Gnmz(1,2,2) = Gnmz(1,2,2) + Gnmz(1,1,1) * (A*(zA-zB)/(A+B))
+                else
+                    do rloop_j = 1, rloop_i - 1
+                        Gnmz(1,rloop_i,rloop_j) = Gnmz(1,rloop_i,rloop_j) + &
+                            Gnmz(1,rloop_i-2,rloop_j) * real(rloop_i-2)/(2.0_dp*B) + &
+                            Gnmz(1,rloop_i-1,rloop_j) * (zB - zk)
+                        Gnmz(1,rloop_i,rloop_j + 1) = Gnmz(1,rloop_i,rloop_j + 1) - &
+                            Gnmz(1,rloop_i-2,rloop_j) * real(rloop_i-2)*A/(2.0_dp*B*(A+B)) + &
+                            Gnmz(1,rloop_i-1,rloop_j) * (A*(zA-zB)/(A+B))
+                    end do
+                end if
+            end do
+            do rloop_k = 2, nzk + nzl + 1
+                do rloop_i = 2, nzi + nzj + 1
+                    if (rloop_i == 2) then
+                        do rloop_j = 1, rloop_k
+                            Gnmz(2,rloop_k,rloop_j) = Gnmz(2,rloop_k,rloop_j) + &
+                                Gnmz(1,rloop_k,rloop_j) * (zA - zi)
+                            Gnmz(2,rloop_k,rloop_j + 1) = Gnmz(2,rloop_k,rloop_j + 1) + &
+                                Gnmz(1,rloop_k,rloop_j) * (B*(zB-zA)/(A+B)) + &
+                                Gnmz(1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    else
+                        do rloop_j = 1, rloop_i + rloop_k - 2
+                            Gnmz(rloop_i,rloop_k,rloop_j) = Gnmz(rloop_i,rloop_k,rloop_j) + &
+                                Gnmz(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)/(2.0_dp*A) + &
+                                Gnmz(rloop_i-1,rloop_k,rloop_j) * (zA - zi)
+                            Gnmz(rloop_i,rloop_k,rloop_j + 1) = Gnmz(rloop_i,rloop_k,rloop_j + 1) - &
+                                Gnmz(rloop_i-2,rloop_k,rloop_j) * real(rloop_i-2)*B/(2.0_dp*A*(A+B)) + &
+                                Gnmz(rloop_i-1,rloop_k,rloop_j) * (B*(zB-zA)/(A+B)) + &
+                                Gnmz(rloop_i-1,rloop_k-1,rloop_j) * real(rloop_k-1)/(2.0_dp*(A+B))
+                        end do
+                    end if
+                end do
+            end do
+            ! transfer from xi to xj, xk to xl
+            Ixtrans = 0.0_dp
+            Ix = 0.0_dp
+            do rloop_k = 1, nxl + 1
+                do rloop_i = 0, nxj
+                    do rloop_j = 1, nxi + nxj + 1 + nxk + nxl + 1
+                        Ixtrans(rloop_k,rloop_j) = Ixtrans(rloop_k,rloop_j) + &
+                            binomialcoe(nxj,rloop_i) * (xi-xj)**(rloop_i) * Gnmx(nxi+nxj+1-rloop_i, nxk+nxl+1-(rloop_k-1),rloop_j)
+                    end do
+                end do
+            end do
+            do rloop_i = 0, nxl
+                do rloop_j = 1, nxi + nxj + 1 + nxk + nxl + 1
+                    Ix(rloop_j) = Ix(rloop_j) + binomialcoe(nxl,rloop_i) * (xk-xl)**(rloop_i) * Ixtrans(rloop_i + 1,rloop_j)
+                end do
+            end do
+            ! transfer from yi to yj, yk to yl
+            Iytrans = 0.0_dp
+            Iy = 0.0_dp
+            do rloop_k = 1, nyl + 1
+                do rloop_i = 0, nyj
+                    do rloop_j = 1, nyi + nyj + 1 + nyk + nyl + 1
+                        Iytrans(rloop_k,rloop_j) = Iytrans(rloop_k,rloop_j) + &
+                            binomialcoe(nyj,rloop_i) * (yi-yj)**(rloop_i) * Gnmy(nyi+nyj+1-rloop_i, nyk+nyl+1-(rloop_k-1),rloop_j)
+                    end do
+                end do
+            end do
+            do rloop_i = 0, nyl
+                do rloop_j = 1, nyi + nyj + 1 + nyk + nyl + 1
+                    Iy(rloop_j) = Iy(rloop_j) + binomialcoe(nyl,rloop_i) * (yk-yl)**(rloop_i) * Iytrans(rloop_i + 1,rloop_j)
+                end do
+            end do
+            ! transfer from zi to zj, zk to zl
+            Iztrans = 0.0_dp
+            Iz = 0.0_dp
+            do rloop_k = 1, nzl + 1
+                do rloop_i = 0, nzj
+                    do rloop_j = 1, nzi + nzj + 1 + nzk + nzl + 1
+                        Iztrans(rloop_k,rloop_j) = Iztrans(rloop_k,rloop_j) + &
+                            binomialcoe(nzj,rloop_i) * (zi-zj)**(rloop_i) * Gnmz(nzi+nzj+1-rloop_i, nzk+nzl+1-(rloop_k-1),rloop_j)
+                    end do
+                end do
+            end do
+            do rloop_i = 0, nzl
+                do rloop_j = 1, nzi + nzj + 1 + nzk + nzl + 1
+                    Iz(rloop_j) = Iz(rloop_j) + binomialcoe(nzl,rloop_i) * (zk-zl)**(rloop_i) * Iztrans(rloop_i + 1,rloop_j)
+                end do
+            end do
+            ! product of Ix, Iy, Iz
+            allocate(PL(nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1))
+            PL = 0.0_dp
+            !do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
+            !    rloop_j = 1
+            !    rloop_k = 1
+            !    do while(rloop_i+2 - rloop_j - rloop_k >= 1 .and. rloop_j <= nyi + nyj + 1 + nyk + nyl + 1)
+            !        do while(rloop_i+2 - rloop_j - rloop_k >= 1 .and. rloop_k <= nzi + nzj + 1 + nzk + nzl + 1)
+            !            if (rloop_i+2 - rloop_j - rloop_k <= nxi + nxj + 1 + nxk + nxl + 1) then
+            !                PL(rloop_i) = PL(rloop_i) + Ix(rloop_i+2 - rloop_j - rloop_k) * Iy(rloop_j) * Iz(rloop_k)
+            !            end if
+            !            rloop_k = rloop_k + 1
+            !        end do
+            !        rloop_j = rloop_j + 1
+            !        rloop_k = 1
+            !    end do
+            !end do
+            
+            do rloop_i = 0, nxi + nxj + 1 + nxk + nxl
+                do rloop_j = 0, nyi + nyj + 1 + nyk + nyl
+                    do rloop_k = 0, nzi + nzj + 1 + nzk + nzl
+                        PL(rloop_i + rloop_j + rloop_k + 1) = PL(rloop_i + rloop_j + rloop_k + 1)&
+                            + Ix(rloop_i+1) * Iy(rloop_j+1) * Iz(rloop_k+1)
+                    end do
+                end do
+            end do
+            PL = PL * 2.0_dp * sqrt(rou/pi)
+            ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
+            integral = 0.0_dp
+            if (abs(X) < 1E-13) then 
+                do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
+                    integral_mic = 1.0_dp / (real(2*rloop_i-2) + 1.0_dp)
+                    integral = integral + PL(rloop_i) * integral_mic
+                end do
+            else if (abs(X) <= xts) then
+                allocate(NX_mic(tayeps))
+                allocate(NX_mic_pre(tayeps))
+                allocate(NX_mic_pre_pre(tayeps))
+                rloop_i = 1
+                do while(rloop_i <= nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1)
+                    rloop_j = 0
+                    do while(rloop_j <= 2 * rloop_i - 2)
+                        if (rloop_j == 0) then ! sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
+                            do rloop_k=1,tayeps
+                                NX_mic(rloop_k)=(-1.0_dp)**(rloop_k)*(1.0_dp/(real(2*rloop_k+1)*factorial(rloop_k)))
+                            end do
+                        else if(rloop_j == 1) then ! (1.0_dp - exp(-X)) / (2.0_dp * X)
+                            NX_mic_pre = NX_mic
+                            do rloop_k=1,tayeps
+                                NX_mic(rloop_k)=(-1.0_dp)**(rloop_k)*(1.0_dp/(factorial(rloop_k+1)))
+                            end do
+                        else ! (-exp(-X) + real(rloop_j - 1) * integral_mic_pre_pre) / (2.0_dp * X)
+                            NX_mic_pre_pre = NX_mic_pre
+                            NX_mic_pre = NX_mic
+                            do rloop_k=1,tayeps-1
+                                NX_mic(rloop_k)=((-1.0_dp)**(rloop_k)*(0.5_dp/(factorial(rloop_k+1)))+(NX_mic_pre_pre(rloop_k+1))/2.0_dp) * real(rloop_j+1)
+                            end do
+                            NX_mic(tayeps)=((-1.0_dp)**tayeps*(0.5_dp/(factorial(tayeps+1)))) * real(rloop_j+1)
+                        end if
+                        rloop_j = rloop_j + 1
+                    end do
+                    if (2 * rloop_i - 2 == 0) then
+                        integral_mic = 0.0_dp
+                        do rloop_k=1,tayeps
+                            integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(1.0_dp/(real(2*(rloop_k)-1)*factorial(rloop_k-1)))
+                        end do
+                    else if (2 * rloop_i - 2 == 1) then
+                        integral_mic = 0.0_dp
+                        do rloop_k=1,tayeps
+                            integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(0.5_dp/factorial(rloop_k))
+                        end do
+                    else
+                        integral_mic = 0.0_dp
+                        do rloop_k=1,tayeps
+                            integral_mic = integral_mic + (-1.0_dp)**(rloop_k+1)*X**(rloop_k-1)*(0.5_dp/factorial(rloop_k))&
+                                + X**(rloop_k-1)*NX_mic_pre_pre(rloop_k)/2.0_dp
+                        end do
+                    end if
+                    integral = integral + PL(rloop_i) * integral_mic
+                    rloop_i = rloop_i + 1
+                end do
+                deallocate(NX_mic)
+                deallocate(NX_mic_pre)
+                deallocate(NX_mic_pre_pre)
+            else
+                do rloop_i = 1, nxi + nxj + 1 + nxk + nxl + 1 + nyi + nyj + 1 + nyk + nyl + 1 + nzi + nzj + 1 + nzk + nzl + 1
+                    do rloop_j = 0, 2*rloop_i - 2
+                        if (rloop_j == 0) then
+                            integral_mic = sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
+                        else if(rloop_j == 1) then
+                            integral_mic_pre = integral_mic
+                            integral_mic = (1.0_dp - exp(-X)) / (2.0_dp * X)
+                        else
+                            integral_mic_pre_pre = integral_mic_pre
+                            integral_mic_pre = integral_mic
+                            integral_mic = (-exp(-X) + real(rloop_j - 1) * integral_mic_pre_pre) / (2.0_dp * X)
+                        end if
+                    end do
+                    integral = integral + PL(rloop_i) * integral_mic
+                end do
+            end if
+            V_Integral_2e = integral
+            deallocate(PL)
+            deallocate(Gnmx)
+            deallocate(Ixtrans)
+            deallocate(Ix)
+            deallocate(Gnmy)
+            deallocate(Iytrans)
+            deallocate(Iy)
+            deallocate(Gnmz)
+            deallocate(Iztrans)
+            deallocate(Iz)
+            return
+        end if
     end function V_Integral_2e
 end module Hamiltonian
