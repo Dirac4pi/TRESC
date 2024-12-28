@@ -1,21 +1,24 @@
 '''
 script for visualizing 2-component complex MOs
 
-input: 2 cube format files contain (alpha real
- & beta real), (alpha imagine & beta imagine)
-of a selected 2-component complex MO
+input: 2 Gaussian cube format files contain 
+(alpha real & beta real), (alpha imagine & 
+beta imagine)of a selected 2-component com-
+plex MO
 
 output: amplitude isosurface with phase colour
 mapping, contains alpha & beta components
 '''
 
-import os
+from os import environ
 import numpy as np
-import json
+import qcelemental as qcel
+qcel.CovalentRadii("ALVAREZ2008")
+from json import load as jsload
 from mayavi import mlab
 
 
-def read_cube(cube_address, imo):
+def read_cube(cube_address, imo=0):
     '''
     load data in cube format file.
     ----------
@@ -36,12 +39,15 @@ def read_cube(cube_address, imo):
     else:
         f.close()
     with open(cube_address, 'r') as f:
-        f.readline()
-        f.readline()
-        
         # read natom and coordination
-        ncenter, orgx, orgy, orgz = map(float, f.readline().split())
-        
+        while True:
+            try:
+                ncenter, orgx, orgy, orgz = map(float, f.readline().split())
+            except ValueError:
+                continue
+            else:
+                break
+                
         # read grid information
         n1, v1x, v1y, v1z = map(float, f.readline().split())
         n2, v2x, v2y, v2z = map(float, f.readline().split())
@@ -64,31 +70,41 @@ def read_cube(cube_address, imo):
             atoms[i]['index'], atoms[i]['charge'], atoms[i]['x'], \
                 atoms[i]['y'], atoms[i]['z'] = map(float, f.readline().split())
 
-        # read the number of MOs if exist
-        if nmo == 1:
+        if nmo == 1:  # read the number of MOs if exist
             nmo = int(f.readline().split()[0])
-
-        if nmo < imo:
-            exit('bad call read_cube: nmo < imo.')
-        elif imo <= 0:
-            exit('bad call read_cube: imo <= 0.')
-
-        # read grid data
-        for i in range(int(n1)):
-            for j in range(int(n2)):
-                iline = 1
-                line = f.readline().split()
-                for k in range(imo, int(n3*nmo)+1, nmo):
-                    if k // 6 >= iline:
-                        line = f.readline().split()
-                        iline += 1
-                    if imo == nmo:
-                        cubmat[i,j,k//nmo-1]['value'] = float(line[k%6-1])
+            if nmo < imo:
+                exit('bad call read_cube: nmo < imo.')
+            elif imo <= 0:
+                exit('bad call read_cube: nmo > 0 but imo <= 0.')
+            # read grid data
+            for i in range(int(n1)):
+                for j in range(int(n2)):
+                    iline = 1
+                    line = f.readline().split()
+                    for k in range(imo, int(n3*nmo)+1, nmo):
+                        if k // 6 >= iline:
+                            line = f.readline().split()
+                            iline += 1
+                        if imo == nmo:
+                            cubmat[i,j,k//nmo-1]['value'] = float(line[k%6-1])
+                            #line[-1] is same as line[5]
+                        else:
+                            cubmat[i,j,k//nmo]['value'] = float(line[k%6-1])
+        else:   # read real-space function
+            if imo != 0:
+                Warning('no orbital in cube file but imo != 0')
+            # read grid data
+            for i in range(int(n1)):
+                for j in range(int(n2)):
+                    iline = 1
+                    line = f.readline().split()
+                    for k in range(1, int(n3)+1):
+                        if k // 6 >= iline:
+                            line = f.readline().split()
+                            iline += 1
+                        cubmat[i,j,k-1]['value'] = float(line[k%6-1])
                         #line[-1] is same as line[5]
-                    else:
-                        cubmat[i,j,k//nmo]['value'] = float(line[k%6-1])
-
-
+        
         # assign coordinate information to each grid point
         for i in range(int(n1)):
             for j in range(int(n2)):
@@ -99,6 +115,7 @@ def read_cube(cube_address, imo):
                         (j) * v2y + (k) * v3y
                     cubmat[i, j, k]['z'] = orgz + (i) * v1z + \
                         (j) * v2z + (k) * v3z
+            
     return atoms, cubmat, nmo
 
 def cmplx_amp_plot(title, window, real, img, x, y, z):
@@ -126,21 +143,33 @@ def cmplx_amp_plot(title, window, real, img, x, y, z):
     '''
     fig = mlab.figure(window, size=(600,600), fgcolor=(0,0,0), \
         bgcolor=(1,1,1))
+    fig_try = mlab.figure(675)
     contours = 0.1
     # plot isosurface of amplitude
     # amplitude of MO not amplitude of linear combine of AO
     amplitude = np.sqrt(np.add(np.square(real), np.square(img)))
-    while True:
-        try:
+    try:
+        mlab.contour3d(x, y, z, amplitude, figure=fig_try, contours=[contours])
+    except Exception as e:
+        print(f'Error: {e}')
+        if str(e).find('Contour instance must be') >= 0:
+            contours = float(str(e)[str(e).rfind('<=')+3 : \
+                str(e).rfind('<=')+14]) * .5 
+                # factor of 0.5 is usually appropriate
             contour = mlab.contour3d(x, y, z, amplitude, figure=fig, \
-                contours=[contours], opacity=0.5, colormap='viridis')
-        except:
-            contours = contours / 10
-        else:
-            print()
+                contours=[contours], opacity=.2, colormap='Greys')
+            print('------')
             print('ignore previous error')
-            break
-    mlab.title(f'{title}(amplitude), isovalue={contours}')
+        else:
+            exit()
+    else:
+        contour = mlab.contour3d(x, y, z, amplitude, figure=fig, \
+            contours=[contours], opacity=.2, colormap='Greys')
+    finally:
+        mlab.title(f'{title}(amplitude), isovalue={contours}')
+        contour.actor.property.line_width = 1
+        contour.actor.property.edge_visibility = True
+    mlab.close(675)
 
 def cmplx_pha_plot(title, window, real, img, x, y, z):
     '''
@@ -185,7 +214,7 @@ def cmplx_pha_plot(title, window, real, img, x, y, z):
     # contour of phase based on contour of amplitude
     contour2 = mlab.pipeline.set_active_attribute(contour,
         point_scalars='phase', figure=fig)
-    mlab.pipeline.surface(contour2, colormap='hsv', opacity=0.5, \
+    mlab.pipeline.surface(contour2, colormap='hsv', opacity=.6, \
         vmax=np.pi, vmin=-np.pi)
     mlab.colorbar(title='phase', orientation='vertical', nb_labels=5)
     mlab.title(f'{title}(phase)')
@@ -199,7 +228,8 @@ def hex2rgb(hexcolor):
     -------
     Returns turple*1
     '''
-    hexcolor = int(hexcolor, base=16) if isinstance(hexcolor, str) else hexcolor
+    hexcolor = int(hexcolor, base=16) \
+        if isinstance(hexcolor, str) else hexcolor
     rgb = ((hexcolor >> 16) & 0xff, (hexcolor >> 8) & 0xff, hexcolor & 0xff)
     return rgb
 
@@ -221,10 +251,9 @@ def atoms_plot(window, atom_list, atomx, atomy, atomz):
     Returns None
     '''
     # load standard data
-    json_address = os.environ.get('TRESC') + \
-        '\scripts\PubChemElements_all.json'
+    json_address = environ.get('TRESC') + '\scripts\PubChemElements_all.json'
     with open(json_address,'r',encoding='utf-8') as f:
-        std_dat = json.load(f)
+        std_dat = jsload(f)
     # get information of each atom
     atom_color=[]
     atom_symbol=[]
@@ -238,7 +267,8 @@ def atoms_plot(window, atom_list, atomx, atomy, atomz):
             if i == int(j['Cell'][0]):
                 atom_symbol.append(j["Cell"][1])
                 atom_color.append(j["Cell"][4])
-                atom_radius.append(float(j["Cell"][7]))
+                atom_radius.append(qcel.covalentradii.get(i)) # covalent (CSD)
+                #atom_radius.append(float(j["Cell"][7])/150.) # Van der Waal
                 break
     # plot atoms
     fig = mlab.figure(window)
@@ -248,11 +278,11 @@ def atoms_plot(window, atom_list, atomx, atomy, atomz):
         G = RGB[1] / 255.
         B = RGB[2] / 255.
         mlab.points3d(atomx[i], atomy[i], atomz[i], \
-            scale_factor=atom_radius[i]/100., resolution=20, \
-                color=(R, G, B), figure=fig, opacity=.6, scale_mode='none')
-        mlab.text3d(atomx[i], atomy[i], atomz[i], \
-            atom_symbol[i].strip(), line_width=.7, \
-                color=(0,0,0), figure=fig, scale=(.3,.3,.3))
+            scale_factor=atom_radius[i], resolution=20, \
+                color=(R, G, B), figure=fig, opacity=1., scale_mode='none')
+        #mlab.text3d(atomx[i], atomy[i], atomz[i], \
+        #    atom_symbol[i].strip(), line_width=.7, \
+        #        color=(0,0,0), figure=fig, scale=(.3,.3,.3))
     
 
 def _2corb(real_cube_address, img_cube_address):
@@ -267,7 +297,9 @@ def _2corb(real_cube_address, img_cube_address):
     Returns None
     '''
     atoms, real_mat_alpha, nmo = read_cube(real_cube_address, 1)
-    if nmo != 2:
+    if nmo == 0:
+        exit('no orbital info in cube file.')
+    elif nmo != 2:
         exit('cube file should contain both alpha and beta orbitals.')
     # grid data
     x = real_mat_alpha['x']

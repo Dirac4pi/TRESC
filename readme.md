@@ -16,9 +16,9 @@ Current version of program has **NOT** been tested on any test set since it's st
 * support dispersion correction via DFT-D4 program developed by Grimme's group;
 # Characteristic
 ## Visualisation of 2-component complex MO
-Molecular orbitals can be exported to a molden format file containing alpha and beta components. Based on this, one can generate a cube format file for the specified orbital and then use `/scripts/2cvis.py` to plot the amplitude and phase distributions of alpha and beta components (a total of 4). The results are as follows:  
-![image](docs/figure_5.png) 
-It's the HOMO orbital of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
+Molecular orbitals can be exported to a molden format file containing alpha and beta components. Based on this, one can generate a Gaussian cube format file for the specified orbital and then use `/scripts/2cvis.py` to plot the amplitude and phase distributions of alpha and beta components (a total of 4). The results are as follows:  
+![image](docs/figure_2.png) 
+It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
 ## A special Hamiltonian: SRTP
 Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial component ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
 To accomplish this, the author carried out a new kinematic and dynamic study of spin 4-vector. We start with a newly-defined reference frame transformation rule, which makes observed $$\vec{s}/s$$ from any frame identical with observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
