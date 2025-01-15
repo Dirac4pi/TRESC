@@ -495,7 +495,14 @@ module Atoms
                             read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),"(F)",iostat = ios) damp
                             if (ios /= 0) call terminate("Mix parameter should be written as 'damp=n'")
                         else
-                            call terminate("Mix parameter should be written as 'damp=n'")
+                            call terminate("Mix parameter should be written as 'diisdamp=n'")
+                        end if
+                    else if (index(keyword,'diisdamp') == 1) then
+                        if (index(keyword,'=') /= 0) then
+                            read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),"(F)",iostat = ios) diisdamp
+                            if (ios /= 0) call terminate("DIIS mix parameter should be written as 'diisdamp=n'")
+                        else
+                            call terminate("Mix parameter should be written as 'diisdamp=n'")
                         end if
                     else if (index(keyword,'prtlev') == 1) then
                         if (index(keyword,'=') /= 0) then
@@ -513,6 +520,13 @@ module Atoms
                             if (ios /= 0) call terminate("Cutting DIIS threshold should be written as 'cutdiis=n'")
                         else
                             call terminate("Cutting DIIS threshold should be written as 'cutdiis=n'")
+                        end if
+                    else if (index(keyword,'cutdamp') == 1) then
+                        if (index(keyword,'=') /= 0) then
+                            read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),"(F)",iostat = ios) cutdamp
+                            if (ios /= 0) call terminate("Cutting damp threshold should be written as 'cutdamp=n'")
+                        else
+                            call terminate("Cutting damp threshold should be written as 'cutdamp=n'")
                         end if
                     else if (trim(keyword) == 'keepspin') then
                         keepspin = .true.
@@ -574,7 +588,10 @@ module Atoms
         if (STTP_type .and. mDCB_type) call terminate('cannot set both STTP and mDCB.')
         if (subsp <= 1) call terminate('subsp two small')
         if (nodiis - subsp < 2) call terminate('nodiis should be set larger')
-        if (damp > 1.0 .or. damp < 0.0) call terminate('damp shall be in range [0,1]')
+        if (damp > 0.91 .or. damp < 0.0) call terminate('damp shall be in range [0.05,0.9]')
+        if (cutdamp < 0.0) call terminate('cutdamp should large than 0')
+        if (diisdamp > 1.0 .or. diisdamp < 0.0) call terminate('diisdamp shall be in range [0,1]')
+        if (cutdiis < 0.0) call terminate('cutdiis should large than 0')
     end subroutine input_check
     
     !-----------------------------------------------------------------------
@@ -590,8 +607,13 @@ module Atoms
         write(ch1,"(I1)") charge
         write(60,'(a)') '   calling DFT-D4 for dispersion correction'
         ! take .xyz file as input file of DFT-D4
-        call system('dftd4 '//trim(address_molecular)//' -f '//method//' -c '//ch1//' --noedisp --json '&
+        ios = system('dftd4 '//trim(address_molecular)//' -f '//method//' -c '//ch1//' --noedisp --json '&
             //trim(address_job)//'.emd4 -s -s')
+        if (ios == -1) then
+            write(60,'(a)') '   DFT-D4 failed with error calling, dispersion energy set zero'
+            emd4 = 0.0
+            return
+        end if
         open(20,file = trim(address_job)//'.emd4', status='old', action='read', iostat=ios)
         if (ios /= 0) then
             write(60,'(a)') '   DFT-D4 failed with empty result, dispersion energy set zero'

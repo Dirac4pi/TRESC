@@ -1,3 +1,4 @@
+! CH2 3et DKH2
 3
 
  C                  0.00000000    0.00000000    0.10307000
@@ -12,14 +13,11 @@ endAtoms
 
 %Hamiltonian
 dkh2
-threads=7
+threads=8
 finitenuc
 endHamiltonian
 
 %SCF
-prtlev=0.1
-cutdiis=0.1
-schwarz=0.00000001
 keepspin
 emd4
 endSCF

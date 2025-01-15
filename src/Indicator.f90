@@ -4,8 +4,6 @@
 ! |--------------------------<PROCESS CONTROL>-------------------------|
     
 module Indicator
-    use Atoms
-    use Hamiltonian
     use SCF
     contains
     

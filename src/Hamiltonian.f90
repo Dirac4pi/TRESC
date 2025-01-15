@@ -110,6 +110,7 @@ module Hamiltonian
     contains
 
     subroutine DKH_Hamiltonian()
+        implicit none
 !------------------<NONRELATIVISTIC HAMILTONIAN>------------------
         if (DKH_order == 0) then
             write(60,'(A)') 'Module Hamiltonian: one electron integral calculation'
@@ -152,7 +153,7 @@ module Hamiltonian
                     i_j_u(loop_i,loop_j) = i_j(loop_i,loop_j)
                 end do
             end do
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,-1,iwork,-1,info)
             liwork = iwork(1)
             lwork = nint(work(1))
@@ -160,7 +161,7 @@ module Hamiltonian
             deallocate(iwork)
             allocate(work(lwork))
             allocate(iwork(liwork))
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,lwork,iwork,liwork,info) ! DO NOT transpose Lowdin
             if(info < 0) then
                 call terminate('illegal input of dsyevr')
@@ -171,7 +172,7 @@ module Hamiltonian
             i_j_u = 0.0_dp
             do loop_i = 1, basis_dimension
                 if (evl(loop_i) < 0.0) call terminate('overlap integral less than zero, may due to code error')
-                if (abs(evl(loop_i)) < dlamch('S')) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
+                if (abs(evl(loop_i)) < safmin) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
                 if (smallest_evl > evl(loop_i)) smallest_evl = evl(loop_i)
                 i_j_u(loop_i,loop_i) = 1.0_dp / sqrt(evl(loop_i))
             end do
@@ -224,7 +225,7 @@ module Hamiltonian
             write(60,'(A)') '   QED effect considered: radiative correction(c^-3, c^-4, spin-dependent).'
             write(60,'(A)') '   1e DKH transformation: scalar terms up to c^-2 order, spin-dependent'
             write(60,'(A)') '   terms up to c^-4 order.'
-            write(60,'(A)') '   Incompleteness of basis may increase error in Fock construction since RI is involved.'
+            write(60,'(A)') '   Incompleteness of basis introduces error in DKH2 Fock construction.'
             ! OpenMP set up
             cpu_threads = omp_get_num_procs()
             write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
@@ -265,7 +266,7 @@ module Hamiltonian
                     i_j_u(loop_i,loop_j) = i_j(loop_i,loop_j)
                 end do
             end do
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,-1,iwork,-1,info)
             liwork = iwork(1)
             lwork = nint(work(1))
@@ -273,7 +274,7 @@ module Hamiltonian
             deallocate(iwork)
             allocate(work(lwork))
             allocate(iwork(liwork))
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,lwork,iwork,liwork,info) ! DO NOT transpose Lowdin
             if(info < 0) then
                 call terminate('illegal input of dsyevr')
@@ -284,7 +285,7 @@ module Hamiltonian
             i_j_u = 0.0_dp
             do loop_i = 1, basis_dimension
                 if (evl(loop_i) < 0.0) call terminate('overlap integral less than zero, may due to code error')
-                if (abs(evl(loop_i)) < dlamch('S')) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
+                if (abs(evl(loop_i)) < safmin) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
                 if (smallest_evl > evl(loop_i)) smallest_evl = evl(loop_i)
                 i_j_u(loop_i,loop_i) = 1.0_dp / sqrt(evl(loop_i))
             end do
@@ -382,7 +383,7 @@ module Hamiltonian
                     i_p2_j_u(loop_i,loop_j) = i_p2_j(loop_i,loop_j)
                 end do
             end do
-            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count_p2,evl_p2,AO2p2,basis_dimension,isupp_ev_p2,work_p2,-1,iwork_p2,-1,info)
             liwork_p2 = iwork_p2(1)
             lwork_p2 = nint(work_p2(1))
@@ -390,7 +391,7 @@ module Hamiltonian
             deallocate(iwork_p2)
             allocate(work_p2(lwork_p2))
             allocate(iwork_p2(liwork_p2))
-            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count_p2,evl_p2,AO2p2,basis_dimension,isupp_ev_p2,work_p2,lwork_p2,iwork_p2,liwork_p2,info) ! DO NOT transpose AO2p2
             if(info < 0) then
                 call terminate('illegal input of dsyevr')
@@ -904,6 +905,7 @@ module Hamiltonian
 ! calc values to matrix <AOi|pVp|AOj> (9 matrices)
 !  pxVpx pyVpy pzVpz pxVpy pyVpx pxVpz pzVpx pyVpz pzVpy
     function calc_1e_pVp(char_der,contr_i,contr_j,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j) result(integral_pot)
+        implicit none
         integer,intent(in) :: contr_i
         integer,intent(in) :: contr_j
         integer :: sloop_i,sloop_j,sloop_pot             ! sloop is loop variables only for subroutine calc_1e_pVp
@@ -952,6 +954,7 @@ module Hamiltonian
 ! calc values to matrix <AOi|p^3Vp|AOj> (9 matrices)
 !  px3Vpx py3Vpy pz3Vpz px3Vpy py3Vpx px3Vpz pz3Vpx py3Vpz pz3Vpy
     function calc_1e_pppVp(char_der,contr_i,contr_j,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j) result(integral_pot)
+        implicit none
         integer,intent(in) :: contr_i
         integer,intent(in) :: contr_j
         integer :: tloop_i,tloop_j,tloop_pot             ! tloop is loop variables only for subroutine calc_1e_pppVp
@@ -1077,6 +1080,7 @@ module Hamiltonian
 ! full space integration of the product of 2 Gaussian functions in Cartesian coordinate: 
 ! coe*factor_i(x,y,z)*factor_j(x,y,z)*exp(-exponent_i*¦²(x-coordinate_i)^2)*exp(-exponent_j*¦²(x-coordinate_j)^2)
     real(dp) function Gaussian_Product_Integral(coefficient,factor_i,factor_j,exponent_i,exponent_j,coordinate_i,coordinate_j)
+        implicit none
         real(dp) :: coefficient                                              ! coefficient of Gaussian product
         real(dp) :: expo                                                     ! exponent of Gaussian product
         real(dp) :: coordinate(3)                                            ! coordinate of Gaussian product
@@ -1186,6 +1190,7 @@ module Hamiltonian
 ! integration of electron-nuclear attraction potential in Cartesian coordinate: 
 ! use inategral transformation: (x-xi)^m*(x-xj)^n*expo(-b*x^2)*expo(x^2*t^2)dxdt
     real(dp) function V_Integral_1e(Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j,rn)
+        implicit none
         real(dp),intent(in) :: expo_i, expo_j
         real(dp) :: expo
         real(dp),intent(in) :: coe_i, coe_j
@@ -1522,6 +1527,7 @@ module Hamiltonian
 !          |AOl> : x2 - xl
 !          Li > Lj, Lk > Ll
     real(dp) function V_Integral_2e(fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i,cod_j,cod_k,cod_l)
+        implicit none
         real(dp),intent(in) :: ai, aj, ak, al
         real(dp),intent(in) :: cod_i(3),cod_j(3),cod_k(3),cod_l(3)
         real(dp) :: xi, xj, xk, xl, yi, yj, yk, yl, zi, zj, zk, zl
@@ -2174,4 +2180,176 @@ module Hamiltonian
             return
         end if
     end function V_Integral_2e
+    
+!-----------------------------------------------------------------------
+! normalization factor of each basis
+    
+    real(dp) function AON(a,l,m,n)
+        implicit none
+        real(dp),intent(in) :: a
+        integer,intent(in) :: l,m,n
+        integer :: s,hl,hm,hn
+        if (l == 0) then
+            hl = 1
+        else
+            hl = 1
+            do s=1, 2*l-1, 2
+                hl = hl * s
+            end do
+        end if
+        if (m == 0) then
+            hm = 1
+        else
+            hm = 1
+            do s=1, 2*m-1, 2
+                hm = hm * s
+            end do
+        end if
+        if (n == 0) then
+            hn = 1
+        else
+            hn = 1
+            do s=1, 2*n-1, 2
+                hn = hn * s
+            end do
+        end if
+        AON = (2.0_dp*a/pi)**(0.75)*sqrt((4.0_dp*a)**(l+m+n)/(real(hl)*real(hm)*real(hn)))
+        return
+    end function AON
+    
+!-----------------------------------------------------------------------
+! fast factorial of given a
+    
+    real(dp) function factorial(a)
+        implicit none
+        integer,intent(in) :: a
+        integer :: na
+        select case (a)
+        case (0)
+            factorial = 1.0_dp
+        case (1)
+            factorial = 1.0_dp
+        case (2)
+            factorial = 2.0_dp
+        case (3)
+            factorial = 6.0_dp
+        case (4)
+            factorial = 24.0_dp
+        case (5)
+            factorial = 120.0_dp
+        case (6)
+            factorial = 720.0_dp
+        case (7)
+            factorial = 5054.0_dp
+        case (8)
+            factorial = 40320.0_dp
+        case (9)
+            factorial = 362880.0_dp
+        case (10)
+            factorial = 3628800.0_dp
+        case (11)
+            factorial = 39916800.0_dp
+        case (12)
+            factorial = 479001600.0_dp
+        case (13)
+            factorial = 6227020800.0_dp
+        case (14)
+            factorial = 87178291200.0_dp
+        case (15)
+            factorial = 1307674368000.0_dp
+        case (16)
+            factorial = 20922789888000.0_dp
+        end select
+        if (a <= 16) then
+            return
+        else if (a < 0) then
+            call terminate('factorial is called incorrectly')
+        else
+            factorial = 20922789888000.0_dp
+            do na = 17, a
+                factorial = factorial * real(na)
+            end do
+        end if
+        return
+    end function factorial
+    
+!-----------------------------------------------------------------------
+! fast bionomial coefficient of given N, M (C_N^M)
+! M <= 9: return
+! 9 < M <= 13: recursive
+! M > 13: direct
+    
+    recursive real(dp) function binomialcoe(N,M)
+        implicit none
+        integer,intent(in) :: N,M
+        integer :: bloop_i, numerator, denominator
+        if (N < M .or. N < 0 .or. M < 0) then
+            call terminate('binomialcoe is called incorrectly')
+        else if (M == 0 .or. N == 0 .or. M == N) then
+            binomialcoe = 1.0
+            return
+        else if (M == 1) then
+            binomialcoe = real(N,dp)
+            return
+        else if (2*M > N) then
+            binomialcoe = binomialcoe(N,N-M)
+            return
+        end if
+        select case (N)
+        case (4)
+            binomialcoe = 6.0_dp
+        case (5)
+            binomialcoe = 10.0_dp
+        case (6)
+            select case (M)
+            case (2)
+                binomialcoe = 15.0_dp
+            case (3)
+                binomialcoe = 20.0_dp
+            end select
+        case (7)
+            select case (M)
+            case (2)
+                binomialcoe = 21.0_dp
+            case (3)
+                binomialcoe = 35.0_dp
+            end select
+        case (8)
+            select case (M)
+            case (2)
+                binomialcoe = 28.0_dp
+            case (3)
+                binomialcoe = 56.0_dp
+            case (4)
+                binomialcoe = 70.0_dp
+            end select
+        case (9)
+            select case (M)
+            case (2)
+                binomialcoe = 36.0_dp
+            case (3)
+                binomialcoe = 84.0_dp
+            case (4)
+                binomialcoe = 126.0_dp
+            end select
+        end select
+        if (N <= 9) then
+            return
+        else if (N <= 13) then
+            binomialcoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
+            return
+        else
+            binomialcoe = 1.0
+            numerator = 1
+            bloop_i = N
+            do while(bloop_i > M)
+                numerator = numerator * bloop_i
+                bloop_i = bloop_i - 1
+            end do
+            denominator = factorial(N - M)
+            binomialcoe = real(numerator) / real(denominator)
+            return
+        end if
+    end function binomialcoe
+    
 end module Hamiltonian

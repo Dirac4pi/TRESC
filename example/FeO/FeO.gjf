@@ -1,0 +1,13 @@
+%mem=1500MB
+%nprocshared=4
+%chk=E:\TRESC\examples\FeO\Gaussian\Scratch\FeO.chk
+# uhf/gen 6d 10f nosymm iop(3/32=2,3/27=9) int=nobasistransform
+
+FeO
+
+0 1
+ Fe                 6.75742070    0.43590531   -1.20459949
+ O                  8.57742070    0.43590531   -1.20459949
+
+@E:\TRESC\TRESC\basis\DKH-def2-SVP.gbs
+

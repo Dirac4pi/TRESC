@@ -7,18 +7,23 @@ module Fundamentals
 !-----------------------------------------------------------------------
 ! definitions for programming
     
+    use ifport
     integer :: loop_i, loop_j, loop_k, loop_m, loop_n, loop_l     ! universal loop variables
     integer :: ios                                                ! universal operating status
-    integer,parameter :: dp = selected_real_kind(12)
-    integer,parameter :: sp = kind(0.0)
-    integer :: exists
-    integer,private :: clock_time1, clock_time2                   ! job clock time
+    integer :: pid                                                ! process ID
+    integer,parameter :: dp = selected_real_kind(12)              ! double precesion
+    integer,parameter :: sp = kind(0.0)                           ! single precesion
+    real(dp) :: safmin = 1E-12                                    ! safe minimal that 1/safmin does not overflow
+    integer :: exists                                             ! whether the file exists
+    integer,private :: clock_time1, clock_time2                   ! job clock time (wall time)
     real(sp),private :: cpu_time1, cpu_time2                      ! job cpu time
     integer :: threads_use = 8                                    ! Number of threads be used
     integer :: cpu_threads                                        ! Number of threads in CPU
     character(len = 50) :: address_molecular
     character(len = 50) :: address_job
     character(len = 50) :: address_basis
+    character(len = 50) :: wd
+    character(len = 20) :: usrname
     
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
@@ -47,11 +52,13 @@ module Fundamentals
     real(dp) :: schwarz_VT = 1E-10                                ! Schwarz screening cutoff, default as 1E-10
     integer :: maxiter = 128                                      ! upper limit of convergence loops
     real(dp) :: conver_tol = 1E-8                                 ! convergence tolerence of energy
+    real(dp) :: damp = 0.0                                        ! mix the generated density matrix and original density matrix (-(dE)^damp+1)
     integer :: nodiis = 8                                         ! initial iteration steps without any mixing
     integer :: subsp = 5                                          ! dimension of suboptimal subspace
-    real(dp) :: damp = 0.7                                        ! mix the generated coefficient and original coefiicient by residual
+    real(dp) :: diisdamp = 0.7                                    ! mix the generated density matrix and original density matrix in DIIS
     real(dp) :: prtlev = 0.1                                      ! print level (minimun coefficient of AO will be printed in output file)
-    real(dp) :: cutdiis = 1E-5                                    ! cut DIIS when threshold is reached
+    real(dp) :: cutdiis = 0.0                                     ! cut DIIS when threshold is reached
+    real(dp) :: cutdamp = 0.01                                    ! cut damp when threshold is reached
     logical :: keepspin = .false.                                 ! whether to avoid spin multiplicity mutations in case of degenerate frontier orbitals
     logical :: d4 = .false.                                       ! whether to use DFT-D4 dispersion correction
     character(len=8) :: guess_type = 'gaussian'                   ! method to generate initial guess for SCF
@@ -71,28 +78,31 @@ module Fundamentals
         integer,dimension(8) :: values
         if (index(address_molecular,".xyz") /= 0) then
             address_job = address_molecular(1:index(address_molecular,".xyz") - 1)
-            open(60, file = trim(address_job)//".tot", status = "replace", action = "write")
+            open(60, file = trim(address_job)//".esc", status = "replace", action = "write")
         else
             address_job = address_molecular(1:index(address_molecular,'\',back = .true.))
-            open(60, file = trim(address_job)//"untitled.tot", status = "replace", action = "write")
+            open(60, file = trim(address_job)//"untitled.esc", status = "replace", action = "write")
         end if
         call system_clock(clock_time1)
         call cpu_time(cpu_time1)
         call date_and_time(date,time,zone,values)
         write(60,"(A21 I4 '.' I2.2 '.' I2.2 '  ' I2 ':' I2.2)") 'Job execution start: ', values(1), values(2), values(3), values(5), values(6)
+        ios = getcwd(wd)
+        if (ios == 0) write(60,"(a,a)") "WD = ", wd
+        pid = getpid()
+        call getlog(usrname)
+        write(60,"(a,i6,a,a)") "PID = ", pid, ";  username = ", usrname
         write(60,"('This file is the output file of job ' A30)") address_job
         write(60,"(a)") "Program/version: TRESC/development"
         write(60,*)
         write(60,"(a)") "Acknowledge: "
-        write(60,"(a)") "   TRESC is a 2-component DKH2 Hartree-Fock molecular self-consistent field"
-        write(60,"(a)") "   calculation program, use Cartesian basis functions for all basis."
-        write(60,"(a)") "   Make sure you have installed Gaussian and set the environment variables."
-        write(60,"(a)") "   During the calculation, Converged orbital coefficients from Gaussian will"
-        write(60,"(a)") "   be used to assign the initial density matrix, see 'Gaujob.gjf'."
+        write(60,"(a)") "   TRESC is a molecular 2-component DKH2 Hartree-Fock self-consistent field"
+        write(60,"(a)") "   calculation program, use Cartesian GTO for all basis."
+        write(60,"(a)") "   All results default to Atomic Units (A.U.)."
         write(60,*)
         write(60,"(a)") "Packages used: "
-        write(60,"(a)") "   LAPACK: linear algebra routines"
-        write(60,"(a)") "   BLAS: basic vector and matrix operations"
+        write(60,"(a)") "   LAPACK95: linear algebra routines"
+        write(60,"(a)") "   OMP_LIB: OpenMP parallel operation"
         write(60,*)
     end subroutine generate_tot
     
@@ -147,6 +157,11 @@ module Fundamentals
         integer,intent(in) :: dm
         integer :: channel, a, b
         complex(dp),intent(in) :: m(dm, dm)
+        if (size(m) < dm*dm) then
+            call terminate('dump matrix failed, dm too large')
+        else if (size(m) > dm*dm) then
+            call terminate('dump matrix failed, dm too small')
+        end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=16, status='replace', action='write', iostat=ios)
@@ -167,6 +182,11 @@ module Fundamentals
         integer,intent(in) :: dm
         integer :: channel, a, b
         real(dp),intent(in) :: m(dm, dm)
+        if (size(m) < dm*dm) then
+            call terminate('dump matrix failed, dm too large')
+        else if (size(m) > dm*dm) then
+            call terminate('dump matrix failed, dm too small')
+        end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=8, status='replace', action='write', iostat=ios)
@@ -186,6 +206,10 @@ module Fundamentals
         integer :: channel, a, b
         integer,intent(out) :: dm
         complex(dp),allocatable :: m(:,:)
+        if (allocated(m)) then
+            dm = -1
+            return
+        end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=16, status='old', action='read', iostat=ios)
@@ -208,6 +232,10 @@ module Fundamentals
         integer :: channel, a, b
         integer,intent(out) :: dm
         real(dp),allocatable :: m(:,:)
+        if (allocated(m)) then
+            dm = -1
+            return
+        end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=8, status='old', action='read', iostat=ios)
@@ -222,89 +250,6 @@ module Fundamentals
         end do
         close(channel)
     end subroutine read_matrix_real
-    
-!-----------------------------------------------------------------------
-! bionomial coefficient of given N, M (C_N^M)
-    
-    real(dp) function binomialcoe(N,M)
-        integer,intent(in) :: N,M
-        integer :: bloop_i, numerator, denominator
-        if (N < M .or. N < 0 .or. M < 0) then
-            call terminate('binomialcoe is called incorrectly')
-        else if(M == 0 .or. N == 0 .or. M == N) then
-            binomialcoe = 1.0
-            return
-        end if
-        binomialcoe = 1.0
-        numerator = 1
-        bloop_i = N
-        do while(bloop_i > M)
-            numerator = numerator * bloop_i
-            bloop_i = bloop_i - 1
-        end do
-        denominator = 1
-        bloop_i = N - M
-        do while(bloop_i > 1)
-            denominator = denominator * bloop_i
-            bloop_i = bloop_i - 1
-        end do
-        binomialcoe = real(numerator) / real(denominator)
-        return
-    end function binomialcoe
-    
-!-----------------------------------------------------------------------
-! normalization factor of each basis
-    
-    real(dp) function AON(a,l,m,n)
-        real(dp),intent(in) :: a
-        integer,intent(in) :: l,m,n
-        integer :: s,hl,hm,hn
-        if (l == 0) then
-            hl = 1
-        else
-            hl = 1
-            do s=1, 2*l-1, 2
-                hl = hl * s
-            end do
-        end if
-        if (m == 0) then
-            hm = 1
-        else
-            hm = 1
-            do s=1, 2*m-1, 2
-                hm = hm * s
-            end do
-        end if
-        if (n == 0) then
-            hn = 1
-        else
-            hn = 1
-            do s=1, 2*n-1, 2
-                hn = hn * s
-            end do
-        end if
-        AON = (2.0_dp*a/pi)**(0.75)*sqrt((4.0_dp*a)**(l+m+n)/(real(hl)*real(hm)*real(hn)))
-        return
-    end function AON
-    
-!-----------------------------------------------------------------------
-! factorial of given a
-    
-    real(dp) function factorial(a)
-        integer,intent(in) :: a
-        integer :: na
-        factorial = 1.0_dp
-        if (a == 0) then
-            return
-        else if (a < 0) then
-            call terminate('factorial is called incorrectly')
-        else
-            do na=1, a
-                factorial = factorial * real(na)
-            end do
-        end if
-        return
-    end function factorial
     
 !-----------------------------------------------------------------------
 ! convert a string to lowercase

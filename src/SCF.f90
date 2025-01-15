@@ -4,11 +4,7 @@
 ! |----------------<SELF CONSISTENT FIELD CALCULATIONS>----------------|
 
 module SCF
-    use Fundamentals
     use Hamiltonian
-    use Atoms
-    use lapack95
-    use omp_lib
     
     ! density matrices and molecular orbital coefficients
     integer Nalpha, Nbeta                                            ! number of alpha and beta elctron for initial wave function
@@ -84,8 +80,9 @@ module SCF
     real(dp) :: ESR                                                  ! second relativistic Thomas precession energy
     real(dp) :: emd4                                                 ! dispersion energy calculated by DFT-D4
 
-    ! DIIS Ax=B
+    ! damping & DIIS(AX=B)
     complex(dp),allocatable :: rou_pre(:,:)                          ! privious rou_m of current iteration
+    complex(dp),allocatable :: rou_pre_pre(:,:)                      ! privious rou_m of privious iteration
     complex(dp),allocatable :: rou_history(:,:,:)                    ! coefficients of subsp iteration
     complex(dp),allocatable :: Rsd(:,:,:)                            ! residuals of rou_m
     complex(dp),allocatable :: DIISmat(:,:)                          ! A
@@ -93,6 +90,9 @@ module SCF
     integer :: lDIISwork
     integer,allocatable :: ipiv(:)
     integer :: DIIsinfo
+    real(dp) :: damp_coe
+    real(dp) :: dE_pre
+    logical :: forward = .true.
     
     
     !--------------<DEBUG>--------------
@@ -107,6 +107,7 @@ module SCF
 !------------------------------------------------------------
 ! standard Hartree Fock SCF procedure based on the Pulay (DIIS) mixing method for DKH0 & DKH2 Hamiltonian 
     subroutine DKH_Hartree_Fock(keep, kill)
+        implicit none
         integer,intent(in) :: keep                                    ! initialization level
         logical,intent(in) :: kill                                    ! whether to kill the whole program after SCF process
         integer :: iatom, ishell
@@ -125,9 +126,9 @@ module SCF
             end do
         end do
         if (isnan(nucE)) call terminate('nuclear repulsive energy anomaly, possibly due to overlapping atomic coordinates')
-        write(60,'(a45,f12.7)') '   complete! nuclear repulsive energy: (A.U.)', nucE
-        write(60,'(a,i4,a,e15.7)') '   SCF maxiter:',maxiter,';  convergence tolerance:',conver_tol
-        write(60,'(a,i3,a,i3,a,f12.6,a,e15.7)') '   nodiis =',nodiis,';  subsp =',subsp,';  damp =',damp,';  cutdiis =',cutdiis
+        write(60,'(a,f12.7,a)') '   complete! nuclear repulsive energy = ', nucE, ' Eh'
+        write(60,'(a,i4,a,e9.3,a,f6.3,a,e9.3)') '   SCF maxiter =',maxiter,';  conv_tol = ',conver_tol,';  damp =',damp,';  cutdamp = ',cutdamp
+        write(60,'(a,i4,a,i3,a,f6.3,a,e9.3)') '   nodiis =',nodiis,';  subsp =',subsp,';  diisdamp =',diisdamp,';  cutdiis = ',cutdiis
         write(60,'(a)') '   -------------------------<SCF>-------------------------'
         allocate(Fock(2*basis_dimension,2*basis_dimension))
         allocate(orbE(2*basis_dimension))
@@ -138,12 +139,13 @@ module SCF
         
 
         ! DIIS
-        ! AO2MO(new) = ¦²(i,subsp) DIIScoe(i)*(rou_history(i)+damp*Rsd(i))
+        ! AO2MO(new) = ¦²(i,subsp) DIIScoe(i)*(rou_history(i)+diisdamp*Rsd(i))
         allocate(Rsd(subsp,2*basis_dimension,2*basis_dimension))
         allocate(DIISmat(subsp+1,subsp+1))
         allocate(ipiv(subsp+1))
         allocate(rou_history(subsp, 2*basis_dimension, 2*basis_dimension))
         allocate(rou_pre(2*basis_dimension, 2*basis_dimension))
+        allocate(rou_pre_pre(2*basis_dimension, 2*basis_dimension))
         do loop_i = 1, maxiter
             if (loop_i /= 1) write(60,'(a)') '   -------------------------------------------------------------'
             write(60,*)
@@ -299,7 +301,7 @@ module SCF
             allocate(fwork(1))
             allocate(fiwork(1))
             allocate(rwork(1))
-            call zheevr('V','A','U',2*basis_dimension,Fock,2*basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call zheevr('V','A','U',2*basis_dimension,Fock,2*basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count_f,orbE,oper3,2*basis_dimension,isupp_ev_f,fwork,-1,rwork,-1,fiwork,-1,finfo)
             flwork = nint(real(fwork(1)))
             fliwork = fiwork(1)
@@ -310,7 +312,7 @@ module SCF
             allocate(fwork(flwork))
             allocate(fiwork(fliwork))
             allocate(rwork(lrwork))
-            call zheevr('V','A','U',2*basis_dimension,Fock,2*basis_dimension,0.0_dp,0.0_dp,0,0,dlamch('S'),&
+            call zheevr('V','A','U',2*basis_dimension,Fock,2*basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
                 evl_count_f,orbE,oper3,2*basis_dimension,isupp_ev_f,fwork,flwork,rwork,lrwork,fiwork,fliwork,finfo)
             if (finfo < 0) then
                 call terminate('Fock matrix diagonalization failure, illegal input of zheevr')
@@ -340,7 +342,7 @@ module SCF
             do loop_j = 1, electron_count
                 eleE = eleE + real(oper4(loop_j,loop_j))
             end do
-            write(60,'(a,f12.6)') '   --- electron repulsive energy', eleE
+            write(60,'(a,f12.6)') '   --- electron repulsive energy            ', eleE
                 ! calculate molE
                 if (loop_i /= 1) molE_pre = molE
                 molE = nucE - eleE/2.0_dp
@@ -353,14 +355,14 @@ module SCF
             do loop_j = 1, electron_count
                 T = T + real(oper4(loop_j,loop_j))
             end do
-            write(60,'(a,f12.6)') '   --- electron kinetic energy', T
+            write(60,'(a,f12.6)') '   --- electron kinetic energy              ', T
             V = 0.0_dp
             call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exi_V_j, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
             call zgemm( 'N', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper6, 2*basis_dimension, oper3, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper4, 2*basis_dimension)
             do loop_j = 1, electron_count
                 V = V + real(oper4(loop_j,loop_j))
             end do
-            write(60,'(a,f12.6)') '   --- electron-nuclear attraction energy', V
+            write(60,'(a,f12.6)') '   --- electron-nuclear attraction energy   ', V
             if (DKH_order == 2) then
                 ESOC = 0.0_dp
                 call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSOC, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
@@ -368,7 +370,7 @@ module SCF
                 do loop_j = 1, electron_count
                     ESOC = ESOC + real(oper4(loop_j,loop_j))
                 end do
-                write(60,'(a,f12.6)') '   --- spin-orbital coupling energy', ESOC
+                write(60,'(a,f10.6)') '   --- spin-orbital coupling energy         ', ESOC
                 if (SRTP_type) then
                     ESR = 0.0_dp
                     call zgemm( 'C', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exSR, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), oper6, 2*basis_dimension)
@@ -376,13 +378,17 @@ module SCF
                     do loop_j = 1, electron_count
                         ESR = ESR + real(oper4(loop_j,loop_j))
                     end do
-                    write(60,'(a,f12.6)') '   --- second relativistic Thomas precession energy', ESR
+                    write(60,'(a,f10.6)') '   --- SRTP & radiative correction energy   ', ESR
                 end if
             end if
             if (DKH_order == 0) then
-                write(60,'(a,f12.6)') '   --- -<V/T> ', -(molE-T)/T
+                write(60,'(a,f12.6)') '   --- -<V>/<T>                          ', -(molE-T)/T
             else if (DKH_order == 2) then
-                write(60,'(a,f12.6)') '   --- -<V/T> ', -(molE-T-ESOC)/T
+                if (SRTP_type) then
+                    write(60,'(a,f12.6)') '   --- -<V>/<T>                          ', -(molE-T-ESOC-ESR)/T
+                else
+                    write(60,'(a,f12.6)') '   --- -<V>/<T>                          ', -(molE-T-ESOC)/T
+                end if
             end if
             ! de-Lowdin orthogonalization
             call zgemm( 'T', 'N', 2*basis_dimension, 2*basis_dimension, 2*basis_dimension, cmplx(1.0_dp,0.0_dp,dp), oper3, 2*basis_dimension, exS0_5, 2*basis_dimension, cmplx(0.0_dp,0.0_dp,dp), AO2MO, 2*basis_dimension)
@@ -391,21 +397,21 @@ module SCF
             ! convergence check
             if (loop_i == 1) then
                 write(60,'(a,f12.6)') '   SCF energy (A.U.) = ',molE
-            else 
-                if (abs(molE - molE_pre) < conver_tol) then
-                    write(60,'(a,f12.6,a,e15.7)') '   SCF energy (A.U.) = ',molE,'; delta E = ',molE - molE_pre
+            else
+                write(60,'(a,f12.6,a,e9.3)') '   SCF energy (A.U.) = ',molE,'; delta E = ',molE - molE_pre
+                if (abs(molE - molE_pre) < conver_tol .and. forward .and. damp_coe < 0.01) then
                     write(60,'(a)') '   convergence tolerance met, SCF done!'
                     write(60,'(a)') '   -------------------------------------------------------------'
                     exit
+                else
+                    write(60,'(a)') '   convergence tolerance not met'
                 end if
-                write(60,'(a,f12.6,a,e15.7)') '   SCF energy (A.U.) = ',molE,'; delta E = ',molE - molE_pre
-                write(60,'(a)') '   convergence tolerance not met'
             end if
             write(60,'(a)') '   construct density matrix'
             call assign_rou()
             write(60,'(a)') '   complete! stored in rou_m'
             write(60,'(a)') '   DIIS information'
-            if (abs(molE - molE_pre) < cutdiis .or. diiscuted) then
+            if ((abs(molE - molE_pre) < cutdiis .or. diiscuted) .and. forward) then
                 diiscuted = .true.
                 write(60,*) '   --- DIIS cutted'
                 cycle
@@ -413,6 +419,34 @@ module SCF
             ! generate next AO2MO by DIIS method
             if (loop_i <= nodiis - subsp) then
                 write(60,'(a)') '   --- no DIIS acceleration'
+                
+                
+                !--------------<damping>-----------------
+                if (loop_i > 2 .and. abs(molE - molE_pre) >= 1.5*abs(dE_pre)) then
+                    damp_coe = damp_coe + (1.0_dp-damp_coe)*0.5_dp
+                    if (damp_coe < 0.91) then
+                        rou_m = (1.0_dp - damp_coe) * rou_pre + damp_coe * rou_pre_pre
+                        write(60,'(a)') '   --- fallback '
+                        forward = .false.
+                        cycle
+                    end if
+                end if
+                if (abs(molE - molE_pre) >= cutdamp) then
+                    damp_coe = damp
+                    rou_m = (1.0 - damp_coe) * rou_m + damp_coe * rou_pre
+                    write(60,'(a,f6.3)') '   --- damped ', damp_coe
+                else if (abs(molE - molE_pre) >= cutdamp/100.0) then
+                    damp_coe = 0.5_dp*damp*log10(abs(molE - molE_pre)) + damp*(1.0_dp-0.5_dp*log10(cutdamp))
+                    rou_m = (1.0 - damp_coe) * rou_m + damp_coe * rou_pre
+                    write(60,'(a,f6.3)') '   --- damped ', damp_coe
+                else
+                    damp_coe = 0.0_dp
+                    write(60,'(a)') '   --- undamped '
+                end if
+                dE_pre = molE - molE_pre
+                !--------------<damping>-----------------
+                
+                
             else if (nodiis - subsp < loop_i .and. loop_i <= nodiis) then
                 ! update Rsd
                 do loop_j = 1, 2*basis_dimension
@@ -495,7 +529,7 @@ module SCF
                 do loop_j = 1, subsp
                     do loop_k = 1, 2*basis_dimension
                         do loop_l = 1, 2*basis_dimension
-                            rou_m(loop_k,loop_l) = rou_m(loop_k,loop_l) + DIISmat(loop_j,subsp+1) * (rou_history(loop_j,loop_k,loop_l) + damp*Rsd(loop_j,loop_k,loop_l))
+                            rou_m(loop_k,loop_l) = rou_m(loop_k,loop_l) + DIISmat(loop_j,subsp+1) * (rou_history(loop_j,loop_k,loop_l) + diisdamp*Rsd(loop_j,loop_k,loop_l))
                         end do
                     end do
                 end do
@@ -504,6 +538,7 @@ module SCF
                     write(60,'(a,i2,f10.6,a,f10.6)') '   --- subsp coe',loop_j, real(DIISmat(loop_j,subsp+1)), ',', aimag(DIISmat(loop_j,subsp+1))
                 end do
             end if
+            forward = .true.
         end do
         write(60,*)
         write(60,*)
@@ -531,13 +566,17 @@ module SCF
         write(60,'(a,f12.6)') '   electron-nuclear attraction energy / Eh       ...',V
         if (DKH_order == 2) then
             write(60,'(a,f12.6)') '   spin-orbital coupling energy / Eh             ...',ESOC
-            if (SRTP_type) write(60,'(a,f12.6)') '   SRTP energy / Eh                              ...',ESR
+            if (SRTP_type) write(60,'(a,f12.6)') '   SRTP & radiative correction energy / Eh       ...',ESR
         end if
-        if (d4) write(60,'(a,f12.6)') '   dispersion energy (DFT-D4) / Eh               ...',emd4
+        if (d4) write(60,'(a,f12.6)') '   dispersion energy (DFT-D4) / Eh               ...',emd4  
         if (DKH_order == 0) then
             write(60,'(a,f12.6)') '   Virial ratio                                  ...',-(molE-T)/T
         else if (DKH_order == 2) then
-            write(60,'(a,f12.6)') '   Virial ratio                                  ...',-(molE-T-ESOC)/T
+            if (SRTP_type) then
+                write(60,'(a,f12.6)') '   Virial ratio                                  ...',-(molE-T-ESOC-ESR)/T
+            else
+                write(60,'(a,f12.6)') '   Virial ratio                                  ...',-(molE-T-ESOC)/T
+            end if
             write(60,*)
             write(60,'(a)') '   Note: relativistic calculation cause the Virial ratio'
             write(60,'(a)') '   to deviate (usually below) 2.0.'
@@ -671,6 +710,7 @@ module SCF
         deallocate(ipiv)
         deallocate(rou_history)
         deallocate(rou_pre)
+        deallocate(rou_pre_pre)
         deallocate(Fock2_mic)
         deallocate(Fock2_assigned)
         deallocate(swintegral)
@@ -710,6 +750,7 @@ module SCF
 !------------------------------------------------------------
 ! gives an initial density matrix based on charge and spin multiplicity
     subroutine assign_rou()
+        implicit none
         integer :: ploop_i,ploop_j,ploop_k,ploop_l                      ! ploop is loop variables only for subroutine assign_rou
         integer :: mat_dimension
         integer :: Na, Nb, degenlow, degenhigh, load, unload            ! degenerat area
@@ -730,15 +771,17 @@ module SCF
                 allocate(AO2MObeta(basis_dimension,basis_dimension))
                 open(61, file = trim(address_job)//'.gaualpha', status = 'old', action = 'read', iostat = ios)
                 if (ios /= 0) then
-                    call system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaualpha 524R')
+                    ios = system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaualpha 524R')
+                    if (ios == -1) call terminate('Cannot generate .gaualpha for initial density matrix')
                     open(61, file = trim(address_job)//'.gaualpha', status = 'old', action = 'read', iostat = ios)
-                    if (ios /= 0) call terminate('Cannot generate Gaussian alpha orbital for initial density matrix')
+                    if (ios /= 0) call terminate('Cannot open .gaualpha for initial density matrix')
                 end if
                 open(62, file = trim(address_job)//'.gaubeta', status = 'old', action = 'read', iostat = ios)
                 if (ios /= 0) then
-                    call system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaubeta 526R')
+                    ios = system('rwfdump '//trim(address_job)//'.chk '//trim(address_job)//'.gaubeta 526R')
+                    if (ios == -1) call terminate('Cannot generate .gaubeta for initial density matrix')
                     open(62, file = trim(address_job)//'.gaubeta', status = 'old', action = 'read', iostat = ios)
-                    if (ios /= 0) call terminate('Cannot generate Gaussian beta orbital for initial density matrix')
+                    if (ios /= 0) call terminate('Cannot open .gaubeta for initial density matrix')
                 end if
                 do
                     read(61,'(a512)') line_str
@@ -828,7 +871,10 @@ module SCF
                 end do
             end if
         else
-            rou_pre = rou_m
+            if (forward) then
+                if (loop_i > 2) rou_pre_pre = rou_pre
+                rou_pre = rou_m
+            end if
             rou_m = cmplx(0.0_dp,0.0_dp,dp)
             do ploop_i = 1, 2*basis_dimension
                 do ploop_j = 1, 2*basis_dimension
@@ -930,20 +976,21 @@ module SCF
                 maxDP = sqrt(maxDP)
                 RMSDP = RMSDP / (4*basis_dimension*basis_dimension)
                 RMSDP = sqrt(RMSDP)
-                write(60,'(a,e12.6)') '   --- maxDP ', maxDP
-                write(60,'(a,e12.6)') '   --- RMSDP ', RMSDP
+                write(60,'(a,e9.3)') '   --- maxDP                  ', maxDP
+                write(60,'(a,e9.3)') '   --- RMSDP                  ', RMSDP
             end if
             ! calc <S**2>
             call calc_S2HF()
-            write(60,'(a,f8.5)') '   --- <S**2> ',S__2
-            write(60,'(a,f9.5)') '   --- total alpha electron ',totalpha
-            write(60,'(a,f9.5)') '   --- total beta electron ',totbeta
+            write(60,'(a,f8.5)') '   --- <S**2>                ',S__2
+            write(60,'(a,f9.5)') '   --- total alpha electron  ',totalpha
+            write(60,'(a,f9.5)') '   --- total beta electron   ',totbeta
         end if
     end subroutine assign_rou
     
 !------------------------------------------------------------
 ! construct one electron Fock operator
     subroutine Fock1e()
+        implicit none
         integer :: floop_i, floop_j, floop_k, floop_l                   ! floop is loop variables only for subroutine Fock1e
         allocate(Fock1(2*basis_dimension,2*basis_dimension))
         allocate(exi_T_j(2*basis_dimension,2*basis_dimension))
@@ -1404,6 +1451,7 @@ module SCF
 ! "direct" calculation for 2 electron Fock, which will avoid memory overflow and large amount of disk R&W
 ! but 2 electron integral will be calculated in each round of SCF
     subroutine Fock2e()
+        implicit none
         integer :: i                                                ! for parallel computation, dloop_i is replaced by i
         integer :: dloop_i, dloop_j, dloop_k, dloop_l               ! dloop is loop variables only for Fock2e routine
         integer :: dloop_m, dloop_n, dloop_o, dloop_p               ! dloop is loop variables only for Fock2e routine
@@ -1775,6 +1823,7 @@ module SCF
     !------------------------------------------------------------
     ! transfer alternating zero matrix to block matrix
     subroutine atnz2block(atnz, dm)
+        implicit none
         integer, intent(in) :: dm
         integer :: aloop_i, aloop_j
         complex(dp) :: atnz(dm,dm), aoper(dm,dm)
@@ -1803,6 +1852,7 @@ module SCF
     ! calculate <S**2> based on oper3 generated by Hartree-Fock SCF
     ! divide all occupied orbitals into two sets of alpha, beta orbitals with their original coefficients, then use the UHF method to solve Lowdin <S**2>.
     subroutine calc_S2HF()
+        implicit none
         integer cloop_i, cloop_j, cloop_k                                           ! cloop is loop variables only for calc_S2HF routine
         complex(dp) :: alal, albe, beal, bebe                                       ! components of pair density matrix
         complex(dp) :: supp1, supp2
@@ -1849,6 +1899,7 @@ module SCF
     !------------------------------------------------------------
     ! calculate <S**2> of certain orbital based on oper3 generated by Hartree-Fock SCF
     subroutine calc_S2HForb(orbnum)
+        implicit none
         integer,intent(in) :: orbnum
         integer :: zloop_i, zloop_j                                  ! zloop is loop variables only for calc_S2HForb routine
         real(dp) :: supp1, supp2
@@ -1873,9 +1924,9 @@ module SCF
     !-----------------------------------------------------------------------
     ! dump molecular orbital information to .molden file
     subroutine dump_molden()
+        implicit none
         integer :: channel, dmi, dmj, dmk
         if (.not. allocated(AO2MO)) call terminate('dump molecular orbital failed, AO2MO = NULL')
-        
         
         ! molden file contains the real part of molecular orbital
         open(newunit=channel, file=trim(address_job)//'-real.molden', status='replace', action='write', iostat=ios)
@@ -1887,7 +1938,7 @@ module SCF
         ! molecular geometry
         write(channel, '(a)') '[Atoms] AU'
         do dmi = 1, atom_count
-            write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
+            write(channel, '(a,i3,i3,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
                 dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
                 molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
         end do
@@ -1947,75 +1998,77 @@ module SCF
         end do
         close(channel)
         
-        ! molden file contains the maginary part of molecular orbital
-        open(newunit=channel, file=trim(address_job)//'-img.molden', status='replace', action='write', iostat=ios)
-        if (ios /= 0) call terminate('dump .molden failed')
-        write(channel, '(a)') '[Molden Format]'
-        write(channel, '(a)') '[Title]'
-        write(channel, '(a)') 'molden file contains the maginary part of molecular orbital of '//trim(address_molecular)
-        write(channel, *)
-        ! molecular geometry
-        write(channel, '(a)') '[Atoms] AU'
-        do dmi = 1, atom_count
-            write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
-                dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
-                molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
-        end do
-        ! basis of each atom
-        write(channel, '(a)') '[GTO]'
-        do dmi = 1, atom_count
-            write(channel, '(i3,i2)') dmi, 0
-            do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
-                if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 0) then
-                    write(channel, '(a2,i2,a)') 's', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 1) then
-                    write(channel, '(a2,i2,a)') 'p', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 2) then
-                    write(channel, '(a2,i2,a)') 'd', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 3) then
-                    write(channel, '(a2,i2,a)') 'f', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-                else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 4) then
-                    write(channel, '(a2,i2,a)') 'g', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+        if (DKH_order /= 0) then
+            ! molden file contains the maginary part of molecular orbital
+            open(newunit=channel, file=trim(address_job)//'-img.molden', status='replace', action='write', iostat=ios)
+            if (ios /= 0) call terminate('dump .molden failed')
+            write(channel, '(a)') '[Molden Format]'
+            write(channel, '(a)') '[Title]'
+            write(channel, '(a)') 'molden file contains the maginary part of molecular orbital of '//trim(address_molecular)
+            write(channel, *)
+            ! molecular geometry
+            write(channel, '(a)') '[Atoms] AU'
+            do dmi = 1, atom_count
+                write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
+                    dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
+                    molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
+            end do
+            ! basis of each atom
+            write(channel, '(a)') '[GTO]'
+            do dmi = 1, atom_count
+                write(channel, '(i3,i2)') dmi, 0
+                do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
+                    if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 0) then
+                        write(channel, '(a2,i2,a)') 's', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                    else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 1) then
+                        write(channel, '(a2,i2,a)') 'p', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                    else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 2) then
+                        write(channel, '(a2,i2,a)') 'd', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                    else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 3) then
+                        write(channel, '(a2,i2,a)') 'f', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                    else if (atom_basis(molecular(dmi)%basis_number+dmj)%angular_quantum_number == 4) then
+                        write(channel, '(a2,i2,a)') 'g', atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+                    end if
+                    do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
+                        write(channel, '(f13.7,f13.7)') atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
+                            atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+                    end do
+                end do
+                write(channel, *)
+            end do
+            write(channel, '(a)') '[6D]'
+            write(channel, '(a)') '[10F]'
+            write(channel, '(a)') '[15G]'
+            ! MO coefficient
+            write(channel, '(a)') '[MO]'
+            do dmi = 1, basis_dimension
+                write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+                write(channel, '(a)') 'Spin= Alpha'
+                call calc_S2HForb(dmi)
+                if (dmi <= electron_count) then
+                    write(channel, '(a7,f12.6)') 'Occup=', 0.5 + Szorb
+                else
+                    write(channel, '(a)') 'Occup= 0.000'
                 end if
-                do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
-                    write(channel, '(f13.7,f13.7)') atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
-                        atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+                do dmj = 1, basis_dimension
+                    write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj-1, dmi))
                 end do
             end do
-            write(channel, *)
-        end do
-        write(channel, '(a)') '[6D]'
-        write(channel, '(a)') '[10F]'
-        write(channel, '(a)') '[15G]'
-        ! MO coefficient
-        write(channel, '(a)') '[MO]'
-        do dmi = 1, basis_dimension
-            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
-            write(channel, '(a)') 'Spin= Alpha'
-            call calc_S2HForb(dmi)
-            if (dmi <= electron_count) then
-                write(channel, '(a7,f12.6)') 'Occup=', 0.5 + Szorb
-            else
-                write(channel, '(a)') 'Occup= 0.000'
-            end if
-            do dmj = 1, basis_dimension
-                write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj-1, dmi))
+            do dmi = 1, basis_dimension
+                write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
+                write(channel, '(a)') 'Spin= Beta'
+                call calc_S2HForb(dmi)
+                if (dmi <= electron_count) then
+                    write(channel, '(a7,f12.6)') 'Occup=', 0.5 - Szorb
+                else
+                    write(channel, '(a)') 'Occup= 0.000'
+                end if
+                do dmj = 1, basis_dimension
+                    write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj, dmi))
+                end do
             end do
-        end do
-        do dmi = 1, basis_dimension
-            write(channel, '(a4,e23.14)') 'Ene=', orbE(dmi)
-            write(channel, '(a)') 'Spin= Beta'
-            call calc_S2HForb(dmi)
-            if (dmi <= electron_count) then
-                write(channel, '(a7,f12.6)') 'Occup=', 0.5 - Szorb
-            else
-                write(channel, '(a)') 'Occup= 0.000'
-            end if
-            do dmj = 1, basis_dimension
-                write(channel, '(i4,f20.12)') dmj, aimag(AO2MO(2*dmj, dmi))
-            end do
-        end do
-        close(channel)
+            close(channel)
+        end if
     end subroutine dump_molden
     
 end module SCF

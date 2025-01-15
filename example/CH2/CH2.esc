@@ -1,17 +1,17 @@
-Job execution start: 2024.12.16  23:52
-This file is the output file of job E:\TRESC\examples\carbene-3et\
+Job execution start: 2025.01.11  19:40
+WD = E:\TRESC\examples\carbene-3et                     
+PID =  35236;  username = DELL                
+This file is the output file of job carbene-3et                   
 Program/version: TRESC/development
  
 Acknowledge: 
-   TRESC is a 2-component DKH2 Hartree-Fock molecular self-consistent field
-   calculation program, use Cartesian basis functions for all basis.
-   Make sure you have installed Gaussian and set the environment variables.
-   During the calculation, Converged orbital coefficients from Gaussian will
-   be used to assign the initial density matrix, see 'Gaujob.gjf'.
+   TRESC is a molecular 2-component DKH2 Hartree-Fock self-consistent field
+   calculation program, use Cartesian GTO for all basis.
+   All results default to Atomic Units (A.U.).
  
 Packages used: 
-   LAPACK: linear algebra routines
-   BLAS: basic vector and matrix operations
+   LAPACK95: linear algebra routines
+   OMP_LIB: OpenMP parallel operation
  
    -------------------------<KEYWORDS>-------------------------
    Spin multiplicity is changed to  3
@@ -54,7 +54,7 @@ Module Atoms:
    exp:      0.80000000      coe:      1.00000000
  
  
-   input geometry file path: E:\TRESC\examples\carbene-3et\carbene-3et.xyz     
+   input geometry file path: carbene-3et.xyz                                   
    -------------------------<GEOMETRY>-------------------------
     C       0.0000       0.0000       0.1948
     H       0.0000       1.8829      -0.5843
@@ -66,8 +66,8 @@ Module Hamiltonian:
    QED effect considered: radiative correction(c^-3, c^-4, spin-dependent).
    1e DKH transformation: scalar terms up to c^-2 order, spin-dependent
    terms up to c^-4 order.
-   Incompleteness of basis may increase error in Fock construction since RI is involved.
-   threads using:  7 CPU threads: 20
+   Incompleteness of basis introduces error in DKH2 Fock construction.
+   threads using:  8 CPU threads: 20
    processor bind ON, 14places
    one electron integral calculation
    complete! stored in:
@@ -83,9 +83,9 @@ Module SCF:
    construct one electron Fock matrix
    complete! stored in Fock1
    calculate nuclear repulsion energy
-   complete! nuclear repulsive energy: (A.U.)   6.1544919
-   SCF maxiter: 128;  convergence tolerance:  0.1000000E-07
-   nodiis =  8;  subsp =  5;  damp =    0.700000;  cutdiis =  0.1000000E+00
+   complete! nuclear repulsive energy =    6.1544919 Eh
+   SCF maxiter = 128;  conv_tol = 0.100E-07;  damp = 0.000;  cutdamp = 0.100E-01
+   nodiis =   8;  subsp =  5;  diisdamp = 0.700;  cutdiis = 0.000E+00
    -------------------------<SCF>-------------------------
  
  
@@ -94,7 +94,7 @@ Module SCF:
    complete! stored in rou_m
    construct two electron Fock matrix
    --- Schwarz screening of <ij||kl>
-   --- complete! cutoff:  0.10E-07; stored in swintegral
+   --- complete! cutoff:  0.10E-09; stored in swintegral
    complete! stored in Fock2
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
@@ -103,20 +103,21 @@ Module SCF:
    --- LUMO   9   -0.349388 <Sz> = -0.500
    --- gap      0.419374
    calculate energy components (A.U.)
-   --- electron repulsive energy   35.031433
-   --- electron kinetic energy   39.886655
-   --- electron-nuclear attraction energy  -78.418881
-   --- spin-orbital coupling energy   -0.033958
-   --- -<V/T>     2.031136
+   --- electron repulsive energy               35.031433
+   --- electron kinetic energy                 39.886655
+   --- electron-nuclear attraction energy     -78.609464
+   --- spin-orbital coupling energy          -0.033958
+   --- -<V>/<T>                              2.031136
    MO coefficient dump to .ao2mo file
    SCF energy (A.U.) =   -41.162528
    construct density matrix
-   --- <S**2>  2.01463
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- <S**2>                 2.01463
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
    --- no DIIS acceleration
+   --- damped  0.000
    -------------------------------------------------------------
  
  
@@ -130,23 +131,24 @@ Module SCF:
    --- LUMO   9    0.195638 <Sz> = -0.500
    --- gap      0.521773
    calculate energy components (A.U.)
-   --- electron repulsive energy   38.413271
-   --- electron kinetic energy   38.748011
-   --- electron-nuclear attraction energy  -83.432768
-   --- spin-orbital coupling energy   -0.033368
-   --- -<V/T>     1.987841
+   --- electron repulsive energy               38.413271
+   --- electron kinetic energy                 38.748011
+   --- electron-nuclear attraction energy     -83.608054
+   --- spin-orbital coupling energy          -0.033368
+   --- -<V>/<T>                              1.987841
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.310223; delta E =   0.2852305E+01
+   SCF energy (A.U.) =   -38.310223; delta E = 0.285E+01
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.133754E+00
-   --- RMSDP 0.764105E-02
-   --- <S**2>  2.01693
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.134E+00
+   --- RMSDP                  0.764E-02
+   --- <S**2>                 2.01693
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
    --- no DIIS acceleration
+   --- damped  0.000
    -------------------------------------------------------------
  
  
@@ -160,23 +162,24 @@ Module SCF:
    --- LUMO   9    0.119143 <Sz> = -0.500
    --- gap      0.544968
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.441485
-   --- electron kinetic energy   39.032945
-   --- electron-nuclear attraction energy  -82.624184
-   --- spin-orbital coupling energy   -0.033580
-   --- -<V/T>     1.999030
+   --- electron repulsive energy               37.441485
+   --- electron kinetic energy                 39.032945
+   --- electron-nuclear attraction energy     -82.807934
+   --- spin-orbital coupling energy          -0.033580
+   --- -<V>/<T>                              1.999030
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -39.028651; delta E =  -0.7184282E+00
+   SCF energy (A.U.) =   -39.028651; delta E = -.718E+00
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.302533E-01
-   --- RMSDP 0.166895E-02
-   --- <S**2>  2.01609
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.303E-01
+   --- RMSDP                  0.167E-02
+   --- <S**2>                 2.01609
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
    --- no DIIS acceleration
+   --- damped  0.000
    -------------------------------------------------------------
  
  
@@ -190,20 +193,20 @@ Module SCF:
    --- LUMO   9    0.135368 <Sz> = -0.500
    --- gap      0.542876
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.618452
-   --- electron kinetic energy   38.974518
-   --- electron-nuclear attraction energy  -82.779168
-   --- spin-orbital coupling energy   -0.033541
-   --- -<V/T>     1.996888
+   --- electron repulsive energy               37.618452
+   --- electron kinetic energy                 38.974518
+   --- electron-nuclear attraction energy     -82.963177
+   --- spin-orbital coupling energy          -0.033541
+   --- -<V>/<T>                              1.996888
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.886774; delta E =   0.1418772E+00
+   SCF energy (A.U.) =   -38.886774; delta E = 0.142E+00
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.587852E-02
-   --- RMSDP 0.458948E-03
-   --- <S**2>  2.01623
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.588E-02
+   --- RMSDP                  0.459E-03
+   --- <S**2>                 2.01623
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
    --- DIIS subspace filling  1/ 5
@@ -220,23 +223,23 @@ Module SCF:
    --- LUMO   9    0.132024 <Sz> = -0.500
    --- gap      0.543863
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.575278
-   --- electron kinetic energy   38.987216
-   --- electron-nuclear attraction energy  -82.720398
-   --- spin-orbital coupling energy   -0.033550
-   --- -<V/T>     1.997385
+   --- electron repulsive energy               37.575278
+   --- electron kinetic energy                 38.987216
+   --- electron-nuclear attraction energy     -82.905428
+   --- spin-orbital coupling energy          -0.033550
+   --- -<V>/<T>                              1.997385
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.918796; delta E =  -0.3202235E-01
+   SCF energy (A.U.) =   -38.918796; delta E = -.320E-01
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.170433E-02
-   --- RMSDP 0.130158E-03
-   --- <S**2>  2.01621
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.170E-02
+   --- RMSDP                  0.130E-03
+   --- <S**2>                 2.01621
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- DIIS subspace filling  2/ 5
    -------------------------------------------------------------
  
  
@@ -250,23 +253,23 @@ Module SCF:
    --- LUMO   9    0.132904 <Sz> = -0.500
    --- gap      0.543951
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.583125
-   --- electron kinetic energy   38.984550
-   --- electron-nuclear attraction energy  -82.719602
-   --- spin-orbital coupling energy   -0.033548
-   --- -<V/T>     1.997287
+   --- electron repulsive energy               37.583125
+   --- electron kinetic energy                 38.984550
+   --- electron-nuclear attraction energy     -82.904939
+   --- spin-orbital coupling energy          -0.033548
+   --- -<V>/<T>                              1.997287
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.912327; delta E =   0.6468908E-02
+   SCF energy (A.U.) =   -38.912327; delta E = 0.647E-02
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.818045E-03
-   --- RMSDP 0.599566E-04
-   --- <S**2>  2.01624
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.818E-03
+   --- RMSDP                  0.600E-04
+   --- <S**2>                 2.01624
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- DIIS subspace filling  3/ 5
    -------------------------------------------------------------
  
  
@@ -280,23 +283,23 @@ Module SCF:
    --- LUMO   9    0.132829 <Sz> = -0.500
    --- gap      0.544113
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581007
-   --- electron kinetic energy   38.985152
-   --- electron-nuclear attraction energy  -82.713625
-   --- spin-orbital coupling energy   -0.033548
-   --- -<V/T>     1.997310
+   --- electron repulsive energy               37.581007
+   --- electron kinetic energy                 38.985152
+   --- electron-nuclear attraction energy     -82.899153
+   --- spin-orbital coupling energy          -0.033548
+   --- -<V>/<T>                              1.997310
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913825; delta E =  -0.1497217E-02
+   SCF energy (A.U.) =   -38.913825; delta E = -.150E-02
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.336411E-03
-   --- RMSDP 0.284998E-04
-   --- <S**2>  2.01627
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.336E-03
+   --- RMSDP                  0.285E-04
+   --- <S**2>                 2.01627
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- DIIS subspace filling  4/ 5
    -------------------------------------------------------------
  
  
@@ -310,23 +313,23 @@ Module SCF:
    --- LUMO   9    0.132913 <Sz> = -0.500
    --- gap      0.544187
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581312
-   --- electron kinetic energy   38.985051
-   --- electron-nuclear attraction energy  -82.712155
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581312
+   --- electron kinetic energy                 38.985051
+   --- electron-nuclear attraction energy     -82.897768
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913543; delta E =   0.2818384E-03
+   SCF energy (A.U.) =   -38.913543; delta E = 0.282E-03
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.156633E-03
-   --- RMSDP 0.152243E-04
-   --- <S**2>  2.01629
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.157E-03
+   --- RMSDP                  0.152E-04
+   --- <S**2>                 2.01629
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- DIIS subspace filling  5/ 5
    -------------------------------------------------------------
  
  
@@ -340,23 +343,28 @@ Module SCF:
    --- LUMO   9    0.132935 <Sz> = -0.500
    --- gap      0.544237
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581200
-   --- electron kinetic energy   38.985096
-   --- electron-nuclear attraction energy  -82.711246
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997306
+   --- electron repulsive energy               37.581200
+   --- electron kinetic energy                 38.985096
+   --- electron-nuclear attraction energy     -82.896904
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997306
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913617; delta E =  -0.7393641E-04
+   SCF energy (A.U.) =   -38.913617; delta E = -.739E-04
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.790192E-04
-   --- RMSDP 0.828318E-05
-   --- <S**2>  2.01630
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.790E-04
+   --- RMSDP                  0.828E-05
+   --- <S**2>                 2.01630
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1 -0.074155, -0.000000
+   --- subsp coe 2  0.211188, -0.000000
+   --- subsp coe 3  1.269932,  0.000000
+   --- subsp coe 4 -5.212084, -0.000000
+   --- subsp coe 5  4.805119,  0.000000
    -------------------------------------------------------------
  
  
@@ -366,27 +374,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411312 <Sz> =  0.500
-   --- LUMO   9    0.132953 <Sz> = -0.500
-   --- gap      0.544265
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544305
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581213
-   --- electron kinetic energy   38.985104
-   --- electron-nuclear attraction energy  -82.710897
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997306
+   --- electron repulsive energy               37.581223
+   --- electron kinetic energy                 38.985131
+   --- electron-nuclear attraction energy     -82.896312
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913606; delta E =   0.1113283E-04
+   SCF energy (A.U.) =   -38.913608; delta E = 0.848E-05
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.442918E-04
-   --- RMSDP 0.460532E-05
-   --- <S**2>  2.01631
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.147E-05
+   --- RMSDP                  0.147E-06
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1 -0.017831, -0.000000
+   --- subsp coe 2 -0.005182,  0.000000
+   --- subsp coe 3  0.292348,  0.000000
+   --- subsp coe 4 -0.404093, -0.000000
+   --- subsp coe 5  1.134758,  0.000000
    -------------------------------------------------------------
  
  
@@ -396,27 +409,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411319 <Sz> =  0.500
-   --- LUMO   9    0.132962 <Sz> = -0.500
-   --- gap      0.544282
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544305
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581210
-   --- electron kinetic energy   38.985114
-   --- electron-nuclear attraction energy  -82.710733
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581223
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896355
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913609; delta E =  -0.3770779E-05
+   SCF energy (A.U.) =   -38.913608; delta E = -.152E-06
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.260579E-04
-   --- RMSDP 0.258959E-05
-   --- <S**2>  2.01632
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.501E-06
+   --- RMSDP                  0.513E-07
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1  0.001614, -0.000000
+   --- subsp coe 2  0.001473, -0.000000
+   --- subsp coe 3 -0.007618,  0.000000
+   --- subsp coe 4 -0.004082,  0.000000
+   --- subsp coe 5  1.008613, -0.000000
    -------------------------------------------------------------
  
  
@@ -426,27 +444,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411324 <Sz> =  0.500
-   --- LUMO   9    0.132968 <Sz> = -0.500
-   --- gap      0.544291
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544305
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581214
-   --- electron kinetic energy   38.985120
-   --- electron-nuclear attraction energy  -82.710667
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581225
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896352
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913609; delta E =   0.5840642E-06
+   SCF energy (A.U.) =   -38.913608; delta E = 0.638E-06
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.152161E-04
-   --- RMSDP 0.146868E-05
-   --- <S**2>  2.01632
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.244E-06
+   --- RMSDP                  0.211E-07
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1 -0.000179,  0.000000
+   --- subsp coe 2  0.000498, -0.000000
+   --- subsp coe 3 -0.111416, -0.000000
+   --- subsp coe 4  0.274905, -0.000000
+   --- subsp coe 5  0.836192,  0.000000
    -------------------------------------------------------------
  
  
@@ -456,27 +479,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411326 <Sz> =  0.500
-   --- LUMO   9    0.132971 <Sz> = -0.500
-   --- gap      0.544297
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581217
-   --- electron kinetic energy   38.985124
-   --- electron-nuclear attraction energy  -82.710641
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581224
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896355
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913609; delta E =   0.1518677E-07
+   SCF energy (A.U.) =   -38.913608; delta E = -.532E-06
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.900318E-05
-   --- RMSDP 0.839612E-06
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.704E-07
+   --- RMSDP                  0.462E-08
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000,  0.000000
+   --- subsp coe 1 -0.000050, -0.000000
+   --- subsp coe 2 -0.040739, -0.000000
+   --- subsp coe 3  0.075943,  0.000000
+   --- subsp coe 4  0.289243,  0.000000
+   --- subsp coe 5  0.675603, -0.000000
    -------------------------------------------------------------
  
  
@@ -486,27 +514,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411328 <Sz> =  0.500
-   --- LUMO   9    0.132973 <Sz> = -0.500
-   --- gap      0.544301
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581220
-   --- electron kinetic energy   38.985127
-   --- electron-nuclear attraction energy  -82.710633
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581225
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896356
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913609; delta E =   0.2076242E-06
+   SCF energy (A.U.) =   -38.913608; delta E = 0.284E-06
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.542569E-05
-   --- RMSDP 0.483850E-06
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.190E-07
+   --- RMSDP                  0.105E-08
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1 -0.011568, -0.000000
+   --- subsp coe 2  0.020880,  0.000000
+   --- subsp coe 3  0.085820,  0.000000
+   --- subsp coe 4  0.258444, -0.000000
+   --- subsp coe 5  0.646424,  0.000000
    -------------------------------------------------------------
  
  
@@ -516,27 +549,32 @@ Module SCF:
    diagonalization of Fock matrix
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411329 <Sz> =  0.500
-   --- LUMO   9    0.132974 <Sz> = -0.500
-   --- gap      0.544303
+   --- HOMO   8   -0.411330 <Sz> =  0.500
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581221
-   --- electron kinetic energy   38.985128
-   --- electron-nuclear attraction energy  -82.710633
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581224
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896355
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.1427320E-06
+   SCF energy (A.U.) =   -38.913608; delta E = -.889E-07
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.331078E-05
-   --- RMSDP 0.281372E-06
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.311E-08
+   --- RMSDP                  0.217E-09
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000,  0.000000
+   --- subsp coe 1 -0.000741,  0.000000
+   --- subsp coe 2 -0.001203,  0.000000
+   --- subsp coe 3  0.013086,  0.000000
+   --- subsp coe 4  0.171117,  0.000000
+   --- subsp coe 5  0.817740, -0.000000
    -------------------------------------------------------------
  
  
@@ -547,26 +585,31 @@ Module SCF:
    complete!   50 eigenvectors found
    frontier orbital energy (A.U.)
    --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132974 <Sz> = -0.500
-   --- gap      0.544304
+   --- LUMO   9    0.132975 <Sz> = -0.500
+   --- gap      0.544306
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581222
-   --- electron kinetic energy   38.985129
-   --- electron-nuclear attraction energy  -82.710634
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581224
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896355
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.1116659E-06
+   SCF energy (A.U.) =   -38.913608; delta E = 0.178E-07
    convergence tolerance not met
    construct density matrix
-   --- maxDP 0.202452E-05
-   --- RMSDP 0.165291E-06
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
+   --- maxDP                  0.683E-09
+   --- RMSDP                  0.491E-10
+   --- <S**2>                 2.01633
+   --- total alpha electron    5.00000
+   --- total beta electron     3.00000
    complete! stored in rou_m
    DIIS information
-    --- DIIS cutted
+   --- predicted residual  0.000000, -0.000000
+   --- subsp coe 1 -0.000018,  0.000000
+   --- subsp coe 2 -0.000591, -0.000000
+   --- subsp coe 3  0.013475, -0.000000
+   --- subsp coe 4  0.178203, -0.000000
+   --- subsp coe 5  0.808932,  0.000000
    -------------------------------------------------------------
  
  
@@ -578,165 +621,15 @@ Module SCF:
    frontier orbital energy (A.U.)
    --- HOMO   8   -0.411330 <Sz> =  0.500
    --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
+   --- gap      0.544306
    calculate energy components (A.U.)
-   --- electron repulsive energy   37.581223
-   --- electron kinetic energy   38.985129
-   --- electron-nuclear attraction energy  -82.710637
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
+   --- electron repulsive energy               37.581224
+   --- electron kinetic energy                 38.985130
+   --- electron-nuclear attraction energy     -82.896355
+   --- spin-orbital coupling energy          -0.033547
+   --- -<V>/<T>                              1.997305
    MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.7667717E-07
-   convergence tolerance not met
-   construct density matrix
-   --- maxDP 0.124069E-05
-   --- RMSDP 0.981844E-07
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
-   complete! stored in rou_m
-   DIIS information
-    --- DIIS cutted
-   -------------------------------------------------------------
- 
- 
-   SCF iter  18
-   construct two electron Fock matrix
-   complete! stored in Fock2
-   diagonalization of Fock matrix
-   complete!   50 eigenvectors found
-   frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
-   calculate energy components (A.U.)
-   --- electron repulsive energy   37.581224
-   --- electron kinetic energy   38.985130
-   --- electron-nuclear attraction energy  -82.710639
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
-   MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.5196897E-07
-   convergence tolerance not met
-   construct density matrix
-   --- maxDP 0.762375E-06
-   --- RMSDP 0.590050E-07
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
-   complete! stored in rou_m
-   DIIS information
-    --- DIIS cutted
-   -------------------------------------------------------------
- 
- 
-   SCF iter  19
-   construct two electron Fock matrix
-   complete! stored in Fock2
-   diagonalization of Fock matrix
-   complete!   50 eigenvectors found
-   frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
-   calculate energy components (A.U.)
-   --- electron repulsive energy   37.581224
-   --- electron kinetic energy   38.985130
-   --- electron-nuclear attraction energy  -82.710640
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
-   MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.3428067E-07
-   convergence tolerance not met
-   construct density matrix
-   --- maxDP 0.469782E-06
-   --- RMSDP 0.358727E-07
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
-   complete! stored in rou_m
-   DIIS information
-    --- DIIS cutted
-   -------------------------------------------------------------
- 
- 
-   SCF iter  20
-   construct two electron Fock matrix
-   complete! stored in Fock2
-   diagonalization of Fock matrix
-   complete!   50 eigenvectors found
-   frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
-   calculate energy components (A.U.)
-   --- electron repulsive energy   37.581224
-   --- electron kinetic energy   38.985130
-   --- electron-nuclear attraction energy  -82.710642
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
-   MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.2236397E-07
-   convergence tolerance not met
-   construct density matrix
-   --- maxDP 0.290327E-06
-   --- RMSDP 0.220486E-07
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
-   complete! stored in rou_m
-   DIIS information
-    --- DIIS cutted
-   -------------------------------------------------------------
- 
- 
-   SCF iter  21
-   construct two electron Fock matrix
-   complete! stored in Fock2
-   diagonalization of Fock matrix
-   complete!   50 eigenvectors found
-   frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
-   calculate energy components (A.U.)
-   --- electron repulsive energy   37.581224
-   --- electron kinetic energy   38.985130
-   --- electron-nuclear attraction energy  -82.710642
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
-   MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.1445586E-07
-   convergence tolerance not met
-   construct density matrix
-   --- maxDP 0.179943E-06
-   --- RMSDP 0.136851E-07
-   --- <S**2>  2.01633
-   --- total alpha electron   5.00000
-   --- total beta electron   3.00000
-   complete! stored in rou_m
-   DIIS information
-    --- DIIS cutted
-   -------------------------------------------------------------
- 
- 
-   SCF iter  22
-   construct two electron Fock matrix
-   complete! stored in Fock2
-   diagonalization of Fock matrix
-   complete!   50 eigenvectors found
-   frontier orbital energy (A.U.)
-   --- HOMO   8   -0.411330 <Sz> =  0.500
-   --- LUMO   9    0.132975 <Sz> = -0.500
-   --- gap      0.544305
-   calculate energy components (A.U.)
-   --- electron repulsive energy   37.581224
-   --- electron kinetic energy   38.985130
-   --- electron-nuclear attraction energy  -82.710643
-   --- spin-orbital coupling energy   -0.033547
-   --- -<V/T>     1.997305
-   MO coefficient dump to .ao2mo file
-   SCF energy (A.U.) =   -38.913608; delta E =   0.9294027E-08
+   SCF energy (A.U.) =   -38.913608; delta E = -.342E-08
    convergence tolerance met, SCF done!
    -------------------------------------------------------------
  
@@ -753,7 +646,7 @@ Module SCF:
    nuclear repulsive energy / Eh                 ...    6.154492
    electron repulsive energy / Eh                ...   37.581224
    electron kinetic energy / Eh                  ...   38.985130
-   electron-nuclear attraction energy / Eh       ...  -82.710643
+   electron-nuclear attraction energy / Eh       ...  -82.896355
    spin-orbital coupling energy / Eh             ...   -0.033547
    dispersion energy (DFT-D4) / Eh               ...   -0.001593
    Virial ratio                                  ...    1.997346
@@ -777,8 +670,8 @@ Module SCF:
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...     0.500000
                  --- orb-in-atom  atom-in-mol      RE        IM
-              ---  A #01 L=0      C #01    ( 0.000000, 0.976271)
-              ---  A #02 L=0      C #01    ( 0.000000, 0.201891)
+              ---  A #01 L=0      C #01    (-0.000000, 0.976271)
+              ---  A #02 L=0      C #01    (-0.000000, 0.201891)
    HOMO-006   energy / Eh                       ...   -11.227821
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...    -0.500000
@@ -789,16 +682,16 @@ Module SCF:
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...     0.500000
                  --- orb-in-atom  atom-in-mol      RE        IM
-              ---  A #01 L=0      C #01    ( 0.000000, 0.142270)
-              ---  A #02 L=0      C #01    (-0.000000,-0.448309)
-              ---  A #03 L=0      C #01    (-0.000000,-0.423175)
-              ---  A #10 L=2      C #01    (-0.000000,-0.286811)
-              ---  A #11 L=2      C #01    (-0.000000,-0.330530)
-              ---  A #12 L=2      C #01    (-0.000000,-0.294661)
-              ---  A #01 L=0      H #02    (-0.000000,-0.275065)
-              ---  A #02 L=0      H #02    (-0.000000,-0.272692)
-              ---  A #01 L=0      H #03    (-0.000000,-0.275065)
-              ---  A #02 L=0      H #03    (-0.000000,-0.272692)
+              ---  A #01 L=0      C #01    (-0.000000,-0.142270)
+              ---  A #02 L=0      C #01    ( 0.000000, 0.448309)
+              ---  A #03 L=0      C #01    ( 0.000000, 0.423175)
+              ---  A #10 L=2      C #01    ( 0.000000, 0.286811)
+              ---  A #11 L=2      C #01    ( 0.000000, 0.330530)
+              ---  A #12 L=2      C #01    ( 0.000000, 0.294661)
+              ---  A #01 L=0      H #02    ( 0.000000, 0.275065)
+              ---  A #02 L=0      H #02    ( 0.000000, 0.272692)
+              ---  A #01 L=0      H #03    ( 0.000000, 0.275065)
+              ---  A #02 L=0      H #03    ( 0.000000, 0.272692)
    HOMO-004   energy / Eh                       ...    -0.767328
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...    -0.500000
@@ -806,11 +699,11 @@ Module SCF:
               ---  B #01 L=0      C #01    ( 0.124406,-0.000000)
               ---  B #02 L=0      C #01    (-0.383644, 0.000000)
               ---  B #03 L=0      C #01    (-0.380416, 0.000000)
-              ---  B #06 L=1      C #01    ( 0.155443,-0.000000)
-              ---  B #09 L=1      C #01    ( 0.108626, 0.000000)
+              ---  B #06 L=1      C #01    ( 0.155443, 0.000000)
+              ---  B #09 L=1      C #01    ( 0.108626,-0.000000)
               ---  B #10 L=2      C #01    (-0.215963, 0.000000)
               ---  B #11 L=2      C #01    (-0.342318, 0.000000)
-              ---  B #12 L=2      C #01    (-0.238359, 0.000000)
+              ---  B #12 L=2      C #01    (-0.238358, 0.000000)
               ---  B #01 L=0      H #02    (-0.346498, 0.000000)
               ---  B #02 L=0      H #02    (-0.302476, 0.000000)
               ---  B #01 L=0      H #03    (-0.346498, 0.000000)
@@ -834,7 +727,7 @@ Module SCF:
               ---  B #01 L=0      H #02    ( 0.423595,-0.000000)
               ---  B #02 L=0      H #02    ( 0.229511,-0.000000)
               ---  B #01 L=0      H #03    (-0.423595,-0.000000)
-              ---  B #02 L=0      H #03    (-0.229511,-0.000000)
+              ---  B #02 L=0      H #03    (-0.229511, 0.000000)
    HOMO-001   energy / Eh                       ...    -0.449431
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...     0.500000
@@ -849,32 +742,32 @@ Module SCF:
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...     0.500000
                  --- orb-in-atom  atom-in-mol      RE        IM
-              ---  A #04 L=1      C #01    ( 0.738834,-0.000000)
-              ---  A #07 L=1      C #01    ( 0.644094,-0.000000)
-              ---  A #03 L=1      H #02    ( 0.139984,-0.000000)
-              ---  A #03 L=1      H #03    ( 0.139984,-0.000000)
+              ---  A #04 L=1      C #01    ( 0.738834, 0.000000)
+              ---  A #07 L=1      C #01    ( 0.644094, 0.000000)
+              ---  A #03 L=1      H #02    ( 0.139984, 0.000000)
+              ---  A #03 L=1      H #03    ( 0.139984, 0.000000)
    LUMO       energy / Eh                       ...     0.132975
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...    -0.500000
                  --- orb-in-atom  atom-in-mol      RE        IM
-              ---  B #02 L=0      C #01    ( 0.174161, 0.000000)
+              ---  B #02 L=0      C #01    ( 0.174161,-0.000000)
               ---  B #03 L=0      C #01    ( 0.294444,-0.000000)
-              ---  B #06 L=1      C #01    ( 0.485211, 0.000000)
-              ---  B #09 L=1      C #01    ( 0.729090,-0.000000)
-              ---  B #10 L=2      C #01    ( 0.144799, 0.000000)
+              ---  B #06 L=1      C #01    ( 0.485211,-0.000000)
+              ---  B #09 L=1      C #01    ( 0.729090, 0.000000)
+              ---  B #10 L=2      C #01    ( 0.144799,-0.000000)
               ---  B #12 L=2      C #01    ( 0.122906,-0.000000)
-              ---  B #01 L=0      H #02    (-0.113556,-0.000000)
-              ---  B #05 L=1      H #02    ( 0.123349,-0.000000)
-              ---  B #01 L=0      H #03    (-0.113556,-0.000000)
+              ---  B #01 L=0      H #02    (-0.113556, 0.000000)
+              ---  B #05 L=1      H #02    ( 0.123349, 0.000000)
+              ---  B #01 L=0      H #03    (-0.113556, 0.000000)
               ---  B #05 L=1      H #03    ( 0.123349, 0.000000)
    LUMO+001   energy / Eh                       ...     0.157943
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...    -0.500000
                  --- orb-in-atom  atom-in-mol      RE        IM
-              ---  B #04 L=1      C #01    ( 0.000000, 0.547840)
-              ---  B #07 L=1      C #01    ( 0.000000, 0.808215)
-              ---  B #03 L=1      H #02    ( 0.000000, 0.152590)
-              ---  B #03 L=1      H #03    ( 0.000000, 0.152590)
+              ---  B #04 L=1      C #01    (-0.000000, 0.547840)
+              ---  B #07 L=1      C #01    (-0.000000, 0.808215)
+              ---  B #03 L=1      H #02    (-0.000000, 0.152590)
+              ---  B #03 L=1      H #03    (-0.000000, 0.152590)
    LUMO+002   energy / Eh                       ...     0.202006
               <S**2> / hbar**2                  ...     0.750000
               <Sz> / hbar                       ...     0.500000
@@ -882,7 +775,7 @@ Module SCF:
               ---  A #02 L=0      C #01    ( 0.000000,-0.234588)
               ---  A #03 L=0      C #01    ( 0.000000,-0.189937)
               ---  A #06 L=1      C #01    (-0.000000, 0.168156)
-              ---  A #09 L=1      C #01    (-0.000000, 0.110159)
+              ---  A #09 L=1      C #01    (-0.000000, 0.110158)
               ---  A #10 L=2      C #01    ( 0.000000,-0.222896)
               ---  A #12 L=2      C #01    ( 0.000000,-0.180623)
               ---  A #01 L=0      H #02    (-0.000000, 0.120046)
@@ -921,5 +814,5 @@ Module SCF:
 exit module SCF
  
 ---------<NORMAL TERMINATION>---------
-Job  cpu  time:  0 h 0 min24 s
-Job clock time:  0 h 0 min19 s
+Job  cpu  time:  0 h 0 min15 s
+Job clock time:  0 h 0 min 8 s

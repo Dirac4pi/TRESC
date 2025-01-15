@@ -17,7 +17,7 @@
 			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
 		</Configuration>
 		<Configuration Name="Debug|x64" UseCompiler="ifxCompiler">
-			<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="D:\oneAPI\mpi\2021.11\include;D:\oneAPI\mpi\2021.11\include\mpi\ilp64" OpenMP="OpenMPParallelCode" EnableOpenMPSupport="OpenMPParallelCodeIFX" WarnInterfaces="true" ByteRECL="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL" UseWindowsLibs="true" UseMkl="mklParallel"/>
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma" SuppressStartupBanner="true" DebugInformationFormat="debugEnabled" Optimization="optimizeDisabled" AdditionalIncludeDirectories="D:\oneAPI\mpi\2021.11\include;D:\oneAPI\mpi\2021.11\include\mpi\ilp64" OpenMP="OpenMPParallelCode" EnableOpenMPSupport="OpenMPParallelCodeIFX" WarnInterfaces="true" ByteRECL="true" Traceback="true" BoundsCheck="true" StackFrameCheck="true" RuntimeLibrary="rtMultiThreadedDebugDLL" UseWindowsLibs="true" UseMkl="mklParallel"/>
 			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" GenerateDebugInformation="true" SubSystem="subSystemConsole" StackReserveSize="10000000"/>
 			<Tool Name="VFResourceCompilerTool"/>
 			<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
@@ -39,8 +39,8 @@
 			<Tool Name="VFManifestTool" SuppressStartupBanner="true"/>
 		</Configuration>
 		<Configuration Name="Release|x64" UseCompiler="ifxCompiler">
-			<Tool Name="VFFortranCompilerTool" SuppressStartupBanner="true" RuntimeLibrary="rtMultiThreadedDLL"/>
-			<Tool Name="VFLinkerTool" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma /Qipo" SuppressStartupBanner="true" OpenMP="OpenMPParallelCode" EnableOpenMPSupport="OpenMPParallelCodeIFX" ByteRECL="true" RuntimeLibrary="rtMultiThreadedDLL" UseWindowsLibs="true" UseMkl="mklParallel"/>
+			<Tool Name="VFLinkerTool" AdditionalOptions="/Qipo" LinkIncremental="linkIncrementalNo" SuppressStartupBanner="true" SubSystem="subSystemConsole"/>
 			<Tool Name="VFResourceCompilerTool"/>
 			<Tool Name="VFMidlTool" SuppressStartupBanner="true" TargetEnvironment="midlTargetAMD64"/>
 			<Tool Name="VFCustomBuildTool"/>
@@ -53,16 +53,32 @@
 	<Files>
 		<Filter Name="Header Files" Filter="fi;fd;h;inc"/>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
-		<File RelativePath=".\src\Atoms.f90"/>
-		<File RelativePath=".\src\Fundamentals.f90"/>
-		<File RelativePath=".\src\GRysroot.f90"/>
+		<File RelativePath=".\readme.md"/></Filter>
+		<Filter Name="Scripts">
+		<File RelativePath=".\scripts\2cvis.py"/>
+		<File RelativePath=".\scripts\Error_in_t_integration.py"/>
+		<File RelativePath=".\scripts\gbsmod.py"/>
+		<File RelativePath=".\scripts\TRESCplot.py"/></Filter>
+		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
+		<File RelativePath=".\src\Atoms.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
+		<File RelativePath=".\src\Fundamentals.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
+		<File RelativePath=".\src\GRysroot.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
 		<File RelativePath=".\src\Hamiltonian.f90"/>
-		<File RelativePath=".\src\Indicator.f90"/>
-		<File RelativePath=".\src\main.f90"/>
+		<File RelativePath=".\src\Indicator.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
+		<File RelativePath=".\src\main.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
 		<File RelativePath=".\src\Rys.f90"/>
 		<File RelativePath=".\src\Rysdata.f90"/>
 		<File RelativePath=".\src\SCF.f90"/></Filter>
-		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl"/>
 	</Files>
 	<Globals/>
 </VisualStudioProject>
