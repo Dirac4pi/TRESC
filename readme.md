@@ -1,6 +1,6 @@
 # Introduction
 Thomas Relativistic Electronic Structure Calculation (TRESC) is used to calculate the electronic structure of non-periodic polyatomic systems in the adiabatic approximation,
-single-configuration self-consistent field calculation based on the static 2-component DKH2 electronic Hamiltonian of a given molecule.
+single-configuration self-consistent field calculation based on the static 2-component DKH2 electronic Hamiltonian of a given molecule.<br>
 Current program is still under development.
 # Algorithms
 * Cartesian or spherical-harmonic fragment contracted Gaussian type orbital are used (input .gbs file);
@@ -17,11 +17,14 @@ Current program is still under development.
 * Support dispersion correction via DFT-D4 program (stand-alone) developed by Grimme's group;
 # Characteristic
 ## Visualisation of 2-component complex MO
-Canonical orbitals can be dumped to a molden format file containing alpha and beta components. With it, one can generate a Gaussian cube format file for any orbital and use `/scripts/2cvis.py` to visualize it. The results are as follows:  
-<img src="docs/figure_2.png" width="400"> 
-It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
+Canonical orbitals can be dumped to a molden format file containing alpha and beta components. With it, one can generate Gaussian cube format file for any orbital and use `/scripts/2cvis.py` to visualize it in `mayavi`.<br>
+The results are as follows:<br> 
+<div align="center">
+  <img src="docs/figure_2.png" width="500">
+</div>
+<br>It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
 ## A special Hamiltonian: SRTP
-Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial components ($$\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
+Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial components ($$\left| \vec{s} \right|=\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
 To accomplish it, we start with a newly-defined reference frame transformation rule, which makes the observed $$\vec{s}/s$$ from any frame identical with the observed $$\vec{s}/s$$ from corresponding frame under the Lorentz transformation rule, but magnitude $$s$$ always $$\hbar /2$$.    
 Assuming that frame O' is moving along the x-axis in frame O, the Lorentz transformation and the newly-defined transformation lead to different observations.  
 ![image](docs/figure_1.png)  
