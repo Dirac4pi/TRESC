@@ -1,9 +1,8 @@
 # Introduction
-<blockquote>
-Thomas Relativistic Electronic Structure Calculation (TRESC) is used to calculate the electronic structure of non-periodic polyatomic systems in the adiabatic approximation,
-single-configuration self-consistent field calculation based on the static 2-component DKH2 electronic Hamiltonian of a given molecule.
-</blockquote>
-Current program is still under development.
+&nbsp;&nbsp;&nbsp;&nbsp;Thomas Relativistic Electronic Structure Calculation (TRESC) is used to calculate the electronic structure of 
+non-periodic polyatomic systems in the adiabatic approximation, single-configuration self-consistent field calculation based on the 
+static 2-component DKH2 electronic Hamiltonian of a given molecule.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Current program is still under development.
 # Algorithms
 * Cartesian or spherical-harmonic fragment contracted Gaussian type orbital are used (input .gbs file);
 * Initial guess read from .chk file (by Gaussian HF/KS-SCF) or .ao2mo file (by TRESC job earlier);
