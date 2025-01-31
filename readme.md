@@ -23,7 +23,7 @@ The results are as follows:<br>
   <img src="docs/figure_2.png" width="500">
 </p>
 
----
+
 
 It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
 ## A special Hamiltonian: SRTP
