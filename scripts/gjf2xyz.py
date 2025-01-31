@@ -1,5 +1,6 @@
 '''
-script to convert .gjf to .xyz
+script to batch convert .gjf to .xyz
+env:base
 '''
 
 import os

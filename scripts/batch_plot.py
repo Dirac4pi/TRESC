@@ -1,5 +1,6 @@
 '''
 script to plot batch calculation
+env:base
 '''
 
 import numpy as np

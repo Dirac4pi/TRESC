@@ -1,5 +1,11 @@
+'''
+script for investigating the error on the t-expansion series of Coulomb integral
+env:base
+'''
+
 import math
 import copy
+
 choice=2 # 1: direct integration; 2: Taylor expansion of integration at X=0
 X=2.3353 # The smaller the value, the greater the error
 it=30 # The number of iterations is positively related to angular momentum. 

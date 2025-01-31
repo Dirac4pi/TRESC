@@ -9,67 +9,18 @@ module Hamiltonian
     use Rys
     use GRysroot
     use omp_lib
-    
-!-----------------------------------------------------------------------
-! AO basis definations
-    integer :: info                                                  ! information of calling lapack functions
-    ! sequence consistent in .chk file (and in Multiwfn)
-    character(len=4),parameter :: AO_xyz_factor(5,15) = (/   &       ! (L,M)
-    '    '  ,  'x   '  ,  'xx  '  ,  'xxx '  ,  'zzzz'   ,   &       ! M=1   <-S
-    '    '  ,  'y   '  ,  'yy  '  ,  'yyy '  ,  'yzzz'   ,   &       ! M=2
-    '    '  ,  'z   '  ,  'zz  '  ,  'zzz '  ,  'yyzz'   ,   &       ! M=3   <-P
-    '    '  ,  '    '  ,  'xy  '  ,  'xyy '  ,  'yyyz'   ,   &       ! M=4
-    '    '  ,  '    '  ,  'xz  '  ,  'xxy '  ,  'yyyy'   ,   &       ! M=5
-    '    '  ,  '    '  ,  'yz  '  ,  'xxz '  ,  'xzzz'   ,   &       ! M=6   <-D
-    '    '  ,  '    '  ,  '    '  ,  'xzz '  ,  'xyzz'   ,   &       ! M=7
-    '    '  ,  '    '  ,  '    '  ,  'yzz '  ,  'xyyz'   ,   &       ! M=8
-    '    '  ,  '    '  ,  '    '  ,  'yyz '  ,  'xyyy'   ,   &       ! M=9   
-    '    '  ,  '    '  ,  '    '  ,  'xyz '  ,  'xxzz'   ,   &       ! M=10  <-F
-    '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxyz'   ,   &       ! M=11
-    '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxyy'   ,   &       ! M=12
-    '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxz'   ,   &       ! M=13
-    '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxy'   ,   &       ! M=14
-    '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxx'      /)       ! M=15  <-G
-    
-    type basis_inf_type                                              ! for openMP parallel computation
-        integer :: atom                                              ! atom number
-        integer :: shell                                             ! shell number
-        integer :: L                                                 ! angular quantum number
-        integer :: M                                                 ! magnetic quantum number
-    end type basis_inf_type
-    
-    type(basis_inf_type),allocatable :: basis_inf(:)
 
-!------------------------------<1e>------------------------------
+    integer :: info                                                  ! information of calling lapack functions
 ! <AOi|AOj> related
     real(dp),allocatable :: i_j(:,:)                                 ! <AOi|AOj>
-    integer :: evl_count                                             ! number of eigenvalues of <AOi|AOj> found by dsyevr
-    integer,allocatable :: isupp_ev(:)                               ! indices indicating the nonzero elements in Lowdin
-    integer :: lwork                                                 ! lwork of <AOi|AOj> for input of dsyevr
-    integer :: liwork                                                ! liwork of <AOi|AOj> for input of dsyevr
-    integer,allocatable :: iwork(:)                                  ! iwork of <AOi|AOj> for input of dsyevr
-    real(dp),allocatable :: i_j_u(:,:)                               ! upper triangular part of <AOi|AOj>
-    real(dp),allocatable :: Lowdin(:,:)                              ! unitary transformation in Lowdin orthogonalization
-    real(dp),allocatable :: evl(:)                                   ! all eigenvalues of <AOi|AOj> found by dsyevr
-    real(dp),allocatable :: work(:)                                  ! work of <AOi|AOj> for input of dsyevr
-    real(dp),allocatable :: S0_5(:,:)                                ! S^(-1/2) matrix
-    real(dp),allocatable :: Sp0_5(:,:)                               ! S^(1/2) matrix
-    real(dp),allocatable :: supLowdin(:,:)
+    real(dp),allocatable :: Xm(:,:)                                  ! orthogonal transform unitary matrix
     real(dp) :: smallest_evl
-    complex(dp),allocatable :: exS0_5(:,:)                           ! extended S0_5 matrix
-    complex(dp),allocatable :: exSp0_5(:,:)                          ! extended Sp0_5 matrix
+    complex(dp),allocatable :: exXm(:,:)                             ! extended Xm matrix
 
 ! <AOi|p^2|AOj> related
-    integer :: evl_count_p2                                          ! number of eigenvalues of <AOi|p^2|AOj> found by dsyevr
-    integer,allocatable :: isupp_ev_p2(:)                            ! indices indicating the nonzero elements in AO2p2
-    integer :: lwork_p2                                              ! lwork of <AOi|p^2|AOj> for input of dsyevr
-    integer :: liwork_p2                                             ! liwork of <AOi|p^2|AOj> for input of dsyevr
     real(dp),allocatable :: i_p2_j(:,:)                              ! <AOi|p^2|AOj>
-    real(dp),allocatable :: i_p2_j_u(:,:)                            ! upper triangular part of <AOi|p^2|AOj>
     real(dp),allocatable :: AO2p2(:,:)                               ! unitary transformation from AO basis to p^2 eigenstate (validated)
     real(dp),allocatable :: evl_p2(:)                                ! all eigenvalues of <AOi|p^2|AOj> found by dsyevr
-    real(dp),allocatable :: work_p2(:)                               ! work of <AOi|p^2|AOj> for input of dsyevr
-    integer,allocatable :: iwork_p2(:)                               ! iwork of <AOi|p^2|AOj> for input of dsyevr
     complex(dp),allocatable :: exi_T_j(:,:)                          ! extended i_p2_j matrix
     
     
@@ -111,309 +62,190 @@ module Hamiltonian
 
     subroutine DKH_Hamiltonian()
         implicit none
+        write(60,'(A)') 'Module Hamiltonian:'
+        ! OpenMP set up
+        write(60,'(A)') '   -------------------------<PARALLEL>-------------------------'
+        cpu_threads = omp_get_num_procs()
+        write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
+        if (cpu_threads <= threads_use) then
+            write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
+            write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
+        else
+            loop_i = omp_get_proc_bind()
+            if (loop_i == 0) then
+                write(60,'(a)') '   processor bind OFF'
+            else
+                loop_i = omp_get_num_places()
+                write(60,'(a,i2,a)') '   processor bind ON, ',loop_i,' places'
+            end if
+        end if
+        write(60,'(A)') '   -------------------------<1E_INTEGRALS>-------------------------'
+        
+        
 !------------------<NONRELATIVISTIC HAMILTONIAN>------------------
         if (DKH_order == 0) then
-            write(60,'(A)') 'Module Hamiltonian: one electron integral calculation'
-            write(60,'(A)') '   -------------------------<INTEGRALS>-------------------------'
-            write(60,'(A)') '   current use of twofold Fock matrix causes scalar SCF convergence harder.'
-            ! OpenMP set up
-            cpu_threads = omp_get_num_procs()
-            write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
-            if (cpu_threads <= threads_use) then
-                write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
-                write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
-            else
-                loop_i = omp_get_proc_bind()
-                if (loop_i == 0) then
-                    write(60,'(a)') '   processor bind OFF'
-                else
-                    loop_i = omp_get_num_places()
-                    write(60,'(a,i2,a)') '   processor bind ON, ',loop_i,'places'
-                end if
-            end if
+            write(60,'(A)') '   spinor Fock matrix causes additional consumption in scalar SCF.'
             !-----------------------------------------------
             ! 1e integral calculation 
             write(60,'(A)') '   one electron integral calculation'
             call assign_matrices_1e()
-            write(60,'(A)') '   complete! integral stored in: i_p2_j, i_V_j'
-            ! general (s^-1/2) matrix
-            write(60,'(A)') '   S^(-1/2) calculation'
-            allocate(isupp_ev(2*basis_dimension))
-            allocate(Lowdin(basis_dimension,basis_dimension))
-            allocate(supLowdin(basis_dimension,basis_dimension))
-            allocate(S0_5(basis_dimension,basis_dimension))
-            allocate(Sp0_5(basis_dimension,basis_dimension))
-            allocate(evl(basis_dimension))
-            allocate(work(1))
-            allocate(iwork(1))
-            allocate(i_j_u(basis_dimension,basis_dimension))
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                do loop_j = loop_i, basis_dimension
-                    i_j_u(loop_i,loop_j) = i_j(loop_i,loop_j)
-                end do
-            end do
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,-1,iwork,-1,info)
-            liwork = iwork(1)
-            lwork = nint(work(1))
-            deallocate(work)
-            deallocate(iwork)
-            allocate(work(lwork))
-            allocate(iwork(liwork))
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,lwork,iwork,liwork,info) ! DO NOT transpose Lowdin
-            if(info < 0) then
-                call terminate('illegal input of dsyevr')
-            else if(info > 0) then
-                call terminate('internal error of dsyevr')
+            write(60,'(A)') '   complete! transform to spherical-harmonic basis, stored in:'
+            write(60,'(A)') '   i_j, i_p2_j, i_V_j'
+            if (s_h) then
+                ! transform to spherical-harmonic basis
+                write(60,"(A)") '   perform spherical-harmonic basis transformation'
+                call assign_cs()
+                call sphehar(i_j)
+                call sphehar(i_V_j)
+                call sphehar(i_p2_j)
+                write(60,"(A)") '   complete! spherical-harmonic basis (5D,7F,9G) involved.'
             end if
-            smallest_evl = evl(1)
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                if (evl(loop_i) < 0.0) call terminate('overlap integral less than zero, may due to code error')
-                if (abs(evl(loop_i)) < safmin) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
-                if (smallest_evl > evl(loop_i)) smallest_evl = evl(loop_i)
-                i_j_u(loop_i,loop_i) = 1.0_dp / sqrt(evl(loop_i))
-            end do
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, Lowdin, basis_dimension, i_j_u, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'T', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, Lowdin, basis_dimension, 0.0_dp, S0_5, basis_dimension)
-            !------------------------<DEBUG>--------------------------
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                i_j_u(loop_i,loop_i) = sqrt(evl(loop_i))
-            end do
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, Lowdin, basis_dimension, i_j_u, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'T', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, Lowdin, basis_dimension, 0.0_dp, Sp0_5, basis_dimension)
-            !------------------------<DEBUG>--------------------------
-            allocate(exS0_5(2*basis_dimension,2*basis_dimension))
-            allocate(exSp0_5(2*basis_dimension,2*basis_dimension))
-            exS0_5 = cmplx(0.0_dp,0.0_dp,dp)
-            exSp0_5 = cmplx(0.0_dp,0.0_dp,dp)
-            do loop_i = 1, basis_dimension
-                do loop_j = 1, basis_dimension
-                    exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-                    exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-                    exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-                    exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+            ! symmetric orthogonalisation
+            write(60,'(A,E9.3)') '   symmetric orthogonalisation of 1e integrals, cutS = ', cutS
+            allocate(Xm(sbdm,sbdm))
+            call symm_orth(i_j, sbdm, Xm, smallest_evl)
+            if (smallest_evl < 0.0) call terminate('evl(i_j) less than zero, may due to code error')
+            if (smallest_evl < cutS) then
+                write(60,'(A,F9.6,A)') '   complete! smallest eigenvalue = ', smallest_evl, ', less than cutS'
+                write(60,'(A)') '   canonical orthogonalisation of 1e integrals'
+                deallocate(Xm)
+                call can_orth(i_j, sbdm, Xm, fbdm)
+            else
+                fbdm = sbdm
+            end if
+            allocate(exXm(2*sbdm,2*fbdm))
+            exXm = c0
+            do loop_i = 1, sbdm
+                do loop_j = 1, fbdm
+                    exXm(2*loop_i-1,2*loop_j-1) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
+                    exXm(2*loop_i,2*loop_j) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
                 end do
             end do
-            write(60,'(A,F12.6)') '   complete! smallest eigenvalue = ',smallest_evl
+            ! transpose(Xm)(Xm)=I
+            call detach(i_j)
+            call detach(i_p2_j)
+            call detach(i_V_j)
+            if (smallest_evl < cutS) then
+                write(60,'(A,I4)') '   complete! basis dimension reduce to ', fbdm
+            else
+                write(60,'(A,F9.6)') '   complete! smallest eigenvalue = ', smallest_evl
+            end if
             
-            ! Lowdin orthogonalization of one-electron integrals
-            ! transpose(S0_5)(S0_5)=I
-            write(60,'(A)') '   Lowdin orthogonalization of all one-electron integrals'
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_p2_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_p2_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_V_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_V_j, basis_dimension)
-            write(60,'(A)') '   complete! integral matrices modified.'
-            deallocate(isupp_ev)
-            deallocate(Lowdin)
-            deallocate(supLowdin)
-            deallocate(evl)
-            deallocate(work)
-            deallocate(iwork)
-            deallocate(i_j_u)
-            write(60,'(A)') 'All 1e DKH0 integrals are calculated, exit module Hamiltonian.'
 !------------------<DKH2 HAMILTONIAN>------------------
         else if (DKH_order == 2) then
-            write(60,'(A)') 'Module Hamiltonian:'
-            write(60,'(A)') '   -----<INTEGRALS>-----'
             write(60,'(A)') '   QED effect considered: radiative correction(c^-3, c^-4, spin-dependent).'
             write(60,'(A)') '   1e DKH transformation: scalar terms up to c^-2 order, spin-dependent'
             write(60,'(A)') '   terms up to c^-4 order.'
             write(60,'(A)') '   Incompleteness of basis introduces error in DKH2 Fock construction.'
-            ! OpenMP set up
-            cpu_threads = omp_get_num_procs()
-            write(60,'(a,i3,a,i3)') '   threads using:',threads_use,' CPU threads:',cpu_threads
-            if (cpu_threads <= threads_use) then
-                write(*,'(a,i2)') 'TRESC: Warnning! Calculation will be performed serially, CPU threads is',cpu_threads
-                write(60,'(a)') '   Warning: calculation will be performed SERIALLY!'
-            else
-                loop_i = omp_get_proc_bind()
-                if (loop_i == 0) then
-                    write(60,'(a)') '   processor bind OFF'
-                else
-                    loop_i = omp_get_num_places()
-                    write(60,'(a,i2,a)') '   processor bind ON, ',loop_i,'places'
-                end if
-            end if
             !-----------------------------------------------
             ! 1e integral calculation
             write(60,'(A)') '   one electron integral calculation'
             call assign_matrices_1e()
-            write(60,'(A)') '   complete! stored in:'
+            write(60,'(A)') '   complete! transform to spherical-harmonic basis, stored in:'
             write(60,'(A)') '   i_j, i_p2_j, i_V_j, i_pVp_j (9 matrices)'
             if (SRTP_type) write(60,'(A)') '   i_pppVp_j (9 matrices)'
-            
-            ! general (s^-1/2) matrix
-            write(60,'(A)') '   S^(-1/2) calculation'
-            allocate(isupp_ev(2*basis_dimension))
-            allocate(Lowdin(basis_dimension,basis_dimension))
-            allocate(supLowdin(basis_dimension,basis_dimension))
-            allocate(S0_5(basis_dimension,basis_dimension))
-            allocate(Sp0_5(basis_dimension,basis_dimension))
-            allocate(evl(basis_dimension))
-            allocate(work(1))
-            allocate(iwork(1))
-            allocate(i_j_u(basis_dimension,basis_dimension))
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                do loop_j = loop_i, basis_dimension
-                    i_j_u(loop_i,loop_j) = i_j(loop_i,loop_j)
-                end do
-            end do
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,-1,iwork,-1,info)
-            liwork = iwork(1)
-            lwork = nint(work(1))
-            deallocate(work)
-            deallocate(iwork)
-            allocate(work(lwork))
-            allocate(iwork(liwork))
-            call dsyevr('V','A','U',basis_dimension,i_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count,evl,Lowdin,basis_dimension,isupp_ev,work,lwork,iwork,liwork,info) ! DO NOT transpose Lowdin
-            if(info < 0) then
-                call terminate('illegal input of dsyevr')
-            else if(info > 0) then
-                call terminate('internal error of dsyevr')
+            if (s_h) then
+                ! transform to spherical-harmonic basis
+                write(60,"(A)") '   perform spherical-harmonic basis transformation'
+                call assign_cs()
+                call sphehar(i_j)
+                call sphehar(i_V_j)
+                call sphehar(i_p2_j)
+                call sphehar(i_pxVpx_j)
+                call sphehar(i_pyVpy_j)
+                call sphehar(i_pzVpz_j)
+                call sphehar(i_pxVpy_j)
+                call sphehar(i_pyVpx_j)
+                call sphehar(i_pxVpz_j)
+                call sphehar(i_pzVpx_j)
+                call sphehar(i_pyVpz_j)
+                call sphehar(i_pzVpy_j)
+                if (SRTP_type) then
+                    call sphehar(i_px3Vpx_j)
+                    call sphehar(i_py3Vpy_j)
+                    call sphehar(i_pz3Vpz_j)
+                    call sphehar(i_px3Vpy_j)
+                    call sphehar(i_py3Vpx_j)
+                    call sphehar(i_px3Vpz_j)
+                    call sphehar(i_pz3Vpx_j)
+                    call sphehar(i_py3Vpz_j)
+                    call sphehar(i_pz3Vpy_j)
+                end if
+                write(60,"(A)") '   complete! spherical-harmonic basis (5D,7F,9G) involved.'
             end if
-            smallest_evl = evl(1)
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                if (evl(loop_i) < 0.0) call terminate('overlap integral less than zero, may due to code error')
-                if (abs(evl(loop_i)) < safmin) call terminate('overlap matrix is not invertible (not full rank), may due to numerical error')
-                if (smallest_evl > evl(loop_i)) smallest_evl = evl(loop_i)
-                i_j_u(loop_i,loop_i) = 1.0_dp / sqrt(evl(loop_i))
-            end do
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, Lowdin, basis_dimension, i_j_u, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'T', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, Lowdin, basis_dimension, 0.0_dp, S0_5, basis_dimension)
-            !------------------------<DEBUG>--------------------------
-            i_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                i_j_u(loop_i,loop_i) = sqrt(evl(loop_i))
-            end do
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, Lowdin, basis_dimension, i_j_u, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'T', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, Lowdin, basis_dimension, 0.0_dp, Sp0_5, basis_dimension)
-            !------------------------<DEBUG>--------------------------
-            allocate(exS0_5(2*basis_dimension,2*basis_dimension))
-            allocate(exSp0_5(2*basis_dimension,2*basis_dimension))
-            exS0_5 = cmplx(0.0_dp,0.0_dp,dp)
-            exSp0_5 = cmplx(0.0_dp,0.0_dp,dp)
-            do loop_i = 1, basis_dimension
-                do loop_j = 1, basis_dimension
-                    exS0_5(2*loop_i-1,2*loop_j-1) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-                    exS0_5(2*loop_i,2*loop_j) = cmplx(S0_5(loop_i,loop_j),0.0_dp,dp)
-                    exSp0_5(2*loop_i-1,2*loop_j-1) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
-                    exSp0_5(2*loop_i,2*loop_j) = cmplx(Sp0_5(loop_i,loop_j),0.0_dp,dp)
+            ! symmetric orthogonalisation
+            write(60,'(A)') '   symmetric orthogonalisation of 1e integrals'
+            allocate(Xm(sbdm, sbdm))
+            call symm_orth(i_j, sbdm, Xm, smallest_evl)
+            if (smallest_evl < 0.0) call terminate('evl(i_j) less than zero, may due to code error')
+            if (smallest_evl < cutS) then
+                if (smallest_evl > safmin) then
+                    write(60,'(A,F9.6,A)') '   complete! smallest eigenvalue = ', smallest_evl, ', less than cutS'
+                end if
+                write(60,'(A)') '   canonical orthogonalisation of 1e integrals'
+                deallocate(Xm)
+                call can_orth(i_j, sbdm, Xm, fbdm)
+            else
+                fbdm = sbdm
+            end if
+            allocate(exXm(2*sbdm,2*fbdm))
+            exXm = c0
+            do loop_i = 1, sbdm
+                do loop_j = 1, fbdm
+                    exXm(2*loop_i-1,2*loop_j-1) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
+                    exXm(2*loop_i,2*loop_j) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
                 end do
             end do
-            write(60,'(A,F12.6)') '   complete! smallest eigenvalue = ',smallest_evl
-            ! Lowdin orthogonalization of one-electron integrals
-            ! transpose(S0_5)(S0_5)=I
-            write(60,'(A)') '   Lowdin orthogonalization of all one-electron integrals'
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_p2_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_p2_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_V_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_V_j, basis_dimension)
-            
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pxVpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pxVpx_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pyVpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pyVpy_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pzVpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pzVpz_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pxVpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pxVpy_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pyVpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pyVpx_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pxVpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pxVpz_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pzVpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pzVpx_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pyVpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pyVpz_j, basis_dimension)
-            call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pzVpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-            call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pzVpy_j, basis_dimension)
+            ! transpose(Xm)(Xm)=I
+            call detach(i_j)
+            call detach(i_p2_j)
+            call detach(i_V_j)
+            !-------------------------------------------
+            call detach(i_pxVpx_j)
+            call detach(i_pyVpy_j)
+            call detach(i_pzVpz_j)
+            call detach(i_pxVpy_j)
+            call detach(i_pyVpx_j)
+            call detach(i_pxVpz_j)
+            call detach(i_pzVpx_j)
+            call detach(i_pyVpz_j)
+            call detach(i_pzVpy_j)
             if (SRTP_type) then
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_px3Vpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_px3Vpx_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_py3Vpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_py3Vpy_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pz3Vpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pz3Vpz_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_px3Vpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_px3Vpy_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_py3Vpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_py3Vpx_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_px3Vpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_px3Vpz_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pz3Vpx_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pz3Vpx_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_py3Vpz_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_py3Vpz_j, basis_dimension)
-                call dgemm( 'T', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, S0_5, basis_dimension, i_pz3Vpy_j, basis_dimension, 0.0_dp, supLowdin, basis_dimension)
-                call dgemm( 'N', 'N', basis_dimension, basis_dimension, basis_dimension, 1.0_dp, supLowdin, basis_dimension, S0_5, basis_dimension, 0.0_dp, i_pz3Vpy_j, basis_dimension)
+                call detach(i_px3Vpx_j)
+                call detach(i_py3Vpy_j)
+                call detach(i_pz3Vpz_j)
+                call detach(i_px3Vpy_j)
+                call detach(i_py3Vpx_j)
+                call detach(i_px3Vpz_j)
+                call detach(i_pz3Vpx_j)
+                call detach(i_py3Vpz_j)
+                call detach(i_pz3Vpy_j)
             end if
-            write(60,'(A)') '   complete! integral matrices modified.'
-            deallocate(isupp_ev)
-            deallocate(Lowdin)
-            deallocate(supLowdin)
-            deallocate(evl)
-            deallocate(work)
-            deallocate(iwork)
-            deallocate(i_j_u)
+            if (smallest_evl < cutS) then
+                write(60,'(A,I4)') '   complete! basis dimension reduce to ', fbdm
+            else
+                write(60,'(A,F9.6)') '   complete! smallest eigenvalue = ', smallest_evl
+            end if
+            
             
             ! <AOi|p^2|AOj> diagonalization
             write(60,'(A)') '   <AOi|p^2|AOj> diagonalization'
-            allocate(isupp_ev_p2(2*basis_dimension))
-            allocate(AO2p2(basis_dimension,basis_dimension))
-            allocate(evl_p2(basis_dimension))
-            allocate(work_p2(1))
-            allocate(iwork_p2(1))
-            allocate(i_p2_j_u(basis_dimension,basis_dimension))
-            i_p2_j_u = 0.0_dp
-            do loop_i = 1, basis_dimension
-                do loop_j = loop_i, basis_dimension
-                    i_p2_j_u(loop_i,loop_j) = i_p2_j(loop_i,loop_j)
-                end do
-            end do
-            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count_p2,evl_p2,AO2p2,basis_dimension,isupp_ev_p2,work_p2,-1,iwork_p2,-1,info)
-            liwork_p2 = iwork_p2(1)
-            lwork_p2 = nint(work_p2(1))
-            deallocate(work_p2)
-            deallocate(iwork_p2)
-            allocate(work_p2(lwork_p2))
-            allocate(iwork_p2(liwork_p2))
-            call dsyevr('V','A','U',basis_dimension,i_p2_j_u,basis_dimension,0.0_dp,0.0_dp,0,0,safmin,&
-                evl_count_p2,evl_p2,AO2p2,basis_dimension,isupp_ev_p2,work_p2,lwork_p2,iwork_p2,liwork_p2,info) ! DO NOT transpose AO2p2
-            if(info < 0) then
-                call terminate('illegal input of dsyevr')
-            else if(info > 0) then
-                call terminate('internal error of dsyevr')
-            end if
-            do loop_i = 1, basis_dimension
-                if (evl_p2(loop_i) < 0.0) call terminate('kinetic energy integral less than zero, may due to code error')
+            allocate(AO2p2(fbdm,fbdm))
+            allocate(evl_p2(fbdm))
+            
+            call diag(i_p2_j, fbdm, AO2p2, evl_p2)
+            do loop_i = 1, fbdm
+                if (evl_p2(loop_i) < 0.0) call terminate('evl(T) less than zero, may due to code error')
             end do
             ! (AO2p2)^T(i_p2_j)(AO2p2)=evl_p2
-            write(60,'(A,I4,A)') '   complete!',evl_count_p2,' eigenvalues found.'
-            deallocate(isupp_ev_p2)
-            deallocate(work_p2)
-            deallocate(iwork_p2)
-            deallocate(i_p2_j_u)
-            write(60,'(A)') 'All 1e DKH2 integrals are calculated, exit module Hamiltonian.'
+            write(60,'(A,I4,A)') '   complete!', fbdm, ' eigenvalues found.'
         end if
+        write(60,'(A)') 'exit module Hamiltonian'
     end subroutine DKH_Hamiltonian
     
 !-----------------------------------------------------------------------
 ! assign value to one electron integral matrices
-    subroutine assign_matrices_1e
+    subroutine assign_matrices_1e()
         implicit none
         integer :: i                                       ! openMP parallel variable
         integer :: contraction_i                           ! contraction of atom_i, shell_i
@@ -454,30 +286,30 @@ module Hamiltonian
         real(dp) :: integral_V
         real(dp) :: integral_DKH2(9)
         real(dp) :: integral_SRTP(9)
-        allocate(basis_inf(basis_dimension))
-        allocate (i_j(basis_dimension,basis_dimension))
-        allocate (i_V_j(basis_dimension,basis_dimension))
-        allocate (i_p2_j(basis_dimension,basis_dimension))
+        allocate(basis_inf(cbdm))
+        allocate (i_j(cbdm,cbdm))
+        allocate (i_V_j(cbdm,cbdm))
+        allocate (i_p2_j(cbdm,cbdm))
         if(DKH_order == 2) then
-            allocate (i_pxVpx_j(basis_dimension,basis_dimension))
-            allocate (i_pyVpy_j(basis_dimension,basis_dimension))
-            allocate (i_pzVpz_j(basis_dimension,basis_dimension))
-            allocate (i_pxVpy_j(basis_dimension,basis_dimension))
-            allocate (i_pyVpx_j(basis_dimension,basis_dimension))
-            allocate (i_pyVpz_j(basis_dimension,basis_dimension))
-            allocate (i_pzVpy_j(basis_dimension,basis_dimension))
-            allocate (i_pxVpz_j(basis_dimension,basis_dimension))
-            allocate (i_pzVpx_j(basis_dimension,basis_dimension))
+            allocate (i_pxVpx_j(cbdm,cbdm))
+            allocate (i_pyVpy_j(cbdm,cbdm))
+            allocate (i_pzVpz_j(cbdm,cbdm))
+            allocate (i_pxVpy_j(cbdm,cbdm))
+            allocate (i_pyVpx_j(cbdm,cbdm))
+            allocate (i_pyVpz_j(cbdm,cbdm))
+            allocate (i_pzVpy_j(cbdm,cbdm))
+            allocate (i_pxVpz_j(cbdm,cbdm))
+            allocate (i_pzVpx_j(cbdm,cbdm))
             if(SRTP_type) then
-                allocate (i_px3Vpx_j(basis_dimension,basis_dimension))
-                allocate (i_py3Vpy_j(basis_dimension,basis_dimension))
-                allocate (i_pz3Vpz_j(basis_dimension,basis_dimension))
-                allocate (i_px3Vpy_j(basis_dimension,basis_dimension))
-                allocate (i_py3Vpx_j(basis_dimension,basis_dimension))
-                allocate (i_px3Vpz_j(basis_dimension,basis_dimension))
-                allocate (i_pz3Vpx_j(basis_dimension,basis_dimension))
-                allocate (i_py3Vpz_j(basis_dimension,basis_dimension))
-                allocate (i_pz3Vpy_j(basis_dimension,basis_dimension))
+                allocate (i_px3Vpx_j(cbdm,cbdm))
+                allocate (i_py3Vpy_j(cbdm,cbdm))
+                allocate (i_pz3Vpz_j(cbdm,cbdm))
+                allocate (i_px3Vpy_j(cbdm,cbdm))
+                allocate (i_py3Vpx_j(cbdm,cbdm))
+                allocate (i_px3Vpz_j(cbdm,cbdm))
+                allocate (i_pz3Vpx_j(cbdm,cbdm))
+                allocate (i_py3Vpz_j(cbdm,cbdm))
+                allocate (i_pz3Vpy_j(cbdm,cbdm))
             end if
         end if
         ! normalization coefficient is taken into contraction coefficient
@@ -506,7 +338,7 @@ module Hamiltonian
         atom_i = 1
         shell_i = 1
         shell_start_i = 1
-        do while(loop_i <= basis_dimension)
+        do while(loop_i <= cbdm)
             if (shell_i > shell_in_element(molecular(atom_i) % atom_number)) then
                 shell_i = 1
                 atom_i = atom_i + 1
@@ -542,7 +374,7 @@ module Hamiltonian
         !$omp& chardx_j,chardy_j,chardz_j,coedx_j,coedy_j,coedz_j, &
         !$omp& integral_dx,integral_dy,integral_dz,integral_overlap,integral_V,integral_DKH2,integral_SRTP) if(threads_use < cpu_threads)
         !$omp do schedule(static)
-        do i = 1, basis_dimension
+        do i = 1, cbdm
             loop_i = i
             exponents_i = 0.0_dp
             coefficient_i = 0.0_dp
@@ -620,7 +452,7 @@ module Hamiltonian
                 end do
                 loop_k = loop_k + 2
             end do
-            do loop_j = 1, basis_dimension
+            do loop_j = 1, cbdm
                 exponents_j = 0.0_dp
                 coefficient_j = 0.0_dp
                 coedx_j = 0.0_dp
@@ -1079,16 +911,17 @@ module Hamiltonian
 !-----------------------------------------------------------------------
 ! full space integration of the product of 2 Gaussian functions in Cartesian coordinate: 
 ! coe*factor_i(x,y,z)*factor_j(x,y,z)*exp(-exponent_i*¦²(x-coordinate_i)^2)*exp(-exponent_j*¦²(x-coordinate_j)^2)
-    real(dp) function Gaussian_Product_Integral(coefficient,factor_i,factor_j,exponent_i,exponent_j,coordinate_i,coordinate_j)
+    pure real(dp) function Gaussian_Product_Integral(coefficient,factor_i,factor_j,exponent_i,exponent_j,coordinate_i,coordinate_j)
         implicit none
-        real(dp) :: coefficient                                              ! coefficient of Gaussian product
+        real(dp),intent(in) :: coefficient                                   ! coefficient before Gaussian product
+        real(dp) :: coeff                                                    ! coefficient after Gaussian product
         real(dp) :: expo                                                     ! exponent of Gaussian product
         real(dp) :: coordinate(3)                                            ! coordinate of Gaussian product
         real(dp),intent(in) :: exponent_i
         real(dp),intent(in) :: exponent_j
-        real(dp) :: coordinate_i(3)
+        real(dp),intent(in) :: coordinate_i(3)
         real(dp) :: coordinate_i_pos(3)                                      ! for linear transformation of coordinate_i
-        real(dp) :: coordinate_j(3)
+        real(dp),intent(in) :: coordinate_j(3)
         real(dp) :: integral_x
         real(dp) :: integral_x_mic,integral_x_mic_pre,integral_x_mic_pre_pre ! for iterative integration
         real(dp) :: integral_y
@@ -1108,11 +941,10 @@ module Hamiltonian
         integral_x = 0.0
         integral_y = 0.0
         integral_z = 0.0
-        if (exponent_i <= 0 .or. exponent_j <= 0) call terminate('Gaussian product integral is divergent, may caused by error in basis set')
         ! Gaussian function produntion
-        coefficient = coefficient * exp(-((coordinate_i(1) - coordinate_j(1))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
-        coefficient = coefficient * exp(-((coordinate_i(2) - coordinate_j(2))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
-        coefficient = coefficient * exp(-((coordinate_i(3) - coordinate_j(3))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
+        coeff = coefficient * exp(-((coordinate_i(1) - coordinate_j(1))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
+        coeff = coeff * exp(-((coordinate_i(2) - coordinate_j(2))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
+        coeff = coeff * exp(-((coordinate_i(3) - coordinate_j(3))**2)/(1.0_dp/exponent_i + 1.0_dp/exponent_j))
         expo = exponent_i + exponent_j
         coordinate(1) = (coordinate_i(1) * exponent_i + coordinate_j(1) * exponent_j)/(exponent_i + exponent_j)
         coordinate(2) = (coordinate_i(2) * exponent_i + coordinate_j(2) * exponent_j)/(exponent_i + exponent_j)
@@ -1136,7 +968,7 @@ module Hamiltonian
         coordinate(3) = coordinate(3) - coordinate_j(3)
         ! binomial expansion -x
         do gloop_i = 0, m_x_i
-            do gloop_j = 0, m_x_i - gloop_i + m_x_j                 		 ! iterative solution of integral x^m*exp(-b*(x-x0)^2)
+            do gloop_j = 0, m_x_i - gloop_i + m_x_j                          ! iterative solution of integral x^m*exp(-b*(x-x0)^2)
                 if (gloop_j == 0) then
                     integral_x_mic = sqrt(pi/expo)
                 else if(gloop_j == 1) then
@@ -1182,14 +1014,14 @@ module Hamiltonian
             end do
             integral_z = integral_z + binomialcoe(m_z_i,gloop_i) * (-coordinate_i_pos(3))**(gloop_i) * integral_z_mic
         end do
-        Gaussian_Product_Integral = coefficient * integral_x * integral_y * integral_z
+        Gaussian_Product_Integral = coeff * integral_x * integral_y * integral_z
         return
     end function Gaussian_Product_Integral
     
 !-----------------------------------------------------------------------
 ! integration of electron-nuclear attraction potential in Cartesian coordinate: 
 ! use inategral transformation: (x-xi)^m*(x-xj)^n*expo(-b*x^2)*expo(x^2*t^2)dxdt
-    real(dp) function V_Integral_1e(Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j,rn)
+    pure real(dp) function V_Integral_1e(Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j,rn)
         implicit none
         real(dp),intent(in) :: expo_i, expo_j
         real(dp) :: expo
@@ -1217,13 +1049,6 @@ module Hamiltonian
         integer :: vloop_mic,vloop_mic_pre
         character(len = *),intent(in) :: fac_i
         character(len = *),intent(in) :: fac_j
-        if(expo_i <= 0.0) then
-            call terminate('V_Integral_1e is called incorrectly, expo_i <= 0')
-        else if (expo_j <= 0.0) then
-            call terminate('V_Integral_1e is called incorrectly, expo_j <= 0')
-        else if (rn < 0) then
-            call terminate('V_Integral_1e is called incorrectly, rn < 0')
-        end if
         m_x_i = 0
         m_y_i = 0
         m_z_i = 0
@@ -1258,8 +1083,6 @@ module Hamiltonian
         else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 50) then
             tayeps = 30
             xts = 4.0
-        else
-            call terminate('Excessive number of iterations, modify the source code according to the test of Error_in_t_integration.py')
         end if
         allocate(NX_mic(tayeps))
         allocate(NX_mic_pre(tayeps))
@@ -1526,27 +1349,23 @@ module Hamiltonian
 !          |AOk> : x2 - xk 
 !          |AOl> : x2 - xl
 !          Li > Lj, Lk > Ll
-    real(dp) function V_Integral_2e(fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i,cod_j,cod_k,cod_l)
+    pure real(dp) function V_Integral_2e(fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i,cod_j,cod_k,cod_l)
         implicit none
         real(dp),intent(in) :: ai, aj, ak, al
         real(dp),intent(in) :: cod_i(3),cod_j(3),cod_k(3),cod_l(3)
         real(dp) :: xi, xj, xk, xl, yi, yj, yk, yl, zi, zj, zk, zl
-        real(dp) :: xA, xB, yA, yB, zA, zB, A, B, rou, Dx, Dy, Dz, X, Gx, Gy, Gz           			! composite parameters, ref 10.1002/jcc.540040206
-        integer :: nroots																			! Rys quadrature: number of roots
+        real(dp) :: xA, xB, yA, yB, zA, zB, A, B, rou, Dx, Dy, Dz, X, Gx, Gy, Gz                    ! composite parameters, ref 10.1002/jcc.540040206
+        integer :: nroots                                                                           ! Rys quadrature: number of roots
         real(dp) :: u(6), w(6), t2                                                                  ! Rys quadrature: roots and weights ref 10.1016/0021-9991(76)90008-5
         real(dp),allocatable :: Gnmx(:,:,:),Gnmy(:,:,:),Gnmz(:,:,:)
         real(dp),allocatable :: Ixtrans(:,:),Ix(:),Iytrans(:,:),Iy(:),Iztrans(:,:),Iz(:),PL(:)      ! ni transfer to nj, nk tranfer to nl
         real(dp) :: integral, integral_mic, integral_mic_pre, integral_mic_pre_pre
         real(dp),allocatable :: NX_mic(:), NX_mic_pre(:), NX_mic_pre_pre(:)
         character(len = *),intent(in) :: fac_i,fac_j,fac_k,fac_l
-        integer :: tayeps																			! number of Taylor expansion series of integration at X=0
-        real(dp) :: xts																				! threshold of X: direct integration (X > xts); Taylor expansion integration (X <= xts)
+        integer :: tayeps                                                                           ! number of Taylor expansion series of integration at X=0
+        real(dp) :: xts                                                                             ! threshold of X: direct integration (X > xts); Taylor expansion integration (X <= xts)
         integer :: nxi,nxj,nxk,nxl,nyi,nyj,nyk,nyl,nzi,nzj,nzk,nzl
         integer :: rloop_i,rloop_j,rloop_k,rloop_o,rloop_p,rloop_q                                  ! rloop is loop variables only for RVI function
-        if (ai <= 0) call terminate('V_Integral_2e is called incorrectly, ai <= 0')
-        if (aj <= 0) call terminate('V_Integral_2e is called incorrectly, aj <= 0')
-        if (ak <= 0) call terminate('V_Integral_2e is called incorrectly, ak <= 0')
-        if (al <= 0) call terminate('V_Integral_2e is called incorrectly, al <= 0')
         xi = cod_i(1)
         xj = cod_j(1)
         xk = cod_k(1)
@@ -1625,7 +1444,7 @@ module Hamiltonian
             call GRysroots(nroots, X, u, w)                                 ! rys_roots (libcint), GRysroots (GAMESS)
             integral = 0.0_dp
             do rloop_i = 1, nroots
-                !t2 = u(rloop_i) / (rou + u(rloop_i))					    ! for rys_roots
+                !t2 = u(rloop_i) / (rou + u(rloop_i))                       ! for rys_roots
                 t2 = u(rloop_i)                                            ! for GRysroots
                 !---------------------------Gnmx---------------------------
                 Gnmx = 0.0_dp
@@ -1817,7 +1636,7 @@ module Hamiltonian
             deallocate(Gnmy)
             deallocate(Gnmz)
             return
-        ! direct integral for high angular momentum Gaussian functions		
+        ! direct integral for high angular momentum Gaussian functions
         else
             ! Ix(ni+nj,0,nk+nl,0,u)
             allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, nxi+nxj+1+nxk+nxl+1))
@@ -1844,8 +1663,6 @@ module Hamiltonian
             else if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)-2 <= 50) then
                 tayeps = 30
                 xts = 4.0
-            else
-                call terminate('Excessive number of iterations, modify source code according to the results of Error_in_t_integration.py')
             end if
             Gnmx = 0.0_dp
             Gnmy = 0.0_dp
@@ -2182,9 +1999,161 @@ module Hamiltonian
     end function V_Integral_2e
     
 !-----------------------------------------------------------------------
+! diagonalisation of given real symmetric matrix
+    
+    subroutine diag(mat, dm, U, evl)
+        implicit none
+        integer,intent(in) :: dm
+        real(dp),intent(in) :: mat(dm,dm)
+        real(dp),intent(out) :: U(dm,dm)
+        real(dp),intent(out) :: evl(dm)
+        integer :: evl_count                                             ! number of eigenvalues found by dsyevr
+        integer :: isupp_ev(2*dm)                                        ! indices indicating the nonzero elements
+        integer :: lwork                                                 ! lwork for input of dsyevr
+        integer :: liwork                                                ! liwork for input of dsyevr
+        integer,allocatable :: iwork(:)                                  ! iwork for input of dsyevr
+        real(dp) :: mat_u(dm,dm)                                         ! upper triangular part
+        real(dp),allocatable :: work(:)                                  ! work for input of dsyevr
+        integer :: dialoop_i, dialoop_j
+        allocate(work(1))
+        allocate(iwork(1))
+        mat_u = 0.0_dp
+        do dialoop_i = 1, dm
+            do dialoop_j = dialoop_i, dm
+                mat_u(dialoop_i,dialoop_j) = mat(dialoop_i,dialoop_j)
+            end do
+        end do
+        call dsyevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
+            evl_count,evl,U,dm,isupp_ev,work,-1,iwork,-1,info)
+        liwork = iwork(1)
+        lwork = nint(work(1))
+        deallocate(work)
+        deallocate(iwork)
+        allocate(work(lwork))
+        allocate(iwork(liwork))
+        call dsyevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
+            evl_count,evl,U,dm,isupp_ev,work,lwork,iwork,liwork,info)
+        if(info < 0) then
+            call terminate('illegal input of dsyevr')
+        else if(info > 0) then
+            call terminate('internal error of dsyevr')
+        end if
+        if (evl_count /= dm) call terminate('diagonalisation failed')
+        deallocate(work)
+        deallocate(iwork)
+    end subroutine diag
+    
+!-----------------------------------------------------------------------
+! symmetric orthogonalisation of given real symmetric matrix
+! X mat XT = I
+    
+    subroutine symm_orth(mat, dm, X, min_evl)
+        implicit none
+        integer,intent(in) :: dm
+        real(dp),intent(in) :: mat(dm,dm)
+        real(dp),intent(out) :: X(:,:)
+        real(dp),intent(out) :: min_evl
+        real(dp) :: U(dm,dm)
+        real(dp) :: supU(dm,dm)
+        real(dp) :: evl(dm)
+        real(dp) :: mat_u(dm,dm)
+        integer :: symloop_i, symloop_j
+        call diag(mat, dm, U, evl)
+        min_evl = evl(1)
+        mat_u = 0.0_dp
+        do symloop_i = 1, dm
+            if (evl(symloop_i) < 0.0) call terminate('symm_orth: eigenvalue less than zero, may due to code error')
+            if (abs(evl(symloop_i)) < safmin) then
+                write(60,'(A)') '   ---matrix is not invertible (not full rank), call can_orth directly'
+                min_evl = 0.0_dp
+                X = 0.0_dp
+                return
+            end if
+            if (min_evl > evl(symloop_i)) min_evl = evl(symloop_i)
+            mat_u(symloop_i,symloop_i) = 1.0_dp / sqrt(evl(symloop_i))
+        end do
+        call dgemm( 'N', 'N', dm, dm, dm, 1.0_dp, U, dm, mat_u, dm, 0.0_dp, supU, dm)
+        call dgemm( 'N', 'T', dm, dm, dm, 1.0_dp, supU, dm, U, dm, 0.0_dp, X, dm)
+    end subroutine symm_orth
+    
+!-----------------------------------------------------------------------
+! canonical orthogonalisation of given real symmetric matrix
+! X mat XT = I
+    
+    subroutine can_orth(mat, dm, X, dm2)
+        implicit none
+        integer,intent(in) :: dm
+        real(dp),intent(in) :: mat(dm,dm)
+        real(dp),allocatable,intent(out) :: X(:,:)
+        integer,intent(out) :: dm2
+        real(dp) :: U(dm,dm)
+        real(dp) :: evl(dm)
+        real(dp) :: mat_u(dm,dm)
+        integer :: supU(dm)
+        integer :: canloop_i, canloop_j, canloop_k
+        call diag(mat, dm, U, evl)
+        
+        supU = 0
+        dm2 = dm
+        do canloop_i = 1, dm
+            if (evl(canloop_i) < cutS) then
+                supU(canloop_i) = 1
+                dm2 = dm2 - 1
+            end if
+        end do
+        allocate(X(dm,dm2))
+        canloop_k = 1
+        do canloop_i = 1, dm
+            if (supU(canloop_i) == 1) cycle
+            do canloop_j = 1, dm
+                X(canloop_j,canloop_k) = U(canloop_j,canloop_i) / sqrt(evl(canloop_i))
+            end do
+            canloop_k = canloop_k + 1
+        end do
+    end subroutine can_orth
+    
+!-----------------------------------------------------------------------
+! transfer matrix on Cartesian Gaussian basis to matrix on spherical-harmonic Gaussian basis
+    
+    subroutine sphehar(m)
+        implicit none
+        real(dp),allocatable :: m(:, :) ! target matrix, Cartesian basis -> spherical-harmonic basis
+        real(dp),allocatable :: sphoper(:,:)
+        
+        if (.not. allocated(c2s)) call terminate('call sphehar error, c2s not allocated')
+        if (.not. allocated(m)) call terminate('call sphehar error, matrix not allocated')
+        
+        allocate(sphoper(cbdm,sbdm))
+        call dgemm( 'N', 'N', cbdm, sbdm, cbdm, 1.0_dp, m, cbdm, c2s, cbdm, 0.0_dp, sphoper, cbdm)
+        deallocate(m)
+        allocate(m(sbdm,sbdm))
+        call dgemm( 'T', 'N', sbdm, sbdm, cbdm, 1.0_dp, c2s, cbdm, sphoper, cbdm, 0.0_dp, m, sbdm)
+        deallocate(sphoper)
+    end subroutine sphehar
+    
+!-----------------------------------------------------------------------
+! transfer matrix on spherical-harmonic Gaussian basis to elimination linear dependence
+    
+    subroutine detach(m)
+        implicit none
+        real(dp),allocatable :: m(:, :) ! target matrix
+        real(dp),allocatable :: detoper(:,:)
+        
+        if (.not. allocated(Xm)) call terminate('call detach error, Xm not allocated')
+        if (.not. allocated(m)) call terminate('call detach error, matrix not allocated')
+        
+        allocate(detoper(fbdm, sbdm))
+        call dgemm( 'T', 'N', fbdm, sbdm, sbdm, 1.0_dp, Xm, sbdm, m, sbdm, 0.0_dp, detoper, fbdm)
+        deallocate(m)
+        allocate(m(fbdm, fbdm))
+        call dgemm( 'N', 'N', fbdm, fbdm, sbdm, 1.0_dp, detoper, fbdm, Xm, sbdm, 0.0_dp, m, fbdm)
+        deallocate(detoper)
+    end subroutine detach
+
+!-----------------------------------------------------------------------
 ! normalization factor of each basis
     
-    real(dp) function AON(a,l,m,n)
+    pure real(dp) function AON(a,l,m,n)
         implicit none
         real(dp),intent(in) :: a
         integer,intent(in) :: l,m,n
@@ -2220,7 +2189,7 @@ module Hamiltonian
 !-----------------------------------------------------------------------
 ! fast factorial of given a
     
-    real(dp) function factorial(a)
+    pure real(dp) function factorial(a)
         implicit none
         integer,intent(in) :: a
         integer :: na
@@ -2262,8 +2231,6 @@ module Hamiltonian
         end select
         if (a <= 16) then
             return
-        else if (a < 0) then
-            call terminate('factorial is called incorrectly')
         else
             factorial = 20922789888000.0_dp
             do na = 17, a
@@ -2279,13 +2246,11 @@ module Hamiltonian
 ! 9 < M <= 13: recursive
 ! M > 13: direct
     
-    recursive real(dp) function binomialcoe(N,M)
+    pure recursive real(dp) function binomialcoe(N,M)
         implicit none
         integer,intent(in) :: N,M
         integer :: bloop_i, numerator, denominator
-        if (N < M .or. N < 0 .or. M < 0) then
-            call terminate('binomialcoe is called incorrectly')
-        else if (M == 0 .or. N == 0 .or. M == N) then
+        if (M == 0 .or. N == 0 .or. M == N) then
             binomialcoe = 1.0
             return
         else if (M == 1) then

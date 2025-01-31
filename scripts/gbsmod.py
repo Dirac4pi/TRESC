@@ -1,5 +1,8 @@
-# Transform all Gaussian basis set file(s) in specified folder to Gaussian
-# system libarary basis set file(s).
+'''
+Transform all Gaussian basis set file(s) in specified folder to Gaussian
+system libarary basis set file(s).
+env:base
+'''
 
 import os
 

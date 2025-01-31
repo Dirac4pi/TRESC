@@ -56,9 +56,11 @@
 		<File RelativePath=".\readme.md"/></Filter>
 		<Filter Name="Scripts">
 		<File RelativePath=".\scripts\2cvis.py"/>
+		<File RelativePath=".\scripts\batch_plot.py"/>
 		<File RelativePath=".\scripts\Error_in_t_integration.py"/>
 		<File RelativePath=".\scripts\gbsmod.py"/>
-		<File RelativePath=".\scripts\TRESCplot.py"/></Filter>
+		<File RelativePath=".\scripts\gjf2xyz.py"/>
+		<File RelativePath=".\scripts\scf_plot.py"/></Filter>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<File RelativePath=".\src\Atoms.f90">
 			<FileConfiguration Name="Debug|x64">
@@ -70,15 +72,12 @@
 			<FileConfiguration Name="Debug|x64">
 			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
 		<File RelativePath=".\src\Hamiltonian.f90"/>
-		<File RelativePath=".\src\Indicator.f90">
-			<FileConfiguration Name="Debug|x64">
-			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
-		<File RelativePath=".\src\main.f90">
-			<FileConfiguration Name="Debug|x64">
-			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File>
 		<File RelativePath=".\src\Rys.f90"/>
 		<File RelativePath=".\src\Rysdata.f90"/>
-		<File RelativePath=".\src\SCF.f90"/></Filter>
+		<File RelativePath=".\src\SCF.f90"/>
+		<File RelativePath=".\src\TRESC.f90">
+			<FileConfiguration Name="Debug|x64">
+			<Tool Name="VFFortranCompilerTool" AdditionalOptions="/QxCORE-AVX2 /Qfma"/></FileConfiguration></File></Filter>
 	</Files>
 	<Globals/>
 </VisualStudioProject>

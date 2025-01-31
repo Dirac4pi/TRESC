@@ -5,6 +5,10 @@
     {
       "Id": "81fc634c-9c32-4437-8f40-bf583f3f90b5",
       "Command": "E:\\TRESC\\examples\\FeO+\\FeO+.xyz"
+    },
+    {
+      "Id": "fbba5d22-b6dd-45d1-b1f9-608bba89513d",
+      "Command": "\"E:\\TRESC\\examples\\carbene-3et\\CH2.xyz\""
     }
   ]
 }

@@ -1,34 +1,35 @@
 '''
-script for visualizing 2-component complex MOs
+script for visualizing 2-component complex orbital
 
 input: 2 Gaussian cube format files contain 
 (alpha real & beta real), (alpha imagine & 
 beta imagine)of a selected 2-component com-
-plex MO
+plex orbital
 
-output: amplitude isosurface with phase colour
-mapping, contains alpha & beta components
+env:2cvis
 '''
 
 from os import environ
 import numpy as np
+from json import load as jsload
 import qcelemental as qcel
 qcel.CovalentRadii("ALVAREZ2008")
-from json import load as jsload
 from mayavi import mlab
-
-
+from traits.api import HasTraits, Float, observe
+from traitsui.api import View, Item
+    
 def read_cube(cube_address, imo=0):
     '''
     load data in cube format file.
     ----------
-    cube_address : TYPE string
+    cube_address : STRING
     ---address of .cube file.
-    imo : TYPE integer
+    imo : INTEGER
     ---MO serial number to be read.
     ----------
     Returns np.array*2, integer*1
     '''
+    
     try:
         f = open(cube_address, 'r')
     except FileNotFoundError:
@@ -118,85 +119,81 @@ def read_cube(cube_address, imo=0):
             
     return atoms, cubmat, nmo
 
-def cmplx_amp_plot(title, window, real, img, x, y, z):
-    '''
-    plot amplitude contour of scalar complex array.
-    !!! precise and controllable isosurface.
-    !!! for MO, alpha and beta components should be plotted separately.
+def sync_camera(fig1, fig2, sync_coe):
+    """
+    Synchronise camera parameters from fig1.scene to fig2.scene.
     ----------
-    title : TYPE string
-    ---title of figure.
-    window : TYPE integer
-    ---window number of the graphic.
-    real : TYPE np.array
-    ---real part of function.
-    img : TYPE np.array
-    ---imaginary part of function.
-    x : TYPE np.array
-    ---x grid points.
-    y : TYPE np.array
-    ---y grid points.
-    z : TYPE np.array
-    ---z grid points.
-    -------
     Returns None
+    """
+    fig2.scene.camera.position = sync_coe*(fig1.scene.camera.position - \
+        fig1.scene.camera.focal_point) + fig2.scene.camera.focal_point
+    fig2.scene.camera.view_angle = fig1.scene.camera.view_angle
+    fig2.scene.camera.view_up = fig1.scene.camera.view_up
+    fig2.scene.render()
+    
+
+def cmplx_orb_plot(title, atoms, real, img, x, y, z, isovalue):
     '''
-    fig = mlab.figure(window, size=(600,600), fgcolor=(0,0,0), \
-        bgcolor=(1,1,1))
+    plot amplitude(contour) and phase(color) of scalar complex array.
+    !!! for 2c MO, alpha and beta components should be plotted separately.
+    ----------
+    title : STRING
+    ---title of figure.
+    atoms : NP.ARRAY
+    ---atom information.
+    real : NP.ARRAY
+    ---real part of function.
+    img : NP.ARRAY
+    ---imaginary part of function.
+    x : NP.ARRAY
+    ---x grid points.
+    y : NP.ARRAY
+    ---y grid points.
+    z : NP.ARRAY
+    ---z grid points.
+    isovalue : FLOAT
+    ---isovalue of amplitude
+    -------
+    Returns final isovalue
+    '''
+    # -------------<plot amplitude with atoms>-------------
+    fig1 = mlab.figure(figure=f'{title}(amplitude)', size=(400,400), \
+        fgcolor=(0,0,0), bgcolor=(1,1,1))
+    mlab.clf(fig1)
     fig_try = mlab.figure(675)
-    contours = 0.1
-    # plot isosurface of amplitude
     # amplitude of MO not amplitude of linear combine of AO
     amplitude = np.sqrt(np.add(np.square(real), np.square(img)))
     try:
-        mlab.contour3d(x, y, z, amplitude, figure=fig_try, contours=[contours])
+        mlab.contour3d(x, y, z, amplitude, figure=fig_try, contours=[isovalue])
     except Exception as e:
         print(f'Error: {e}')
         if str(e).find('Contour instance must be') >= 0:
-            contours = float(str(e)[str(e).rfind('<=')+3 : \
+            isovalue = float(str(e)[str(e).rfind('<=')+3 : \
                 str(e).rfind('<=')+14]) * .5 
                 # factor of 0.5 is usually appropriate
-            contour = mlab.contour3d(x, y, z, amplitude, figure=fig, \
-                contours=[contours], opacity=.2, colormap='Greys')
+            contouramp = mlab.contour3d(x, y, z, amplitude, figure=fig1, \
+                contours=[isovalue], opacity=.2, colormap='Greys')
             print('------')
             print('ignore previous error')
         else:
             exit()
     else:
-        contour = mlab.contour3d(x, y, z, amplitude, figure=fig, \
-            contours=[contours], opacity=.2, colormap='Greys')
+        contouramp = mlab.contour3d(x, y, z, amplitude, figure=fig1, \
+            contours=[isovalue], opacity=.2, colormap='Greys')
     finally:
-        mlab.title(f'{title}(amplitude), isovalue={contours}')
-        contour.actor.property.line_width = 1
-        contour.actor.property.edge_visibility = True
+        contouramp.actor.property.line_width = 1
+        contouramp.actor.property.edge_visibility = True
     mlab.close(675)
-
-def cmplx_pha_plot(title, window, real, img, x, y, z):
-    '''
-    plot amplitude(contour) and phase(color) of scalar complex array.
-    !!! can't specify the value of amplitude isovalue,
-    shape of MO is only for phase distribution.
-    !!! for MO, alpha and beta components should be plotted separately.
-    ----------
-    title : TYPE string
-    ---title of figure.
-    window : TYPE integer
-    ---window number of the graphic.
-    real : TYPE np.array
-    ---real part of function.
-    img : TYPE np.array
-    ---imaginary part of function.
-    x : TYPE np.array
-    ---x grid points.
-    y : TYPE np.array
-    ---y grid points.
-    z : TYPE np.array
-    ---z grid points.
-    -------
-    Returns None
-    '''
-    fig = mlab.figure(window, size=(600,600), fgcolor=(0,0,0), \
-        bgcolor=(1,1,1))
+    atom_list = atoms['index']
+    atomx = atoms['x']
+    atomy = atoms['y']
+    atomz = atoms['z']
+    atoms_plot(atom_list, atomx, atomy, atomz)
+    
+    # -------------<plot phase>-------------
+    fig2 = mlab.figure(figure=f'{title}(phase), isovalue={isovalue}', \
+        size=(400,400), fgcolor=(0,0,0), bgcolor=(1,1,1))
+    mlab.clf(fig2)
     # isosurface of amplitude
     # amplitude of MO are not linear combine of amplitude of AO
     amplitude = np.sqrt(np.add(np.square(real), np.square(img)))
@@ -207,25 +204,32 @@ def cmplx_pha_plot(title, window, real, img, x, y, z):
     src.image_data.point_data.add_array(phase.T.ravel())
     src.image_data.point_data.get_array(1).name = 'phase'
     src.update()
-    
     # contour of amplitude
     src2 = mlab.pipeline.set_active_attribute(src, point_scalars='scalar')
-    contour = mlab.pipeline.contour(src2, figure=fig)
-    # contour of phase based on contour of amplitude
-    contour2 = mlab.pipeline.set_active_attribute(contour,
-        point_scalars='phase', figure=fig)
-    mlab.pipeline.surface(contour2, colormap='hsv', opacity=.6, \
-        vmax=np.pi, vmin=-np.pi)
+    contourpha = mlab.pipeline.contour(src2, figure=fig2)
+    contourpha.filter.contours = [isovalue]
+    # color map of phase based on contour of amplitude
+    contourpha2 = mlab.pipeline.set_active_attribute(contourpha,
+        point_scalars='phase', figure=fig2)
+    mlab.pipeline.surface(contourpha2, colormap='hsv', opacity=.5, \
+        vmax=np.pi, vmin=-np.pi, figure=fig2)
     mlab.colorbar(title='phase', orientation='vertical', nb_labels=5)
-    mlab.title(f'{title}(phase)')
+    mlab.view(figure=fig1)
+    fig1.scene.show_axes = True
+    mlab.view(figure=fig2)
+    fig2.scene.show_axes = True
+    
+    # ---------<synchronise camera>---------
+    sync_coe = (fig2.scene.camera.position - fig2.scene.camera.focal_point) \
+        / (fig1.scene.camera.position - fig1.scene.camera.focal_point)
+    fig1.scene.interactor.add_observer("InteractionEvent", lambda *args: \
+        sync_camera(fig1, fig2, sync_coe))
+    return isovalue
 
 def hex2rgb(hexcolor):
     '''
     colour format conversion from Hex to RGB.
     ----------
-    hexcolor : TYPE string
-    ---Hex format of colour.
-    -------
     Returns turple*1
     '''
     hexcolor = int(hexcolor, base=16) \
@@ -233,19 +237,19 @@ def hex2rgb(hexcolor):
     rgb = ((hexcolor >> 16) & 0xff, (hexcolor >> 8) & 0xff, hexcolor & 0xff)
     return rgb
 
-def atoms_plot(window, atom_list, atomx, atomy, atomz):
+def atoms_plot(atom_list, atomx, atomy, atomz):
     '''
     plot spherical model of atoms.
     ----------
-    window : TYPE integer
+    window : INTEGER
     ---window number of the graphic.
-    atom_list : TYPE np.array
+    atom_list : NP.ARRAY
     ---atomic number of each atom.
-    atomx : TYPE np.array
+    atomx : NP.ARRAY
     ---x coordinate of each atom.
-    atomy : TYPE np.array
+    atomy : NP.ARRAY
     ---y coordinate of each atom.
-    atomz : TYPE np.array
+    atomz : NP.ARRAY
     ---z coordinate of each atom.
     -------
     Returns None
@@ -267,11 +271,11 @@ def atoms_plot(window, atom_list, atomx, atomy, atomz):
             if i == int(j['Cell'][0]):
                 atom_symbol.append(j["Cell"][1])
                 atom_color.append(j["Cell"][4])
-                atom_radius.append(qcel.covalentradii.get(i)) # covalent (CSD)
-                #atom_radius.append(float(j["Cell"][7])/150.) # Van der Waal
+                #atom_radius.append(qcel.covalentradii.get(i)) # covalent (CSD)
+                atom_radius.append(float(j["Cell"][7])/150.) # Van der Waal
                 break
     # plot atoms
-    fig = mlab.figure(window)
+    fig = mlab.gcf()
     for i in range(num_atom):
         RGB = hex2rgb(atom_color[i])
         R = RGB[0] / 255.
@@ -285,14 +289,16 @@ def atoms_plot(window, atom_list, atomx, atomy, atomz):
         #        color=(0,0,0), figure=fig, scale=(.3,.3,.3))
     
 
-def _2corb(real_cube_address, img_cube_address):
+def _2corb(real_cube_address, img_cube_address, isovalue = 0.1):
     '''
     2-component complex MO visualization.
     ----------
-    real_cube_address : TYPE string
+    real_cube_address : STRING
     ---address of .cube file contains real part of MO.
-    img_cube_address : TYPE string
+    img_cube_address : STRING
     ---address of .cube file contains imaginary part of MO.
+    isovalue : FLOAT 0.1
+    ---isovalue of amplitude.
     -------
     Returns None
     '''
@@ -313,24 +319,49 @@ def _2corb(real_cube_address, img_cube_address):
     atoms, img_mat_beta, nmo = read_cube(img_cube_address, 2)
     img_val_beta = img_mat_beta['value']
     
-    # plot the amplitude of orbital
-    cmplx_amp_plot('alpha', 1, real_val_alpha, img_val_alpha, x, y, z)
-    cmplx_amp_plot('beta', 2, real_val_beta, img_val_beta, x, y, z)
-    # plot the phase of orbital
-    cmplx_pha_plot('alpha', 3, real_val_alpha, img_val_alpha, x, y, z)
-    cmplx_pha_plot('beta', 4, real_val_beta, img_val_beta, x, y, z)
-    
-    # atoms data
-    atom_list = atoms['index']
-    atomx = atoms['x']
-    atomy = atoms['y']
-    atomz = atoms['z']
-    
-    # plot atoms, phase plot can't represent atomic position accurately
-    atoms_plot(1, atom_list, atomx, atomy, atomz)
-    atoms_plot(2, atom_list, atomx, atomy, atomz)
-    
-    mlab.show()
+    # plot the complex 2c orbital
+    isovla = cmplx_orb_plot('alpha', atoms, real_val_alpha, img_val_alpha, \
+        x, y, z, isovalue)
+    isovlb = cmplx_orb_plot('beta', atoms, real_val_beta, img_val_beta, \
+        x, y, z, isovalue)
+    # UI regulation isovalue
+    class IsoValueController(HasTraits):
+        isova = Float(isovla, desc="isova", auto_set=False, enter_set=True)
+        isovb = Float(isovlb, desc="isovb", auto_set=False, enter_set=True)
+        @observe('isova')
+        def update_isova(self,event):
+            old_isov = event.old
+            new_isov = event.new
+            mlab.close('alpha(amplitude)')
+            mlab.close(f'alpha(phase), isovalue={old_isov}')
+            cmplx_orb_plot('alpha', atoms, real_val_alpha, img_val_alpha, \
+                x, y, z, new_isov)
+            mlab.draw()
+            mlab.view()
+        @observe('isovb')
+        def update_isovb(self,event):
+            old_isov = event.old
+            new_isov = event.new
+            mlab.close('beta(amplitude)')
+            mlab.close(f'beta(phase), isovalue={old_isov}')
+            cmplx_orb_plot('beta', atoms, real_val_beta, img_val_beta, \
+                x, y, z, new_isov)
+            mlab.draw()
+            mlab.view()
+        viewalpha = View(
+            Item('isova', label="Alpha_isovalue", show_label=True),
+            width=300,
+            height=200,
+            resizable=True
+        )
+        viewbeta = View(
+            Item('isovb', label="Beta_isovalue", show_label=True),
+            width=300,
+            height=200,
+            resizable=True
+        )
+    controller = IsoValueController()
+    controller.configure_traits()
 
 def run():
     real_cube_address = r'.\real.cub'

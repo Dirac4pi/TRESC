@@ -1,5 +1,6 @@
 '''
 script for SCF monitoring
+env:base
 '''
 
 import numpy as np

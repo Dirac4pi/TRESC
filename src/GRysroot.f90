@@ -6,7 +6,7 @@ module GRysroot
     implicit none
     contains
     
-    subroutine GRysroots(n,X,roots,weights)
+    pure subroutine GRysroots(n,X,roots,weights)
         implicit none
         integer,intent(in) :: n
         real(dp),intent(in) :: X
@@ -17,12 +17,10 @@ module GRysroot
             call rysroot4(n,X,roots,weights)
         else if(n <= 5) then
             call rysroot5(n,X,roots,weights)
-        else 
-            call terminate('GRys roots and weights calculation failed.')
         end if
     end subroutine 
     
-    SUBROUTINE rysrootmax3(N,X,ROOTS,WEIGHTS)
+    pure SUBROUTINE rysrootmax3(N,X,ROOTS,WEIGHTS)
         IMPLICIT NONE
         INTEGER, INTENT(IN) :: N
         real(dp), INTENT(IN) :: X
@@ -398,7 +396,7 @@ module GRysroot
         ENDIF
     END SUBROUTINE rysrootmax3
 !===========================================================================
-    SUBROUTINE rysroot4(N,X,ROOTS,WEIGHTS)
+    pure SUBROUTINE rysroot4(N,X,ROOTS,WEIGHTS)
         IMPLICIT NONE
         INTEGER, INTENT(IN) :: N
         real(dp), INTENT(IN) :: X
@@ -640,7 +638,7 @@ module GRysroot
           WEIGHTS(4) = WW4
         END SUBROUTINE rysroot4
         !===========================================================================
-        SUBROUTINE rysroot5(N,X,ROOTS,WEIGHTS)
+        pure SUBROUTINE rysroot5(N,X,ROOTS,WEIGHTS)
             IMPLICIT NONE
             INTEGER, INTENT(IN) :: N
             real(dp), INTENT(IN) :: X

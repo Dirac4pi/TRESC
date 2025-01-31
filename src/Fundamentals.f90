@@ -4,16 +4,17 @@
 ! |---------------<BASIC CONTROL & PARAMETER DEFINITION>---------------|
 
 module Fundamentals
+    use ifport
+    
 !-----------------------------------------------------------------------
 ! definitions for programming
     
-    use ifport
     integer :: loop_i, loop_j, loop_k, loop_m, loop_n, loop_l     ! universal loop variables
     integer :: ios                                                ! universal operating status
     integer :: pid                                                ! process ID
     integer,parameter :: dp = selected_real_kind(12)              ! double precesion
     integer,parameter :: sp = kind(0.0)                           ! single precesion
-    real(dp) :: safmin = 1E-12                                    ! safe minimal that 1/safmin does not overflow
+    real(dp),parameter :: safmin = 1E-14                          ! safe minimal that 1/safmin does not overflow
     integer :: exists                                             ! whether the file exists
     integer,private :: clock_time1, clock_time2                   ! job clock time (wall time)
     real(sp),private :: cpu_time1, cpu_time2                      ! job cpu time
@@ -22,17 +23,20 @@ module Fundamentals
     character(len = 50) :: address_molecular
     character(len = 50) :: address_job
     character(len = 50) :: address_basis
-    character(len = 50) :: wd
+    character(len = 50) :: wd                                     ! working directory
     character(len = 20) :: usrname
     
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
 
+    complex(dp),parameter :: c0 = cmplx(0.0,0.0,dp)
+    complex(dp),parameter :: c1 = cmplx(1.0,0.0,dp)
+    complex(dp),parameter :: ci = cmplx(0.0,1.0,dp)
     real(dp),parameter :: pi = 3.14159265358979323_dp
-    real(dp),parameter :: speed_light = 137.035999074_dp
+    real(dp),parameter :: speedc = 137.035999074_dp
     real(dp),parameter :: Ang2Bohr = 0.529177249_dp
     real(dp),parameter :: fm2Bohr = 52917.7249_dp
-    real(dp),parameter :: QED_rad = sqrt(1.0/(2.0*pi*speed_light) - 0.328/(pi*pi*speed_light*speed_light))
+    real(dp),parameter :: QED_rad = sqrt(1.0/(2.0*pi*speedc) - 0.328/(pi*pi*speedc*speedc))
     
 !-----------------------------------------------------------------------
 ! calculation settings (with default)
@@ -44,12 +48,14 @@ module Fundamentals
     logical(kind=4) :: STTP_type = .false.                        ! Spin Tensor Thomas Precession
     logical(kind=4) :: mDCB_type = .false.                        ! modified Dirac Coulomb Breit
     logical :: finitenuc = .false.
+    real(dp) :: cutS = 1E-5                                       ! linear dependence threshold of evl(i_j)
     !--------------------<module Atoms>--------------------
     integer :: charge = 0                                         ! charge of the system
     integer :: spin_mult = 675                                    ! spin multiplicity of the system, its default value depends on the number of electrons
     integer :: electron_count                                     ! number of electrons in molecular
+    logical :: s_h = .true.                                       ! whether to use spherical-harmonic basis
     !---------------------<module SCF>---------------------
-    real(dp) :: schwarz_VT = 1E-10                                ! Schwarz screening cutoff, default as 1E-10
+    real(dp) :: schwarz_VT = 1E-9                                 ! Schwarz screening cutoff, default as 1E-9
     integer :: maxiter = 128                                      ! upper limit of convergence loops
     real(dp) :: conver_tol = 1E-8                                 ! convergence tolerence of energy
     real(dp) :: damp = 0.0                                        ! mix the generated density matrix and original density matrix (-(dE)^damp+1)
@@ -70,7 +76,7 @@ module Fundamentals
 !-----------------------------------------------------------------------
 ! generation of output file
     
-    subroutine generate_tot()
+    subroutine generate_output()
         implicit none
         character(8)  :: date
         character(10) :: time
@@ -97,14 +103,14 @@ module Fundamentals
         write(60,*)
         write(60,"(a)") "Acknowledge: "
         write(60,"(a)") "   TRESC is a molecular 2-component DKH2 Hartree-Fock self-consistent field"
-        write(60,"(a)") "   calculation program, use Cartesian GTO for all basis."
+        write(60,"(a)") "   calculation program, spherical-harmonic GTO basis by default."
         write(60,"(a)") "   All results default to Atomic Units (A.U.)."
         write(60,*)
         write(60,"(a)") "Packages used: "
         write(60,"(a)") "   LAPACK95: linear algebra routines"
         write(60,"(a)") "   OMP_LIB: OpenMP parallel operation"
         write(60,*)
-    end subroutine generate_tot
+    end subroutine generate_output
     
 !-----------------------------------------------------------------------
 ! standard termination of current job
@@ -133,43 +139,44 @@ module Fundamentals
             ,mod(floor((cpu_time2 - cpu_time1)/60_sp),60),' min',mod(int(cpu_time2 - cpu_time1),60),' s'
             write(60,"(A,I2,A,I2,A,I2,A)") 'Job clock time: ',floor(real(clock_time2 - clock_time1)/36000000_sp),' h' &
             ,mod(floor(real(clock_time2 - clock_time1)/600000_sp),60),' min',mod((clock_time2 - clock_time1)/10000,60),' s'
-            if (terminate_message == 'keep') write(60,'(a)') 'process continues >>>'
+            if (terminate_message == 'keep') write(60,'(a)') 'process holding...'
             close(60)
         end if
         if (terminate_message == 'normal') then
             write(*,"('TRESC: Normal termination of job ' A30)") address_job
             pause
-            stop
+            stop 0
         else if (terminate_message == 'keep') then
             write(*,"('TRESC: Normal termination of job ' A30)") address_job
             write(*,'(a)') 'holding...'
         else
             write(*,"('TRESC: Error termination of job ' A30)") address_job
             pause
-            stop
+            stop 1
         end if
     end subroutine terminate
     
 !-----------------------------------------------------------------------
 ! dump complex matrix (double precesion) to address_job.name binary file
-    subroutine dump_matrix_cmplx(name, m, dm)
+    subroutine dump_matrix_cmplx(name, m, dmi, dmj)
         character(len = *),intent(in) :: name
-        integer,intent(in) :: dm
+        integer,intent(in) :: dmi, dmj
         integer :: channel, a, b
-        complex(dp),intent(in) :: m(dm, dm)
-        if (size(m) < dm*dm) then
+        complex(dp),intent(in) :: m(dmi, dmj)
+        if (size(m) < dmi*dmj) then
             call terminate('dump matrix failed, dm too large')
-        else if (size(m) > dm*dm) then
+        else if (size(m) > dmi*dmj) then
             call terminate('dump matrix failed, dm too small')
         end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=16, status='replace', action='write', iostat=ios)
         if (ios /= 0) call terminate('dump binary file .'//trim(name)//' failed')
-        write(channel,rec=1) dm                  ! first record is the dimension of matrix
-        do a = 1, dm
-            do b = 1, dm
-                write(channel,rec=1+dm*(a-1)+b)  m(a,b)
+        write(channel,rec=1) dmi
+        write(channel,rec=2) dmj
+        do a = 1, dmi
+            do b = 1, dmj
+                write(channel,rec=2+dmj*(a-1)+b)  m(a,b)
             end do
         end do
         close(channel)
@@ -177,49 +184,52 @@ module Fundamentals
     
 !-----------------------------------------------------------------------
 ! dump real matrix (double precesion) to address_job.name binary file
-    subroutine dump_matrix_real(name, m, dm)
+    subroutine dump_matrix_real(name, m, dmi, dmj)
         character(len = *),intent(in) :: name
-        integer,intent(in) :: dm
+        integer,intent(in) :: dmi, dmj
         integer :: channel, a, b
-        real(dp),intent(in) :: m(dm, dm)
-        if (size(m) < dm*dm) then
+        real(dp),intent(in) :: m(dmi, dmj)
+        if (size(m) < dmi*dmj) then
             call terminate('dump matrix failed, dm too large')
-        else if (size(m) > dm*dm) then
+        else if (size(m) > dmi*dmj) then
             call terminate('dump matrix failed, dm too small')
         end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=8, status='replace', action='write', iostat=ios)
         if (ios /= 0) call terminate('dump binary file .'//trim(name)//' failed')
-        write(channel,rec=1) dm                  ! first record is the dimension of matrix
-        do a = 1, dm
-            do b = 1, dm
-                write(channel,rec=1+dm*(a-1)+b)  m(a,b)
+        write(channel,rec=1) dmi
+        write(channel,rec=2) dmj
+        do a = 1, dmi
+            do b = 1, dmj
+                write(channel,rec=2+dmj*(a-1)+b)  m(a,b)
             end do
         end do
         close(channel)
     end subroutine dump_matrix_real
 !-----------------------------------------------------------------------
 ! read complex matrix (double precesion) from address_job.name binary file
-    subroutine read_matrix_cmplx(name, m, dm)
+    subroutine read_matrix_cmplx(name, m, dmi, dmj)
         character(len = *),intent(in) :: name
         integer :: channel, a, b
-        integer,intent(out) :: dm
+        integer,intent(out) :: dmi, dmj
         complex(dp),allocatable :: m(:,:)
         if (allocated(m)) then
-            dm = -1
+            dmi = -1
+            dmj = -1
             return
         end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=16, status='old', action='read', iostat=ios)
         if (ios /= 0) call terminate('read binary file .'//trim(name)//' failed')
-        read(channel,rec=1) dm                  ! first record is the dimension of matrix
-        allocate(m(dm,dm))
-        m = cmplx(0.0, 0.0, dp)
-        do a = 1, dm
-            do b = 1, dm
-                read(channel,rec=1+dm*(a-1)+b)  m(a,b)
+        read(channel,rec=1) dmi
+        read(channel,rec=2) dmj
+        allocate(m(dmi,dmj))
+        m = c0
+        do a = 1, dmi
+            do b = 1, dmj
+                read(channel,rec=2+dmj*(a-1)+b)  m(a,b)
             end do
         end do
         close(channel)
@@ -227,25 +237,27 @@ module Fundamentals
     
 !-----------------------------------------------------------------------
 ! read real matrix (double precesion) from address_job.name binary file
-    subroutine read_matrix_real(name, m, dm)
+    subroutine read_matrix_real(name, m, dmi, dmj)
         character(len = *),intent(in) :: name
         integer :: channel, a, b
-        integer,intent(out) :: dm
+        integer,intent(out) :: dmi, dmj
         real(dp),allocatable :: m(:,:)
         if (allocated(m)) then
-            dm = -1
+            dmi = -1
+            dmj = -1
             return
         end if
         call lowercase(name)
         open(newunit=channel, file=trim(address_job)//'.'//trim(name), access='direct', form='unformatted',&
             recl=8, status='old', action='read', iostat=ios)
         if (ios /= 0) call terminate('read binary file .'//trim(name)//' failed')
-        read(channel,rec=1) dm                  ! first record is the dimension of matrix
-        allocate(m(dm,dm))
-        m = 0.0
-        do a = 1, dm
-            do b = 1, dm
-                read(channel,rec=1+dm*(a-1)+b)  m(a,b)
+        read(channel,rec=1) dmi
+        read(channel,rec=2) dmj
+        allocate(m(dmi,dmj))
+        m = 0.0_dp
+        do a = 1, dmi
+            do b = 1, dmj
+                read(channel,rec=2+dmj*(a-1)+b)  m(a,b)
             end do
         end do
         close(channel)

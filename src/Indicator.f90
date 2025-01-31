@@ -74,25 +74,21 @@ module Indicator
         cmd_count = command_argument_count()
         if (cmd_count == 0) then
             write(*,*) 'TRESC error: no argument received'
-            pause
-            stop
+            stop 1
         else if (cmd_count >= 2) then
             write(*,*) 'TRESC error: too many arguments'
-            pause
-            stop
+            stop 1
         end if
         call get_command_argument(1, address_molecular, status=molstat)
         if (molstat > 0) then
             write(*,*) 'TRESC error: molecular adress retrieval fails'
-            pause
-            stop
+            stop 1
         else if (molstat < 0) then
             write(*,*) 'TRESC error: molecular adress too long'
-            pause
-            stop
+            stop 1
         end if
         ! get information from .gbs and .xyz files
-        call generate_tot()
+        call generate_output()
         call read_keywords()
         call read_gbs()
         call read_geometry()
@@ -101,14 +97,7 @@ module Indicator
         ! Hartree-Fock SCF process
         if (DKH_order == 0 .or. DKH_order == 2) then
             call DKH_Hamiltonian()
-            if (molden) then
-                call DKH_Hartree_Fock(keep = 1,kill = .false.)
-                call dump_molden()
-                pause
-                stop
-            else
-                call DKH_Hartree_Fock(keep,kill)
-            end if
+            call DKH_Hartree_Fock(keep,kill)
         else if (DKH_order == 1) then
             write(60,*)
             write(60,'(A)') 'Module Hamiltonian: The SRTP effect requires at least a second-order'
