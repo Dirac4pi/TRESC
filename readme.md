@@ -62,7 +62,7 @@ lead to different observations.<br>
 related to the intrinsic property of reference frame transformation.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;After some derivation, the contribution of the Thomas precession to electron energy at low speed can be modified as<br>
 <p align="center">
-  <img src="docs/formula_3.png" width="400">
+  <img src="docs/formula_3.png" width="390">
 </p>
 
 
