@@ -23,6 +23,8 @@ The results are as follows:<br>
   <img src="docs/figure_2.png" width="500">
 </p>
 
+---
+
 It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$, phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC effect, the plotted results agree with the fact that SOC intensity is proportional to $${{1}\Bigg/{\mathrm{r}^3}}$$ approximately.
 ## A special Hamiltonian: SRTP
 Second Relativized Thomas Precession (SRTP) is to conbine the Lorentz vector feature of spin 4-vector $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of its spatial components ($$\left| \vec{s} \right|=\hbar /2$$). 'Second Relativized' means the magnitude of spin vector is independent of the reference frame choice.  
