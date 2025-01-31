@@ -53,7 +53,7 @@ lead to different observations.<br>
 
 &nbsp;&nbsp;&nbsp;&nbsp;which $$s_i$$ represent spin components and $$\beta _i$$ represent velocity components, $$\gamma $$ represent Lorentz factor and<br>
 <p align="center">
-  <img src="docs/formula_2.png" width="500">
+  <img src="docs/formula_2.png" width="300">
 </p>
 
 
@@ -62,21 +62,21 @@ lead to different observations.<br>
 related to the intrinsic property of reference frame transformation.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;After some derivation, the contribution of the Thomas precession to electron energy at low speed can be modified as<br>
 <p align="center">
-  <img src="docs/formula_3.png" width="500">
+  <img src="docs/formula_3.png" width="400">
 </p>
 
 
 
 &nbsp;&nbsp;&nbsp;&nbsp;which<br>
 <p align="center">
-  <img src="docs/formula_4.png" width="500">
+  <img src="docs/formula_4.png" width="300">
 </p>
 
 
  
 &nbsp;&nbsp;&nbsp;&nbsp;Then quantization and use the Pauli vector rule yields the modified Dirac matrix<br>
 <p align="center">
-  <img src="docs/formula_5.png" width="500">
+  <img src="docs/formula_5.png" width="300">
 </p>
 
 
