@@ -1,7 +1,7 @@
 %mem=1500MB
 %nprocshared=4
-%chk=E:\TRESC\carbene-3et\Gaussian\Scratch\Gaujob.chk
-# uhf/gen 6d 10f nosymm iop(3/32=2,3/27=9) int=nobasistransform
+%chk=E:\TRESC\examples\C6H5+\Gaussian\Scratch\C6H5+.chk
+# uhf/gen nosymm iop(3/32=2,3/27=9) int=nobasistransform
 
 C6H5+
 

@@ -1,4 +1,3 @@
-! SCN radical DKH2 SRTP
 3
 
  S                 -9.11657200   -3.34482800    0.00000000
@@ -17,8 +16,8 @@ threads=8
 endHamiltonian
 
 %SCF
+guess=read
 molden
-convertol=0.00000001
 nodiis=128
 keepspin
 emd4

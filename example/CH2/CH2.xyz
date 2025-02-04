@@ -1,4 +1,3 @@
-! CH2 3et DKH2
 3
 
  C                  0.00000000    0.00000000    0.10307000
@@ -18,6 +17,8 @@ finitenuc
 endHamiltonian
 
 %SCF
+nodiis=100
 keepspin
 emd4
+molden
 endSCF

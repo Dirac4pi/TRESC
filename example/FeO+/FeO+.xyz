@@ -1,25 +1,24 @@
-! FeO DKH0 (for TMCs,  DKH2 without SOMF is difficult to converge)
 2
 
  Fe                 6.75742070    0.43590531   -1.20459949
  O                  8.57742070    0.43590531   -1.20459949
 
 %Atoms
+spin=6
+charge=1
 basis=dkh-def2-svp
 endAtoms
 
 %Hamiltonian
-! for TMCs, high-spin states is difficult to converge
 dkh0
 threads=8
 endHamiltonian
 
 %SCF
 molden
-damp=0.7
-! for TMCs, dynamic damping is preferred
+damp=0.8
 cutdamp=0.0001
-convertol=0.0000001
+convertol=0.000001
 nodiis=128
 emd4
 endSCF

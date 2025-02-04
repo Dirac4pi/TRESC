@@ -156,7 +156,7 @@ module SCF
             write(60,*)
             write(60,'(a,i3)') '   SCF iter ',loop_i
             if (loop_i == 1) then
-                write(60,'(a)') '   read density matrix from Gaussian checkpoint file'
+                write(60,'(a)') '   read density matrix'
                 call assign_rou()
                 write(60,'(a)') '   complete! stored in rou_m'
             end if
@@ -392,7 +392,7 @@ module SCF
             end if
             ! de-orthogonalization
             call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
-            write(60,'(a)') '   MO coefficient dump to .ao2mo file'
+            write(60,'(a)') '   AO2MO dump to .ao2mo file'
             call dump_matrix_cmplx(name='ao2mo', m=AO2MO, dmi=2*sbdm, dmj=2*fbdm)
             ! convergence check
             if (loop_i == 1) then
@@ -537,6 +537,10 @@ module SCF
                 do loop_j = 1, subsp
                     write(60,'(a,i2,f10.6,a,f10.6)') '   --- subsp coe',loop_j, real(DIISmat(loop_j,subsp+1)), ',', aimag(DIISmat(loop_j,subsp+1))
                 end do
+            end if
+            if (forward) then
+                if (loop_i > 2) rou_pre_pre = rou_pre
+                rou_pre = rou_m
             end if
             forward = .true.
         end do
@@ -876,11 +880,8 @@ module SCF
                     end do
                 end do
             end if
+            rou_pre = rou_m
         else
-            if (forward) then
-                if (loop_i > 2) rou_pre_pre = rou_pre
-                rou_pre = rou_m
-            end if
             rou_m = c0
             do ploop_i = 1, 2*sbdm
                 do ploop_j = 1, 2*sbdm
@@ -2141,7 +2142,7 @@ module SCF
             ! molecular geometry
             write(channel, '(a)') '[Atoms] AU'
             do dmi = 1, atom_count
-                write(channel, '(a,i3,i2,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
+                write(channel, '(a,i3,i3,f13.7,f13.7,f13.7)') element_list(molecular(dmi)%atom_number), &
                     dmi, molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
                     molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
             end do

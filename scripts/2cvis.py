@@ -74,9 +74,10 @@ def read_cube(cube_address, imo=0):
         if nmo == 1:  # read the number of MOs if exist
             nmo = int(f.readline().split()[0])
             if nmo < imo:
-                exit('bad call read_cube: nmo < imo.')
+                exit('bad call read_cube: nmo < imo, file is '+cube_address)
             elif imo <= 0:
-                exit('bad call read_cube: nmo > 0 but imo <= 0.')
+                exit('bad call read_cube: nmo > 0 but imo <= 0, file is '\
+                    +cube_address)
             # read grid data
             for i in range(int(n1)):
                 for j in range(int(n2)):
@@ -93,7 +94,8 @@ def read_cube(cube_address, imo=0):
                             cubmat[i,j,k//nmo]['value'] = float(line[k%6-1])
         else:   # read real-space function
             if imo != 0:
-                Warning('no orbital in cube file but imo != 0')
+                Warning('no orbital in cube file but imo != 0, file is '\
+                    +cube_address)
             # read grid data
             for i in range(int(n1)):
                 for j in range(int(n2)):
@@ -304,9 +306,10 @@ def _2corb(real_cube_address, img_cube_address, isovalue = 0.1):
     '''
     atoms, real_mat_alpha, nmo = read_cube(real_cube_address, 1)
     if nmo == 0:
-        exit('no orbital info in cube file.')
+        exit('no orbital info in cube file '+real_cube_address)
     elif nmo != 2:
-        exit('cube file should contain both alpha and beta orbitals.')
+        exit('cube file '+real_cube_address+' should contain both \
+            alpha and beta orbitals.')
     # grid data
     x = real_mat_alpha['x']
     y = real_mat_alpha['y']

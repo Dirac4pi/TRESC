@@ -1,4 +1,4 @@
- Entering Link 1 = D:\Gaussian16W\G16W\l1.exe PID=     21672.
+ Entering Link 1 = D:\Gaussian16W\G16W\l1.exe PID=     10444.
   
  Copyright (c) 1988,1990,1992,1993,1995,1998,2003,2009,2016,
             Gaussian, Inc.  All Rights Reserved.
@@ -72,27 +72,27 @@
  
  ******************************************
  Gaussian 16:  EM64W-G16RevA.03 17-Dec-2016
-                13-Jan-2025 
+                01-Feb-2025 
  ******************************************
  %mem=1500MB
  %nprocshared=4
  Will use up to    4 processors via shared memory.
- %chk=E:\TRESC\examples\FeO\Gaussian\Scratch\FeO.chk
- ---------------------------------------------------------------
- # uhf/gen 6d 10f nosymm iop(3/32=2,3/27=9) int=nobasistransform
- ---------------------------------------------------------------
+ %chk=E:\TRESC\examples\FeO+\Gaussian\Scratch\FeO+.chk
+ --------------------------------------------------------
+ # uhf/gen nosymm iop(3/32=2,3/27=9) int=nobasistransform
+ --------------------------------------------------------
  1/38=1,172=1/1;
  2/12=2,15=1,17=6,18=5,40=1/2;
- 3/5=7,8=22,11=2,25=1,27=9,30=1,32=2,60=-1,116=2/1,2,3;
+ 3/5=7,11=2,25=1,27=9,30=1,32=2,60=-1,116=2/1,2,3;
  4//1;
  5/5=2,38=5/2;
  6/7=2,8=2,9=2,10=2,28=1/1;
  99/5=1,9=1/99;
- ---
- FeO
- ---
+ ----
+ FeO+
+ ----
  Symbolic Z-matrix:
- Charge =  0 Multiplicity = 1
+ Charge =  1 Multiplicity = 6
  Fe                    6.75742   0.43591  -1.2046 
  O                     8.57742   0.43591  -1.2046 
  
@@ -105,23 +105,23 @@
       2          8           0        8.577421    0.435905   -1.204599
  ---------------------------------------------------------------------
  Symmetry turned off by external request.
- Stoichiometry    FeO
+ Stoichiometry    FeO(1+,6)
  Framework group  C*V[C*(OFe)]
  Deg. of freedom     1
  Full point group                 C*V     NOp   4
  Rotational constants (GHZ):           0.0000000          12.2664390          12.2664390
- General basis read from cards:  (6D, 10F)
-    61 basis functions,   106 primitive gaussians,    61 cartesian basis functions
-    17 alpha electrons       17 beta electrons
+ General basis read from cards:  (5D, 7F)
+    55 basis functions,   106 primitive gaussians,    61 cartesian basis functions
+    19 alpha electrons       14 beta electrons
        nuclear repulsion energy        60.4773955337 Hartrees.
  NAtoms=    2 NActive=    2 NUniq=    2 SFac= 1.00D+00 NAtFMM=   60 NAOKFM=F Big=F
  Integral buffers will be    131072 words long.
  Raffenetti 2 integral format.
  Two-electron integral symmetry is turned off.
  One-electron integrals computed using PRISM.
- NBasis=    61 RedAO= F EigKep=  0.00D+00  NBF=    61
- NBsUse=    61 1.00D-04 EigRej=  0.00D+00 NBFU=    61
- GSVD:  LWork=       -4209 too small for GESVD, short by       19520 words or       19520 for optimal perf.
+ NBasis=    55 RedAO= F EigKep=  0.00D+00  NBF=    55
+ NBsUse=    55 1.00D-04 EigRej=  0.00D+00 NBFU=    55
+ GSVD:  LWork=       -2769 too small for GESVD, short by       15254 words or       15254 for optimal perf.
  ExpMin= 3.37D-02 ExpMax= 6.09D+04 ExpMxC= 9.15D+03 IAcc=3 IRadAn=         5 AccDes= 0.00D+00
  Harris functional with IExCor=  205 and IRadAn=       5 diagonalized for initial guess.
  HarFok:  IExCor=  205 AccDes= 0.00D+00 IRadAn=         5 IDoV= 1 UseB2=F ITyADJ=14
@@ -131,19 +131,21 @@
          wScrn=  0.000000 ICntrl=       500 IOpCl=  0 I1Cent=   200000004 NGrid=           0
          NMat0=    1 NMatS0=      1 NMatT0=    0 NMatD0=    1 NMtDS0=    0 NMtDT0=    0
  Symmetry not used in FoFCou.
- Initial guess <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 0.0000 <S**2>= 0.0000 S= 0.0000
- Keep R1 and R2 ints in memory in canonical form, NReq=5537450.
+ Initial guess <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 2.5000 <S**2>= 8.7500 S= 2.5000
+ Keep R1 and R2 ints in memory in canonical form, NReq=4332818.
  Requested convergence on RMS density matrix=1.00D-08 within 128 cycles.
  Requested convergence on MAX density matrix=1.00D-06.
  Requested convergence on             energy=1.00D-06.
  No special actions if energy rises.
- GSVD:  LWork=       -4209 too small for GESVD, short by       19520 words or       19520 for optimal perf.
- SCF Done:  E(UHF) =  -1334.71860174     A.U. after   23 cycles
-            NFock= 23  Conv=0.97D-08     -V/T= 1.9967
- <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 0.0000 <S**2>= 0.0000 S= 0.0000
+ GSVD:  LWork=       -3465 too small for GESVD, short by       15950 words or       15950 for optimal perf.
+ EnCoef did   100 forward-backward iterations
+ Rare condition: small coef for last iteration:  0.000D+00
+ SCF Done:  E(UHF) =  -1334.65219424     A.U. after   28 cycles
+            NFock= 28  Conv=0.99D-08     -V/T= 1.9964
+ <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 2.5000 <S**2>= 8.8101 S= 2.5100
  <L.S>= 0.000000000000E+00
  Annihilation of the first spin contaminant:
- S**2 before annihilation     0.0000,   after     0.0000
+ S**2 before annihilation     8.8101,   after     8.7508
 
  **********************************************************************
 
@@ -151,79 +153,77 @@
 
  **********************************************************************
 
- Alpha  occ. eigenvalues -- -260.53218 -31.80168 -27.43543 -27.43282 -27.42915
- Alpha  occ. eigenvalues --  -20.43512  -4.15717  -2.75622  -2.75503  -2.74944
- Alpha  occ. eigenvalues --   -1.05134  -0.60647  -0.58698  -0.58071  -0.34507
- Alpha  occ. eigenvalues --   -0.33970  -0.30737
- Alpha virt. eigenvalues --   -0.01929   0.13592   0.15376   0.17279   0.18245
- Alpha virt. eigenvalues --    0.22589   0.38512   0.72101   1.18101   1.18188
- Alpha virt. eigenvalues --    1.20309   1.26277   1.27684   1.43911   1.44495
- Alpha virt. eigenvalues --    1.47521   1.48651   1.50020   1.57243   1.71212
- Alpha virt. eigenvalues --    3.14936   3.14938   3.19959   3.19980   3.38486
- Alpha virt. eigenvalues --    3.52381   4.42865   4.44956   4.45103   4.47094
- Alpha virt. eigenvalues --    4.47756   4.49244   4.59815   5.76101   5.77713
- Alpha virt. eigenvalues --    5.98506   6.66985  15.38829  15.39585  15.49751
- Alpha virt. eigenvalues --   15.67443  31.55945  60.18757 698.10477
-  Beta  occ. eigenvalues -- -260.53218 -31.80168 -27.43543 -27.43282 -27.42915
-  Beta  occ. eigenvalues --  -20.43512  -4.15717  -2.75622  -2.75503  -2.74944
-  Beta  occ. eigenvalues --   -1.05134  -0.60647  -0.58698  -0.58071  -0.34507
-  Beta  occ. eigenvalues --   -0.33970  -0.30737
-  Beta virt. eigenvalues --   -0.01929   0.13592   0.15376   0.17279   0.18245
-  Beta virt. eigenvalues --    0.22589   0.38512   0.72101   1.18101   1.18188
-  Beta virt. eigenvalues --    1.20309   1.26277   1.27684   1.43911   1.44495
-  Beta virt. eigenvalues --    1.47521   1.48651   1.50020   1.57243   1.71212
-  Beta virt. eigenvalues --    3.14936   3.14938   3.19959   3.19980   3.38486
-  Beta virt. eigenvalues --    3.52381   4.42865   4.44956   4.45103   4.47094
-  Beta virt. eigenvalues --    4.47756   4.49244   4.59815   5.76101   5.77713
-  Beta virt. eigenvalues --    5.98506   6.66985  15.38829  15.39585  15.49751
-  Beta virt. eigenvalues --   15.67443  31.55945  60.18757 698.10477
+ Alpha  occ. eigenvalues -- -260.66706 -31.96637 -27.60877 -27.60877 -27.58151
+ Alpha  occ. eigenvalues --  -20.89984  -4.43998  -3.09663  -3.09663  -3.04408
+ Alpha  occ. eigenvalues --   -1.59894  -0.92217  -0.92217  -0.89398  -0.85377
+ Alpha  occ. eigenvalues --   -0.85377  -0.77988  -0.77988  -0.74254
+ Alpha virt. eigenvalues --   -0.20914  -0.03997  -0.03997  -0.02087   0.10141
+ Alpha virt. eigenvalues --    0.85857   0.85857   0.88007   0.93873   0.93873
+ Alpha virt. eigenvalues --    1.08827   1.08827   1.17590   1.32347   1.44729
+ Alpha virt. eigenvalues --    1.44729   1.52080   2.08076   2.59543   2.59543
+ Alpha virt. eigenvalues --    2.72053   2.72053   3.07004   4.15257   4.15257
+ Alpha virt. eigenvalues --    4.20708   4.20708   4.22288   4.22288   4.33635
+ Alpha virt. eigenvalues --    8.60840   8.60840   8.80651  15.34009  55.87074
+ Alpha virt. eigenvalues --  682.31479
+  Beta  occ. eigenvalues -- -260.66685 -31.86235 -27.49966 -27.49966 -27.49744
+  Beta  occ. eigenvalues --  -20.82308  -4.14254  -2.74640  -2.70733  -2.70733
+  Beta  occ. eigenvalues --   -1.30785  -0.76508  -0.58018  -0.58018
+  Beta virt. eigenvalues --   -0.19582  -0.14161  -0.14161  -0.00776   0.01993
+  Beta virt. eigenvalues --    0.01993   0.02732   0.07409   0.07409   0.26408
+  Beta virt. eigenvalues --    0.95514   1.02296   1.02296   1.15631   1.15631
+  Beta virt. eigenvalues --    1.20764   1.20764   1.25667   1.47166   1.52825
+  Beta virt. eigenvalues --    1.52825   1.59197   2.16819   2.80806   2.80806
+  Beta virt. eigenvalues --    2.83750   2.83750   3.16618   4.34971   4.34971
+  Beta virt. eigenvalues --    4.39525   4.39525   4.41363   4.41363   4.52746
+  Beta virt. eigenvalues --    8.71291   8.71291   8.89243  15.42828  55.91431
+  Beta virt. eigenvalues --  682.31658
           Condensed to atoms (all electrons):
                1          2
-     1  Fe  24.890354   0.307682
-     2  O    0.307682   8.494282
+     1  Fe  24.727154   0.153125
+     2  O    0.153125   7.966597
           Atomic-Atomic Spin Densities.
                1          2
-     1  Fe   0.000000   0.000000
-     2  O    0.000000   0.000000
+     1  Fe   3.377727  -0.115245
+     2  O   -0.115245   1.852763
  Mulliken charges and spin densities:
                1          2
-     1  Fe   0.801964   0.000000
-     2  O   -0.801964   0.000000
- Sum of Mulliken charges =   0.00000   0.00000
+     1  Fe   1.119721   3.262482
+     2  O   -0.119721   1.737518
+ Sum of Mulliken charges =   1.00000   5.00000
  Mulliken charges and spin densities with hydrogens summed into heavy atoms:
                1          2
-     1  Fe   0.801964   0.000000
-     2  O   -0.801964   0.000000
- Electronic spatial extent (au):  <R**2>=           6672.2077
- Charge=              0.0000 electrons
+     1  Fe   1.119721   3.262482
+     2  O   -0.119721   1.737518
+ Electronic spatial extent (au):  <R**2>=           6423.5742
+ Charge=              1.0000 electrons
  Dipole moment (field-independent basis, Debye):
-    X=             -8.1428    Y=              0.0000    Z=              0.0000  Tot=              8.1428
+    X=             30.5455    Y=              2.0937    Z=             -5.7859  Tot=             31.1591
  Quadrupole moment (field-independent basis, Debye-Ang):
-   XX=           -140.2155   YY=            -18.3351   ZZ=            -18.2252
-   XY=             -3.5495   XZ=              9.8088   YZ=             -0.5185
+   XX=            176.8310   YY=            -12.6216   ZZ=             -6.5645
+   XY=             13.3149   XZ=            -36.7951   YZ=             -2.5221
  Traceless Quadrupole moment (field-independent basis, Debye-Ang):
-   XX=            -81.2902   YY=             40.5902   ZZ=             40.7001
-   XY=             -3.5495   XZ=              9.8088   YZ=             -0.5185
+   XX=            124.2827   YY=            -65.1699   ZZ=            -59.1128
+   XY=             13.3149   XZ=            -36.7951   YZ=             -2.5221
  Octapole moment (field-independent basis, Debye-Ang**2):
-  XXX=          -1783.1784  YYY=            -23.9771  ZZZ=             65.8621  XYY=           -138.0413
-  XXY=            -61.1207  XXZ=            168.9035  XZZ=           -147.5552  YZZ=             -6.6954
-  YYZ=             21.6344  XYZ=              0.7155
+  XXX=            848.0591  YYY=            -17.3011  ZZZ=             40.5143  XYY=            -94.9543
+  XXY=             77.0816  XXZ=           -213.0105  XZZ=            -56.4350  YZZ=             -2.8615
+  YYZ=             15.2039  XYZ=            -16.0392
  Hexadecapole moment (field-independent basis, Debye-Ang**3):
- XXXX=         -20005.9998 YYYY=            -38.4309 ZZZZ=           -175.9924 XXXY=           -777.2969
- XXXZ=           2148.0158 YYYX=           -179.1700 YYYZ=             28.1168 ZZZX=            504.7686
- ZZZY=             25.9321 XXYY=          -1061.3504 XXZZ=          -1233.0338 YYZZ=            -34.6307
- XXYZ=             49.3981 YYXZ=            163.1807 ZZXY=            -55.7430
- N-N= 6.047739553371D+01 E-N=-3.306958546540D+03  KE= 1.339170320769D+03
+ XXXX=           2036.1202 YYYY=            -23.0573 ZZZZ=           -115.5211 XXXY=            369.6735
+ XXXZ=          -1021.5716 YYYX=           -129.2332 YYYZ=             20.8409 ZZZX=            310.7284
+ ZZZY=             17.6604 XXYY=           -729.0963 XXZZ=           -506.1041 YYZZ=            -23.4865
+ XXYZ=            -92.8524 YYXZ=            114.3819 ZZXY=            -24.6003
+ N-N= 6.047739553371D+01 E-N=-3.300007959000D+03  KE= 1.339491430583D+03
                           Isotropic Fermi Contact Couplings
         Atom                 a.u.       MegaHertz       Gauss      10(-4) cm-1
-     1  Fe(57)             0.00000       0.00000       0.00000       0.00000
-     2  O(17)              0.00000       0.00000       0.00000       0.00000
+     1  Fe(57)            -0.93398     -27.09299      -9.66745      -9.03725
+     2  O(17)              0.90677    -109.93596     -39.22788     -36.67069
  --------------------------------------------------------
        Center         ----  Spin Dipole Couplings  ----
                       3XX-RR        3YY-RR        3ZZ-RR
  --------------------------------------------------------
-     1   Atom        0.000000      0.000000      0.000000
-     2   Atom        0.000000      0.000000      0.000000
+     1   Atom       -1.441376      0.720688      0.720688
+     2   Atom       -3.191461      1.595731      1.595731
  --------------------------------------------------------
                         XY            XZ            YZ
  --------------------------------------------------------
@@ -238,30 +238,35 @@
 
        Atom             a.u.   MegaHertz   Gauss  10(-4) cm-1        Axes
 
-              Baa     0.0000     0.000     0.000     0.000  1.0000  0.0000  0.0000
-     1 Fe(57) Bbb     0.0000     0.000     0.000     0.000  0.0000  1.0000  0.0000
-              Bcc     0.0000     0.000     0.000     0.000  0.0000  0.0000  1.0000
+              Baa    -1.4414   -24.954    -8.904    -8.324  1.0000  0.0000  0.0000
+     1 Fe(57) Bbb     0.7207    12.477     4.452     4.162  0.0000  0.9983 -0.0579
+              Bcc     0.7207    12.477     4.452     4.162  0.0000  0.0579  0.9983
  
-              Baa     0.0000     0.000     0.000     0.000  1.0000  0.0000  0.0000
-     2 O(17)  Bbb     0.0000     0.000     0.000     0.000  0.0000  1.0000  0.0000
-              Bcc     0.0000     0.000     0.000     0.000  0.0000  0.0000  1.0000
+              Baa    -3.1915   230.932    82.402    77.031  1.0000  0.0000  0.0000
+     2 O(17)  Bbb     1.5957  -115.466   -41.201   -38.515  0.0000  0.0602  0.9982
+              Bcc     1.5957  -115.466   -41.201   -38.515  0.0000  0.9982 -0.0602
  
 
  ---------------------------------------------------------------------------------
 
 
  Test job not archived.
- 1|1|UNPC-BATCOMPUTER|SP|UHF|Gen|Fe1O1|DELL|13-Jan-2025|0||# uhf/gen 6d
-  10f nosymm iop(3/32=2,3/27=9) int=nobasistransform||FeO||0,1|Fe,0,6.7
+ 1|1|UNPC-BATCOMPUTER|SP|UHF|Gen|Fe1O1(1+,6)|DELL|01-Feb-2025|0||# uhf/
+ gen nosymm iop(3/32=2,3/27=9) int=nobasistransform||FeO+||1,6|Fe,0,6.7
  574207,0.43590531,-1.20459949|O,0,8.5774207,0.43590531,-1.20459949||Ve
- rsion=EM64W-G16RevA.03|HF=-1334.7186017|S2=0.|S2-1=0.|S2A=0.|RMSD=9.74
- 0e-009|Dipole=-3.2036177,0.,0.|Quadrupole=-60.4373,30.177803,30.259497
- 1,-2.6389533,7.2925972,-0.3854595|PG=C*V [C*(O1Fe1)]||@
+ rsion=EM64W-G16RevA.03|HF=-1334.6521942|S2=8.810055|S2-1=0.|S2A=8.7508
+ 23|RMSD=9.894e-009|Dipole=-1.5614032,0.,0.|Quadrupole=92.4011375,-48.4
+ 522081,-43.9489294,9.8993307,-27.3562364,-1.8751351|PG=C*V [C*(O1Fe1)]
+ ||@
 
 
- THERE'S NOTHING WRONG WITH FOLLOWING A TRAIN OF THOUGHT...
- AS LONG AS IT ULTIMATELY PULLS INTO THE STATION.
- Job cpu time:       0 days  0 hours  0 minutes  4.0 seconds.
- Elapsed time:       0 days  0 hours  0 minutes  3.0 seconds.
+ WHEN A MATHEMATICIAN ENGAGED IN INVESTIGATING
+ PHYSICAL ACTIONS AND RESULTS HAS ARRIVED AT HIS
+ CONCLUSIONS, MAY THEY NOT BE EXPRESSED IN COMMON
+ LANGUAGE AS FULLY, CLEARLY, AND DEFINITELY AS IN
+ MATHEMATICAL FORMULAE?
+           - LETTER FROM M. FARADAY TO J.C. MAXWELL, 1857.
+ Job cpu time:       0 days  0 hours  0 minutes  5.0 seconds.
+ Elapsed time:       0 days  0 hours  0 minutes  3.5 seconds.
  File lengths (MBytes):  RWF=      6 Int=      0 D2E=      0 Chk=      1 Scr=      1
- Normal termination of Gaussian 16 at Mon Jan 13 12:56:02 2025.
+ Normal termination of Gaussian 16 at Sat Feb 01 10:00:18 2025.

@@ -1,4 +1,4 @@
- Entering Link 1 = D:\Gaussian16W\G16W\l1.exe PID=     21664.
+ Entering Link 1 = D:\Gaussian16W\G16W\l1.exe PID=      3832.
   
  Copyright (c) 1988,1990,1992,1993,1995,1998,2003,2009,2016,
             Gaussian, Inc.  All Rights Reserved.
@@ -72,25 +72,25 @@
  
  ******************************************
  Gaussian 16:  EM64W-G16RevA.03 17-Dec-2016
-                06-Nov-2024 
+                28-Jan-2025 
  ******************************************
  %mem=1500MB
  %nprocshared=4
  Will use up to    4 processors via shared memory.
- %chk=E:\TRESC\carbene-3et\Gaussian\Scratch\Gaujob.chk
- ---------------------------------------------------------------
- # uhf/gen 6d 10f nosymm iop(3/32=2,3/27=9) int=nobasistransform
- ---------------------------------------------------------------
+ %chk=E:\TRESC\examples\carbene-3et\Gaussian\Scratch\CH2.chk
+ --------------------------------------------------------
+ # uhf/gen nosymm iop(3/32=2,3/27=9) int=nobasistransform
+ --------------------------------------------------------
  1/38=1,172=1/1;
  2/12=2,15=1,17=6,18=5,40=1/2;
- 3/5=7,8=22,11=2,25=1,27=9,30=1,32=2,60=-1,116=2/1,2,3;
+ 3/5=7,11=2,25=1,27=9,30=1,32=2,60=-1,116=2/1,2,3;
  4//1;
  5/5=2,38=5/2;
  6/7=2,8=2,9=2,10=2,28=1/1;
  99/5=1,9=1/99;
- -------------------
- Title Card Required
- -------------------
+ ---
+ CH2
+ ---
  Symbolic Z-matrix:
  Charge =  0 Multiplicity = 3
  C                     0.        0.        0.10307 
@@ -117,8 +117,8 @@
  Deg. of freedom     2
  Full point group                 C2V     NOp   4
  Rotational constants (GHZ):        1722.8581674         252.5496828         220.2619999
- General basis read from cards:  (6D, 10F)
-    25 basis functions,    39 primitive gaussians,    25 cartesian basis functions
+ General basis read from cards:  (5D, 7F)
+    24 basis functions,    39 primitive gaussians,    25 cartesian basis functions
      5 alpha electrons        3 beta electrons
        nuclear repulsion energy         6.1544914723 Hartrees.
  NAtoms=    3 NActive=    3 NUniq=    3 SFac= 1.00D+00 NAtFMM=   60 NAOKFM=F Big=F
@@ -126,9 +126,9 @@
  Raffenetti 2 integral format.
  Two-electron integral symmetry is turned off.
  One-electron integrals computed using PRISM.
- NBasis=    25 RedAO= F EigKep=  0.00D+00  NBF=    25
- NBsUse=    25 1.00D-04 EigRej=  0.00D+00 NBFU=    25
- GSVD:  LWork=        -825 too small for GESVD, short by        3500 words or        3500 for optimal perf.
+ NBasis=    24 RedAO= F EigKep=  0.00D+00  NBF=    24
+ NBsUse=    24 1.00D-04 EigRej=  0.00D+00 NBFU=    24
+ GSVD:  LWork=        -719 too small for GESVD, short by        3191 words or        3191 for optimal perf.
  ExpMin= 1.22D-01 ExpMax= 1.24D+03 ExpMxC= 1.86D+02 IAcc=3 IRadAn=         5 AccDes= 0.00D+00
  Harris functional with IExCor=  205 and IRadAn=       5 diagonalized for initial guess.
  HarFok:  IExCor=  205 AccDes= 0.00D+00 IRadAn=         5 IDoV= 1 UseB2=F ITyADJ=14
@@ -139,15 +139,15 @@
          NMat0=    1 NMatS0=      1 NMatT0=    0 NMatD0=    1 NMtDS0=    0 NMtDT0=    0
  Symmetry not used in FoFCou.
  Initial guess <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 1.0000 <S**2>= 2.0000 S= 1.0000
- Keep R1 and R2 ints in memory in canonical form, NReq=933113.
+ Keep R1 and R2 ints in memory in canonical form, NReq=917463.
  Requested convergence on RMS density matrix=1.00D-08 within 128 cycles.
  Requested convergence on MAX density matrix=1.00D-06.
  Requested convergence on             energy=1.00D-06.
  No special actions if energy rises.
- GSVD:  LWork=        -825 too small for GESVD, short by        3500 words or        3500 for optimal perf.
- SCF Done:  E(UHF) =  -38.8980125770     A.U. after   12 cycles
-            NFock= 12  Conv=0.24D-08     -V/T= 1.9982
- <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 1.0000 <S**2>= 2.0164 S= 1.0054
+ GSVD:  LWork=        -768 too small for GESVD, short by        3240 words or        3240 for optimal perf.
+ SCF Done:  E(UHF) =  -38.8938220255     A.U. after   12 cycles
+            NFock= 12  Conv=0.21D-08     -V/T= 1.9913
+ <Sx>= 0.0000 <Sy>= 0.0000 <Sz>= 1.0000 <S**2>= 2.0164 S= 1.0055
  <L.S>= 0.000000000000E+00
  Annihilation of the first spin contaminant:
  S**2 before annihilation     2.0164,   after     2.0001
@@ -158,74 +158,74 @@
 
  **********************************************************************
 
- Alpha  occ. eigenvalues --  -11.27112  -0.93670  -0.62016  -0.44957  -0.41150
- Alpha virt. eigenvalues --    0.20215   0.25480   0.55614   0.63366   0.65774
- Alpha virt. eigenvalues --    0.72451   0.85485   0.95528   1.39805   1.64320
- Alpha virt. eigenvalues --    1.68617   1.69343   2.04214   2.17478   2.36795
- Alpha virt. eigenvalues --    2.41781   2.57605   3.13223   3.41688   5.65314
-  Beta  occ. eigenvalues --  -11.22302  -0.76691  -0.58848
-  Beta virt. eigenvalues --    0.13294   0.15782   0.22837   0.27467   0.60062
-  Beta virt. eigenvalues --    0.75960   0.78524   0.82742   0.90595   0.99787
-  Beta virt. eigenvalues --    1.45648   1.70717   1.72103   1.77989   2.15651
-  Beta virt. eigenvalues --    2.27882   2.41823   2.46018   2.64671   3.16458
-  Beta virt. eigenvalues --    3.45146   5.72408
+ Alpha  occ. eigenvalues --  -11.25917  -0.93525  -0.62059  -0.44986  -0.41170
+ Alpha virt. eigenvalues --    0.20243   0.25476   0.56767   0.63455   0.65809
+ Alpha virt. eigenvalues --    0.72378   0.85899   0.95547   1.39722   1.64364
+ Alpha virt. eigenvalues --    1.68530   1.69285   2.04973   2.17402   2.36735
+ Alpha virt. eigenvalues --    2.42697   2.57527   3.13260   3.41862
+  Beta  occ. eigenvalues --  -11.20829  -0.76593  -0.58902
+  Beta virt. eigenvalues --    0.13207   0.15696   0.22866   0.27460   0.61038
+  Beta virt. eigenvalues --    0.75902   0.79382   0.82792   0.90902   0.99798
+  Beta virt. eigenvalues --    1.45558   1.70654   1.72264   1.77900   2.16537
+  Beta virt. eigenvalues --    2.27758   2.41755   2.46813   2.64558   3.16459
+  Beta virt. eigenvalues --    3.45291
           Condensed to atoms (all electrons):
                1          2          3
-     1  C    5.513525   0.377930   0.377930
-     2  H    0.377930   0.508056  -0.020679
-     3  H    0.377930  -0.020679   0.508056
+     1  C    5.494904   0.380700   0.380700
+     2  H    0.380700   0.511657  -0.020509
+     3  H    0.380700  -0.020509   0.511657
           Atomic-Atomic Spin Densities.
                1          2          3
-     1  C    2.290190  -0.031841  -0.031841
-     2  H   -0.031841  -0.090149   0.008735
-     3  H   -0.031841   0.008735  -0.090149
+     1  C    2.287959  -0.031072  -0.031072
+     2  H   -0.031072  -0.090505   0.008670
+     3  H   -0.031072   0.008670  -0.090505
  Mulliken charges and spin densities:
                1          2
-     1  C   -0.269385   2.226508
-     2  H    0.134693  -0.113254
-     3  H    0.134693  -0.113254
+     1  C   -0.256304   2.225814
+     2  H    0.128152  -0.112907
+     3  H    0.128152  -0.112907
  Sum of Mulliken charges =   0.00000   2.00000
  Mulliken charges and spin densities with hydrogens summed into heavy atoms:
                1          2
      1  C    0.000000   2.000000
- Electronic spatial extent (au):  <R**2>=             24.0190
+ Electronic spatial extent (au):  <R**2>=             24.0722
  Charge=              0.0000 electrons
  Dipole moment (field-independent basis, Debye):
-    X=              0.0000    Y=              0.0000    Z=             -0.5878  Tot=              0.5878
+    X=              0.0000    Y=              0.0000    Z=             -0.5862  Tot=              0.5862
  Quadrupole moment (field-independent basis, Debye-Ang):
-   XX=             -8.0368   YY=             -5.8857   ZZ=             -7.6221
+   XX=             -8.0677   YY=             -5.9009   ZZ=             -7.6475
    XY=              0.0000   XZ=              0.0000   YZ=              0.0000
  Traceless Quadrupole moment (field-independent basis, Debye-Ang):
-   XX=             -0.8552   YY=              1.2958   ZZ=             -0.4406
+   XX=             -0.8623   YY=              1.3045   ZZ=             -0.4421
    XY=              0.0000   XZ=              0.0000   YZ=              0.0000
  Octapole moment (field-independent basis, Debye-Ang**2):
-  XXX=              0.0000  YYY=              0.0000  ZZZ=             -0.9126  XYY=              0.0000
-  XXY=              0.0000  XXZ=             -0.3089  XZZ=              0.0000  YZZ=              0.0000
-  YYZ=             -0.9559  XYZ=              0.0000
+  XXX=              0.0000  YYY=              0.0000  ZZZ=             -0.9300  XYY=              0.0000
+  XXY=              0.0000  XXZ=             -0.3143  XZZ=              0.0000  YZZ=              0.0000
+  YYZ=             -0.9724  XYZ=              0.0000
  Hexadecapole moment (field-independent basis, Debye-Ang**3):
- XXXX=             -9.0416 YYYY=            -13.2963 ZZZZ=             -9.7979 XXXY=              0.0000
+ XXXX=             -9.1248 YYYY=            -13.2937 ZZZZ=             -9.8769 XXXY=              0.0000
  XXXZ=              0.0000 YYYX=              0.0000 YYYZ=              0.0000 ZZZX=              0.0000
- ZZZY=              0.0000 XXYY=             -4.2665 XXZZ=             -3.1509 YYZZ=             -4.0414
+ ZZZY=              0.0000 XXYY=             -4.2906 XXZZ=             -3.1782 YYZZ=             -4.0551
  XXYZ=              0.0000 YYXZ=              0.0000 ZZXY=              0.0000
- N-N= 6.154491472316D+00 E-N=-1.028067808611D+02  KE= 3.896922133765D+01
+ N-N= 6.154491472316D+00 E-N=-1.030906670299D+02  KE= 3.923384519711D+01
                           Isotropic Fermi Contact Couplings
         Atom                 a.u.       MegaHertz       Gauss      10(-4) cm-1
-     1  C(13)              0.68795     386.69092     137.98094     128.98621
-     2  H(1)              -0.03051     -68.19367     -24.33320     -22.74696
-     3  H(1)              -0.03051     -68.19367     -24.33320     -22.74696
+     1  C(13)              0.90210     507.06427     180.93314     169.13843
+     2  H(1)              -0.03089     -69.02956     -24.63146     -23.02578
+     3  H(1)              -0.03089     -69.02956     -24.63146     -23.02578
  --------------------------------------------------------
        Center         ----  Spin Dipole Couplings  ----
                       3XX-RR        3YY-RR        3ZZ-RR
  --------------------------------------------------------
-     1   Atom        0.653040     -1.025997      0.372957
-     2   Atom       -0.065320      0.120194     -0.054875
-     3   Atom       -0.065320      0.120194     -0.054875
+     1   Atom        0.649664     -1.024521      0.374857
+     2   Atom       -0.065675      0.120802     -0.055127
+     3   Atom       -0.065675      0.120802     -0.055127
  --------------------------------------------------------
                         XY            XZ            YZ
  --------------------------------------------------------
      1   Atom        0.000000      0.000000      0.000000
-     2   Atom        0.000000      0.000000     -0.084928
-     3   Atom        0.000000      0.000000      0.084928
+     2   Atom        0.000000      0.000000     -0.085366
+     3   Atom        0.000000      0.000000      0.085366
  --------------------------------------------------------
 
 
@@ -235,34 +235,34 @@
 
        Atom             a.u.   MegaHertz   Gauss  10(-4) cm-1        Axes
 
-              Baa    -1.0260  -137.679   -49.127   -45.925  0.0000  1.0000  0.0000
-     1 C(13)  Bbb     0.3730    50.047    17.858    16.694  0.0000  0.0000  1.0000
-              Bcc     0.6530    87.632    31.269    29.231  1.0000  0.0000  0.0000
+              Baa    -1.0245  -137.481   -49.057   -45.859  0.0000  1.0000  0.0000
+     1 C(13)  Bbb     0.3749    50.302    17.949    16.779  0.0000  0.0000  1.0000
+              Bcc     0.6497    87.179    31.108    29.080  1.0000  0.0000  0.0000
  
-              Baa    -0.0893   -47.648   -17.002   -15.894  0.0000  0.3757  0.9267
-     2 H(1)   Bbb    -0.0653   -34.852   -12.436   -11.625  1.0000  0.0000  0.0000
-              Bcc     0.1546    82.500    29.438    27.519  0.0000  0.9267 -0.3757
+              Baa    -0.0897   -47.881   -17.085   -15.971  0.0000  0.3757  0.9267
+     2 H(1)   Bbb    -0.0657   -35.041   -12.504   -11.688  1.0000  0.0000  0.0000
+              Bcc     0.1554    82.922    29.589    27.660  0.0000  0.9267 -0.3757
  
-              Baa    -0.0893   -47.648   -17.002   -15.894  0.0000 -0.3757  0.9267
-     3 H(1)   Bbb    -0.0653   -34.852   -12.436   -11.625  1.0000  0.0000  0.0000
-              Bcc     0.1546    82.500    29.438    27.519  0.0000  0.9267  0.3757
+              Baa    -0.0897   -47.881   -17.085   -15.971  0.0000 -0.3757  0.9267
+     3 H(1)   Bbb    -0.0657   -35.041   -12.504   -11.688  1.0000  0.0000  0.0000
+              Bcc     0.1554    82.922    29.589    27.660  0.0000  0.9267  0.3757
  
 
  ---------------------------------------------------------------------------------
 
 
  Test job not archived.
- 1|1|UNPC-STATION|SP|UHF|Gen|C1H2(3)|DELL|06-Nov-2024|0||# uhf/gen 6d 1
- 0f nosymm iop(3/32=2,3/27=9) int=nobasistransform||Title Card Required
- ||0,3|C,0,0.,0.,0.10307|H,0,0.,0.996386,-0.30921|H,0,0.,-0.996386,-0.3
- 0921||Version=EM64W-G16RevA.03|HF=-38.8980126|S2=2.01637|S2-1=0.|S2A=2
- .000074|RMSD=2.386e-009|Dipole=0.,0.,-0.2312477|Quadrupole=-0.635837,0
- .9634123,-0.3275753,0.,0.,0.|PG=C02V [C2(C1),SGV(H2)]||@
+ 1|1|UNPC-BATCOMPUTER|SP|UHF|Gen|C1H2(3)|DELL|28-Jan-2025|0||# uhf/gen 
+ nosymm iop(3/32=2,3/27=9) int=nobasistransform||CH2||0,3|C,0,0.,0.,0.1
+ 0307|H,0,0.,0.996386,-0.30921|H,0,0.,-0.996386,-0.30921||Version=EM64W
+ -G16RevA.03|HF=-38.893822|S2=2.016387|S2-1=0.|S2A=2.000074|RMSD=2.054e
+ -009|Dipole=0.,0.,-0.2306183|Quadrupole=-0.6411331,0.9698306,-0.328697
+ 5,0.,0.,0.|PG=C02V [C2(C1),SGV(H2)]||@
 
 
- A FOOL CAN ASK MORE QUESTIONS THAN
- A WISE MAN CAN ANSWER.
+ THE SECRET OF SUCCESS IN LIFE IS TO EAT WHAT YOU LIKE, AND LET THE FOOD
+ FIGHT IT OUT INSIDE YOU. -- FROM A FORTUNE COOKIE
  Job cpu time:       0 days  0 hours  0 minutes  3.0 seconds.
- Elapsed time:       0 days  0 hours  0 minutes  1.3 seconds.
+ Elapsed time:       0 days  0 hours  0 minutes  1.5 seconds.
  File lengths (MBytes):  RWF=      6 Int=      0 D2E=      0 Chk=      1 Scr=      1
- Normal termination of Gaussian 16 at Wed Nov 06 13:00:24 2024.
+ Normal termination of Gaussian 16 at Tue Jan 28 07:47:41 2025.
