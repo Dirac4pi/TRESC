@@ -1,0 +1,5 @@
+-LIBPATH:"D:\oneAPI\mkl\2024.0\lib"
+-LIBPATH:"D:\oneAPI\mpi\2021.11\lib"
+-LIBPATH:"D:\oneAPI\compiler\2024.0\lib"
+mkl_blas95_lp64.lib
+mkl_lapack95_lp64.lib

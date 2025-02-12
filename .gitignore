@@ -9,6 +9,7 @@ docs/Higher_order_Thomas_effect/
 docs/High-speed_DCB_Hamiltonian_in_non-inertial_frame_and_SORP_model/
 docs/Thomas_dynamic_and_spin_pseudo-vector(tensor)/
 docs/TRESC_algorithm/
+build/
 
 # User-specific files
 *.rsuser

@@ -1,0 +1,720 @@
+{
+  //---------------------------------------------------------------------
+  //---------------------------------------------------------------------
+  //debug
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "debug_compile_Fundamentals",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Fundamentals.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Fundamentals.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Atoms",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Atoms.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Atoms.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Fundamentals",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_GRysroot",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\GRysroot.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\GRysroot.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Fundamentals",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Rysdata",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Rysdata.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Rysdata.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Fundamentals",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Rys",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Rys.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Rys.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Rysdata",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Hamiltonian",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Hamiltonian.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Hamiltonian.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Atoms",
+        "debug_compile_GRysroot",
+        "debug_compile_Rys",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_SCF",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\SCF.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\SCF.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Hamiltonian",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_TRESC",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\TRESC.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\TRESC.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_SCF",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_link", // link by LLVM lld
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "-fuse-ld=lld",
+        "/debug",
+        "/nologo",
+        "/MD",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "${workspaceFolder}\\build\\x64\\debug\\Atoms.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Fundamentals.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\GRysroot.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Hamiltonian.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Rys.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Rysdata.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\SCF.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\TRESC.obj",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\TRESC.exe",
+        "/link",
+        "@${workspaceFolder}\\.vscode\\lld_link_libs.txt",
+      ],
+      "dependsOn": [
+        "debug_compile_TRESC"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "debug_x64",
+      "dependsOn": [
+        "debug_link"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    //release
+    {
+      "label": "release_compile_Fundamentals",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Fundamentals.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Fundamentals.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Atoms",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Atoms.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Atoms.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Fundamentals",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_GRysroot",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\GRysroot.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\GRysroot.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Fundamentals",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Rysdata",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Rysdata.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Rysdata.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Fundamentals",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Rys",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Rys.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Rys.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Rysdata",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Hamiltonian",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Hamiltonian.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Hamiltonian.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3",
+      ],
+      "dependsOn": [
+        "release_compile_Atoms",
+        "release_compile_Rys",
+        "release_compile_GRysroot",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_SCF",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\SCF.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\SCF.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Hamiltonian"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_TRESC",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\TRESC.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\TRESC.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxCORE-AVX2",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_SCF"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_link", // link by LLVM lld
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/MD",
+        "/Qipo",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "${workspaceFolder}\\build\\x64\\release\\Atoms.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Fundamentals.obj",
+        "${workspaceFolder}\\build\\x64\\release\\GRysroot.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Hamiltonian.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Rys.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Rysdata.obj",
+        "${workspaceFolder}\\build\\x64\\release\\SCF.obj",
+        "${workspaceFolder}\\build\\x64\\release\\TRESC.obj",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\TRESC.exe",
+        "/link",
+        "@${workspaceFolder}\\.vscode\\lld_link_libs.txt",
+      ],
+      "dependsOn": [
+        "release_compile_TRESC"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "release_x64",
+      "dependsOn": [
+        "release_link"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
