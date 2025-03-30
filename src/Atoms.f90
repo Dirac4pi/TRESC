@@ -2,12 +2,16 @@
 !!
 !! @brief atomic imfo and corresponding atomic basis
 !!
+!! @syntax Fortran 2008 free format
+!!
+!! @code UTF-8
+!!
 !! @author dirac4pi
 module Atoms
   use Fundamentals
   
 !-----------------------------------------------------------------------
-! element definations
+! element definations & atom properties
   integer,parameter :: element_count = 30
   character(len = 2),parameter :: element_list(element_count) =       &
   (/ ' H',                                                      'He', &  ! 1-2
@@ -16,10 +20,16 @@ module Atoms
      ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn'     /)  ! 19-30
   
   integer,parameter :: element_massnumber(element_count) =            &
-  (/    2,                                                         4, &  ! 1-2
+  (/  2,                                                           4, &  ! 1-2
       7,   9,                            11,  12,  14,  16,  19,  20, &  ! 3-10
      23,  24,                            27,  28,  31,  32,  35,  40, &  ! 11-18
      39,  40,  45,  48,  51,  52,  55,  56,  59,  59,  64,  65       /)  ! 19-30
+
+  real(dp),parameter :: CSD_CovR(element_count) =                     &
+  (/ 0.59,                                                      0.53, &  ! 1-2
+     2.42,1.81,                        1.59,1.38,1.34,1.25,1.08,1.10, &  ! 3-10
+     3.14,2.66,                        2.29,2.10,2.02,1.98,1.93,2.00, &  ! 11-18
+     3.84,3.33,3.21,3.02,2.89,2.63,2.83,2.68,2.61,2.34,2.49,2.31     /)  ! 19-30
 !-----------------------------------------------------------------------
 ! AO basis definations
   ! sequence consistent with Gaussian (and Multiwfn)
@@ -88,22 +98,23 @@ module Atoms
   integer :: fbdm
   integer :: basis_count                     ! number of basis in basis set
   integer,allocatable :: shell_in_element(:) ! number of shells in each element
-  type atom_basis_type
+  type atom_basis_type                       ! dimension basis_count
     integer :: atom_number                   ! atomic number of basis atom
     integer :: angular_quantum_number        ! angular quantum number of shell
     integer :: contraction                   ! contraction of basis shell
     real(dp),allocatable :: exponents(:)     ! exponents of primitive shell
-    real(dp),allocatable :: coefficient(:)   ! contraction coeff of primitive sh
-    real(dp),allocatable :: Ncoefficient(:,:)! normalized coeff of primitive sh
+    real(dp),allocatable :: coefficient(:)   ! contraction coeff of prim shell
+    real(dp),allocatable :: Ncoefficient(:,:)! normalized coeff of prim shell
   end type atom_basis_type
   
   type(atom_basis_type),allocatable :: atom_basis(:)  ! basis CGTOs
-  
-  type basis_inf_type          ! info of each Cartesian basis(dimension cbdm)
-    integer :: atom            ! atomic number
-    integer :: shell           ! shell number
-    integer :: L               ! angular quantum number, S:1, P:2 ...
-    integer :: M               ! magnetic quantum number
+
+  ! info of each Cartesian basis(directly related to atoms, dimension cbdm)
+  type basis_inf_type
+    integer :: atom                       ! which atom center in molecule
+    integer :: shell                      ! shell number
+    integer :: L                          ! angular quantum number, S:1, P:2 ...
+    integer :: M                          ! magnetic quantum number
   end type basis_inf_type
   
   type(basis_inf_type),allocatable :: basis_inf(:)
@@ -137,7 +148,6 @@ module Atoms
     character(len = 3) :: basis_element_name
     character(len = 1) :: basis_angular_name
     if(index(address_basis,'.gbs') == 0) then
-      write(*,*) address_basis
       call terminate('input basis set file is not .gbs file')
     end if
     open(11,file = address_basis,status = "old",action = "read",iostat = ios)
@@ -268,9 +278,21 @@ module Atoms
   
 !-----------------------------------------------------------------------
 !> get static geometry of molecule from .xyz file
+!!
+!! will also allocate basis_inf and calculate cbdm and sbdm
+!!
+!! must be called after read_gbs
   subroutine read_geometry()
     implicit none
     character(len = 2) :: molecular_element_name, title_note
+    integer :: contraction                   ! contraction of atom, shell
+    integer :: atom                          ! atom of |AO>
+    integer :: shell                         ! shell of |AO>
+    integer :: shell_start                   ! start point of an shell
+    real(dp) :: exponents(20)                ! exponents of |AO>
+    integer :: L                             ! angular quantum number of |AO>
+    integer :: M                             ! magnetic quantum number of |AO>
+    integer :: ix,iy,iz
     if(index(address_molecular,'.xyz') == 0) then
       call terminate('input geometry file is not .xyz file')
     end if
@@ -281,7 +303,7 @@ module Atoms
     open(12,file = address_molecular,status = "old",action = "read")
     read(12,*) title_note
     do
-      read(title_note,"(I)",iostat = ios) atom_count
+      read(title_note,"(I3)",iostat = ios) atom_count
       if (ios == 0) then
         exit
       else if (ios /= 0 .and. index(title_note,'!') == 1) then
@@ -338,6 +360,66 @@ module Atoms
     do loop_i = 1, atom_count, 1
       electron_count = electron_count + molecular(loop_i) % atom_number
     end do
+
+    ! get the dimension of Cartesian basis
+    cbdm = 0
+    sbdm = 0
+    do loop_i = 1, atom_count
+      do loop_j = 1, shell_in_element(molecular(loop_i) % atom_number)
+        cbdm = cbdm + &
+        (atom_basis(molecular(loop_i) % basis_number + loop_j - 1) &
+        % angular_quantum_number + 2) * &
+        (atom_basis(molecular(loop_i) % basis_number + loop_j - 1) &
+        % angular_quantum_number + 1) / 2
+        sbdm = sbdm + 2 * (atom_basis(molecular(loop_i) % &
+        basis_number + loop_j - 1) % angular_quantum_number) + 1
+      end do
+    end do
+    ! normalization coefficient is taken into contraction coefficient
+    do loop_i = 1, basis_count
+      contraction = atom_basis(loop_i) % contraction
+      exponents(1:contraction) = atom_basis(loop_i) % exponents(:)
+      L = atom_basis(loop_i) % angular_quantum_number + 1
+      do loop_j = 1, contraction
+        do loop_k = 1, (L+1)*L/2
+          ix = 0
+          iy = 0
+          iz = 0
+          do loop_m = 1, len(AO_xyz_factor(L,loop_k))
+            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'x') ix = ix + 1
+            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'y') iy = iy + 1
+            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'z') iz = iz + 1
+          end do
+          atom_basis(loop_i) % Ncoefficient(loop_j,loop_k) = atom_basis(loop_i)&
+          % coefficient(loop_j) * AON(exponents(loop_j),ix,iy,iz)
+        end do
+      end do
+    end do
+    ! generate basis_inf
+    allocate(basis_inf(cbdm))
+    loop_i = 1
+    atom = 1
+    shell = 1
+    shell_start = 1
+    do while(loop_i <= cbdm)
+      if (shell > shell_in_element(molecular(atom) % atom_number)) then
+        shell = 1
+        atom = atom + 1
+      end if
+      L = atom_basis(molecular(atom) % basis_number + shell - 1)&
+      % angular_quantum_number + 1
+      M = loop_i - shell_start + 1
+      ! prepare for openMP parallel computation
+      basis_inf(loop_i) % atom = atom
+      basis_inf(loop_i) % shell = shell
+      basis_inf(loop_i) % L = L
+      basis_inf(loop_i) % M = M
+      loop_i = loop_i + 1
+      if (loop_i - shell_start >= (L + 1) * L / 2) then
+        shell = shell + 1
+        shell_start = loop_i
+      end if
+    end do
   end subroutine read_geometry
 
 !-----------------------------------------------------------------------
@@ -356,17 +438,18 @@ module Atoms
         loop_i = loop_i + 1
         cycle
       end if
-      write(60,"('  element ' A2 ':')") &
-      element_list(atom_basis(loop_i) % atom_number)
+      write(60,"(A10,A2,A)") &
+      '  element ',element_list(atom_basis(loop_i) % atom_number),':'
       loop_k = 0
       do while(loop_k <= shell_in_element(molecular(loop_j) % atom_number) - 1)
-        write(60,"('  -- shell l = ' I1 ':')") &
-        atom_basis(loop_i + loop_k) % angular_quantum_number
+        write(60,"(A15,I1,A1)") '  -- shell l = ',&
+        atom_basis(loop_i + loop_k) % angular_quantum_number,':'
         loop_m = 1
         do while(loop_m <= atom_basis(loop_i + loop_k) % contraction)
-          write(60,"('  exp: ' E12.5E2 ', coe:' F9.5)") &
-          atom_basis(loop_i + loop_k) % &
-          exponents(loop_m), atom_basis(loop_i + loop_k) % coefficient(loop_m)
+          write(60,"(A7,E12.5E2,A6,F9.5)") &
+          '  exp: ',atom_basis(loop_i + loop_k) % &
+          exponents(loop_m), ', coe:',&
+          atom_basis(loop_i + loop_k) % coefficient(loop_m)
           loop_m = loop_m + 1
         end do
         loop_k = loop_k + 1
@@ -383,24 +466,11 @@ module Atoms
     end if
     write(60,"(A)") '  ----------<GEOMETRY>----------'
     do loop_i = 1, atom_count
-      write(60,"('  ' A2 '   ' F9.5 '   ' F9.5 '   ' F9.5)") &
-      element_list(molecular(loop_i) % atom_number), molecular(loop_i) % &
-      nucleus_position(1), molecular(loop_i) % &
-      nucleus_position(2), molecular(loop_i) % nucleus_position(3)
-    end do
-    ! get the dimension of Cartesian basis
-    cbdm = 0
-    sbdm = 0
-    do loop_i = 1, atom_count
-      do loop_j = 1, shell_in_element(molecular(loop_i) % atom_number)
-        cbdm = cbdm + &
-        (atom_basis(molecular(loop_i) % basis_number + loop_j - 1) &
-        % angular_quantum_number + 2) * &
-        (atom_basis(molecular(loop_i) % basis_number + loop_j - 1) &
-        % angular_quantum_number + 1) / 2
-        sbdm = sbdm + 2 * (atom_basis(molecular(loop_i) % &
-        basis_number + loop_j - 1) % angular_quantum_number) + 1
-      end do
+      write(60,"(A2, A2, A3, F9.5, A3, F9.5, A3, F9.5)") &
+      '  ',element_list(molecular(loop_i) % atom_number), '   ',&
+      molecular(loop_i) % nucleus_position(1), '   ', &
+      molecular(loop_i) % nucleus_position(2), '   ', &
+      molecular(loop_i) % nucleus_position(3)
     end do
     write(60,"(A34,I4,A2,I4)") '  scalar/spinor Cartesian basis dimension: ', &
     cbdm, ' /', 2*cbdm
@@ -422,7 +492,7 @@ module Atoms
     open(12, file=address_molecular, status="old", action="read")
     read(12,*) title_note
     do
-      read(title_note,"(I)",iostat = ios) atom_count
+      read(title_note,"(I3)",iostat = ios) atom_count
       if (ios == 0) exit
       read(12,*) title_note
     end do
@@ -461,7 +531,7 @@ module Atoms
           else if (index(keyword,'charge') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) charge
+              "(I2)",iostat = ios) charge
               if (ios /= 0) call terminate(&
               "charge setting should be written as 'charge=n'")
             else
@@ -471,7 +541,7 @@ module Atoms
           else if (index(keyword,'spin') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) spin_mult
+              "(I2)",iostat = ios) spin_mult
               if (ios /= 0) call terminate(&
               "spin multiplicity setting should be written as 'spin=n'")
             else
@@ -519,7 +589,7 @@ module Atoms
           else if (index(keyword,'threads') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) threads_use
+              "(I2)",iostat = ios) threads_use
               if (ios /= 0) call terminate(&
               "threads setting should be written as 'threads=n'")
             else
@@ -547,7 +617,7 @@ module Atoms
           else if (index(keyword,'cuts') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) cutS
+              "(F20.12)",iostat = ios) cutS
               if (ios /= 0) call terminate(&
               "cutS should be written as 'cutS=n', no scientific notation")
               write(60,"(A,E10.3)") &
@@ -593,7 +663,7 @@ module Atoms
           else if (index(keyword,'maxiter') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) maxiter
+              "(I3)",iostat = ios) maxiter
               if (ios /= 0) call terminate(&
               "maxiter setting should be written as 'maxiter=n'")
             else
@@ -602,7 +672,7 @@ module Atoms
           else if (index(keyword,'schwarz') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) schwarz_VT
+              "(F20.12)",iostat = ios) schwarz_VT
               if (ios /= 0) call terminate(&
               "Schwarz screening setting should be written as 'schwarz=n',"//&
               " no scientific notation")
@@ -614,7 +684,7 @@ module Atoms
           else if (index(keyword,'convertol') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) conver_tol
+              "(F20.12)",iostat = ios) conver_tol
               if (ios /= 0) call terminate(&
               "Convergence tolerence setting should be written as "//&
               "'convertol=n', no scientific notation")
@@ -626,7 +696,7 @@ module Atoms
           else if (index(keyword,'nodiis') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) nodiis
+              "(I3)",iostat = ios) nodiis
               if (ios /= 0) call terminate(&
               "Initial iterations with no DIIS should be written as 'nodiis=n'")
             else
@@ -636,17 +706,17 @@ module Atoms
           else if (index(keyword,'subsp') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I)",iostat = ios) subsp
+              "(I3)",iostat = ios) subsp
               if (ios /= 0) call terminate(&
               "Dimension of suboptimal subspace should be written as 'subsp=n'")
             else
-              call terminate("&
-              Dimension of suboptimal subspace should be written as 'subsp=n'")
+              call terminate(&
+              "Dimension of suboptimal subspace should be written as 'subsp=n'")
             end if
           else if (index(keyword,'damp') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) damp
+              "(F20.12)",iostat = ios) damp
               if (ios /= 0) call terminate(&
               "Mix parameter should be written as 'damp=n'")
             else
@@ -655,7 +725,7 @@ module Atoms
           else if (index(keyword,'diisdamp') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) diisdamp
+              "(F20.12)",iostat = ios) diisdamp
               if (ios /= 0) call terminate(&
               "DIIS mix parameter should be written as 'diisdamp=n'")
             else
@@ -664,7 +734,7 @@ module Atoms
           else if (index(keyword,'prtlev') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) prtlev
+              "(F20.12)",iostat = ios) prtlev
               if (ios /= 0) call terminate(&
               "Print level setting should be written as 'prtlev=n'")
             else
@@ -678,7 +748,7 @@ module Atoms
           else if (index(keyword,'cutdiis') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) cutdiis
+              "(F20.12)",iostat = ios) cutdiis
               if (ios /= 0) call terminate(&
               "Cutting DIIS threshold should be written as 'cutdiis=n'")
             else
@@ -688,7 +758,7 @@ module Atoms
           else if (index(keyword,'cutdamp') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F)",iostat = ios) cutdamp
+              "(F20.12)",iostat = ios) cutdamp
               if (ios /= 0) call terminate(&
               "Cutting damp threshold should be written as 'cutdamp=n'")
             else
@@ -698,14 +768,24 @@ module Atoms
           else if (trim(keyword) == 'keepspin') then
             keepspin = .true.
             write(60,"(A)") "  Avoid spin multiplicity mutations"
-          else if (trim(keyword) == 'emd4') then
+          else if (index(keyword,'emd4') == 1) then
             d4 = .true.
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(A)",iostat = ios) funcemd4
+              if (ios /= 0) call terminate(&
+              "dispersion correction should be written as 'emd4=func_name'")
+            else
+              call terminate(&
+              "dispersion correction should be written as 'emd4=func_name'")
+            end if
             write(60,"(A)") "  DFT-D4 dispersion correction will be considered"
+            write(60,"(A)") "  -- functional name: "//trim(funcemd4)
           else if (index(keyword,'guess') == 1) then
             if (index(keyword,'=') /= 0) then
               guess_type = keyword(index(keyword,'=') + 1 : len(trim(keyword)))
-              if (ios /= 0) call terminate("&
-              Initial guess setting should be written as 'guess=***'")
+              if (ios /= 0) call terminate(&
+              "Initial guess setting should be written as 'guess=***'")
               if (guess_type == 'read') write(60,"(A)") &
               "  initial guess read from .ao2mo file"
             else
@@ -716,6 +796,50 @@ module Atoms
             call terminate('unknown keyword detected in module SCF')
           end if
         end do module_SCF
+      else if (trim(module_name) == '%functional') then
+        module_functional: do
+          read(12,*,iostat = ios) keyword
+          call lowercase(keyword)
+          if (ios /= 0 .or. keyword == '') then
+            call terminate('empty line detected in module Functional.')
+          else if (index(keyword,'!') == 1) then
+            cycle module_functional
+          else if (trim(keyword) == 'endfunctional') then
+            exit module_functional
+          else if (trim(keyword) == 'end') then
+            call terminate("end of module should be written as 'endmodulename'")
+          else if (index(keyword,'xid') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(I6)",iostat = ios) fx_id
+              if (ios /= 0) call terminate(&
+              "xid should be written as 'xid=n'")
+            else
+              call terminate("xid should be written as 'xid=n'")
+            end if
+          else if (index(keyword,'cid') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(I6)",iostat = ios) fc_id
+              if (ios /= 0) call terminate(&
+              "cid should be written as 'cid=n'")
+            else
+              call terminate("cid should be written as 'cid=n'")
+            end if
+          else if (index(keyword,'xhf') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) x_HF
+              if (ios /= 0) call terminate(&
+              "HF exchange component should be written as 'xhf=n'")
+            else
+              call terminate(&
+              "HF exchange component should be written as 'xhf=n'")
+            end if
+          else
+            call terminate('unknown keyword detected in module Functional')
+          end if
+        end do module_functional
       else if (trim(module_name) == '%') then
         call terminate("module name should be written as '%modulename'")
       else
@@ -768,8 +892,46 @@ module Atoms
     'diisdamp shall be in range [0,1]')
     if (cutdiis < 0.0) call terminate('cutdiis should large than 0')
     if (cutS < 0.0) call terminate('cutS should large than 0')
+    if (x_HF > 1.000001 .or. x_HF < -0.000001) &
+    call terminate('xhf should be in range [0,1]')
   end subroutine input_check
-  
+
+!-----------------------------------------------------------------------
+!> normalization factor of each basis
+  pure elemental real(dp) function AON(a,l,m,n)
+    implicit none
+    real(dp),intent(in) :: a
+    integer,intent(in) :: l,m,n
+    integer :: s,hl,hm,hn
+    if (l == 0) then
+      hl = 1
+    else
+      hl = 1
+      do s=1, 2*l-1, 2
+        hl = hl * s
+      end do
+    end if
+    if (m == 0) then
+      hm = 1
+    else
+      hm = 1
+      do s=1, 2*m-1, 2
+        hm = hm * s
+      end do
+    end if
+    if (n == 0) then
+      hn = 1
+    else
+      hn = 1
+      do s=1, 2*n-1, 2
+        hn = hn * s
+      end do
+    end if
+    AON = (2.0_dp*a/pi)**(0.75)*dsqrt((4.0_dp*a)**(l+m+n)/&
+    (real(hl)*real(hm)*real(hn)))
+    return
+  end function AON
+
 !-----------------------------------------------------------------------
 !> assign matrix c2s and exc2s
   subroutine assign_cs()
@@ -837,11 +999,11 @@ module Atoms
       end do
     end do
   end subroutine assign_cs
+
 !-----------------------------------------------------------------------
 !> calculate D4 dispersion correction by DFT-D4
-  function dftd4(method) result(emd4)
+  function dftd4() result(emd4)
     implicit none
-    character(len = *),intent(in) :: method
     character :: ch1
     character(len = 10) :: ch10
     character(len = 30) :: ch30
@@ -849,7 +1011,7 @@ module Atoms
     write(ch1,"(I1)") charge
     write(60,'(A)') '  calling DFT-D4 for dispersion correction'
     ! take .xyz file as input file of DFT-D4
-    ios = system('dftd4 '//trim(address_molecular)//' -f '//method//&
+    ios = system('dftd4 '//trim(address_molecular)//' -f '//trim(funcemd4)//&
     ' -c '//ch1//' --noedisp --json '//trim(address_job)//'.emd4 -s -s')
     if (ios == -1) then
       write(60,'(A)') &

@@ -2,6 +2,10 @@
 !!
 !! @brief electronic static Hamiltonian integrals
 !!
+!! @syntax Fortran 2008 free format
+!!
+!! @code UTF-8
+!!
 !! @author dirac4pi
 module Hamiltonian
   use Atoms
@@ -86,13 +90,13 @@ module Hamiltonian
 !------------------<NONRELATIVISTIC HAMILTONIAN>------------------
     if (DKH_order == 0) then
       write(60,'(A)') &
-      '  spinor Fock matrix causes additional consumption in scalar SCF.'
+      '  spinor basis causes additional cost in scalar SCF.'
       !-----------------------------------------------
       ! 1e integral calculation 
       write(60,'(A)') '  one electron integral calculation'
       call assign_matrices_1e()
       write(60,'(A)') &
-      '  complete! transform to spherical-harmonic basis, stored in:'
+      '  complete! stored in:'
       write(60,'(A)') '  i_j, i_p2_j, i_V_j'
       if (s_h) then
         ! transform to spherical-harmonic basis
@@ -264,27 +268,23 @@ module Hamiltonian
     implicit none
     integer :: i                             ! openMP parallel variable
     integer :: contraction_i                 ! contraction of atom_i, shell_i
-    integer :: atom_i                        ! atom of |AOi>
-    integer :: shell_i                       ! shell of |AOi>
     integer :: L_i                           ! angular quantum number of |AOi>
     integer :: M_i                           ! magnetic quantum number of |AOi>
-    integer :: shell_start_i                 ! start point of an shell
     integer :: contraction_j                 ! contraction of atom_j, shell_j
     integer :: L_j                           ! angular quantum number of |AOj>
     integer :: M_j                           ! magnetic quantum number of |AOj>
-    integer :: ix,iy,iz
-    real(dp),allocatable :: exponents_i(:)   ! exponents of |AOi>
-    real(dp),allocatable :: exponents_j(:)   ! exponents of |AOj>
-    real(dp),allocatable :: coefficient_i(:) ! coefficient of |AOi>
-    real(dp),allocatable :: coefficient_j(:) ! coefficient of |AOj>
+    real(dp) :: exponents_i(20)              ! exponents of |AOi>
+    real(dp) :: exponents_j(20)              ! exponents of |AOj>
+    real(dp) :: coefficient_i(20)            ! coefficient of |AOi>
+    real(dp) :: coefficient_j(20)            ! coefficient of |AOj>
     real(dp) :: coordinate_i(3)              ! coordinate of center of |AOi>
     real(dp) :: coordinate_j(3)              ! coordinate of center of |AOj>
-    real(dp),allocatable :: coedx_i(:)       ! coefficient.derivative x.|AOi>
-    real(dp),allocatable :: coedy_i(:)       ! coefficient.derivative y.|AOi>
-    real(dp),allocatable :: coedz_i(:)       ! coefficient.derivative z.|AOi>
-    real(dp),allocatable :: coedx_j(:)       ! coefficient.derivative x.|AOj>
-    real(dp),allocatable :: coedy_j(:)       ! coefficient.derivative y.|AOj>
-    real(dp),allocatable :: coedz_j(:)       ! coefficient.derivative z.|AOj>
+    real(dp) :: coedx_i(40)                  ! coefficient.derivative x.|AOi>
+    real(dp) :: coedy_i(40)                  ! coefficient.derivative y.|AOi>
+    real(dp) :: coedz_i(40)                  ! coefficient.derivative z.|AOi>
+    real(dp) :: coedx_j(40)                  ! coefficient.derivative x.|AOj>
+    real(dp) :: coedy_j(40)                  ! coefficient.derivative y.|AOj>
+    real(dp) :: coedz_j(40)                  ! coefficient.derivative z.|AOj>
     character(len=5) :: chardx_i(2)          ! x,y,z factor.derivative x.|AOi>
     character(len=5) :: chardy_i(2)          ! x,y,z factor.derivative y.|AOi>
     character(len=5) :: chardz_i(2)          ! x,y,z factor.derivative z.|AOi>
@@ -298,88 +298,52 @@ module Hamiltonian
     real(dp) :: integral_V
     real(dp) :: integral_DKH2(9)
     real(dp) :: integral_SRTP(9)
-    allocate(basis_inf(cbdm))
     allocate (i_j(cbdm,cbdm))
+    i_j = 0.0_dp
     allocate (i_V_j(cbdm,cbdm))
+    i_V_j = 0.0_dp
     allocate (i_p2_j(cbdm,cbdm))
+    i_p2_j = 0.0_dp
     if(DKH_order == 2) then
       allocate (i_pxVpx_j(cbdm,cbdm))
+      i_pxVpx_j = 0.0_dp
       allocate (i_pyVpy_j(cbdm,cbdm))
+      i_pyVpy_j = 0.0_dp
       allocate (i_pzVpz_j(cbdm,cbdm))
+      i_pzVpz_j = 0.0_dp
       allocate (i_pxVpy_j(cbdm,cbdm))
+      i_pxVpy_j = 0.0_dp
       allocate (i_pyVpx_j(cbdm,cbdm))
+      i_pyVpx_j = 0.0_dp
       allocate (i_pyVpz_j(cbdm,cbdm))
+      i_pyVpz_j = 0.0_dp
       allocate (i_pzVpy_j(cbdm,cbdm))
+      i_pzVpy_j = 0.0_dp
       allocate (i_pxVpz_j(cbdm,cbdm))
+      i_pxVpz_j = 0.0_dp
       allocate (i_pzVpx_j(cbdm,cbdm))
+      i_pzVpx_j = 0.0_dp
       if(SRTP_type) then
         allocate (i_px3Vpx_j(cbdm,cbdm))
+        i_px3Vpx_j = 0.0_dp
         allocate (i_py3Vpy_j(cbdm,cbdm))
+        i_py3Vpy_j = 0.0_dp
         allocate (i_pz3Vpz_j(cbdm,cbdm))
+        i_pz3Vpz_j = 0.0_dp
         allocate (i_px3Vpy_j(cbdm,cbdm))
+        i_px3Vpy_j = 0.0_dp
         allocate (i_py3Vpx_j(cbdm,cbdm))
+        i_py3Vpx_j = 0.0_dp
         allocate (i_px3Vpz_j(cbdm,cbdm))
+        i_px3Vpz_j = 0.0_dp
         allocate (i_pz3Vpx_j(cbdm,cbdm))
+        i_pz3Vpx_j = 0.0_dp
         allocate (i_py3Vpz_j(cbdm,cbdm))
+        i_py3Vpz_j = 0.0_dp
         allocate (i_pz3Vpy_j(cbdm,cbdm))
+        i_pz3Vpy_j = 0.0_dp
       end if
     end if
-    ! normalization coefficient is taken into contraction coefficient
-    do loop_i = 1, basis_count
-      contraction_i = atom_basis(loop_i) % contraction
-      allocate(exponents_i(contraction_i))
-      exponents_i = atom_basis(loop_i) % exponents
-      L_i = atom_basis(loop_i) % angular_quantum_number + 1
-      do loop_j=1,contraction_i
-        do loop_k=1,(L_i+1)*L_i/2
-          ix = 0
-          iy = 0
-          iz = 0
-          do loop_m = 1, len(AO_xyz_factor(L_i,loop_k))
-            if(AO_xyz_factor(L_i,loop_k)(loop_m:loop_m) == 'x') ix = ix + 1
-            if(AO_xyz_factor(L_i,loop_k)(loop_m:loop_m) == 'y') iy = iy + 1
-            if(AO_xyz_factor(L_i,loop_k)(loop_m:loop_m) == 'z') iz = iz + 1
-          end do
-          atom_basis(loop_i) % Ncoefficient(loop_j,loop_k) = atom_basis(loop_i)&
-          % coefficient(loop_j) * AON(exponents_i(loop_j),ix,iy,iz)
-        end do
-      end do
-      deallocate(exponents_i)
-    end do
-    ! generate basis_inf
-    loop_i = 1
-    atom_i = 1
-    shell_i = 1
-    shell_start_i = 1
-    do while(loop_i <= cbdm)
-      if (shell_i > shell_in_element(molecular(atom_i) % atom_number)) then
-        shell_i = 1
-        atom_i = atom_i + 1
-      end if
-      L_i = atom_basis(molecular(atom_i) % basis_number + shell_i - 1)&
-      % angular_quantum_number + 1
-      M_i = loop_i - shell_start_i + 1
-      ! prepare for openMP parallel computation
-      basis_inf(loop_i) % atom = atom_i
-      basis_inf(loop_i) % shell = shell_i
-      basis_inf(loop_i) % L = L_i
-      basis_inf(loop_i) % M = M_i
-      loop_i = loop_i + 1
-      if (loop_i - shell_start_i >= (L_i + 1) * L_i / 2) then
-        shell_i = shell_i + 1
-        shell_start_i = loop_i
-      end if
-    end do
-    allocate(exponents_i(20))
-    allocate(coefficient_i(20))
-    allocate(coedx_i(40))
-    allocate(coedy_i(40))
-    allocate(coedz_i(40))
-    allocate(exponents_j(20))
-    allocate(coefficient_j(20))
-    allocate(coedx_j(40))
-    allocate(coedy_j(40))
-    allocate(coedz_j(40))
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads_use) default(shared) private(i,loop_i,&
     !$omp& loop_j,loop_k,loop_m,contraction_i,L_i,M_i,contraction_j,L_j,M_j, &
@@ -730,47 +694,66 @@ module Hamiltonian
             end if
           end do
         end do
-        !$omp critical
-        i_j(loop_i,loop_j) = integral_overlap
-        i_p2_j(loop_i,loop_j) = integral_dx + integral_dy + integral_dz
-        i_V_j(loop_i,loop_j) = integral_V
+        !$omp atomic
+        i_j(loop_i,loop_j) = i_j(loop_i,loop_j) + integral_overlap
+        !$omp atomic
+        i_p2_j(loop_i,loop_j) = i_p2_j(loop_i,loop_j) + &
+        integral_dx + integral_dy + integral_dz
+        !$omp atomic
+        i_V_j(loop_i,loop_j) = i_V_j(loop_i,loop_j) + integral_V
         if (DKH_order == 2) then
-          i_pxVpx_j(loop_i,loop_j) = integral_DKH2(1)
-          i_pyVpy_j(loop_i,loop_j) = integral_DKH2(2)
-          i_pzVpz_j(loop_i,loop_j) = integral_DKH2(3)
-          i_pxVpy_j(loop_i,loop_j) = integral_DKH2(4)
-          i_pyVpx_j(loop_j,loop_i) = integral_DKH2(5)
-          i_pxVpz_j(loop_i,loop_j) = integral_DKH2(6)
-          i_pzVpx_j(loop_j,loop_i) = integral_DKH2(7)
-          i_pyVpz_j(loop_i,loop_j) = integral_DKH2(8)
-          i_pzVpy_j(loop_j,loop_i) = integral_DKH2(9)
+          !$omp atomic
+          i_pxVpx_j(loop_i,loop_j) = i_pxVpx_j(loop_i,loop_j) + integral_DKH2(1)
+          !$omp atomic
+          i_pyVpy_j(loop_i,loop_j) = i_pyVpy_j(loop_i,loop_j) + integral_DKH2(2)
+          !$omp atomic
+          i_pzVpz_j(loop_i,loop_j) = i_pzVpz_j(loop_i,loop_j) + integral_DKH2(3)
+          !$omp atomic
+          i_pxVpy_j(loop_i,loop_j) = i_pxVpy_j(loop_i,loop_j) + integral_DKH2(4)
+          !$omp atomic
+          i_pyVpx_j(loop_j,loop_i) = i_pyVpx_j(loop_j,loop_i) + integral_DKH2(5)
+          !$omp atomic
+          i_pxVpz_j(loop_i,loop_j) = i_pxVpz_j(loop_i,loop_j) + integral_DKH2(6)
+          !$omp atomic
+          i_pzVpx_j(loop_j,loop_i) = i_pzVpx_j(loop_j,loop_i) + integral_DKH2(7)
+          !$omp atomic
+          i_pyVpz_j(loop_i,loop_j) = i_pyVpz_j(loop_i,loop_j) + integral_DKH2(8)
+          !$omp atomic
+          i_pzVpy_j(loop_j,loop_i) = i_pzVpy_j(loop_j,loop_i) + integral_DKH2(9)
           if (SRTP_type) then
-            i_px3Vpx_j(loop_i,loop_j) = integral_SRTP(1)
-            i_py3Vpy_j(loop_i,loop_j) = integral_SRTP(2)
-            i_pz3Vpz_j(loop_i,loop_j) = integral_SRTP(3)
-            i_px3Vpy_j(loop_i,loop_j) = integral_SRTP(4)
-            i_py3Vpx_j(loop_i,loop_j) = integral_SRTP(5)
-            i_px3Vpz_j(loop_i,loop_j) = integral_SRTP(6)
-            i_pz3Vpx_j(loop_i,loop_j) = integral_SRTP(7)
-            i_py3Vpz_j(loop_i,loop_j) = integral_SRTP(8)
-            i_pz3Vpy_j(loop_i,loop_j) = integral_SRTP(9)
+            !$omp atomic
+            i_px3Vpx_j(loop_i,loop_j) = &
+            i_px3Vpx_j(loop_i,loop_j) + integral_SRTP(1)
+            !$omp atomic
+            i_py3Vpy_j(loop_i,loop_j) = &
+            i_py3Vpy_j(loop_i,loop_j) + integral_SRTP(2)
+            !$omp atomic
+            i_pz3Vpz_j(loop_i,loop_j) = &
+            i_pz3Vpz_j(loop_i,loop_j) + integral_SRTP(3)
+            !$omp atomic
+            i_px3Vpy_j(loop_i,loop_j) = &
+            i_px3Vpy_j(loop_i,loop_j) + integral_SRTP(4)
+            !$omp atomic
+            i_py3Vpx_j(loop_i,loop_j) = &
+            i_py3Vpx_j(loop_i,loop_j) + integral_SRTP(5)
+            !$omp atomic
+            i_px3Vpz_j(loop_i,loop_j) = &
+            i_px3Vpz_j(loop_i,loop_j) + integral_SRTP(6)
+            !$omp atomic
+            i_pz3Vpx_j(loop_i,loop_j) = &
+            i_pz3Vpx_j(loop_i,loop_j) + integral_SRTP(7)
+            !$omp atomic
+            i_py3Vpz_j(loop_i,loop_j) = &
+            i_py3Vpz_j(loop_i,loop_j) + integral_SRTP(8)
+            !$omp atomic
+            i_pz3Vpy_j(loop_i,loop_j) = &
+            i_pz3Vpy_j(loop_i,loop_j) + integral_SRTP(9)
           end if
         end if
-        !$omp end critical
       end do
     end do
     !$omp end do
     !$omp end parallel
-    deallocate(exponents_i)
-    deallocate(coefficient_i)
-    deallocate(coedx_i)
-    deallocate(coedy_i)
-    deallocate(coedz_i)
-    deallocate(exponents_j)
-    deallocate(coefficient_j)
-    deallocate(coedx_j)
-    deallocate(coedy_j)
-    deallocate(coedz_j)
     ! consider the relation p = -iD, 
     ! p3Vp and pVp3 change sign, p2 and pVp nochange
     if (SRTP_type) then
@@ -1090,7 +1073,7 @@ module Hamiltonian
     do gloop_i = 0, m_x_i
       do gloop_j = 0, m_x_i - gloop_i + m_x_j   ! integral x^m*exp(-b*(x-x0)^2)
         if (gloop_j == 0) then
-          integral_x_mic = sqrt(pi/expo)
+          integral_x_mic = dsqrt(pi/expo)
         else if(gloop_j == 1) then
           integral_x_mic_pre = integral_x_mic
           integral_x_mic = cod(1) * integral_x_mic_pre
@@ -1108,7 +1091,7 @@ module Hamiltonian
     do gloop_i = 0, m_y_i
       do gloop_j = 0, m_y_i - gloop_i + m_y_j
         if (gloop_j == 0) then
-          integral_y_mic = sqrt(pi/expo)
+          integral_y_mic = dsqrt(pi/expo)
         else if(gloop_j == 1) then
           integral_y_mic_pre = integral_y_mic
           integral_y_mic = cod(2) * integral_y_mic_pre
@@ -1126,7 +1109,7 @@ module Hamiltonian
     do gloop_i = 0, m_z_i
       do gloop_j = 0, m_z_i - gloop_i + m_z_j
         if (gloop_j == 0) then
-          integral_z_mic = sqrt(pi/expo)
+          integral_z_mic = dsqrt(pi/expo)
         else if(gloop_j == 1) then
           integral_z_mic_pre = integral_z_mic
           integral_z_mic = cod(3) * integral_z_mic_pre
@@ -1164,18 +1147,18 @@ module Hamiltonian
     real(dp) :: cod(3)
     real(dp) :: R2
     ! t-containing coefficients, t2pb_x(1) = coeff.(t^2+b)^(1/2).x integration
-    real(dp),allocatable :: t2pb_x(:)
+    real(dp) :: t2pb_x(10)
     ! t-containing coefficients, t2pb_y(1) = coeff.(t^2+b)^(1/2).y integration
-    real(dp),allocatable :: t2pb_y(:)
+    real(dp) :: t2pb_y(10)
     ! t-containing coefficients, t2pb_z(1) = coeff.(t^2+b)^(1/2).z integration
-    real(dp),allocatable :: t2pb_z(:)
+    real(dp) :: t2pb_z(10)
     ! t-containing coefficients, t2pb(1) = coeff.(t^2+b)^(1/2).x,y,z integration
-    real(dp),allocatable :: t2pb(:)
-    real(dp),allocatable :: t2pb_mic(:)
-    real(dp),allocatable :: t2pb_mic_pre(:)
-    real(dp),allocatable :: t2pb_mic_pre_pre(:)
+    real(dp) :: t2pb(14)
+    real(dp) :: t2pb_mic(10)
+    real(dp) :: t2pb_mic_pre(10)
+    real(dp) :: t2pb_mic_pre_pre(10)
     real(dp) :: integral, integral_mic, integral_mic_pre, integral_mic_pre_pre
-    real(dp),allocatable :: NX_mic(:), NX_mic_pre(:), NX_mic_pre_pre(:)
+    real(dp) :: NX_mic(30), NX_mic_pre(30), NX_mic_pre_pre(30)
     integer :: tayeps  ! number of Taylor expansion series of integration at X=0
     ! direct integration (X > xts); Taylor expansion integration (X <= xts)
     real(dp) :: xts
@@ -1219,9 +1202,9 @@ module Hamiltonian
       tayeps = 30
       xts = 4.0
     end if
-    allocate(NX_mic(tayeps))
-    allocate(NX_mic_pre(tayeps))
-    allocate(NX_mic_pre_pre(tayeps))
+    NX_mic = 0.0_dp
+    NX_mic_pre = 0.0_dp
+    NX_mic_pre_pre = 0.0_dp
     
     !--------------------------
     ! Gaussian function production
@@ -1242,10 +1225,6 @@ module Hamiltonian
     ! use binomial expansion for easy storage of t-containing coefficients.
     !--------------------------
     ! integral of x, generate a coefficient exp(-b*((cod(1))^2*t^2)/(t^2+b))
-    allocate(t2pb_x(m_x_i + m_x_j + 2))
-    allocate(t2pb_mic(m_x_i + m_x_j + 2))
-    allocate(t2pb_mic_pre(m_x_i + m_x_j + 2))
-    allocate(t2pb_mic_pre_pre(m_x_i + m_x_j + 2))
     t2pb_x = 0.0_dp
     vloop_i = 0
     do while(vloop_i <= m_x_i)
@@ -1256,9 +1235,9 @@ module Hamiltonian
         t2pb_mic_pre_pre = 0.0_dp
         do vloop_mic = 0, m_x_i + m_x_j - vloop_i - vloop_j
           if (vloop_mic == 0) then
-            t2pb_mic(1) = sqrt(pi)
+            t2pb_mic(1) = dsqrt(pi)
           else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = sqrt(pi)
+            t2pb_mic_pre(1) = dsqrt(pi)
             t2pb_mic = 0.0_dp
             t2pb_mic(2) = cod(1) * expo * t2pb_mic_pre(1)
           else
@@ -1280,15 +1259,8 @@ module Hamiltonian
       end do
       vloop_i = vloop_i + 1 
     end do
-    deallocate(t2pb_mic)
-    deallocate(t2pb_mic_pre)
-    deallocate(t2pb_mic_pre_pre)
     !--------------------------
     ! integral of x, generate a coefficient exp(-b*((cod(2))^2*t^2)/(t^2+b))
-    allocate(t2pb_y(m_y_i + m_y_j + 2))
-    allocate(t2pb_mic(m_y_i + m_y_j + 2))
-    allocate(t2pb_mic_pre(m_y_i + m_y_j + 2))
-    allocate(t2pb_mic_pre_pre(m_y_i + m_y_j + 2))
     t2pb_y = 0.0_dp
     vloop_i = 0
     do while(vloop_i <= m_y_i)
@@ -1299,9 +1271,9 @@ module Hamiltonian
         t2pb_mic_pre_pre = 0.0_dp
         do vloop_mic = 0, m_y_i + m_y_j - vloop_i - vloop_j
           if (vloop_mic == 0) then
-            t2pb_mic(1) = sqrt(pi)
+            t2pb_mic(1) = dsqrt(pi)
           else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = sqrt(pi)
+            t2pb_mic_pre(1) = dsqrt(pi)
             t2pb_mic = 0.0_dp
             t2pb_mic(2) = cod(2) * expo * t2pb_mic_pre(1)
           else
@@ -1323,15 +1295,8 @@ module Hamiltonian
       end do
       vloop_i = vloop_i + 1 
     end do
-    deallocate(t2pb_mic)
-    deallocate(t2pb_mic_pre)
-    deallocate(t2pb_mic_pre_pre)
     !--------------------------
     ! integral of z, generate a coefficient exp(-b*((cod(3))^2*t^2)/(t^2+b))
-    allocate(t2pb_z(m_z_i + m_z_j + 2))
-    allocate(t2pb_mic(m_z_i + m_z_j + 2))
-    allocate(t2pb_mic_pre(m_z_i + m_z_j + 2))
-    allocate(t2pb_mic_pre_pre(m_z_i + m_z_j + 2))
     t2pb_z = 0.0_dp
     vloop_i = 0
     do while(vloop_i <= m_z_i)
@@ -1342,9 +1307,9 @@ module Hamiltonian
         t2pb_mic_pre_pre = 0.0_dp
         do vloop_mic = 0, m_z_i + m_z_j - vloop_i - vloop_j
           if (vloop_mic == 0) then
-            t2pb_mic(1) = sqrt(pi)
+            t2pb_mic(1) = dsqrt(pi)
           else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = sqrt(pi)
+            t2pb_mic_pre(1) = dsqrt(pi)
             t2pb_mic = 0.0_dp
             t2pb_mic(2) = cod(3) * expo * t2pb_mic_pre(1)
           else
@@ -1366,13 +1331,9 @@ module Hamiltonian
       end do
       vloop_i = vloop_i + 1 
     end do
-    deallocate(t2pb_mic)
-    deallocate(t2pb_mic_pre)
-    deallocate(t2pb_mic_pre_pre)
     !--------------------------
     ! integral of t
     ! 2*(-1)^k*b^((1-m)/2)*coe*(u-1)^k*(u+1)^k*exp(-b*R2*u^2)
-    allocate(t2pb(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 6))
     t2pb = 0.0_dp
     do vloop_i = 0, m_x_i + m_x_j + 1
       do vloop_j = 0, m_y_i + m_y_j + 1
@@ -1383,7 +1344,7 @@ module Hamiltonian
       end do
     end do
     V_Integral_1e = 0.0_dp
-    if (abs(expo*R2) < 1E-13) then            
+    if (abs(expo*R2) < 1E-13) then
       vloop_i = 0 ! k = vloop_i, t2pb(vloop_i + 3) = coe
       do while(vloop_i <= m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4)
         integral = 0.0_dp
@@ -1475,7 +1436,7 @@ module Hamiltonian
           do vloop_k = 0, vloop_i
             do vloop_mic = 0, 2*vloop_i - vloop_j - vloop_k
               if (vloop_mic == 0) then
-                integral_mic = 0.5_dp * sqrt(pi/(expo*R2)) * erf(sqrt(expo*R2))
+                integral_mic = 0.5_dp*dsqrt(pi/(expo*R2)) * erf(dsqrt(expo*R2))
               else if(vloop_mic == 1) then
                 integral_mic_pre = integral_mic
                 integral_mic = (1.0_dp - exp(-expo*R2)) / (2.0_dp*expo*R2)
@@ -1496,14 +1457,7 @@ module Hamiltonian
         vloop_i = vloop_i + 1
       end do
     end if
-    deallocate(NX_mic)
-    deallocate(NX_mic_pre)
-    deallocate(NX_mic_pre_pre)
-    deallocate(t2pb_x)
-    deallocate(t2pb_y)
-    deallocate(t2pb_z)
-    deallocate(t2pb)
-    V_Integral_1e = V_Integral_1e / sqrt(pi)
+    V_Integral_1e = V_Integral_1e / dsqrt(pi)
     if (finitenuc) then
       ! Finite nuclear model correction, spherical electric charge
       V_Integral_1e = V_Integral_1e - &
@@ -1534,12 +1488,12 @@ module Hamiltonian
     integer :: nroots                   ! Rys quadrature: number of roots
     ! Rys quadrature: roots and weights ref 10.1016/0021-9991(76)90008-5
     real(dp) :: u(6), w(6), t2
-    real(dp),allocatable :: Gnmx(:,:,:),Gnmy(:,:,:),Gnmz(:,:,:)
+    real(dp) :: Gnmx(9,9,18),Gnmy(9,9,18),Gnmz(9,9,18)
     ! ni transfer to nj, nk tranfer to nl
-    real(dp),allocatable :: Ixtrans(:,:),Ix(:),Iytrans(:,:),Iy(:)
-    real(dp),allocatable :: Iztrans(:,:),Iz(:),PL(:)
+    real(dp) :: Ixtrans(5,18),Ix(18),Iytrans(5,18),Iy(18)
+    real(dp) :: Iztrans(5,18),Iz(18),PL(22)
     real(dp) :: integral, integral_mic, integral_mic_pre, integral_mic_pre_pre
-    real(dp),allocatable :: NX_mic(:), NX_mic_pre(:), NX_mic_pre_pre(:)
+    real(dp) :: NX_mic(30), NX_mic_pre(30), NX_mic_pre_pre(30)
     character(len = *),intent(in) :: fac_i,fac_j,fac_k,fac_l
     integer :: tayeps  ! number of Taylor expansion series of integration at X=0
     ! direct integration (X > xts); Taylor expansion integration (X <= xts)
@@ -1614,16 +1568,6 @@ module Hamiltonian
     ! Rys quadrature scheme for low angular momentum Gaussian functions
     if (int((nxi+nxj+nxk+nxl+nyi+nyj+nyk+nyl+nzi+nzj+nzk+nzl)/2.0)+1 <= 5) then
       nroots = int((nxi+nxj+nxk+nxl+nyi+nyj+nyk+nyl+nzi+nzj+nzk+nzl)/2.0)+1
-      allocate(PL(1))
-      allocate(Ix(1))
-      allocate(Ixtrans(nxl+1, 1))
-      allocate(Iy(1))
-      allocate(Iytrans(nyl+1, 1))
-      allocate(Iz(1))
-      allocate(Iztrans(nzl+1, 1))
-      allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, 1))
-      allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, 1))
-      allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, 1))
       call GRysroots(nroots, X, u, w)  ! rys_roots (libcint), GRysroots (GAMESS)
       integral = 0.0_dp
       do rloop_i = 1, nroots
@@ -1631,7 +1575,7 @@ module Hamiltonian
         t2 = u(rloop_i)                           ! for GRysroots
         !---------------------------Gnmx---------------------------
         Gnmx = 0.0_dp
-        Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx)
+        Gnmx(1,1,1) = pi / dsqrt(A*B) * exp(-Gx)
         do rloop_j = 2, nxi + nxj + 1
           if (rloop_j == 2) then
             Gnmx(2,1,1) = Gnmx(2,1,1) + &
@@ -1679,7 +1623,7 @@ module Hamiltonian
         end do
         !---------------------------Gnmy---------------------------
         Gnmy = 0.0_dp
-        Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)
+        Gnmy(1,1,1) = pi / dsqrt(A*B) * exp(-Gy)
         do rloop_j = 2, nyi + nyj + 1
           if (rloop_j == 2) then
             Gnmy(2,1,1) = Gnmy(2,1,1) + &
@@ -1727,7 +1671,7 @@ module Hamiltonian
         end do
         !---------------------------Gnmz---------------------------
         Gnmz = 0.0_dp
-        Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz)
+        Gnmz(1,1,1) = pi / dsqrt(A*B) * exp(-Gz)
         do rloop_j = 2, nzi + nzj + 1
           if (rloop_j == 2) then
             Gnmz(2,1,1) = Gnmz(2,1,1) + &
@@ -1816,33 +1760,14 @@ module Hamiltonian
           binomialcoe(nzl,rloop_j) * (zk-zl)**(rloop_j) * Iztrans(rloop_j+1, 1)
         end do
         !---------------------------PL---------------------------
-        PL(1) = Ix(1) * Iy(1) * Iz(1) * 2.0_dp * sqrt(rou/pi)
+        PL(1) = Ix(1) * Iy(1) * Iz(1) * 2.0_dp * dsqrt(rou/pi)
         integral = integral + w(rloop_i)*PL(1)
       end do
       V_Integral_2e = integral
-      deallocate(PL)
-      deallocate(Ix)
-      deallocate(Ixtrans)
-      deallocate(Iy)
-      deallocate(Iytrans)
-      deallocate(Iz)
-      deallocate(Iztrans)
-      deallocate(Gnmx)
-      deallocate(Gnmy)
-      deallocate(Gnmz)
       return
     ! direct integral for high angular momentum Gaussian functions
     else
       ! Ix(ni+nj,0,nk+nl,0,u)
-      allocate(Gnmx(nxi+nxj+1, nxk+nxl+1, nxi+nxj+1+nxk+nxl+1))
-      allocate(Ixtrans(nxl+1, nxi+nxj+1+nxk+nxl+1))
-      allocate(Ix(nxi+nxj+1+nxk+nxl+1))
-      allocate(Gnmy(nyi+nyj+1, nyk+nyl+1, nyi+nyj+1+nyk+nyl+1))
-      allocate(Iytrans(nyl+1, nyi+nyj+1+nyk+nyl+1))
-      allocate(Iy(nyi+nyj+1+nyk+nyl+1))
-      allocate(Gnmz(nzi+nzj+1, nzk+nzl+1, nzi+nzj+1+nzk+nzl+1))
-      allocate(Iztrans(nzl+1, nzi+nzj+1+nzk+nzl+1))
-      allocate(Iz(nzi+nzj+1+nzk+nzl+1))
       if (2*(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+&
       nzl+1)-2 <= 15) then
         tayeps = 8
@@ -1864,11 +1789,15 @@ module Hamiltonian
         tayeps = 30
         xts = 4.0
       end if
+      NX_mic = 0.0_dp
+      NX_mic_pre = 0.0_dp
+      NX_mic_pre_pre = 0.0_dp
+
       Gnmx = 0.0_dp
       Gnmy = 0.0_dp
       Gnmz = 0.0_dp
       ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
-      Gnmx(1,1,1) = pi / sqrt(A*B) * exp(-Gx)
+      Gnmx(1,1,1) = pi / dsqrt(A*B) * exp(-Gx)
       do rloop_i = 2, nxi + nxj + 1
         if (rloop_i == 2) then
           Gnmx(2,1,1) = Gnmx(2,1,1) + Gnmx(1,1,1) * (xA - xi)
@@ -1927,7 +1856,7 @@ module Hamiltonian
       ! ---------------------------------------------------------------------
       ! Iy(ni+nj,0,nk+nl,0,u)
       ! reduce the factor (1-t^2)^(1/2)*eyp(-Dy*t^2)
-      Gnmy(1,1,1) = pi / sqrt(A*B) * exp(-Gy)
+      Gnmy(1,1,1) = pi / dsqrt(A*B) * exp(-Gy)
       do rloop_i = 2, nyi + nyj + 1
         if (rloop_i == 2) then
           Gnmy(2,1,1) = Gnmy(2,1,1) + Gnmy(1,1,1) * (yA - yi)
@@ -1983,7 +1912,7 @@ module Hamiltonian
       end do
       ! Iz(ni+nj,0,nk+nl,0,u)
       ! reduce the factor (1-t^2)^(1/2)*ezp(-Dz*t^2)
-      Gnmz(1,1,1) = pi / sqrt(A*B) * exp(-Gz)
+      Gnmz(1,1,1) = pi / dsqrt(A*B) * exp(-Gz)
       do rloop_i = 2, nzi + nzj + 1
         if (rloop_i == 2) then
           Gnmz(2,1,1) = Gnmz(2,1,1) + Gnmz(1,1,1) * (zA - zi)
@@ -2092,7 +2021,6 @@ module Hamiltonian
         end do
       end do
       ! product of Ix, Iy, Iz
-      allocate(PL(nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1))
       PL = 0.0_dp
       !--------------------------------------------------------------
       do rloop_i = 0, nxi + nxj + 1 + nxk + nxl
@@ -2103,7 +2031,7 @@ module Hamiltonian
           end do
         end do
       end do
-      PL = PL * 2.0_dp * sqrt(rou/pi)
+      PL = PL * 2.0_dp * dsqrt(rou/pi)
       ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
       integral = 0.0_dp
       if (abs(X) < 1E-13) then 
@@ -2112,15 +2040,12 @@ module Hamiltonian
           integral = integral + PL(rloop_i) * integral_mic
         end do
       else if (abs(X) <= xts) then
-        allocate(NX_mic(tayeps))
-        allocate(NX_mic_pre(tayeps))
-        allocate(NX_mic_pre_pre(tayeps))
         rloop_i = 1
         do while(rloop_i <= &
         nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1)
           rloop_j = 0
           do while(rloop_j <= 2 * rloop_i - 2)
-            if (rloop_j == 0) then ! sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
+            if (rloop_j == 0) then ! dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
               do rloop_k=1,tayeps
                 NX_mic(rloop_k)=(-1.0_dp)**(rloop_k)*&
                 (1.0_dp/(real(2*rloop_k+1)*factorial(rloop_k)))
@@ -2167,14 +2092,11 @@ module Hamiltonian
           integral = integral + PL(rloop_i) * integral_mic
           rloop_i = rloop_i + 1
         end do
-        deallocate(NX_mic)
-        deallocate(NX_mic_pre)
-        deallocate(NX_mic_pre_pre)
       else
         do rloop_i=1,nxi+nxj+1+nxk+nxl+1+nyi+nyj+1+nyk+nyl+1+nzi+nzj+1+nzk+nzl+1
           do rloop_j = 0, 2*rloop_i - 2
             if (rloop_j == 0) then
-              integral_mic = sqrt(pi/X) * erf(sqrt(X)) / 2.0_dp
+              integral_mic = dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
             else if(rloop_j == 1) then
               integral_mic_pre = integral_mic
               integral_mic = (1.0_dp - exp(-X)) / (2.0_dp * X)
@@ -2189,16 +2111,6 @@ module Hamiltonian
         end do
       end if
       V_Integral_2e = integral
-      deallocate(PL)
-      deallocate(Gnmx)
-      deallocate(Ixtrans)
-      deallocate(Ix)
-      deallocate(Gnmy)
-      deallocate(Iytrans)
-      deallocate(Iy)
-      deallocate(Gnmz)
-      deallocate(Iztrans)
-      deallocate(Iz)
       return
     end if
   end function V_Integral_2e
@@ -2276,7 +2188,7 @@ module Hamiltonian
         return
       end if
       if (min_evl > evl(symloop_i)) min_evl = evl(symloop_i)
-      mat_u(symloop_i,symloop_i) = 1.0_dp / sqrt(evl(symloop_i))
+      mat_u(symloop_i,symloop_i) = 1.0_dp / dsqrt(evl(symloop_i))
     end do
     call dgemm('N', 'N', dm, dm, dm, 1.0_dp, U, dm, mat_u, dm, 0.0_dp, supU, dm)
     call dgemm('N', 'T', dm, dm, dm, 1.0_dp, supU, dm, U, dm, 0.0_dp, X, dm)
@@ -2310,7 +2222,7 @@ module Hamiltonian
     do canloop_i = 1, dm
       if (supU(canloop_i) == 1) cycle
       do canloop_j = 1, dm
-        X(canloop_j,canloop_k) = U(canloop_j,canloop_i) / sqrt(evl(canloop_i))
+        X(canloop_j,canloop_k) = U(canloop_j,canloop_i) / dsqrt(evl(canloop_i))
       end do
       canloop_k = canloop_k + 1
     end do
@@ -2355,42 +2267,6 @@ module Hamiltonian
     sbdm, 0.0_dp, m, fbdm)
     deallocate(detoper)
   end subroutine detach
-
-!-----------------------------------------------------------------------
-!> normalization factor of each basis
-  pure elemental real(dp) function AON(a,l,m,n)
-    implicit none
-    real(dp),intent(in) :: a
-    integer,intent(in) :: l,m,n
-    integer :: s,hl,hm,hn
-    if (l == 0) then
-      hl = 1
-    else
-      hl = 1
-      do s=1, 2*l-1, 2
-        hl = hl * s
-      end do
-    end if
-    if (m == 0) then
-      hm = 1
-    else
-      hm = 1
-      do s=1, 2*m-1, 2
-        hm = hm * s
-      end do
-    end if
-    if (n == 0) then
-      hn = 1
-    else
-      hn = 1
-      do s=1, 2*n-1, 2
-        hn = hn * s
-      end do
-    end if
-    AON = (2.0_dp*a/pi)**(0.75)*sqrt((4.0_dp*a)**(l+m+n)/&
-    (real(hl)*real(hm)*real(hn)))
-    return
-  end function AON
   
 !-----------------------------------------------------------------------
 !> fast factorial of given a
@@ -2453,65 +2329,65 @@ module Hamiltonian
 !! 9 < M <= 13: recursive
 !!
 !! M > 13: direct
-  pure elemental recursive real(dp) function binomialcoe(N,M)
+  pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
     implicit none
     integer,intent(in) :: N,M
     integer :: bloop_i, numerator, denominator
     if (M == 0 .or. N == 0 .or. M == N) then
-      binomialcoe = 1.0
+      bicoe = 1.0
       return
     else if (M == 1) then
-      binomialcoe = real(N,dp)
+      bicoe = real(N,dp)
       return
     else if (2*M > N) then
-      binomialcoe = binomialcoe(N,N-M)
+      bicoe = binomialcoe(N,N-M)
       return
     end if
     select case (N)
     case (4)
-      binomialcoe = 6.0_dp
+      bicoe = 6.0_dp
     case (5)
-      binomialcoe = 10.0_dp
+      bicoe = 10.0_dp
     case (6)
       select case (M)
       case (2)
-        binomialcoe = 15.0_dp
+        bicoe = 15.0_dp
       case (3)
-        binomialcoe = 20.0_dp
+        bicoe = 20.0_dp
       end select
     case (7)
       select case (M)
       case (2)
-        binomialcoe = 21.0_dp
+        bicoe = 21.0_dp
       case (3)
-        binomialcoe = 35.0_dp
+        bicoe = 35.0_dp
       end select
     case (8)
       select case (M)
       case (2)
-        binomialcoe = 28.0_dp
+        bicoe = 28.0_dp
       case (3)
-        binomialcoe = 56.0_dp
+        bicoe = 56.0_dp
       case (4)
-        binomialcoe = 70.0_dp
+        bicoe = 70.0_dp
       end select
     case (9)
       select case (M)
       case (2)
-        binomialcoe = 36.0_dp
+        bicoe = 36.0_dp
       case (3)
-        binomialcoe = 84.0_dp
+        bicoe = 84.0_dp
       case (4)
-        binomialcoe = 126.0_dp
+        bicoe = 126.0_dp
       end select
     end select
     if (N <= 9) then
       return
     else if (N <= 13) then
-      binomialcoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
+      bicoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
       return
     else
-      binomialcoe = 1.0
+      bicoe = 1.0
       numerator = 1
       bloop_i = N
       do while(bloop_i > M)
@@ -2519,7 +2395,7 @@ module Hamiltonian
         bloop_i = bloop_i - 1
       end do
       denominator = factorial(N - M)
-      binomialcoe = real(numerator) / real(denominator)
+      bicoe = real(numerator) / real(denominator)
       return
     end if
   end function binomialcoe

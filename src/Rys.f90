@@ -1,5 +1,14 @@
-! Rys quadrature roots and weights, edit based on libcint version 6.1.1 https://github.com/sunqm/libcint
-
+!> @file Rys.f90
+!!
+!! @brief Rys quadrature roots and weights
+!!
+!! @brief edit based on libcint version 6.1.1 https://github.com/sunqm/libcint
+!!
+!! @syntax Fortran 2008 free format
+!!
+!! @code UTF-8
+!!
+!! @author dirac4pi
 module Rys
 use fundamentals
 use Rysdata

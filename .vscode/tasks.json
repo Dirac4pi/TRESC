@@ -10,6 +10,7 @@
       "command": "ifx",
       "args": [
         "/nologo",
+        "/stand:f08",
         "/libs:dll",
         "/threads",
         "/dbglibs",
@@ -29,7 +30,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -49,6 +50,7 @@
       "command": "ifx",
       "args": [
         "/nologo",
+        "/stand:f08",
         "/libs:dll",
         "/threads",
         "/dbglibs",
@@ -68,7 +70,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -110,7 +112,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -152,7 +154,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -194,7 +196,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -212,11 +214,148 @@
       ],
     },
     {
+      "label": "debug_compile_Functional",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/stand:f08",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Functional.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Functional.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Atoms",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Lebedev",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/stand:f08",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Lebedev.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Lebedev.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Atoms",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "debug_compile_Representation",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/stand:f08",
+        "/libs:dll",
+        "/threads",
+        "/dbglibs",
+        "/Od",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "${workspaceFolder}\\src\\Representation.f90",
+        "/module:${workspaceFolder}\\build\\x64\\debug",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\debug\\Representation.obj",
+        "/debug:full",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qfma",
+        "/traceback",
+        "/check:all",
+        "/warn:all"
+      ],
+      "dependsOn": [
+        "debug_compile_Functional",
+        "debug_compile_Lebedev",
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
       "label": "debug_compile_Hamiltonian",
       "type": "shell",
       "command": "ifx",
       "args": [
         "/nologo",
+        "/stand:f08",
         "/libs:dll",
         "/threads",
         "/dbglibs",
@@ -238,7 +377,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -263,6 +402,7 @@
       "command": "ifx",
       "args": [
         "/nologo",
+        "/stand:f08",
         "/libs:dll",
         "/threads",
         "/dbglibs",
@@ -284,7 +424,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -292,6 +432,7 @@
       ],
       "dependsOn": [
         "debug_compile_Hamiltonian",
+        "debug_compile_Representation",
       ],
       "group": {
         "kind": "build",
@@ -307,7 +448,7 @@
       "command": "ifx",
       "args": [
         "/nologo",
-        "/libs:dll",
+        "/stand:f08",
         "/threads",
         "/dbglibs",
         "/Od",
@@ -328,7 +469,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qfma",
         "/traceback",
         "/check:all",
@@ -359,13 +500,16 @@
         "${workspaceFolder}\\build\\x64\\debug\\Atoms.obj",
         "${workspaceFolder}\\build\\x64\\debug\\Fundamentals.obj",
         "${workspaceFolder}\\build\\x64\\debug\\GRysroot.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Lebedev.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Functional.obj",
+        "${workspaceFolder}\\build\\x64\\debug\\Representation.obj",
         "${workspaceFolder}\\build\\x64\\debug\\Hamiltonian.obj",
         "${workspaceFolder}\\build\\x64\\debug\\Rys.obj",
         "${workspaceFolder}\\build\\x64\\debug\\Rysdata.obj",
         "${workspaceFolder}\\build\\x64\\debug\\SCF.obj",
         "${workspaceFolder}\\build\\x64\\debug\\TRESC.obj",
         "/o",
-        "${workspaceFolder}\\build\\x64\\debug\\TRESC.exe",
+        "${workspaceFolder}\\build\\x64\\debug\\TRESCdebug.exe",
         "/link",
         "@${workspaceFolder}\\.vscode\\lld_link_libs.txt",
       ],
@@ -377,9 +521,22 @@
       ]
     },
     {
-      "label": "debug_x64",
+      "label": "editbin_debug",
+      "type": "shell",
+      "command": "editbin",
+      "args": [
+        "/STACK:8388608",
+        "${workspaceFolder}\\build\\x64\\debug\\TRESCdebug.exe"
+      ],
+      "problemMatcher": [],
       "dependsOn": [
         "debug_link"
+      ]
+    },
+    {
+      "label": "debug_x64",
+      "dependsOn": [
+        "editbin_debug"
       ],
       "group": {
         "kind": "build",
@@ -387,8 +544,28 @@
       },
       "problemMatcher": []
     },
-    //---------------------------------------------------------------------
-    //---------------------------------------------------------------------
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
     //release
     {
       "label": "release_compile_Fundamentals",
@@ -412,7 +589,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
@@ -444,7 +621,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
@@ -479,7 +656,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
@@ -514,7 +691,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
@@ -549,13 +726,125 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
       ],
       "dependsOn": [
         "release_compile_Rysdata",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Functional",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Functional.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Functional.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Atoms",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Lebedev",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Lebedev.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Lebedev.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Atoms",
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+    },
+    {
+      "label": "release_compile_Representation",
+      "type": "shell",
+      "command": "ifx",
+      "args": [
+        "/nologo",
+        "/libs:dll",
+        "/threads",
+        "/c",
+        "/I",
+        "${workspaceFolder}\\src",
+        "/I",
+        "D:\\oneAPI\\mkl\\2024.0\\include\\mkl\\intel64\\ilp64",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include",
+        "/I",
+        "D:\\oneAPI\\mpi\\2021.11\\include\\mpi\\ilp64",
+        "/module:${workspaceFolder}\\build\\x64\\release",
+        "${workspaceFolder}\\src\\Representation.f90",
+        "/o",
+        "${workspaceFolder}\\build\\x64\\release\\Representation.obj",
+        "/assume:byterecl",
+        "/Qopenmp",
+        "/Qmkl:parallel",
+        "/QxHost",
+        "/Qipo",
+        "/Qfma",
+        "/O3"
+      ],
+      "dependsOn": [
+        "release_compile_Functional",
+        "release_compile_Lebedev",
       ],
       "group": "build",
       "problemMatcher": [
@@ -586,7 +875,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3",
@@ -625,13 +914,14 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
       ],
       "dependsOn": [
-        "release_compile_Hamiltonian"
+        "release_compile_Hamiltonian",
+        "release_compile_Representation"
       ],
       "group": "build",
       "problemMatcher": [
@@ -644,7 +934,6 @@
       "command": "ifx",
       "args": [
         "/nologo",
-        "/libs:dll",
         "/threads",
         "/c",
         "/I",
@@ -662,7 +951,7 @@
         "/assume:byterecl",
         "/Qopenmp",
         "/Qmkl:parallel",
-        "/QxCORE-AVX2",
+        "/QxHost",
         "/Qipo",
         "/Qfma",
         "/O3"
@@ -691,6 +980,9 @@
         "${workspaceFolder}\\build\\x64\\release\\Hamiltonian.obj",
         "${workspaceFolder}\\build\\x64\\release\\Rys.obj",
         "${workspaceFolder}\\build\\x64\\release\\Rysdata.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Functional.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Lebedev.obj",
+        "${workspaceFolder}\\build\\x64\\release\\Representation.obj",
         "${workspaceFolder}\\build\\x64\\release\\SCF.obj",
         "${workspaceFolder}\\build\\x64\\release\\TRESC.obj",
         "/o",
@@ -706,9 +998,22 @@
       ]
     },
     {
-      "label": "release_x64",
+      "label": "editbin_release",
+      "type": "shell",
+      "command": "editbin",
+      "args": [
+        "/STACK:8388608",
+        "${workspaceFolder}\\build\\x64\\release\\TRESC.exe"
+      ],
+      "problemMatcher": [],
       "dependsOn": [
         "release_link"
+      ]
+    },
+    {
+      "label": "release_x64",
+      "dependsOn": [
+        "editbin_release"
       ],
       "group": {
         "kind": "build",

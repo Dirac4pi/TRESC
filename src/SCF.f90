@@ -2,11 +2,16 @@
 !!
 !! @brief single-configuration self-consistent field calculation
 !!
+!! @syntax Fortran 2008 free format
+!!
+!! @code UTF-8
+!!
 !! @author dirac4pi
 module SCF
   use Hamiltonian
   use Atoms
   use Fundamentals
+  use Representation
   
   ! density matrices and molecular orbital coefficients
   integer Nalpha, Nbeta                    ! number of alpha and beta elctron
@@ -16,7 +21,7 @@ module SCF
   real(dp),allocatable :: AO2MOalpha(:,:)  ! Gaussian alpha orbital coefficient
   real(dp),allocatable :: Gaubeta(:)       ! Gaussian beta orbital coefficient
   real(dp),allocatable :: AO2MObeta(:,:)   ! Gaussian beta orbital coefficient
-  complex(dp),allocatable :: rou_m(:,:)    ! density matrix, complex Hermitian
+  complex(dp),allocatable :: rho_m(:,:)    ! density matrix, complex Hermitian
   complex(dp),allocatable :: rotation(:,:) ! rotate one orbital with another
   real(dp) :: RMSDP, maxDP
   real(dp),allocatable :: AOsupp(:,:)
@@ -32,7 +37,6 @@ module SCF
   integer :: finfo                         ! info of calling lapack functions
   
   logical :: ini_rou = .true.              ! initial density matrix loaded
-  logical :: diiscuted = .false.           ! whether cutdiis ever reached
   
   !--------------<one electron Fock>--------------
   complex(dp),allocatable :: Fock1(:,:)    ! one electron Fock matrix
@@ -62,23 +66,23 @@ module SCF
   complex(dp),allocatable :: exAO2p2(:,:)  ! extended AO2p2 matrix
   
   !--------------<two electron Fock>--------------
-  complex(dp),allocatable :: Fock2(:,:)      ! two electron Fock matrix
-  complex(dp),allocatable :: Fock2_mic(:,:)  ! two electron Fock matrix
-  
+  complex(dp),allocatable :: Fock2HFcol(:,:)     ! HF Coulomb matrix
+  complex(dp),allocatable :: Fock2HFexc(:,:)     ! HF Exchange matrix
+  complex(dp),allocatable :: Fock2KSexc(:,:)     ! KS Exchange matrix
+  complex(dp),allocatable :: Fock2KScor(:,:)     ! KS correlation matrix
   real(dp),allocatable :: swintegral(:,:)    ! <ij||ij> as well as <kl||kl>
   logical :: ndschwarz = .true.
-  integer :: Fock2_assigned(2,8)          ! avoid duplicate assignment of Fock2
-  integer :: assigned
-  integer :: iassign
-  logical :: carry
-  
-  complex(dp),allocatable :: supp1(:,:), supp2(:,:)
   
   ! orbital energy and molecular energy
   real(dp),allocatable :: orbE(:)  ! orbital energy
   real(dp) :: molE_pre, molE       ! molecular energy
+  real(dp) :: Virial               ! Virial ratio
   real(dp) :: nucE                 ! nuclear repulsion energy
-  real(dp) :: eleE                 ! electron repulsion energy
+  real(dp) :: HFCol                ! Hartree-Fock Coulomb energy
+  real(dp) :: HFexc                ! Hartree-Fock exchange energy
+  real(dp) :: KSexc                ! Kohn-Shanm exchange energy
+  real(dp) :: KScor                ! Kohn-Shanm correlation energy
+  real(dp) :: Ecore                ! one selectron (core) energy
   real(dp) :: T                    ! kinetic energy
   real(dp) :: V                    ! electron-nuclear attraction energy
   real(dp) :: ESOC                 ! SOC energy
@@ -86,30 +90,27 @@ module SCF
   real(dp) :: emd4                 ! dispersion energy calculated by DFT-D4
 
   ! damping & DIIS(AX=B)
-  ! privious rou_m of current iteration
-  complex(dp),allocatable :: rou_pre(:,:)
-  ! privious rou_m of privious iteration
-  complex(dp),allocatable :: rou_pre_pre(:,:)
-  complex(dp),allocatable :: rou_history(:,:,:)  ! coeff of subsp iteration
-  complex(dp),allocatable :: Rsd(:,:,:)          ! residuals of rou_m
+  ! privious rho_m of current iteration
+  complex(dp),allocatable :: rho_pre(:,:)
+  ! privious rho_m of privious iteration
+  complex(dp),allocatable :: rho_pre_pre(:,:)
+  complex(dp),allocatable :: rho_history(:,:,:)  ! coeff of subsp iteration
+  complex(dp),allocatable :: Rsd(:,:,:)          ! residuals of rho_m
   complex(dp),allocatable :: DIISmat(:,:)        ! A
   complex(dp),allocatable :: DIISwork(:)
   integer :: lDIISwork
   integer,allocatable :: ipiv(:)
   integer :: DIIsinfo
-  real(dp) :: damp_coe
+  real(dp) :: damp_coe                        ! damp coeff of direct SCF or DIIS
   real(dp) :: dE_pre
   logical :: forward = .true.
   
   contains
 
 !------------------------------------------------------------
-!> Hartree-Fock SCF procedure for DKH0 / DKH2 Hamiltonian
-  subroutine DKH_Hartree_Fock(keep, kill)
+!> HF/KS-SCF procedure for DKH0/DKH2 Hamiltonian
+  subroutine DKH_SCF()
     implicit none
-    integer,intent(in) :: keep   ! initialization level
-    logical,intent(in) :: kill   ! kill the process after SCF
-    integer :: iatom, ishell
     write(60,'(A)') 'Module SCF:'
     write(60,'(A)') '  construct one electron Fock matrix'
     call Fock1e()
@@ -119,17 +120,20 @@ module SCF
     do loop_i = 1, atom_count
       do loop_j = loop_i + 1, atom_count
         nucE = nucE + (real(molecular(loop_i) % atom_number) * &
-        real(molecular(loop_j) % atom_number))/sqrt((molecular(loop_i) % &
+        real(molecular(loop_j) % atom_number))/dsqrt((molecular(loop_i) % &
         nucleus_position(1) - molecular(loop_j) % nucleus_position(1))**2 + &
         (molecular(loop_i) % nucleus_position(2) - molecular(loop_j) % &
         nucleus_position(2))**2 + (molecular(loop_i) % nucleus_position(3) - &
         molecular(loop_j) % nucleus_position(3))**2)
       end do
     end do
-    if (isnan(nucE)) call terminate(&
+    if (nucE >= 1E12) call terminate(&
     'nuclear repulsive energy anomaly, may due to overlap atomic coordinates')
     write(60,'(A,F12.7,A)') &
     '  complete! nuclear repulsive energy = ', nucE, ' Eh'
+    write(60,'(A)') '  initialize the functional'
+    if (fx_id /= -1) call Fockxc_init()
+    write(60,'(A)') '  complete!'
     write(60,'(A)') '  SCF settings:'
     write(60,'(A,I4)') '  -- maxiter =',maxiter
     write(60,'(A,E10.3)') '  -- conv_tol = ',conver_tol
@@ -148,13 +152,13 @@ module SCF
     allocate(oper4(2*fbdm,2*fbdm))
     
     ! DIIS
-    ! AO2MO(new) = ��(i,subsp) DIIScoe(i)*(rou_history(i)+diisdamp*Rsd(i))
+    ! AO2MO(new) = ��(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
     allocate(Rsd(subsp,2*sbdm,2*sbdm))
     allocate(DIISmat(subsp+1,subsp+1))
     allocate(ipiv(subsp+1))
-    allocate(rou_history(subsp, 2*sbdm, 2*sbdm))
-    allocate(rou_pre(2*sbdm, 2*sbdm))
-    allocate(rou_pre_pre(2*sbdm, 2*sbdm))
+    allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
+    allocate(rho_pre(2*sbdm, 2*sbdm))
+    allocate(rho_pre_pre(2*sbdm, 2*sbdm))
     do loop_i = 1, maxiter
       if (loop_i /= 1) &
       write(60,*)
@@ -163,15 +167,33 @@ module SCF
       if (loop_i == 1) then
         write(60,'(A)') '  read density matrix'
         call assign_rou()
-        write(60,'(A)') '  complete! stored in rou_m'
+        write(60,'(A)') '  complete! stored in rho_m'
       end if
       write(60,'(A)') '  construct two electron Fock matrix'
       call Fock2e()
-      write(60,'(A)') '  complete! stored in Fock2'
+      if (fx_id /= -1) then
+        if (fc_id /= -1) then
+          Fock = Fock1 + Fock2HFcol + x_HF*Fock2HFexc + &
+          (1.0_dp-x_HF)*Fock2KSexc + Fock2KScor
+          write(60,'(A)') '  complete! stored in Fock2HFcol, Fock2HFexc'
+          write(60,'(A)') '  Fock2KSexc, Fock2KScor'
+        else
+          x_HF = 0.0_dp
+          KScor = 0.0_dp
+          Fock = Fock1 + Fock2HFcol + Fock2KSexc
+          write(60,'(A)') '  complete! stored in Fock2HFcol, Fock2HFexc'
+          write(60,'(A)') '  Fock2KSexc'
+        end if
+      else
+        ! pure Hartree-Fock
+        x_HF = 1.0_dp
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        Fock = Fock1 + Fock2HFcol + Fock2HFexc
+        write(60,'(A)') '  complete! stored in Fock2HFcol, Fock2HFexc'
+      end if
+
       write(60,'(A)') '  diagonalization of Fock matrix'
-      
-      Fock = Fock1 + Fock2
-      
       allocate(fwork(1))
       allocate(fiwork(1))
       allocate(rwork(1))
@@ -214,21 +236,44 @@ module SCF
       deallocate(rwork)
       ! energy components calculation
       write(60,'(A)') '  calculate energy components (A.U.)'
-      eleE = 0.0_dp
+      ! HF Coulomb energy
+      HFCol = 0.0_dp
       call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      Fock2, 2*fbdm, c0, oper6, 2*fbdm)
+      Fock2HFcol, 2*fbdm, c0, oper6, 2*fbdm)
       call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
       oper3, 2*fbdm, c0, oper4, 2*fbdm)
       do loop_j = 1, electron_count
-        eleE = eleE + real(oper4(loop_j,loop_j))
+        HFCol = HFCol + real(oper4(loop_j,loop_j))
       end do
-      write(60,'(A,F12.6)') '  -- electron repulsive energy            ', eleE
-      ! calculate molE
-      if (loop_i /= 1) molE_pre = molE
-      molE = nucE - eleE/2.0_dp
+      write(60,'(A,F12.6)') '  -- HF Coulomb energy                    ', HFCol
+
+      ! HF exchange energy
+      HFexc = 0.0_dp
+      call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
+      Fock2HFexc, 2*fbdm, c0, oper6, 2*fbdm)
+      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
+      oper3, 2*fbdm, c0, oper4, 2*fbdm)
       do loop_j = 1, electron_count
-        molE = molE + orbE(loop_j)
+        HFexc = HFexc + real(oper4(loop_j,loop_j))
       end do
+      write(60,'(A,F12.6)') &
+      '  -- HF exchange energy                   ', x_HF*HFexc
+      write(60,'(A,F12.6)') &
+      '  -- KS exchange energy                   ', (1-x_HF)*KSexc
+      write(60,'(A,F12.6)') '  -- KS correlation energy                ', KScor
+
+      ! core energy
+      Ecore = 0.0_dp
+      call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
+      Fock1, 2*fbdm, c0, oper6, 2*fbdm)
+      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
+      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      do loop_j = 1, electron_count
+        Ecore = Ecore + real(oper4(loop_j,loop_j))
+      end do
+      write(60,'(A,F12.6)') '  -- core energy                          ', Ecore
+
+      ! kinetic energy
       T = 0.0_dp
       call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
       exi_T_j, 2*fbdm, c0, oper6, 2*fbdm)
@@ -238,6 +283,8 @@ module SCF
         T = T + real(oper4(loop_j,loop_j))
       end do
       write(60,'(A,F12.6)') '  -- electron kinetic energy              ', T
+
+      ! electron-nuclear attraction energy
       V = 0.0_dp
       call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
       exi_V_j, 2*fbdm, c0, oper6, 2*fbdm)
@@ -247,6 +294,7 @@ module SCF
         V = V + real(oper4(loop_j,loop_j))
       end do
       write(60,'(A,F12.6)') '  -- electron-nuclear attraction energy   ', V
+
       if (DKH_order == 2) then
         ESOC = 0.0_dp
         call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
@@ -270,18 +318,25 @@ module SCF
           '  -- SRTP & radiative correction energy   ', ESR
         end if
       end if
+
+      ! electronic energy
+      if (loop_i /= 1) molE_pre = molE
+      molE = nucE + Ecore + 0.5_dp*(HFCol+x_HF*HFexc)+(1.0_dp-x_HF)*KSexc +KScor
+      
+      ! Virial ratio
       if (DKH_order == 0) then
-        write(60,'(A,F12.6)') &
-        '  -- -<V>/<T>                             ', -(molE-T)/T
+        Virial = -(nucE+V+0.5_dp*(HFCol+x_HF*HFexc)+&
+        (1.0_dp-x_HF)*KSexc +KScor)/T
       else if (DKH_order == 2) then
         if (SRTP_type) then
-          write(60,'(A,F12.6)') &
-          '  -- -<V>/<T>                             ', -(molE-T-ESOC-ESR)/T
+          Virial = -(nucE+Ecore-T-Esoc-ESR+0.5_dp*(HFCol+x_HF*HFexc)+&
+          (1.0_dp-x_HF)*KSexc +KScor)/T
         else
-          write(60,'(A,F12.6)') &
-          '  -- -<V>/<T>                             ', -(molE-T-ESOC)/T
+          Virial = -(nucE+Ecore-T-Esoc+0.5_dp*(HFCol+x_HF*HFexc)+&
+          (1.0_dp-x_HF)*KSexc +KScor)/T
         end if
       end if
+      write(60,'(A,F12.6)') '  -- -<V>/<T>                             ', Virial
       ! de-orthogonalization
       call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, &
       oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
@@ -293,8 +348,9 @@ module SCF
       else
         write(60,'(A,F12.6,A,E10.3)') '  SCF energy (A.U.) = ',molE,&
         '; delta E = ',molE - molE_pre
-        if (abs(molE - molE_pre) < conver_tol .and. &
-        forward .and. damp_coe < 0.01) then
+        if (abs(molE - molE_pre) < conver_tol .and. abs(RMSDP) < 5*conver_tol &
+        .and. forward .and. (damp_coe < 0.01 .or. &
+        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE - molE_pre))))) then
           write(60,'(A)') '  convergence tolerance met, SCF done!'
           exit
         else
@@ -303,36 +359,31 @@ module SCF
       end if
       write(60,'(A)') '  construct density matrix'
       call assign_rou()
-      write(60,'(A)') '  complete! stored in rou_m'
+      write(60,'(A)') '  complete! stored in rho_m'
       write(60,'(A)') '  DIIS information'
-      if ((abs(molE - molE_pre) < cutdiis .or. diiscuted) .and. forward) then
-        diiscuted = .true.
-        write(60,*) '  -- DIIS cutted'
-        cycle
-      end if
-      ! generate next AO2MO by DIIS method
-      if (loop_i <= nodiis - subsp) then
-        write(60,'(A)') '  -- no DIIS acceleration'
-        
+      ! generate next rho_m by DIIS method
+      if (loop_i <= nodiis) then
         
         !--------------<damping>-----------------
-        if (loop_i > 2 .and. abs(molE - molE_pre) >= 1.5*abs(dE_pre)) then
-          damp_coe = damp_coe + (1.0_dp-damp_coe)*0.5_dp
-          if (damp_coe < 0.91) then
-            rou_m = (1.0_dp - damp_coe) * rou_pre + damp_coe * rou_pre_pre
-            write(60,'(A)') '  -- fallback '
-            forward = .false.
-            cycle
+        if (loop_i <= nodiis - subsp) then
+          if (loop_i > 2 .and. abs(molE - molE_pre) >= 1.5*abs(dE_pre)) then
+            damp_coe = damp_coe + (1.0_dp-damp_coe)*0.5_dp
+            if (damp_coe < 0.91) then
+              rho_m = (1.0_dp - damp_coe) * rho_pre + damp_coe * rho_pre_pre
+              write(60,'(A)') '  -- fallback '
+              forward = .false.
+              cycle
+            end if
           end if
         end if
         if (abs(molE - molE_pre) >= cutdamp) then
           damp_coe = damp
-          rou_m = (1.0 - damp_coe) * rou_m + damp_coe * rou_pre
+          rho_m = (1.0 - damp_coe) * rho_m + damp_coe * rho_pre
           write(60,'(A,F6.3)') '  -- damped ', damp_coe
         else if (abs(molE - molE_pre) >= cutdamp/100.0) then
           damp_coe = 0.5_dp*damp*log10(abs(molE - molE_pre)) + &
           damp*(1.0_dp-0.5_dp*log10(cutdamp))
-          rou_m = (1.0 - damp_coe) * rou_m + damp_coe * rou_pre
+          rho_m = (1.0 - damp_coe) * rho_m + damp_coe * rho_pre
           write(60,'(A,F6.3)') '  -- damped ', damp_coe
         else
           damp_coe = 0.0_dp
@@ -340,26 +391,43 @@ module SCF
         end if
         dE_pre = molE - molE_pre
         !--------------<damping>-----------------
-        
-        
-      else if (nodiis - subsp < loop_i .and. loop_i <= nodiis) then
-        ! update Rsd
-        do loop_j = 1, 2*sbdm
-          do loop_k = 1, 2*sbdm
-            Rsd(loop_i-(nodiis-subsp), loop_j, loop_k) = &
-            rou_m(loop_j, loop_k) - rou_pre(loop_j, loop_k)
+
+        if (loop_i <= nodiis - subsp) then
+          write(60,'(A)') '  -- no DIIS acceleration'
+        else
+          ! update Rsd
+          do loop_j = 1, 2*sbdm
+            do loop_k = 1, 2*sbdm
+              Rsd(loop_i-(nodiis-subsp), loop_j, loop_k) = &
+              rho_m(loop_j, loop_k) - rho_pre(loop_j, loop_k)
+            end do
           end do
-        end do
-        ! update rou_history
-        do loop_j = 1, 2*sbdm
-          do loop_k = 1, 2*sbdm
-            rou_history(loop_i-(nodiis-subsp), loop_j, loop_k) = &
-            rou_m(loop_j, loop_k)
+          ! update rho_history
+          do loop_j = 1, 2*sbdm
+            do loop_k = 1, 2*sbdm
+              rho_history(loop_i-(nodiis-subsp), loop_j, loop_k) = &
+              rho_m(loop_j, loop_k)
+            end do
           end do
-        end do
-        write(60,'(A,I2,A,I2)') &
-        '  -- DIIS subspace filling ',loop_i-(nodiis-subsp),'/',subsp
+          write(60,'(A,I2,A,I2)') &
+          '  -- DIIS subspace filling ',loop_i-(nodiis-subsp),'/',subsp
+        end if
       else
+
+        !--------------<DIIS damping>-----------------
+        if (abs(molE - molE_pre) >= cutdiis) then
+          damp_coe = diisdamp
+          write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
+        else if (abs(molE - molE_pre) >= cutdiis/100.0) then
+          damp_coe = 0.5_dp*diisdamp*log10(abs(molE - molE_pre)) + &
+          diisdamp*(1.0_dp-0.5_dp*log10(cutdiis))
+          write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
+        else
+          damp_coe = 0.0_dp
+          write(60,'(A)') '  -- DIIS undamped'
+        end if
+        !--------------<DIIS damping>-----------------
+
         ! update Rsd
         do loop_j = 2, subsp
           do loop_k = 1, 2*sbdm
@@ -370,22 +438,22 @@ module SCF
         end do
         do loop_j = 1, 2*sbdm
           do loop_k = 1, 2*sbdm
-            Rsd(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k) - &
-            rou_pre(loop_j, loop_k)
+            Rsd(subsp, loop_j, loop_k) = rho_m(loop_j, loop_k) - &
+            rho_pre(loop_j, loop_k)
           end do
         end do
-        ! update rou_history
+        ! update rho_history
         do loop_j = 2, subsp
           do loop_k = 1, 2*sbdm
             do loop_l = 1, 2*sbdm
-              rou_history(loop_j - 1, loop_k, loop_l) = &
-              rou_history(loop_j, loop_k, loop_l)
+              rho_history(loop_j - 1, loop_k, loop_l) = &
+              rho_history(loop_j, loop_k, loop_l)
             end do
           end do
         end do
         do loop_j = 1, 2*sbdm
           do loop_k = 1, 2*sbdm
-            rou_history(subsp, loop_j, loop_k) = rou_m(loop_j, loop_k)
+            rho_history(subsp, loop_j, loop_k) = rho_m(loop_j, loop_k)
           end do
         end do
         ! construct DIISmat
@@ -426,14 +494,14 @@ module SCF
         else if (DIISinfo > 0) then
           call terminate('DIIS solution failure, internal error of dgetri')
         end if
-        ! generate new rou_m
-        rou_m = c0
+        ! generate new rho_m
+        rho_m = c0
         do loop_j = 1, subsp
           do loop_k = 1, 2*sbdm
             do loop_l = 1, 2*sbdm
-              rou_m(loop_k,loop_l) = rou_m(loop_k,loop_l) + &
-              DIISmat(loop_j,subsp+1) * (rou_history(loop_j,loop_k,loop_l) + &
-              diisdamp*Rsd(loop_j,loop_k,loop_l))
+              rho_m(loop_k,loop_l) = rho_m(loop_k,loop_l) + &
+              DIISmat(loop_j,subsp+1) * (rho_history(loop_j,loop_k,loop_l) + &
+              damp_coe*Rsd(loop_j,loop_k,loop_l))
             end do
           end do
         end do
@@ -447,23 +515,30 @@ module SCF
         end do
       end if
       if (forward) then
-        if (loop_i > 1) rou_pre_pre = rou_pre
-        rou_pre = rou_m
+        if (loop_i > 1) rho_pre_pre = rho_pre
+        rho_pre = rho_m
       end if
       forward = .true.
     end do
     if (abs(molE - molE_pre) < conver_tol .and. loop_i < maxiter) then
-      if (DKH_order == 0) write(60,'(A)') '  DKH0 Hartree-Fock SCF succeed!'
-      if (DKH_order == 2) write(60,'(A)') '  DKH2 Hartree-Fock SCF succeed!'
+      if (DKH_order == 0) write(60,'(A)') '  DKH0 SCF succeed!'
+      if (DKH_order == 2) write(60,'(A)') '  DKH2 SCF succeed!'
     else
-      if (DKH_order == 0) write(60,'(A)') '  DKH0 Hartree-Fock SCF failed!'
-      if (DKH_order == 2) write(60,'(A)') '  DKH2 Hartree-Fock SCF failed!'
+      if (DKH_order == 0) write(60,'(A)') '  DKH0 SCF failed!'
+      if (DKH_order == 2) write(60,'(A)') '  DKH2 SCF failed!'
     end if
     if (d4) then
-      emd4 = dftd4('hf')
+      emd4 = dftd4()
       molE = molE + emd4
     end if
-    ! print final wave function information
+  end subroutine DKH_SCF
+
+  !------------------------------------------------------------
+  !> print final wave function information
+  subroutine outprint()
+    implicit none
+    integer :: iatom, ishell
+    close(80)
     write(60,*)
     write(60,*)
     write(60,'(A)') &
@@ -476,7 +551,15 @@ module SCF
     write(60,'(A,F12.6)') &
     '  nuclear repulsive energy / Eh                 ...',nucE
     write(60,'(A,F12.6)') &
-    '  electron repulsive energy / Eh                ...',eleE
+    '  HF Coulomb energy / Eh                        ...',HFCol
+    write(60,'(A,F12.6)') &
+    '  HF exchange energy / Eh                       ...',x_HF*HFexc
+    write(60,'(A,F12.6)') &
+    '  KS exchange energy / Eh                       ...',(1.0_dp-x_HF)*KSexc
+    write(60,'(A,F12.6)') &
+    '  KS correlation energy / Eh                    ...',KScor
+    write(60,'(A,F12.6)') &
+    '  core energy / Eh                              ...',Ecore
     write(60,'(A,F12.6)') &
     '  electron kinetic energy / Eh                  ...',T
     write(60,'(A,F12.6)') &
@@ -488,19 +571,10 @@ module SCF
       '  SRTP & radiative correction energy / Eh       ...',ESR
     end if
     if (d4) write(60,'(A,F12.6)') &
-    '  dispersion energy (DFT-D4) / Eh               ...',emd4  
-    if (DKH_order == 0) then
-      write(60,'(A,F12.6)') &
-      '  Virial ratio                                  ...',-(molE-T)/T
-    else if (DKH_order == 2) then
-      if (SRTP_type) then
-        write(60,'(A,F12.6)') &
-        '  Virial ratio                                  ...',&
-        -(molE-T-ESOC-ESR)/T
-      else
-        write(60,'(A,F12.6)') &
-        '  Virial ratio                                  ...',-(molE-T-ESOC)/T
-      end if
+    '  dispersion energy (DFT-D4) / Eh               ...',emd4
+    write(60,'(A,F12.6)') &
+    '  Virial ratio                                  ...',Virial
+    if (DKH_order /= 0) then
       write(60,*)
       write(60,'(A)') '  Note: relativistic calculation causes the Virial ratio'
       write(60,'(A)') '  to deviate (usually below) 2.0'
@@ -509,7 +583,7 @@ module SCF
     write(60,'(A,F12.6)') &
     '  total alpha electron                          ...',totalpha
     write(60,'(A,F12.6)') &
-    '  total alpha electron                          ...',totbeta
+    '  total beta electron                           ...',totbeta
     write(60,'(A,F12.6)') &
     '  <Sz*(Sz+1)> / hbar**2                         ...',&
     ((totalpha-totbeta)/2.0)*((totalpha-totbeta)/2.0+1.0_dp)
@@ -681,57 +755,42 @@ module SCF
       call dump_molden()
       write(60,'(A)') '  complete!'
     end if
-    ! initialization
-    deallocate(exi_T_j)
-    deallocate(exi_V_j)
-    deallocate(oper4)
-    deallocate(oper6)
-    deallocate(isupp_ev_f)
-    deallocate(Rsd)
-    deallocate(DIISmat)
-    deallocate(ipiv)
-    deallocate(rou_history)
-    deallocate(rou_pre)
-    deallocate(rou_pre_pre)
-    deallocate(Fock2_mic)
+    write(60,'(A)') 'exit module SCF'
+  end subroutine outprint
+  !------------------------------------------------------------
+  !> initialization of global variables
+  subroutine glob_init(kill)
+    implicit none
+    logical,intent(in) :: kill   ! kill the process after SCF
+    deallocate(exi_T_j, exi_V_j)
+    deallocate(oper4, oper6)
+    deallocate(isupp_ev_f, Rsd, DIISmat, ipiv)
+    deallocate(rho_history, rho_pre, rho_pre_pre)
     deallocate(swintegral)
-    deallocate(Fock1)
-    deallocate(Fock2)
-    deallocate(i_V_j)
-    deallocate(i_j)
-    deallocate(i_p2_j)
-    deallocate(Xm)
-    deallocate(exXm)
+    deallocate(Fock1, Fock2HFexc, Fock2HFcol)
+    if (allocated(Fock2KScor)) deallocate(Fock2KScor)
+    if (allocated(Fock2KSexc)) deallocate(Fock2KSexc)
+    deallocate(i_j, i_p2_j, i_V_j, Xm, exXm)
     if (s_h) then
-      deallocate(c2s)
-      deallocate(exc2s)
+      deallocate(c2s, exc2s)
     end if
-    if (keep == 0) then
-      deallocate(shell_in_element)
-      deallocate(atom_basis)
-      deallocate(basis_inf)
-      deallocate(molecular)
-      deallocate(AO2MO)
-      deallocate(rou_m)
-      deallocate(Fock)
-      deallocate(orbE)
-      deallocate(oper3)
+    if (kill) then
+      if (fx_id /= -1) call Fockxc_end()
+      deallocate(shell_in_element, atom_basis, basis_inf, molecular)
+      deallocate(AO2MO, rho_m, Fock, orbE, oper3)
     end if
     ndschwarz = .true.
     ini_rou = .true.
     if (DKH_order == 2) then
-      deallocate(exSOC)
-      deallocate(AO2p2)
-      deallocate(evl_p2)
+      deallocate(exSOC, AO2p2, evl_p2)
       if (SRTP_type) deallocate(exSR)
     end if
-    write(60,'(A)') 'exit module SCF'
     if (kill) then
       call terminate('normal')
     else
       call terminate('keep')
     end if
-  end subroutine DKH_Hartree_Fock
+  end subroutine glob_init
   
 !------------------------------------------------------------
 !> initial guess and generate density matix
@@ -744,13 +803,13 @@ module SCF
     character(len = 512) :: line_str
     if (ini_rou) then
       ini_rou = .false.
-      allocate(rou_m(2*sbdm,2*sbdm))
+      allocate(rho_m(2*sbdm,2*sbdm))
+      allocate(AO2MO(2*sbdm,2*fbdm))
       Nalpha = (electron_count - (spin_mult - 1)) / 2 + (spin_mult - 1)
       Nbeta = (electron_count - (spin_mult - 1)) / 2
       
       ! read MO coefficient
       if (guess_type == 'gaussian') then
-        allocate(AO2MO(2*sbdm,2*fbdm))
         allocate(Gaualpha(sbdm*sbdm))
         allocate(Gaubeta(sbdm*sbdm))
         allocate(AO2MOalpha(sbdm,sbdm))
@@ -787,7 +846,7 @@ module SCF
         index(line_Str,'length')-2),'524') == 0) &
         call terminate('Gaussian alpha orbital coefficient should be RWF 524')
         read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),&
-        '(I)',iostat = ios) mat_dimension
+        '(I8)',iostat = ios) mat_dimension
         if (ios /= 0) call terminate('Unmatched Gaualpha content')
         if (mat_dimension /= sbdm*sbdm) &
         call terminate('Gaussian alpha orbital dimension not match')
@@ -819,7 +878,7 @@ module SCF
         index(line_Str,'length')-2),'526') == 0) &
         call terminate('Gaussian beta orbital coefficient should be RWF 526')
         read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),&
-        '(I)',iostat = ios) mat_dimension
+        '(I8)',iostat = ios) mat_dimension
         if (ios /= 0) call terminate('Unmatched Gaubeta content')
         if (mat_dimension /= sbdm*sbdm) &
         call terminate('Gaussian beta orbital dimension not match')
@@ -845,15 +904,15 @@ module SCF
         close(62)
         deallocate(Gaualpha)
         deallocate(Gaubeta)
-        rou_m = c0
+        rho_m = c0
         do ploop_i = 1,sbdm
           do ploop_j = 1,sbdm
             do ploop_k = 1,Nalpha
-              rou_m(2*ploop_i-1,2*ploop_j-1) = rou_m(2*ploop_i-1,2*ploop_j-1) +&
+              rho_m(2*ploop_i-1,2*ploop_j-1) = rho_m(2*ploop_i-1,2*ploop_j-1) +&
               AO2MOalpha(ploop_k,ploop_i)*AO2MOalpha(ploop_k,ploop_j)
             end do
             do ploop_k = 1,Nbeta
-              rou_m(2*ploop_i,2*ploop_j) = rou_m(2*ploop_i,2*ploop_j) +&
+              rho_m(2*ploop_i,2*ploop_j) = rho_m(2*ploop_i,2*ploop_j) +&
               AO2MObeta(ploop_k,ploop_i)*AO2MObeta(ploop_k,ploop_j)
             end do
           end do
@@ -864,23 +923,23 @@ module SCF
         call load_matrix_cmplx(name='ao2mo', m=AO2MO, dmi=ploop_i, dmj=ploop_j)
         if (ploop_i /= 2*sbdm .or. ploop_j /= 2*fbdm) call terminate(&
         'basis dimension in .ao2mo file mismatch with current job')
-        rou_m = c0
+        rho_m = c0
         do ploop_i = 1, 2*sbdm
           do ploop_j = 1, 2*sbdm
             do ploop_k = 1, electron_count
-              rou_m(ploop_i,ploop_j) = rou_m(ploop_i,ploop_j) + &
+              rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) + &
               AO2MO(ploop_i,ploop_k)*conjg(AO2MO(ploop_j,ploop_k))
             end do
           end do
         end do
       end if
-      rou_pre = rou_m
+      rho_pre = rho_m
     else
-      rou_m = c0
+      rho_m = c0
       do ploop_i = 1, 2*sbdm
         do ploop_j = 1, 2*sbdm
           do ploop_k = 1, electron_count
-            rou_m(ploop_i,ploop_j) = rou_m(ploop_i,ploop_j) + &
+            rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) + &
             AO2MO(ploop_i,ploop_k)*conjg(AO2MO(ploop_j,ploop_k))
           end do
         end do
@@ -966,37 +1025,37 @@ module SCF
         deallocate(rotation)
         call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, &
         oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
-        rou_m = c0
+        rho_m = c0
         do ploop_i = 1, 2*sbdm
           do ploop_j = 1, 2*sbdm
             do ploop_k = 1, electron_count
-              rou_m(ploop_i,ploop_j) = rou_m(ploop_i,ploop_j) + &
+              rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) + &
               AO2MO(ploop_i,ploop_k)*conjg(AO2MO(ploop_j,ploop_k))
             end do
           end do
         end do
       end if
       if (loop_i /= 1) then
-        maxDP = (real(rou_m(1,1))-real(rou_pre(1,1)))**2 + &
-        (aimag(rou_m(1,1))-aimag(rou_pre(1,1)))**2
+        maxDP = (real(rho_m(1,1))-real(rho_pre(1,1)))**2 + &
+        (aimag(rho_m(1,1))-aimag(rho_pre(1,1)))**2
         RMSDP = 0.0_dp
         do ploop_i = 1, 2*sbdm
           do ploop_j = 1, 2*sbdm
-            if ((real(rou_m(ploop_i,ploop_j))-&
-            real(rou_pre(ploop_i,ploop_j)))**2 + (aimag(rou_m(ploop_i,ploop_j))&
-            -aimag(rou_pre(ploop_i,ploop_j)))**2 > maxDP) then
-              maxDP = (real(rou_m(ploop_i,ploop_j))-&
-              real(rou_pre(ploop_i,ploop_j)))**2 + &
-              (aimag(rou_m(ploop_i,ploop_j))-aimag(rou_pre(ploop_i,ploop_j)))**2
+            if ((real(rho_m(ploop_i,ploop_j))-&
+            real(rho_pre(ploop_i,ploop_j)))**2 + (aimag(rho_m(ploop_i,ploop_j))&
+            -aimag(rho_pre(ploop_i,ploop_j)))**2 > maxDP) then
+              maxDP = (real(rho_m(ploop_i,ploop_j))-&
+              real(rho_pre(ploop_i,ploop_j)))**2 + &
+              (aimag(rho_m(ploop_i,ploop_j))-aimag(rho_pre(ploop_i,ploop_j)))**2
             end if
             RMSDP = RMSDP + &
-            (real(rou_m(ploop_i,ploop_j))-real(rou_pre(ploop_i,ploop_j)))**2 + &
-            (aimag(rou_m(ploop_i,ploop_j))-aimag(rou_pre(ploop_i,ploop_j)))**2
+            (real(rho_m(ploop_i,ploop_j))-real(rho_pre(ploop_i,ploop_j)))**2 + &
+            (aimag(rho_m(ploop_i,ploop_j))-aimag(rho_pre(ploop_i,ploop_j)))**2
           end do
         end do
-        maxDP = sqrt(maxDP)
+        maxDP = dsqrt(maxDP)
         RMSDP = RMSDP / (4*sbdm*sbdm)
-        RMSDP = sqrt(RMSDP)
+        RMSDP = dsqrt(RMSDP)
         write(60,'(A,E10.3)') '  -- maxDP                  ', maxDP
         write(60,'(A,E10.3)') '  -- RMSDP                  ', RMSDP
       end if
@@ -1012,6 +1071,7 @@ module SCF
 !> construct one electron Fock matrix
   subroutine Fock1e()
     implicit none
+    real(dp) :: temp_pool(fbdm, fbdm)
     integer :: floop_i, floop_j   ! loop variables for subroutine Fock1e
     allocate(Fock1(2*fbdm,2*fbdm))
     allocate(exi_T_j(2*fbdm,2*fbdm))
@@ -1067,12 +1127,12 @@ module SCF
       exSOC = c0
       Ap = 0.0_dp
       do floop_i=1,fbdm
-        Ap(floop_i,floop_i)= sqrt((sqrt(evl_p2(floop_i)/(speedc*speedc)+1.0_dp)&
-        + 1.0_dp)/(2.0_dp*sqrt(evl_p2(floop_i)/(speedc*speedc) + 1.0_dp)))
+        Ap(floop_i,floop_i)=dsqrt((dsqrt(evl_p2(floop_i)/(speedc*speedc)+1.0_dp)&
+        + 1.0_dp)/(2.0_dp*dsqrt(evl_p2(floop_i)/(speedc*speedc) + 1.0_dp)))
       end do
       ApRp = 0.0_dp
       do floop_i=1,fbdm
-        ApRp(floop_i,floop_i) = Ap(floop_i,floop_i)/(sqrt(evl_p2(floop_i) + &
+        ApRp(floop_i,floop_i) = Ap(floop_i,floop_i)/(dsqrt(evl_p2(floop_i) + &
         speedc*speedc) + speedc)
       end do
       SRp = c0
@@ -1102,10 +1162,11 @@ module SCF
         end do
       end do
       ! ApRp pxVpx+pyVpy+pzVpz ApRp
+      temp_pool = i_pxVpx_j+i_pyVpy_j+i_pzVpz_j
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      i_pxVpx_j+i_pyVpy_j+i_pzVpz_j, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1119,10 +1180,11 @@ module SCF
         end do
       end do
       ! ApRp pxVpy-pyVpx ApRp
+      temp_pool = i_pxVpy_j-i_pyVpx_j
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      i_pxVpy_j-i_pyVpx_j, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1136,10 +1198,11 @@ module SCF
         end do
       end do
       ! ApRp pzVpx-pxVpz ApRp
+      temp_pool = i_pzVpx_j-i_pxVpz_j
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      i_pzVpx_j-i_pxVpz_j, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1153,10 +1216,11 @@ module SCF
         end do
       end do
       ! ApRp pyVpz-pzVpy ApRp
+      temp_pool = i_pyVpz_j-i_pzVpy_j
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      i_pyVpz_j-i_pzVpy_j, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1356,71 +1420,71 @@ module SCF
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           Ve(floop_i,floop_j) = i_V_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pxVepx(floop_i,floop_j) = i_pxVpx_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pyVepy(floop_i,floop_j) = i_pyVpy_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pzVepz(floop_i,floop_j) = i_pzVpz_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pxVepy(floop_i,floop_j) = i_pxVpy_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pyVepx(floop_i,floop_j) = i_pyVpx_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pxVepz(floop_i,floop_j) = i_pxVpz_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pzVepx(floop_i,floop_j) = i_pzVpx_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pyVepz(floop_i,floop_j) = i_pyVpz_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       do floop_i=1,fbdm
         do floop_j=1,fbdm
           pzVepy(floop_i,floop_j) = i_pzVpy_j(floop_i,floop_j)/&
-          (speedc * (sqrt(evl_p2(floop_i)+speedc*speedc) + &
-          sqrt(evl_p2(floop_j)+speedc*speedc)))
+          (speedc * (dsqrt(evl_p2(floop_i)+speedc*speedc) + &
+          dsqrt(evl_p2(floop_j)+speedc*speedc)))
         end do
       end do
       ! Ap Ve Ap
@@ -1441,10 +1505,11 @@ module SCF
         end do
       end do
       ! ApRp pxVepx+pyVepy+pzVepz ApRp
+      temp_pool = pxVepx+pyVepy+pzVepz
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      pxVepx+pyVepy+pzVepz, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1458,10 +1523,11 @@ module SCF
         end do
       end do
       ! ApRp pxVepy-pyVepx ApRp
+      temp_pool = pxVepy-pyVepx
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      pxVepy-pyVepx, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1475,10 +1541,11 @@ module SCF
         end do
       end do
       ! ApRp pzVepx-pxVepz ApRp
+      temp_pool = pzVepx-pxVepz
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      pzVepx-pxVepz, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1492,10 +1559,11 @@ module SCF
         end do
       end do
       ! ApRp pyVepz-pzVepy ApRp
+      temp_pool = pyVepz-pzVepy
       call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      pyVepz-pzVepy, fbdm, 0.0_dp, oper1, fbdm)
+      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
       AO2p2, fbdm, 0.0_dp, oper2, fbdm)
       call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
@@ -1536,10 +1604,10 @@ module SCF
       Fock1 = Fock1 - oper4
       do floop_i=1, fbdm
         oper5(2*floop_i-1,2*floop_i-1) = cmplx(0.5_dp,0.0_dp,dp) * &
-        cmplx((sqrt(evl_p2(floop_i) + speedc*speedc) + &
+        cmplx((dsqrt(evl_p2(floop_i) + speedc*speedc) + &
         speedc)**2 / evl_p2(floop_i),0.0_dp,dp)
         oper5(2*floop_i,2*floop_i) = cmplx(0.5_dp,0.0_dp,dp) * &
-        cmplx((sqrt(evl_p2(floop_i) + speedc*speedc) + &
+        cmplx((dsqrt(evl_p2(floop_i) + speedc*speedc) + &
         speedc)**2 / evl_p2(floop_i),0.0_dp,dp)
       end do
       call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, ARVeRA, 2*fbdm, &
@@ -1554,9 +1622,9 @@ module SCF
       Fock1 = Fock1 + oper4
       do floop_i=1, fbdm
         oper5(2*floop_i-1,2*floop_i-1) = cmplx(evl_p2(floop_i) / &
-        (2.0_dp*(sqrt(evl_p2(floop_i)+speedc*speedc) + speedc)**2),0.0_dp,dp)
+        (2.0_dp*(dsqrt(evl_p2(floop_i)+speedc*speedc) + speedc)**2),0.0_dp,dp)
         oper5(2*floop_i,2*floop_i) = cmplx(evl_p2(floop_i) / &
-        (2.0_dp * speedc * sqrt(evl_p2(floop_i) + speedc*speedc)),0.0_dp,dp)
+        (2.0_dp * speedc * dsqrt(evl_p2(floop_i) + speedc*speedc)),0.0_dp,dp)
       end do
       call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, AVeA, 2*fbdm, &
       oper5, 2*fbdm, c0, oper3, 2*fbdm)
@@ -1570,14 +1638,14 @@ module SCF
       Fock1 = Fock1 + oper4
       do floop_i=1,fbdm
         Fock1(2*floop_i-1,2*floop_i-1) = &
-        Fock1(2*floop_i-1,2*floop_i-1) + cmplx(speedc*sqrt(evl_p2(floop_i) + &
+        Fock1(2*floop_i-1,2*floop_i-1) + cmplx(speedc*dsqrt(evl_p2(floop_i) + &
         speedc*speedc),0.0_dp,dp) - speedc*speedc
         Fock1(2*floop_i,2*floop_i) = &
-        Fock1(2*floop_i,2*floop_i) + cmplx(speedc*sqrt(evl_p2(floop_i) + &
+        Fock1(2*floop_i,2*floop_i) + cmplx(speedc*dsqrt(evl_p2(floop_i) + &
         speedc*speedc),0.0_dp,dp) - speedc*speedc
-        exi_T_j(2*floop_i-1,2*floop_i-1) = cmplx(speedc*sqrt(evl_p2(floop_i) + &
+        exi_T_j(2*floop_i-1,2*floop_i-1) = cmplx(speedc*dsqrt(evl_p2(floop_i) +&
         speedc*speedc),0.0_dp,dp) - speedc*speedc
-        exi_T_j(2*floop_i,2*floop_i) = cmplx(speedc*sqrt(evl_p2(floop_i) + &
+        exi_T_j(2*floop_i,2*floop_i) = cmplx(speedc*dsqrt(evl_p2(floop_i) + &
         speedc*speedc),0.0_dp,dp) - speedc*speedc
       end do
       ! Transform from p^2 eigenbasis to orthogonal normalized AO basis
@@ -1612,55 +1680,22 @@ module SCF
         call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
         oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, exSR, 2*fbdm)
       end if
-      deallocate(Ve)
-      deallocate(pxVepx)
-      deallocate(pyVepy)
-      deallocate(pzVepz)
-      deallocate(pxVepy)
-      deallocate(pyVepx)
-      deallocate(pxVepz)
-      deallocate(pzVepx)
-      deallocate(pyVepz)
-      deallocate(pzVepy)
-      deallocate(ARVeRA)
-      deallocate(AVeA)
-      deallocate(oper1)
-      deallocate(oper2)
-      deallocate(oper3)
-      deallocate(oper4)
-      deallocate(oper5)
-      deallocate(Ap)
-      deallocate(ApRp)
-      deallocate(SRp)
-      deallocate(ARVRA)
-      deallocate(AVA)
-      deallocate(exAO2p2)
+      deallocate(Ve, pxVepx, pyVepy, pzVepz, pxVepy, pyVepx)
+      deallocate(pxVepz, pzVepx, pyVepz, pzVepy, ARVeRA, AVeA)
+      deallocate(oper1, oper2, oper3, oper4, oper5)
+      deallocate(Ap, ApRp, SRp, ARVRA, AVA, exAO2p2)
       ! deallocate one-electron integrals to reduce memory usage
-      deallocate(i_pxVpx_j)
-      deallocate(i_pyVpy_j)
-      deallocate(i_pzVpz_j)
-      deallocate(i_pxVpy_j)
-      deallocate(i_pyVpx_j)
-      deallocate(i_pxVpz_j)
-      deallocate(i_pzVpx_j)
-      deallocate(i_pyVpz_j)
-      deallocate(i_pzVpy_j)
+      deallocate(i_pxVpx_j, i_pyVpy_j, i_pzVpz_j, i_pxVpy_j, i_pyVpx_j)
+      deallocate(i_pxVpz_j, i_pzVpx_j, i_pyVpz_j, i_pzVpy_j)
       if (SRTP_type) then
-        deallocate(i_px3Vpx_j)
-        deallocate(i_py3Vpy_j)
-        deallocate(i_pz3Vpz_j)
-        deallocate(i_px3Vpy_j)
-        deallocate(i_py3Vpx_j)
-        deallocate(i_px3Vpz_j)
-        deallocate(i_pz3Vpx_j)
-        deallocate(i_py3Vpz_j)
-        deallocate(i_pz3Vpy_j)
+        deallocate(i_px3Vpx_j, i_py3Vpy_j, i_pz3Vpz_j, i_px3Vpy_j, i_py3Vpx_j)
+        deallocate(i_px3Vpz_j, i_pz3Vpx_j, i_py3Vpz_j, i_pz3Vpy_j)
       end if
     end if
   end subroutine Fock1e
   
 !------------------------------------------------------------
-!> construct two electron Fock operator
+!> construct Fock2 matrices (Fock2HFcol, Fock2HFexc, Fock2KSexc, Fock2KScor)
 !!
 !! "direct" calculation to avoid memory overflow and large amount of disk r&w
 !!
@@ -1672,6 +1707,7 @@ module SCF
     integer :: dloop_k, dloop_l
     integer :: dloop_m, dloop_n
     integer :: dloop_o, dloop_p
+    integer :: addi, addj          ! serial scalar for atomic operation
     real(dp) :: integral
     !----------------------------------
     integer :: contraction_i       ! contraction of atom_i, shell_i
@@ -1715,10 +1751,18 @@ module SCF
     real(dp),allocatable :: swexponents_j(:)    ! expo of |AOj> for schwarz
     real(dp),allocatable :: swcoefficient_i(:)  ! coeff of |AOi> for schwarz
     real(dp),allocatable :: swcoefficient_j(:)  ! coeff of |AOj> for schwarz
+    complex(dp) :: Fock2HFcol_mic(2*cbdm,2*cbdm)    ! micro 2e Fock matrix
+    complex(dp) :: Fock2HFexc_mic(2*cbdm,2*cbdm)    ! micro 2e Fock matrix
+    complex(dp),allocatable :: supp1(:,:), supp2(:,:), supp3(:,:)
+    integer :: Fock2_assigned(2,8)         ! avoid duplicate assignment of Fock2
+    integer :: assigned
+    integer :: iassign
+    logical :: carry
     if (ndschwarz) then
       ndschwarz = .false.
       write(60,'(a)') '  -- Schwarz screening of <ij||kl>'
-      allocate(Fock2(2*fbdm,2*fbdm))
+      allocate(Fock2HFcol(2*fbdm,2*fbdm))
+      allocate(Fock2HFexc(2*fbdm,2*fbdm))
       allocate(swintegral(cbdm,cbdm))
       swintegral = 0.0_dp
       swloop_i = 1
@@ -1821,33 +1865,36 @@ module SCF
       end do
       write(60,'(A,E10.2,A)') &
       '  -- complete! cutoff:',schwarz_VT,'; stored in swintegral'
-      allocate(Fock2_mic(2*cbdm,2*cbdm))
     end if
     if (s_h) then
       allocate(supp1(2*sbdm,2*cbdm))
-      call zgemm( 'N', 'C', 2*sbdm, 2*cbdm, 2*sbdm, c1, rou_m, &
+      call zgemm( 'N', 'C', 2*sbdm, 2*cbdm, 2*sbdm, c1, rho_m, &
       2*sbdm, exc2s, 2*cbdm, c0, supp1, 2*sbdm)
-      deallocate(rou_m)
-      allocate(rou_m(2*cbdm,2*cbdm))
+      deallocate(rho_m)
+      allocate(rho_m(2*cbdm,2*cbdm))
       call zgemm( 'N', 'N', 2*cbdm, 2*cbdm, 2*sbdm, c1, exc2s, &
-      2*cbdm, supp1, 2*sbdm, c0, rou_m, 2*cbdm)
+      2*cbdm, supp1, 2*sbdm, c0, rho_m, 2*cbdm)
       deallocate(supp1)
     end if
     allocate(supp1(2*cbdm,2*cbdm))
+    allocate(supp3(2*cbdm,2*cbdm))
     supp1 = c0
+    supp3 = c0
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads_use) default(shared) private(i,dloop_i,&
     !$omp& dloop_j,dloop_k,dloop_l,dloop_m,dloop_n,dloop_o,dloop_p,integral,&
     !$omp& contraction_i,L_i,M_i,contraction_j,L_j,M_j,contraction_k,L_k,M_k,&
-    !$omp& contraction_l,L_l,M_l,exponents_i,exponents_j,exponents_k,&
+    !$omp& contraction_l,L_l,M_l,exponents_i,exponents_j,exponents_k,addi,addj,&
     !$omp& exponents_l,coefficient_i,coefficient_j,coefficient_k,coefficient_l,&
-    !$omp& coordinate_i,coordinate_j,coordinate_k,coordinate_l,Fock2_mic,&
-    !$omp& Fock2_assigned,assigned,iassign,carry) if(threads_use < cpu_threads)
-    !$omp do schedule(dynamic,5)
+    !$omp& coordinate_i,coordinate_j,coordinate_k,coordinate_l,Fock2HFcol_mic,&
+    !$omp& Fock2HFexc_mic,Fock2_assigned,assigned,iassign,carry)&
+    !$omp& if(threads_use < cpu_threads)
+    !$omp do schedule(dynamic,6)
     ! (ij|kl)=(ji|kl)=(ij|lk)=(ji|lk)=(kl|ij)=(kl|ji)=(lk|ij)=(lk|ji)
     !----------------------------<dloop_i>-------------------------------------
     do i = cbdm, 1, -1
-      Fock2_mic = c0
+      Fock2HFcol_mic = c0
+      Fock2HFexc_mic = c0
       dloop_i = i
       contraction_i = atom_basis(molecular(basis_inf(dloop_i) % atom) % &
       basis_number + basis_inf(dloop_i) % shell - 1) % contraction
@@ -1893,8 +1940,8 @@ module SCF
           !----------------------------<dloop_l>-------------------------------
           do dloop_l = min(dloop_k,dloop_j+&
           (dloop_i*(dloop_i-1)-dloop_k*(dloop_k-1))/2), 1, -1
-            ! Schwarz screening, |<ij||kl>| <= sqrt(<ij||ij>) * sqrt(<kl||kl>)
-            if (sqrt(swintegral(dloop_i,dloop_j)*swintegral(dloop_k,dloop_l))&
+            ! Schwarz screening, |<ij||kl>| <= dsqrt(<ij||ij>) * dsqrt(<kl||kl>)
+            if (dsqrt(swintegral(dloop_i,dloop_j)*swintegral(dloop_k,dloop_l))&
             < schwarz_VT) cycle
             contraction_l = atom_basis(molecular(basis_inf(dloop_l) % atom) % &
             basis_number + basis_inf(dloop_l) % shell - 1) % contraction
@@ -2001,31 +2048,31 @@ module SCF
               assigned = 1
               Fock2_assigned(1,1) = dloop_i
               Fock2_assigned(2,1) = dloop_j
-              Fock2_mic(2*dloop_i-1,2*dloop_j-1) = &
-              Fock2_mic(2*dloop_i-1,2*dloop_j-1) + &
-              integral*rou_m(2*dloop_k-1,2*dloop_l-1)     ! alpha->alpha Coulomb
-              Fock2_mic(2*dloop_i-1,2*dloop_j-1) = &
-              Fock2_mic(2*dloop_i-1,2*dloop_j-1) + &
-              integral*rou_m(2*dloop_k,2*dloop_l)         ! alpha->beta Coulomb
-              Fock2_mic(2*dloop_i,2*dloop_j) = &
-              Fock2_mic(2*dloop_i,2*dloop_j) + &
-              integral*rou_m(2*dloop_k-1,2*dloop_l-1)     ! beta->alpha Coulomb
-              Fock2_mic(2*dloop_i,2*dloop_j) = &
-              Fock2_mic(2*dloop_i,2*dloop_j) + &
-              integral*rou_m(2*dloop_k,2*dloop_l)         ! beta->beta Coulomb
+              Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) = &
+              Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) + &
+              integral*rho_m(2*dloop_k-1,2*dloop_l-1)     ! alpha->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) = &
+              Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) + &
+              integral*rho_m(2*dloop_k,2*dloop_l)         ! alpha->beta Coulomb
+              Fock2HFcol_mic(2*dloop_i,2*dloop_j) = &
+              Fock2HFcol_mic(2*dloop_i,2*dloop_j) + &
+              integral*rho_m(2*dloop_k-1,2*dloop_l-1)     ! beta->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_i,2*dloop_j) = &
+              Fock2HFcol_mic(2*dloop_i,2*dloop_j) + &
+              integral*rho_m(2*dloop_k,2*dloop_l)         ! beta->beta Coulomb
               if (dloop_k /= dloop_l) then
-                Fock2_mic(2*dloop_i-1,2*dloop_j-1) = &
-                Fock2_mic(2*dloop_i-1,2*dloop_j-1) + &
-                integral*rou_m(2*dloop_l-1,2*dloop_k-1)   ! alpha->alpha Coulomb
-                Fock2_mic(2*dloop_i-1,2*dloop_j-1) = &
-                Fock2_mic(2*dloop_i-1,2*dloop_j-1) + &
-                integral*rou_m(2*dloop_l,2*dloop_k)       ! alpha->beta Coulomb
-                Fock2_mic(2*dloop_i,2*dloop_j) = &
-                Fock2_mic(2*dloop_i,2*dloop_j) + &
-                integral*rou_m(2*dloop_l-1,2*dloop_k-1)   ! beta->alpha Coulomb
-                Fock2_mic(2*dloop_i,2*dloop_j) = &
-                Fock2_mic(2*dloop_i,2*dloop_j) + &
-                integral*rou_m(2*dloop_l,2*dloop_k)       ! beta->beta Coulomb
+                Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) = &
+                Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) + &
+                integral*rho_m(2*dloop_l-1,2*dloop_k-1)   ! alpha->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) = &
+                Fock2HFcol_mic(2*dloop_i-1,2*dloop_j-1) + &
+                integral*rho_m(2*dloop_l,2*dloop_k)       ! alpha->beta Coulomb
+                Fock2HFcol_mic(2*dloop_i,2*dloop_j) = &
+                Fock2HFcol_mic(2*dloop_i,2*dloop_j) + &
+                integral*rho_m(2*dloop_l-1,2*dloop_k-1)   ! beta->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_i,2*dloop_j) = &
+                Fock2HFcol_mic(2*dloop_i,2*dloop_j) + &
+                integral*rho_m(2*dloop_l,2*dloop_k)       ! beta->beta Coulomb
               end if
             do iassign = 1, assigned
               if (Fock2_assigned(1,iassign) == dloop_j .and. &
@@ -2038,31 +2085,31 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_j
               Fock2_assigned(2,assigned) = dloop_i
-              Fock2_mic(2*dloop_j-1,2*dloop_i-1) = &
-              Fock2_mic(2*dloop_j-1,2*dloop_i-1) + &
-              integral*rou_m(2*dloop_k-1,2*dloop_l-1)     ! alpha->alpha Coulomb
-              Fock2_mic(2*dloop_j-1,2*dloop_i-1) = &
-              Fock2_mic(2*dloop_j-1,2*dloop_i-1) + &
-              integral*rou_m(2*dloop_k,2*dloop_l)         ! alpha->beta Coulomb
-              Fock2_mic(2*dloop_j,2*dloop_i) = &
-              Fock2_mic(2*dloop_j,2*dloop_i) + &
-              integral*rou_m(2*dloop_k-1,2*dloop_l-1)     ! beta->alpha Coulomb
-              Fock2_mic(2*dloop_j,2*dloop_i) = &
-              Fock2_mic(2*dloop_j,2*dloop_i) + &
-              integral*rou_m(2*dloop_k,2*dloop_l)         ! beta->beta Coulomb
+              Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) = &
+              Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) + &
+              integral*rho_m(2*dloop_k-1,2*dloop_l-1)     ! alpha->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) = &
+              Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) + &
+              integral*rho_m(2*dloop_k,2*dloop_l)         ! alpha->beta Coulomb
+              Fock2HFcol_mic(2*dloop_j,2*dloop_i) = &
+              Fock2HFcol_mic(2*dloop_j,2*dloop_i) + &
+              integral*rho_m(2*dloop_k-1,2*dloop_l-1)     ! beta->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_j,2*dloop_i) = &
+              Fock2HFcol_mic(2*dloop_j,2*dloop_i) + &
+              integral*rho_m(2*dloop_k,2*dloop_l)         ! beta->beta Coulomb
               if (dloop_k /= dloop_l) then
-                Fock2_mic(2*dloop_j-1,2*dloop_i-1) = &
-                Fock2_mic(2*dloop_j-1,2*dloop_i-1) + &
-                integral*rou_m(2*dloop_l-1,2*dloop_k-1)   ! alpha->alpha Coulomb
-                Fock2_mic(2*dloop_j-1,2*dloop_i-1) = &
-                Fock2_mic(2*dloop_j-1,2*dloop_i-1) + &
-                integral*rou_m(2*dloop_l,2*dloop_k)       ! alpha->beta Coulomb
-                Fock2_mic(2*dloop_j,2*dloop_i) = &
-                Fock2_mic(2*dloop_j,2*dloop_i) + &
-                integral*rou_m(2*dloop_l-1,2*dloop_k-1)   ! beta->alpha Coulomb
-                Fock2_mic(2*dloop_j,2*dloop_i) = &
-                Fock2_mic(2*dloop_j,2*dloop_i) + &
-                integral*rou_m(2*dloop_l,2*dloop_k)       ! beta->beta Coulomb
+                Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) = &
+                Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) + &
+                integral*rho_m(2*dloop_l-1,2*dloop_k-1)   ! alpha->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) = &
+                Fock2HFcol_mic(2*dloop_j-1,2*dloop_i-1) + &
+                integral*rho_m(2*dloop_l,2*dloop_k)       ! alpha->beta Coulomb
+                Fock2HFcol_mic(2*dloop_j,2*dloop_i) = &
+                Fock2HFcol_mic(2*dloop_j,2*dloop_i) + &
+                integral*rho_m(2*dloop_l-1,2*dloop_k-1)   ! beta->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_j,2*dloop_i) = &
+                Fock2HFcol_mic(2*dloop_j,2*dloop_i) + &
+                integral*rho_m(2*dloop_l,2*dloop_k)       ! beta->beta Coulomb
               end if
             end if
             carry = .true.
@@ -2077,31 +2124,31 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_k
               Fock2_assigned(2,assigned) = dloop_l
-              Fock2_mic(2*dloop_k-1,2*dloop_l-1) = &
-              Fock2_mic(2*dloop_k-1,2*dloop_l-1) + &
-              integral*rou_m(2*dloop_i-1,2*dloop_j-1)     ! alpha->alpha Coulomb
-              Fock2_mic(2*dloop_k-1,2*dloop_l-1) = &
-              Fock2_mic(2*dloop_k-1,2*dloop_l-1) + &
-              integral*rou_m(2*dloop_i,2*dloop_j)         ! alpha->beta Coulomb
-              Fock2_mic(2*dloop_k,2*dloop_l) = &
-              Fock2_mic(2*dloop_k,2*dloop_l) + &
-              integral*rou_m(2*dloop_i-1,2*dloop_j-1)     ! beta->alpha Coulomb
-              Fock2_mic(2*dloop_k,2*dloop_l) = &
-              Fock2_mic(2*dloop_k,2*dloop_l) + &
-              integral*rou_m(2*dloop_i,2*dloop_j)         ! beta->beta Coulomb
+              Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) = &
+              Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) + &
+              integral*rho_m(2*dloop_i-1,2*dloop_j-1)     ! alpha->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) = &
+              Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) + &
+              integral*rho_m(2*dloop_i,2*dloop_j)         ! alpha->beta Coulomb
+              Fock2HFcol_mic(2*dloop_k,2*dloop_l) = &
+              Fock2HFcol_mic(2*dloop_k,2*dloop_l) + &
+              integral*rho_m(2*dloop_i-1,2*dloop_j-1)     ! beta->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_k,2*dloop_l) = &
+              Fock2HFcol_mic(2*dloop_k,2*dloop_l) + &
+              integral*rho_m(2*dloop_i,2*dloop_j)         ! beta->beta Coulomb
               if (dloop_i /= dloop_j) then
-                Fock2_mic(2*dloop_k-1,2*dloop_l-1) = &
-                Fock2_mic(2*dloop_k-1,2*dloop_l-1) + &
-                integral*rou_m(2*dloop_j-1,2*dloop_i-1)   ! alpha->alpha Coulomb
-                Fock2_mic(2*dloop_k-1,2*dloop_l-1) = &
-                Fock2_mic(2*dloop_k-1,2*dloop_l-1) + &
-                integral*rou_m(2*dloop_j,2*dloop_i)       ! alpha->beta Coulomb
-                Fock2_mic(2*dloop_k,2*dloop_l) = &
-                Fock2_mic(2*dloop_k,2*dloop_l) + &
-                integral*rou_m(2*dloop_j-1,2*dloop_i-1)   ! beta->alpha Coulomb
-                Fock2_mic(2*dloop_k,2*dloop_l) = &
-                Fock2_mic(2*dloop_k,2*dloop_l) + &
-                integral*rou_m(2*dloop_j,2*dloop_i)       ! beta->beta Coulomb
+                Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) = &
+                Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) + &
+                integral*rho_m(2*dloop_j-1,2*dloop_i-1)   ! alpha->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) = &
+                Fock2HFcol_mic(2*dloop_k-1,2*dloop_l-1) + &
+                integral*rho_m(2*dloop_j,2*dloop_i)       ! alpha->beta Coulomb
+                Fock2HFcol_mic(2*dloop_k,2*dloop_l) = &
+                Fock2HFcol_mic(2*dloop_k,2*dloop_l) + &
+                integral*rho_m(2*dloop_j-1,2*dloop_i-1)   ! beta->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_k,2*dloop_l) = &
+                Fock2HFcol_mic(2*dloop_k,2*dloop_l) + &
+                integral*rho_m(2*dloop_j,2*dloop_i)       ! beta->beta Coulomb
               end if
             end if
             carry = .true.
@@ -2116,31 +2163,31 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_l
               Fock2_assigned(2,assigned) = dloop_k
-              Fock2_mic(2*dloop_l-1,2*dloop_k-1) = &
-              Fock2_mic(2*dloop_l-1,2*dloop_k-1) + &
-              integral*rou_m(2*dloop_i-1,2*dloop_j-1)     ! alpha->alpha Coulomb
-              Fock2_mic(2*dloop_l-1,2*dloop_k-1) = &
-              Fock2_mic(2*dloop_l-1,2*dloop_k-1) + &
-              integral*rou_m(2*dloop_i,2*dloop_j)         ! alpha->beta Coulomb
-              Fock2_mic(2*dloop_l,2*dloop_k) = &
-              Fock2_mic(2*dloop_l,2*dloop_k) + &
-              integral*rou_m(2*dloop_i-1,2*dloop_j-1)     ! beta->alpha Coulomb
-              Fock2_mic(2*dloop_l,2*dloop_k) = &
-              Fock2_mic(2*dloop_l,2*dloop_k) + &
-              integral*rou_m(2*dloop_i,2*dloop_j)         ! beta->beta Coulomb
+              Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) = &
+              Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) + &
+              integral*rho_m(2*dloop_i-1,2*dloop_j-1)     ! alpha->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) = &
+              Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) + &
+              integral*rho_m(2*dloop_i,2*dloop_j)         ! alpha->beta Coulomb
+              Fock2HFcol_mic(2*dloop_l,2*dloop_k) = &
+              Fock2HFcol_mic(2*dloop_l,2*dloop_k) + &
+              integral*rho_m(2*dloop_i-1,2*dloop_j-1)     ! beta->alpha Coulomb
+              Fock2HFcol_mic(2*dloop_l,2*dloop_k) = &
+              Fock2HFcol_mic(2*dloop_l,2*dloop_k) + &
+              integral*rho_m(2*dloop_i,2*dloop_j)         ! beta->beta Coulomb
               if (dloop_i /= dloop_j) then
-                Fock2_mic(2*dloop_l-1,2*dloop_k-1) = &
-                Fock2_mic(2*dloop_l-1,2*dloop_k-1) + &
-                integral*rou_m(2*dloop_j-1,2*dloop_i-1)   ! alpha->alpha Coulomb
-                Fock2_mic(2*dloop_l-1,2*dloop_k-1) = &
-                Fock2_mic(2*dloop_l-1,2*dloop_k-1) + &
-                integral*rou_m(2*dloop_j,2*dloop_i)       ! alpha->beta Coulomb
-                Fock2_mic(2*dloop_l,2*dloop_k) = &
-                Fock2_mic(2*dloop_l,2*dloop_k) + &
-                integral*rou_m(2*dloop_j-1,2*dloop_i-1)   ! beta->alpha Coulomb
-                Fock2_mic(2*dloop_l,2*dloop_k) = &
-                Fock2_mic(2*dloop_l,2*dloop_k) + &
-                integral*rou_m(2*dloop_j,2*dloop_i)       ! beta->beta Coulomb
+                Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) = &
+                Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) + &
+                integral*rho_m(2*dloop_j-1,2*dloop_i-1)   ! alpha->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) = &
+                Fock2HFcol_mic(2*dloop_l-1,2*dloop_k-1) + &
+                integral*rho_m(2*dloop_j,2*dloop_i)       ! alpha->beta Coulomb
+                Fock2HFcol_mic(2*dloop_l,2*dloop_k) = &
+                Fock2HFcol_mic(2*dloop_l,2*dloop_k) + &
+                integral*rho_m(2*dloop_j-1,2*dloop_i-1)   ! beta->alpha Coulomb
+                Fock2HFcol_mic(2*dloop_l,2*dloop_k) = &
+                Fock2HFcol_mic(2*dloop_l,2*dloop_k) + &
+                integral*rho_m(2*dloop_j,2*dloop_i)       ! beta->beta Coulomb
               end if
             end if
             !------------------------<EXCHANGE INTEGRAL>------------------------
@@ -2149,19 +2196,19 @@ module SCF
               assigned = 1
               Fock2_assigned(1,1) = dloop_i
               Fock2_assigned(2,1) = dloop_k
-              Fock2_mic(2*dloop_i-1,2*dloop_k-1) = &
-              Fock2_mic(2*dloop_i-1,2*dloop_k-1) - &
-              integral*rou_m(2*dloop_j-1,2*dloop_l-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_i,2*dloop_k) = &
-              Fock2_mic(2*dloop_i,2*dloop_k) - &
-              integral*rou_m(2*dloop_j,2*dloop_l)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_i-1,2*dloop_k-1) = &
+              Fock2HFexc_mic(2*dloop_i-1,2*dloop_k-1) - &
+              integral*rho_m(2*dloop_j-1,2*dloop_l-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_i,2*dloop_k) = &
+              Fock2HFexc_mic(2*dloop_i,2*dloop_k) - &
+              integral*rho_m(2*dloop_j,2*dloop_l)        ! beta->beta Exchange
               if (dloop_i == dloop_k .and. dloop_l /= dloop_j) then
-                Fock2_mic(2*dloop_i-1,2*dloop_k-1) = &
-                Fock2_mic(2*dloop_i-1,2*dloop_k-1) - &
-                integral*rou_m(2*dloop_l-1,2*dloop_j-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_i,2*dloop_k) = &
-                Fock2_mic(2*dloop_i,2*dloop_k) - &
-                integral*rou_m(2*dloop_l,2*dloop_j)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_i-1,2*dloop_k-1) = &
+                Fock2HFexc_mic(2*dloop_i-1,2*dloop_k-1) - &
+                integral*rho_m(2*dloop_l-1,2*dloop_j-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_i,2*dloop_k) = &
+                Fock2HFexc_mic(2*dloop_i,2*dloop_k) - &
+                integral*rho_m(2*dloop_l,2*dloop_j)      ! beta->beta Exchange
               end if
             do iassign = 1, assigned
               if (Fock2_assigned(1,iassign) == dloop_k .and. &
@@ -2174,19 +2221,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_k
               Fock2_assigned(2,assigned) = dloop_i
-              Fock2_mic(2*dloop_k-1,2*dloop_i-1) = &
-              Fock2_mic(2*dloop_k-1,2*dloop_i-1) - &
-              integral*rou_m(2*dloop_l-1,2*dloop_j-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_k,2*dloop_i) = &
-              Fock2_mic(2*dloop_k,2*dloop_i) - &
-              integral*rou_m(2*dloop_l,2*dloop_j)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_k-1,2*dloop_i-1) = &
+              Fock2HFexc_mic(2*dloop_k-1,2*dloop_i-1) - &
+              integral*rho_m(2*dloop_l-1,2*dloop_j-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_k,2*dloop_i) = &
+              Fock2HFexc_mic(2*dloop_k,2*dloop_i) - &
+              integral*rho_m(2*dloop_l,2*dloop_j)        ! beta->beta Exchange
               if (dloop_k == dloop_i .and. dloop_l /= dloop_j) then
-                Fock2_mic(2*dloop_k-1,2*dloop_i-1) = &
-                Fock2_mic(2*dloop_k-1,2*dloop_i-1) - &
-                integral*rou_m(2*dloop_j-1,2*dloop_l-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_k,2*dloop_i) = &
-                Fock2_mic(2*dloop_k,2*dloop_i) - &
-                integral*rou_m(2*dloop_j,2*dloop_l)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_k-1,2*dloop_i-1) = &
+                Fock2HFexc_mic(2*dloop_k-1,2*dloop_i-1) - &
+                integral*rho_m(2*dloop_j-1,2*dloop_l-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_k,2*dloop_i) = &
+                Fock2HFexc_mic(2*dloop_k,2*dloop_i) - &
+                integral*rho_m(2*dloop_j,2*dloop_l)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2201,19 +2248,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_i
               Fock2_assigned(2,assigned) = dloop_l
-              Fock2_mic(2*dloop_i-1,2*dloop_l-1) = &
-              Fock2_mic(2*dloop_i-1,2*dloop_l-1) - &
-              integral*rou_m(2*dloop_j-1,2*dloop_k-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_i,2*dloop_l) = &
-              Fock2_mic(2*dloop_i,2*dloop_l) - &
-              integral*rou_m(2*dloop_j,2*dloop_k)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_i-1,2*dloop_l-1) = &
+              Fock2HFexc_mic(2*dloop_i-1,2*dloop_l-1) - &
+              integral*rho_m(2*dloop_j-1,2*dloop_k-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_i,2*dloop_l) = &
+              Fock2HFexc_mic(2*dloop_i,2*dloop_l) - &
+              integral*rho_m(2*dloop_j,2*dloop_k)        ! beta->beta Exchange
               if (dloop_i == dloop_l .and. dloop_k /= dloop_j) then
-                Fock2_mic(2*dloop_i-1,2*dloop_l-1) = &
-                Fock2_mic(2*dloop_i-1,2*dloop_l-1) - &
-                integral*rou_m(2*dloop_k-1,2*dloop_j-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_i,2*dloop_l) = &
-                Fock2_mic(2*dloop_i,2*dloop_l) - &
-                integral*rou_m(2*dloop_k,2*dloop_j)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_i-1,2*dloop_l-1) = &
+                Fock2HFexc_mic(2*dloop_i-1,2*dloop_l-1) - &
+                integral*rho_m(2*dloop_k-1,2*dloop_j-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_i,2*dloop_l) = &
+                Fock2HFexc_mic(2*dloop_i,2*dloop_l) - &
+                integral*rho_m(2*dloop_k,2*dloop_j)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2228,19 +2275,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_l
               Fock2_assigned(2,assigned) = dloop_i
-              Fock2_mic(2*dloop_l-1,2*dloop_i-1) = &
-              Fock2_mic(2*dloop_l-1,2*dloop_i-1) - &
-              integral*rou_m(2*dloop_k-1,2*dloop_j-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_l,2*dloop_i) = &
-              Fock2_mic(2*dloop_l,2*dloop_i) - &
-              integral*rou_m(2*dloop_k,2*dloop_j)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_l-1,2*dloop_i-1) = &
+              Fock2HFexc_mic(2*dloop_l-1,2*dloop_i-1) - &
+              integral*rho_m(2*dloop_k-1,2*dloop_j-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_l,2*dloop_i) = &
+              Fock2HFexc_mic(2*dloop_l,2*dloop_i) - &
+              integral*rho_m(2*dloop_k,2*dloop_j)        ! beta->beta Exchange
               if (dloop_l == dloop_i .and. dloop_k /= dloop_j) then
-                Fock2_mic(2*dloop_l-1,2*dloop_i-1) = &
-                Fock2_mic(2*dloop_l-1,2*dloop_i-1) - &
-                integral*rou_m(2*dloop_j-1,2*dloop_k-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_l,2*dloop_i) = &
-                Fock2_mic(2*dloop_l,2*dloop_i) - &
-                integral*rou_m(2*dloop_j,2*dloop_k)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_l-1,2*dloop_i-1) = &
+                Fock2HFexc_mic(2*dloop_l-1,2*dloop_i-1) - &
+                integral*rho_m(2*dloop_j-1,2*dloop_k-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_l,2*dloop_i) = &
+                Fock2HFexc_mic(2*dloop_l,2*dloop_i) - &
+                integral*rho_m(2*dloop_j,2*dloop_k)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2255,19 +2302,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_j
               Fock2_assigned(2,assigned) = dloop_k
-              Fock2_mic(2*dloop_j-1,2*dloop_k-1) = &
-              Fock2_mic(2*dloop_j-1,2*dloop_k-1) - &
-              integral*rou_m(2*dloop_i-1,2*dloop_l-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_j,2*dloop_k) = &
-              Fock2_mic(2*dloop_j,2*dloop_k) - &
-              integral*rou_m(2*dloop_i,2*dloop_l)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_j-1,2*dloop_k-1) = &
+              Fock2HFexc_mic(2*dloop_j-1,2*dloop_k-1) - &
+              integral*rho_m(2*dloop_i-1,2*dloop_l-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_j,2*dloop_k) = &
+              Fock2HFexc_mic(2*dloop_j,2*dloop_k) - &
+              integral*rho_m(2*dloop_i,2*dloop_l)        ! beta->beta Exchange
               if (dloop_j == dloop_k .and. dloop_l /= dloop_i) then
-                Fock2_mic(2*dloop_j-1,2*dloop_k-1) = &
-                Fock2_mic(2*dloop_j-1,2*dloop_k-1) - &
-                integral*rou_m(2*dloop_l-1,2*dloop_i-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_j,2*dloop_k) = &
-                Fock2_mic(2*dloop_j,2*dloop_k) - &
-                integral*rou_m(2*dloop_l,2*dloop_i)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_j-1,2*dloop_k-1) = &
+                Fock2HFexc_mic(2*dloop_j-1,2*dloop_k-1) - &
+                integral*rho_m(2*dloop_l-1,2*dloop_i-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_j,2*dloop_k) = &
+                Fock2HFexc_mic(2*dloop_j,2*dloop_k) - &
+                integral*rho_m(2*dloop_l,2*dloop_i)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2282,19 +2329,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_k
               Fock2_assigned(2,assigned) = dloop_j
-              Fock2_mic(2*dloop_k-1,2*dloop_j-1) = &
-              Fock2_mic(2*dloop_k-1,2*dloop_j-1) - &
-              integral*rou_m(2*dloop_l-1,2*dloop_i-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_k,2*dloop_j) = &
-              Fock2_mic(2*dloop_k,2*dloop_j) - &
-              integral*rou_m(2*dloop_l,2*dloop_i)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_k-1,2*dloop_j-1) = &
+              Fock2HFexc_mic(2*dloop_k-1,2*dloop_j-1) - &
+              integral*rho_m(2*dloop_l-1,2*dloop_i-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_k,2*dloop_j) = &
+              Fock2HFexc_mic(2*dloop_k,2*dloop_j) - &
+              integral*rho_m(2*dloop_l,2*dloop_i)        ! beta->beta Exchange
               if (dloop_k == dloop_j .and. dloop_i /= dloop_l) then
-                Fock2_mic(2*dloop_k-1,2*dloop_j-1) = &
-                Fock2_mic(2*dloop_k-1,2*dloop_j-1) - &
-                integral*rou_m(2*dloop_i-1,2*dloop_l-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_k,2*dloop_j) = &
-                Fock2_mic(2*dloop_k,2*dloop_j) - &
-                integral*rou_m(2*dloop_i,2*dloop_l)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_k-1,2*dloop_j-1) = &
+                Fock2HFexc_mic(2*dloop_k-1,2*dloop_j-1) - &
+                integral*rho_m(2*dloop_i-1,2*dloop_l-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_k,2*dloop_j) = &
+                Fock2HFexc_mic(2*dloop_k,2*dloop_j) - &
+                integral*rho_m(2*dloop_i,2*dloop_l)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2309,19 +2356,19 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_j
               Fock2_assigned(2,assigned) = dloop_l
-              Fock2_mic(2*dloop_j-1,2*dloop_l-1) = &
-              Fock2_mic(2*dloop_j-1,2*dloop_l-1) - &
-              integral*rou_m(2*dloop_i-1,2*dloop_k-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_j,2*dloop_l) = &
-              Fock2_mic(2*dloop_j,2*dloop_l) - &
-              integral*rou_m(2*dloop_i,2*dloop_k)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_j-1,2*dloop_l-1) = &
+              Fock2HFexc_mic(2*dloop_j-1,2*dloop_l-1) - &
+              integral*rho_m(2*dloop_i-1,2*dloop_k-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_j,2*dloop_l) = &
+              Fock2HFexc_mic(2*dloop_j,2*dloop_l) - &
+              integral*rho_m(2*dloop_i,2*dloop_k)        ! beta->beta Exchange
               if (dloop_j == dloop_l .and. dloop_k /= dloop_i) then
-                Fock2_mic(2*dloop_j-1,2*dloop_l-1) = &
-                Fock2_mic(2*dloop_j-1,2*dloop_l-1) - &
-                integral*rou_m(2*dloop_k-1,2*dloop_i-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_j,2*dloop_l) = &
-                Fock2_mic(2*dloop_j,2*dloop_l) - &
-                integral*rou_m(2*dloop_k,2*dloop_i)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_j-1,2*dloop_l-1) = &
+                Fock2HFexc_mic(2*dloop_j-1,2*dloop_l-1) - &
+                integral*rho_m(2*dloop_k-1,2*dloop_i-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_j,2*dloop_l) = &
+                Fock2HFexc_mic(2*dloop_j,2*dloop_l) - &
+                integral*rho_m(2*dloop_k,2*dloop_i)      ! beta->beta Exchange
               end if
             end if
             carry = .true.
@@ -2336,59 +2383,144 @@ module SCF
               assigned = assigned + 1
               Fock2_assigned(1,assigned) = dloop_l
               Fock2_assigned(2,assigned) = dloop_j
-              Fock2_mic(2*dloop_l-1,2*dloop_j-1) = &
-              Fock2_mic(2*dloop_l-1,2*dloop_j-1) - &
-              integral*rou_m(2*dloop_k-1,2*dloop_i-1)    ! alpha->alpha Exchange
-              Fock2_mic(2*dloop_l,2*dloop_j) = &
-              Fock2_mic(2*dloop_l,2*dloop_j) - &
-              integral*rou_m(2*dloop_k,2*dloop_i)        ! beta->beta Exchange
+              Fock2HFexc_mic(2*dloop_l-1,2*dloop_j-1) = &
+              Fock2HFexc_mic(2*dloop_l-1,2*dloop_j-1) - &
+              integral*rho_m(2*dloop_k-1,2*dloop_i-1)    ! alpha->alpha Exchange
+              Fock2HFexc_mic(2*dloop_l,2*dloop_j) = &
+              Fock2HFexc_mic(2*dloop_l,2*dloop_j) - &
+              integral*rho_m(2*dloop_k,2*dloop_i)        ! beta->beta Exchange
               if (dloop_l == dloop_j .and. dloop_i /= dloop_k) then
-                Fock2_mic(2*dloop_l-1,2*dloop_j-1) = &
-                Fock2_mic(2*dloop_l-1,2*dloop_j-1) - &
-                integral*rou_m(2*dloop_i-1,2*dloop_k-1)  ! alpha->alpha Exchange
-                Fock2_mic(2*dloop_l,2*dloop_j) = &
-                Fock2_mic(2*dloop_l,2*dloop_j) - &
-                integral*rou_m(2*dloop_i,2*dloop_k)      ! beta->beta Exchange
+                Fock2HFexc_mic(2*dloop_l-1,2*dloop_j-1) = &
+                Fock2HFexc_mic(2*dloop_l-1,2*dloop_j-1) - &
+                integral*rho_m(2*dloop_i-1,2*dloop_k-1)  ! alpha->alpha Exchange
+                Fock2HFexc_mic(2*dloop_l,2*dloop_j) = &
+                Fock2HFexc_mic(2*dloop_l,2*dloop_j) - &
+                integral*rho_m(2*dloop_i,2*dloop_k)      ! beta->beta Exchange
               end if
             end if
           end do
         end do
       end do
-      !$omp critical
-      supp1 = supp1 + Fock2_mic
-      !$omp end critical
+      do addi = 1, 2*cbdm
+        do addj = 1, 2*cbdm
+            !$omp atomic
+            supp1(addi,addj) = supp1(addi,addj) + Fock2HFcol_mic(addi,addj)
+            !$omp atomic
+            supp3(addi,addj) = supp3(addi,addj) + Fock2HFexc_mic(addi,addj)
+        end do
+      end do
     end do
     !$omp end do
     !$omp end parallel
+    ! assign Kohn-Sham matrices
+    if (fx_id /= -1) then
+      if (allocated(Fock2KSexc)) deallocate(Fock2KSexc)
+      allocate(Fock2KSexc(2*cbdm, 2*cbdm))
+      if (allocated(oper5)) deallocate(oper5)
+      if (fc_id /= -1) then
+        if (allocated(Fock2KScor)) deallocate(Fock2KScor)
+        allocate(Fock2KScor(2*cbdm, 2*cbdm))
+        call basis2grid_Becke(rho_m, KSexc, KScor, Fock2KSexc, Fock2KScor)
+        if (s_h) then
+          allocate(oper5(2*cbdm,2*sbdm))
+          ! exchange
+          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
+          Fock2KSexc, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          deallocate(Fock2KSexc)
+          allocate(Fock2KSexc(2*sbdm,2*sbdm))
+          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
+          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KSexc, 2*sbdm)
+          ! correlation
+          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
+          Fock2KScor, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          deallocate(Fock2KScor)
+          allocate(Fock2KScor(2*sbdm,2*sbdm))
+          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
+          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KScor, 2*sbdm)
+          deallocate(oper5)
+        end if
+        allocate(oper5(2*fbdm,2*sbdm))
+        ! exchange
+        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
+        exXm, 2*sbdm, Fock2KSexc, 2*sbdm, c0, oper5, 2*fbdm)
+        deallocate(Fock2KSexc)
+        allocate(Fock2KSexc(2*fbdm, 2*fbdm))
+        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
+        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KSexc, 2*fbdm)
+        ! correlation
+        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
+        exXm, 2*sbdm, Fock2KScor, 2*sbdm, c0, oper5, 2*fbdm)
+        deallocate(Fock2KScor)
+        allocate(Fock2KScor(2*fbdm, 2*fbdm))
+        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
+        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KScor, 2*fbdm)
+      else
+        call basis2grid_Becke(rho_m=rho_m, ex=KSexc, Fockx=Fock2KSexc)
+        if (s_h) then
+          allocate(oper5(2*cbdm,2*sbdm))
+          ! exchange-correlation
+          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
+          Fock2KSexc, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          deallocate(Fock2KSexc)
+          allocate(Fock2KSexc(2*sbdm,2*sbdm))
+          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
+          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KSexc, 2*sbdm)
+        end if
+        allocate(oper5(2*fbdm,2*sbdm))
+        ! exchange-correlation
+        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
+        exXm, 2*sbdm, Fock2KSexc, 2*sbdm, c0, oper5, 2*fbdm)
+        deallocate(Fock2KSexc)
+        allocate(Fock2KSexc(2*fbdm, 2*fbdm))
+        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
+        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KSexc, 2*fbdm)
+      end if
+    end if
+
+
+
     if (s_h) then
       ! transform to spherical-harmonic basis
       allocate(supp2(2*cbdm,2*sbdm))
       call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-      rou_m, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
-      deallocate(rou_m)
-      allocate(rou_m(2*sbdm,2*sbdm))
+      rho_m, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
+      deallocate(rho_m)
+      allocate(rho_m(2*sbdm,2*sbdm))
       call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-      exc2s, 2*cbdm, supp2, 2*cbdm, c0, rou_m, 2*sbdm)
-      deallocate(supp2)
+      exc2s, 2*cbdm, supp2, 2*cbdm, c0, rho_m, 2*sbdm)
     
-      allocate(supp2(2*cbdm,2*sbdm))
+      ! Coulomb
       call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
       supp1, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
       deallocate(supp1)
       allocate(supp1(2*sbdm,2*sbdm))
       call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
       exc2s, 2*cbdm, supp2, 2*cbdm, c0, supp1, 2*sbdm)
+      ! Exchange
+      call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
+      supp3, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
+      deallocate(supp3)
+      allocate(supp3(2*sbdm,2*sbdm))
+      call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
+      exc2s, 2*cbdm, supp2, 2*cbdm, c0, supp3, 2*sbdm)
       deallocate(supp2)
     end if
     
     ! orth to Fock2
     allocate(supp2(2*fbdm,2*sbdm))
+    ! Coulomb
     call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
     exXm, 2*sbdm, supp1, 2*sbdm, c0, supp2, 2*fbdm)
     call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-    supp2, 2*fbdm, exXm, 2*sbdm, c0, Fock2, 2*fbdm)
+    supp2, 2*fbdm, exXm, 2*sbdm, c0, Fock2HFcol, 2*fbdm)
+    ! Exchange
+    call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
+    exXm, 2*sbdm, supp3, 2*sbdm, c0, supp2, 2*fbdm)
+    call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
+    supp2, 2*fbdm, exXm, 2*sbdm, c0, Fock2HFexc, 2*fbdm)
     deallocate(supp1)
     deallocate(supp2)
+    deallocate(supp3)
   end subroutine Fock2e
 
 !------------------------------------------------------------
@@ -2421,7 +2553,7 @@ module SCF
   end subroutine atnz2block
   
 !------------------------------------------------------------
-!> calculate <S**2> based on oper3 generated by Hartree-Fock SCF
+!> calculate <S**2> based on oper3 generated by SCF
 !!
 !! divide all occupied orbitals into two sets of alpha, beta orbitals with
 !!
@@ -2475,7 +2607,7 @@ module SCF
   end subroutine calc_S2HF
   
 !------------------------------------------------------------
-!> calculate <S**2> for orbitals based on oper3 generated by Hartree-Fock SCF
+!> calculate <S**2> for orbitals based on oper3 generated by SCF
   subroutine calc_S2HForb(orbnum)
     implicit none
     integer,intent(in) :: orbnum

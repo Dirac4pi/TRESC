@@ -1,7 +1,14 @@
-! Rys quadrature roots and weights
-! edit based on GAMESS https://www.msg.chem.iastate.edu/gamess/
-
-
+!> @file Fundamentals.f90
+!!
+!! @brief Rys quadrature roots and weights
+!!
+!! @brief edit based on GAMESS https://www.msg.chem.iastate.edu/gamess/
+!!
+!! @syntax Fortran 2008 free format
+!!
+!! @code UTF-8
+!!
+!! @author dirac4pi
 module GRysroot
   use Fundamentals
   implicit none
