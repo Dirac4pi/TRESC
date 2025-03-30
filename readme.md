@@ -55,11 +55,11 @@ launch python and use `cub2c` function to generate 2 Gaussian cube format files
 (contain grid data of real and imaginary part of alpha and beta components of
 selected orbital) and then visualise the selected orbital based on grid data
 automatically. The visualisation are as follows:<br>
-<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">
+<p align="center">
   <img src="docs/figure_1.png" alt="docs/figure_1.png" width="500">
   <br>
-  Fig.1
-</center>
+  <em>_Fig.1_</em>
+</p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;It's the HOMO of the triplet carbene $$\mathrm{CH}_2$$,
 phase deviation from $$\pm {{\mathrm{\pi}}\Bigg/{2}}$$ implies a stronger SOC
@@ -77,11 +77,11 @@ series of Becke grid data binary files (via `TRESC -v`), and then visualise the
 selected orbital based on grid data automatically. In the case of the triplet
 carbine, the Becke's grid data set is less than one-tenth of the uniformly
 structured grid data set, but the visualisation is superior:<br>
-<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">
+<p align="center">
   <img src="docs/figure_2.png" alt="docs/figure_2.png" width="500">
   <br>
-  Fig.2
-</center>
+  <em>_Fig.2_</em>
+</p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;If necessary, one can modify the code of the subroutine
 `mogrid_becke()` in module `Representation`, which produces Becke‘s grid data to
@@ -119,11 +119,11 @@ $$\hbar /2$$.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Assuming that frame O' is moving along the x-axis in
 frame O, the Lorentz transformation and the newly-defined transformation
 lead to different observations.<br>
-<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">
+<p align="center">
   <img src="docs/figure_3.png" alt="docs/figure_3.png" width="500">
   <br>
-  Fig.3
-</center>
+  <em>_Fig.3_</em>
+</p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;Its mathematical form can be given directly as a
 nonlinear equation<br>
@@ -199,5 +199,5 @@ interested, try keyword `SRTP` when performing DKH2 calculation.<br>
 
 # Upcoming
 
-* 2nd perturbation calculation
+* perturbation calculation;
 * calculate 2e SOC by SOMF approach;
