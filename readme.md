@@ -108,7 +108,7 @@ produce more grid points for specific atomic regions.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Second Relativized Thomas Precession (SRTP) is to
 conbine the Lorentz vector feature of spin 4-vector
 $$\left( 0,\vec{s} \right) $$ and the Lorentz scalar feature of the magnitude of
-its spatial components ($$\left| \vec{s} \right|=\hbar /2$$).
+its spatial components ($$s=\hbar /2$$).
 'Second Relativized' means the magnitude of spin vector is independent of the
 reference frame choice.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;To accomplish it, we start with a newly-defined
@@ -129,7 +129,12 @@ lead to different observations.<br>
 nonlinear equation<br>
 
 $$
-\vec{s}\prime=\left( \begin{matrix}
+\left( \begin{array}{c}
+ 0\\
+ s_1\prime\\
+ s_2\prime\\
+ s_3\prime\\
+\end{array} \right) =\left( \begin{matrix}
  1&  0&  0&  0\\
  -\gamma \beta _1\zeta&  \left[ 1+\frac{\left( \gamma -1 \right) \beta _{1}^{2}}
  {\beta ^2} \right] \zeta&  \frac{\left( \gamma -1 \right) \beta _1\beta _2}
@@ -141,9 +146,14 @@ $$
  {\beta ^2}\zeta\\
  -\gamma \beta _3\zeta&  \frac{\left( \gamma -1 \right) \beta _1\beta _3}
  {\beta ^2}\zeta&  \frac{\left( \gamma -1 \right) \beta _2\beta _3}{\beta ^2}
- \zeta&  \left[ 1+\frac{\left( \gamma -1 \right) \beta _{3}^{2}}
- {\beta ^2} \right] \zeta\\
-\end{matrix} \right) \vec{s}
+ \zeta&  \left[ 1+\frac{\left( \gamma -1 \right) \beta _{3}^{2}}{\beta ^2}
+\right] \zeta\\
+\end{matrix} \right) \left( \begin{array}{c}
+ 0\\
+ s_1\\
+ s_2\\
+ s_3\\
+\end{array} \right)
 $$
 
 &nbsp;&nbsp;&nbsp;&nbsp;which $$s_i$$
