@@ -108,11 +108,11 @@ subroutine sconf_calc(kill_)
   implicit none
   logical,intent(in) :: kill_  ! whether to kill the process after SCF
   integer :: molstat
-  call get_command_argument(1, address_molecular, status=molstat)
+  call get_command_argument(1, address_molecule, status=molstat)
   if (molstat > 0) then
-    call terminate('molecular adress retrieval fails')
+    call terminate('molecule adress retrieval fails')
   else if (molstat < 0) then
-    call terminate('molecular adress too long')
+    call terminate('molecule adress too long')
   end if
   ! get information from .gbs and .xyz files
   call generate_output()
@@ -167,7 +167,7 @@ subroutine mogrid(kill_)
   end if
   address_basis = '.gbs'
   call read_gbs()
-  address_molecular = '.xyz'
+  address_molecule = '.xyz'
   call read_geometry()
   call assign_cs()
   open(newunit=channel, file=trim(cmd3)//'.mo', action='read', iostat=ios)

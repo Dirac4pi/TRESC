@@ -58,13 +58,13 @@ module Representation
     if (ios /= 0) call terminate('dump binary .mog failed')
     npoints = 0
     do ii = 1, atom_count
-      if (molecular(ii)%atom_number <= 2) then
+      if (molecule(ii)%atom_number <= 2) then
         nr = 35
         nl = 230
-      else if (molecular(ii)%atom_number <= 10) then
+      else if (molecule(ii)%atom_number <= 10) then
         nr = 65
         nl = 434
-      else if (molecular(ii)%atom_number <= 18) then
+      else if (molecule(ii)%atom_number <= 18) then
         nr = 80
         nl = 434
       else
@@ -84,13 +84,13 @@ module Representation
     end if
     r = 2
     do ii = 1, atom_count
-      if (molecular(ii)%atom_number <= 2) then
+      if (molecule(ii)%atom_number <= 2) then
         nr = 35
         nl = 230
-      else if (molecular(ii)%atom_number <= 10) then
+      else if (molecule(ii)%atom_number <= 10) then
         nr = 65
         nl = 434
-      else if (molecular(ii)%atom_number <= 18) then
+      else if (molecule(ii)%atom_number <= 18) then
         nr = 80
         nl = 434
       else
@@ -158,13 +158,13 @@ module Representation
     !$omp& if(threads_use < cpu_threads)
     !$omp do schedule(static)
     do i = 1, atom_count
-      if (molecular(i)%atom_number <= 2) then
+      if (molecule(i)%atom_number <= 2) then
         nr = 80
         nl = 434
-      else if (molecular(i)%atom_number <= 10) then
+      else if (molecule(i)%atom_number <= 10) then
         nr = 80
         nl = 434
-      else if (molecular(i)%atom_number <= 18) then
+      else if (molecule(i)%atom_number <= 18) then
         nr = 80
         nl = 434
       else
@@ -203,10 +203,10 @@ module Representation
     real(dp) :: lx(nl), ly(nl), lz(nl), wl(nl)
     real(dp) :: p, x_i, point(3), spacew
     ! assign radial grid points (Gauss weight) using 2nd Chebyshev method
-    if (molecular(count)%atom_number == 1) then
-      p = CSD_CovR(molecular(count)%atom_number)
+    if (molecule(count)%atom_number == 1) then
+      p = CSD_CovR(molecule(count)%atom_number)
     else
-      p = CSD_CovR(molecular(count)%atom_number) * 0.5_dp
+      p = CSD_CovR(molecule(count)%atom_number) * 0.5_dp
     end if
     do ii = 1, nr
       x_i = cos(ii*pi / real(nr+1))
@@ -226,11 +226,11 @@ module Representation
       pos3w1(ii,1:nl,4) = wr(ii) * wl(:)
     end do
     pos3w1(1:nr,1:nl,1) = pos3w1(1:nr,1:nl,1) + &
-    molecular(count)%nucleus_position(1)
+    molecule(count)%nucleus_position(1)
     pos3w1(1:nr,1:nl,2) = pos3w1(1:nr,1:nl,2) + &
-    molecular(count)%nucleus_position(2)
+    molecule(count)%nucleus_position(2)
     pos3w1(1:nr,1:nl,3) = pos3w1(1:nr,1:nl,3) + &
-    molecular(count)%nucleus_position(3)
+    molecule(count)%nucleus_position(3)
     do ii = 1, nr
       do jj = 1, nl
         point(:) = pos3w1(ii,jj,1:3)
@@ -252,15 +252,15 @@ module Representation
     integer :: ii, jj
     weights = 1.0_dp
     do ii = 1, atom_count
-      ri = dsqrt(sum((point(:)-molecular(ii)%nucleus_position(:))**2))
+      ri = dsqrt(sum((point(:)-molecule(ii)%nucleus_position(:))**2))
       do jj = 1, atom_count
         if (jj == ii) cycle
-        rj = dsqrt(sum((point(:)-molecular(jj)%nucleus_position(:))**2))
-        R = dsqrt(sum((molecular(ii)%nucleus_position(:)-&
-        molecular(jj)%nucleus_position(:))**2))
+        rj = dsqrt(sum((point(:)-molecule(jj)%nucleus_position(:))**2))
+        R = dsqrt(sum((molecule(ii)%nucleus_position(:)-&
+        molecule(jj)%nucleus_position(:))**2))
         miu = (ri - rj) / R
-        chi = CSD_CovR(molecular(ii)%atom_number) / &
-        CSD_CovR(molecular(jj)%atom_number)
+        chi = CSD_CovR(molecule(ii)%atom_number) / &
+        CSD_CovR(molecule(jj)%atom_number)
         miu_ = (chi - 1.0_dp) / (chi + 1.0_dp)
         a = miu_ / (miu_**2 - 1.0_dp)
         if (a > 0.5_dp) a = 0.5_dp

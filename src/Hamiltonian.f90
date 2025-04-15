@@ -15,46 +15,55 @@ module Hamiltonian
   use GRysroot
   use OMP_LIB
 
-  integer :: info                         ! info of calling lapack routines
+  integer                 :: info          ! info of calling lapack routines
 ! <AOi|AOj> related
-  real(dp),allocatable :: i_j(:,:)        ! <AOi|AOj>
-  real(dp),allocatable :: Xm(:,:)         ! orthogonal transform unitary matrix
-  real(dp) :: smallest_evl
-  complex(dp),allocatable :: exXm(:,:)    ! extended Xm matrix
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_j, Xm, exXm
+  real(dp),allocatable    :: i_j(:,:)      ! <AOi|AOj>
+  real(dp),allocatable    :: Xm(:,:)       ! orthogonal transform unitary matrix
+  real(dp)                :: smallest_evl  ! smallest eigenvalue of i_j
+  complex(dp),allocatable :: exXm(:,:)     ! extended Xm matrix
 
 ! <AOi|p^2|AOj> related
-  real(dp),allocatable :: i_p2_j(:,:)     ! <AOi|p^2|AOj>
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_p2_j, AO2p2, evl_p2, exi_T_j
+  real(dp),allocatable    :: i_p2_j(:,:)   ! <AOi|p^2|AOj>
   ! unitary transformation from AO basis to p^2 eigenstate (validated)
-  real(dp),allocatable :: AO2p2(:,:)
+  real(dp),allocatable    :: AO2p2(:,:)    ! transformation matrix from AO to p2
   ! all eigenvalues of <AOi|p^2|AOj> found by dsyevr
-  real(dp),allocatable :: evl_p2(:)
-  complex(dp),allocatable :: exi_T_j(:,:) ! extended i_p2_j matrix
+  real(dp),allocatable    :: evl_p2(:)     ! eigenvalue of i_p2_j
+  complex(dp),allocatable :: exi_T_j(:,:)  ! extended i_p2_j matrix
   
 ! <AOi|V|AOj> related
-  real(dp),allocatable :: i_V_j(:,:)      ! <AOi|V|AOj>
-  complex(dp),allocatable :: exi_V_j(:,:) ! extended i_V_j matrix
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_V_j, exi_V_j
+  real(dp),allocatable    :: i_V_j(:,:)    ! <AOi|V|AOj>
+  complex(dp),allocatable :: exi_V_j(:,:)  ! extended i_V_j matrix
   
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pxVpx_j, i_pyVpy_j, i_pzVpz_j
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pxVpy_j, i_pyVpx_j, i_pxVpz_j
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pzVpx_j, i_pyVpz_j, i_pzVpy_j, exSOC
 ! DKH2 related
-  real(dp),allocatable :: i_pxVpx_j(:,:)  ! <AOi|pVp|AOj>
-  real(dp),allocatable :: i_pyVpy_j(:,:)
-  real(dp),allocatable :: i_pzVpz_j(:,:)
-  real(dp),allocatable :: i_pxVpy_j(:,:)
-  real(dp),allocatable :: i_pyVpx_j(:,:)
-  real(dp),allocatable :: i_pxVpz_j(:,:)
-  real(dp),allocatable :: i_pzVpx_j(:,:)
-  real(dp),allocatable :: i_pyVpz_j(:,:)
-  real(dp),allocatable :: i_pzVpy_j(:,:)
-  complex(dp),allocatable :: exSOC(:,:)   ! extended SOC matrix
+  real(dp),allocatable    :: i_pxVpx_j(:,:)! <AOi|pVp|AOj>
+  real(dp),allocatable    :: i_pyVpy_j(:,:)
+  real(dp),allocatable    :: i_pzVpz_j(:,:)
+  real(dp),allocatable    :: i_pxVpy_j(:,:)
+  real(dp),allocatable    :: i_pyVpx_j(:,:)
+  real(dp),allocatable    :: i_pxVpz_j(:,:)
+  real(dp),allocatable    :: i_pzVpx_j(:,:)
+  real(dp),allocatable    :: i_pyVpz_j(:,:)
+  real(dp),allocatable    :: i_pzVpy_j(:,:)
+  complex(dp),allocatable :: exSOC(:,:)    ! extended SOC matrix
   
-  real(dp),allocatable :: i_px3Vpx_j(:,:) ! <AOi|pppVp|AOj>
-  real(dp),allocatable :: i_py3Vpy_j(:,:)
-  real(dp),allocatable :: i_pz3Vpz_j(:,:)
-  real(dp),allocatable :: i_px3Vpy_j(:,:)
-  real(dp),allocatable :: i_py3Vpx_j(:,:)
-  real(dp),allocatable :: i_px3Vpz_j(:,:)
-  real(dp),allocatable :: i_pz3Vpx_j(:,:)
-  real(dp),allocatable :: i_py3Vpz_j(:,:)
-  real(dp),allocatable :: i_pz3Vpy_j(:,:)
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_px3Vpx_j, i_py3Vpy_j, i_pz3Vpz_j
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_px3Vpy_j, i_py3Vpx_j, i_px3Vpz_j
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pz3Vpx_j, i_py3Vpz_j, i_pz3Vpy_j, exSR
+  real(dp),allocatable    :: i_px3Vpx_j(:,:)! <AOi|pppVp|AOj>
+  real(dp),allocatable    :: i_py3Vpy_j(:,:)
+  real(dp),allocatable    :: i_pz3Vpz_j(:,:)
+  real(dp),allocatable    :: i_px3Vpy_j(:,:)
+  real(dp),allocatable    :: i_py3Vpx_j(:,:)
+  real(dp),allocatable    :: i_px3Vpz_j(:,:)
+  real(dp),allocatable    :: i_pz3Vpx_j(:,:)
+  real(dp),allocatable    :: i_py3Vpz_j(:,:)
+  real(dp),allocatable    :: i_pz3Vpy_j(:,:)
   complex(dp),allocatable :: exSR(:,:)    ! extended SR matrix
   
   ! <AOi|pxVpy3|AOj> = Trans(<AOi|py3Vpx|AOj>)
@@ -360,18 +369,18 @@ module Hamiltonian
       coedx_i = 0.0_dp
       coedy_i = 0.0_dp
       coedz_i = 0.0_dp
-      contraction_i = atom_basis(molecular(basis_inf(loop_i) % atom) % &
+      contraction_i = atom_basis(molecule(basis_inf(loop_i) % atom) % &
       basis_number + basis_inf(loop_i) % shell - 1) % contraction
       L_i = basis_inf(loop_i) % L
       M_i = basis_inf(loop_i) % M
       do loop_k = 1, contraction_i
-        exponents_i(loop_k) = atom_basis(molecular(basis_inf(loop_i) % atom) % &
+        exponents_i(loop_k) = atom_basis(molecule(basis_inf(loop_i) % atom) % &
         basis_number + basis_inf(loop_i) % shell - 1) % exponents(loop_k)
-        coefficient_i(loop_k) = atom_basis(molecular(basis_inf(loop_i) % atom) &
+        coefficient_i(loop_k) = atom_basis(molecule(basis_inf(loop_i) % atom) &
         % basis_number + basis_inf(loop_i) % shell - 1) &
         % Ncoefficient(loop_k,M_i)
       end do
-      coordinate_i = molecular(basis_inf(loop_i) % atom) % nucleus_position
+      coordinate_i = molecule(basis_inf(loop_i) % atom) % nucleus_position
       !-------------------------------
       ! factor of d(x^m)*exp
       if (index(AO_xyz_factor(L_i,M_i),'x') == 4) then
@@ -453,18 +462,18 @@ module Hamiltonian
         coedx_j = 0.0_dp
         coedy_j = 0.0_dp
         coedz_j = 0.0_dp
-        contraction_j = atom_basis(molecular(basis_inf(loop_j) % atom) % &
+        contraction_j = atom_basis(molecule(basis_inf(loop_j) % atom) % &
         basis_number + basis_inf(loop_j) % shell - 1) % contraction
         L_j = basis_inf(loop_j) % L
         M_j = basis_inf(loop_j) % M
         do loop_k = 1, contraction_j
-          exponents_j(loop_k) = atom_basis(molecular(basis_inf(loop_j) % atom)&
+          exponents_j(loop_k) = atom_basis(molecule(basis_inf(loop_j) % atom)&
           % basis_number + basis_inf(loop_j) % shell - 1) % exponents(loop_k)
           coefficient_j(loop_k) = &
-          atom_basis(molecular(basis_inf(loop_j) % atom) % basis_number + &
+          atom_basis(molecule(basis_inf(loop_j) % atom) % basis_number + &
           basis_inf(loop_j) % shell - 1) % Ncoefficient(loop_k,M_j)
         end do
-        coordinate_j = molecular(basis_inf(loop_j) % atom) % nucleus_position
+        coordinate_j = molecule(basis_inf(loop_j) % atom) % nucleus_position
         if (index(AO_xyz_factor(L_j,M_j),'x') == 4) then
           chardx_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:3))
         else if(index(AO_xyz_factor(L_j,M_j),'x') == 3) then
@@ -793,9 +802,9 @@ module Hamiltonian
     character(len = *),intent(in) :: fac_j ! xyz factor of j^th orbital
     integral_pot = 0.0_dp
     do bloop_pot = 1, atom_count
-      cod_pot = molecular(bloop_pot) % nucleus_position
-      Z_pot = real(molecular(bloop_pot) % atom_number)
-      R_pot = molecular(bloop_pot) % nucleus_radius / fm2Bohr
+      cod_pot = molecule(bloop_pot) % nucleus_position
+      Z_pot = real(molecule(bloop_pot) % atom_number)
+      R_pot = molecule(bloop_pot) % nucleus_radius / fm2Bohr
       ! center of potential atom set to zero
       bcod_i(1) = cod_i(1) - cod_pot(1)
       bcod_i(2) = cod_i(2) - cod_pot(2)
@@ -843,9 +852,9 @@ module Hamiltonian
     character(len = *),intent(in) :: fac_j(2)  ! xyz factor of j^th orbital
     integral_pot = 0.0_dp
     do sloop_pot = 1, atom_count
-      cod_pot = molecular(sloop_pot) % nucleus_position
-      Z_pot = real(molecular(sloop_pot) % atom_number)
-      R_pot = molecular(sloop_pot) % nucleus_radius / fm2Bohr
+      cod_pot = molecule(sloop_pot) % nucleus_position
+      Z_pot = real(molecule(sloop_pot) % atom_number)
+      R_pot = molecule(sloop_pot) % nucleus_radius / fm2Bohr
       ! center of potential atom set to zero
       scod_i(1) = cod_i(1) - cod_pot(1)
       scod_i(2) = cod_i(2) - cod_pot(2)
@@ -985,9 +994,9 @@ module Hamiltonian
     end do
     integral_pot = 0.0_dp
     do tloop_pot = 1, atom_count
-      cod_pot = molecular(tloop_pot) % nucleus_position
-      Z_pot = real(molecular(tloop_pot) % atom_number)
-      R_pot = molecular(tloop_pot) % nucleus_radius / fm2Bohr
+      cod_pot = molecule(tloop_pot) % nucleus_position
+      Z_pot = real(molecule(tloop_pot) % atom_number)
+      R_pot = molecule(tloop_pot) % nucleus_radius / fm2Bohr
       ! center of potential atom set to zero
       tcod_i(1) = cod_i(1) - cod_pot(1)
       tcod_i(2) = cod_i(2) - cod_pot(2)

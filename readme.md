@@ -9,6 +9,44 @@ static 2-component DKH2 electronic Hamiltonian of a given molecule.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The main part of the code is written in Fortran 2008
 free format.
 
+# Build
+
+## Windows 10/11
+
+1. Make sure the build tools are available on your
+station: [Visual Studio Build Tools](https://visualstudio.microsoft.com/),
+[Intel oneAPI HPC Toolkit](
+  https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html)
+and [Cmake](https://cmake.org/), and environment variables include:<br>
+`ONEAPI_ROOT = \path\to\oneAPI`<br>
+`NUMBER_OF_PROCESSORS = (number of physical cores of the processor)`<br>
+`OMP_PROC_BIND = true`<br>
+`OMP_STACKSIZE = 32M`<br>
+2. Download stable release of [LibXC](
+  https://libxc.gitlab.io/download/) and access to build environment in its root
+:<br>
+`...\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`
+`...\oneAPI\setvars.bat`<br>
+then build LibXC by command:<br>
+`cmake -S. -B./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DENABLE_FORTRAN=ON
+-DBUILD_TESTING=OFF -DBUILD_FPIC=ON -DCMAKE_BUILD_SHARED_LIBS=OFF
+-DCMAKE_Fortran_COMPILER="path\\to\\ifx.exe"
+-DCMAKE_C_COMPILER="path\\to\\icx.exe"`<br>
+and<br>
+`cd build && ninja`<br>
+then add the LibXC root to environment variables:<br>
+`LIBXC_ROOT = \path\to\LibXC`
+3. Build TRESC by command:<br>
+`cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release`<br>
+and<br>
+`cmake --build build`<br>
+then add `build` to $path to finish the build process.
+
+> If AVX2/AVX512 instruction set is supported, please modify the compilation
+options and compiler directives (align_size) manually
+
+## Linux
+
 # Algorithms
 
 * Cartesian or spherical-harmonic fragment contracted Gaussian type orbital are

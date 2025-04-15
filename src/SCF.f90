@@ -7,13 +7,25 @@
 !! @code UTF-8
 !!
 !! @author dirac4pi
+
+
+!!!!!!!!!!!!添加变量对齐&&数组并行&&尽量避免除法
+
+
+
+
+
+
+
+
+
 module SCF
   use Hamiltonian
   use Atoms
   use Fundamentals
   use Representation
   
-  ! density matrices and molecular orbital coefficients
+  ! density matrices and molecule orbital coefficients
   integer Nalpha, Nbeta                    ! number of alpha and beta elctron
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   complex(dp),allocatable :: AO2MO(:,:)
@@ -73,9 +85,9 @@ module SCF
   real(dp),allocatable :: swintegral(:,:)    ! <ij||ij> as well as <kl||kl>
   logical :: ndschwarz = .true.
   
-  ! orbital energy and molecular energy
+  ! orbital energy and molecule energy
   real(dp),allocatable :: orbE(:)  ! orbital energy
-  real(dp) :: molE_pre, molE       ! molecular energy
+  real(dp) :: molE_pre, molE       ! molecule energy
   real(dp) :: Virial               ! Virial ratio
   real(dp) :: nucE                 ! nuclear repulsion energy
   real(dp) :: HFCol                ! Hartree-Fock Coulomb energy
@@ -119,12 +131,12 @@ module SCF
     nucE = 0.0_dp
     do loop_i = 1, atom_count
       do loop_j = loop_i + 1, atom_count
-        nucE = nucE + (real(molecular(loop_i) % atom_number) * &
-        real(molecular(loop_j) % atom_number))/dsqrt((molecular(loop_i) % &
-        nucleus_position(1) - molecular(loop_j) % nucleus_position(1))**2 + &
-        (molecular(loop_i) % nucleus_position(2) - molecular(loop_j) % &
-        nucleus_position(2))**2 + (molecular(loop_i) % nucleus_position(3) - &
-        molecular(loop_j) % nucleus_position(3))**2)
+        nucE = nucE + (real(molecule(loop_i) % atom_number) * &
+        real(molecule(loop_j) % atom_number))/dsqrt((molecule(loop_i) % &
+        nucleus_position(1) - molecule(loop_j) % nucleus_position(1))**2 + &
+        (molecule(loop_i) % nucleus_position(2) - molecule(loop_j) % &
+        nucleus_position(2))**2 + (molecule(loop_i) % nucleus_position(3) - &
+        molecule(loop_j) % nucleus_position(3))**2)
       end do
     end do
     if (nucE >= 1E12) call terminate(&
@@ -341,7 +353,7 @@ module SCF
       call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, &
       oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
       write(60,'(A)') '  AO2MO dump to .ao2mo file'
-      call dump_matrix_cmplx(name='ao2mo', m=AO2MO, dmi=2*sbdm, dmj=2*fbdm)
+      call dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
       ! convergence check
       if (loop_i == 1) then
         write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
@@ -543,7 +555,7 @@ module SCF
     write(60,*)
     write(60,'(A)') &
     '  ============================================================='
-    write(60,'(A)') '                        MOLECULAR INFO'
+    write(60,'(A)') '                        molecule INFO'
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A,F12.6)') &
@@ -629,14 +641,14 @@ module SCF
           if (abs(AO2MO(2*loop_j-1,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j-1,&
             loop_i)), ',', aimag(AO2MO(2*loop_j-1,loop_i)), ')'
           end if
           if (abs(AO2MO(2*loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j,&
             loop_i)), ',', aimag(AO2MO(2*loop_j,loop_i)), ')'
           end if
@@ -662,14 +674,14 @@ module SCF
           if (abs(AO2MO(2*loop_j-1,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j-1,&
             loop_i)), ',', aimag(AO2MO(2*loop_j-1,loop_i)), ')'
           end if
           if (abs(AO2MO(2*loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j,&
             loop_i)), ',', aimag(AO2MO(2*loop_j,loop_i)), ')'
           end if
@@ -698,14 +710,14 @@ module SCF
           if (abs(AO2MO(2*loop_j-1,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j-1,&
             loop_i)), ',', aimag(AO2MO(2*loop_j-1,loop_i)), ')'
           end if
           if (abs(AO2MO(2*loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j,&
             loop_i)), ',', aimag(AO2MO(2*loop_j,loop_i)), ')'
           end if
@@ -732,14 +744,14 @@ module SCF
           if (abs(AO2MO(2*loop_j-1,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j-1,&
             loop_i)), ',', aimag(AO2MO(2*loop_j-1,loop_i)), ')'
           end if
           if (abs(AO2MO(2*loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecular(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(2*loop_j,&
             loop_i)), ',', aimag(AO2MO(2*loop_j,loop_i)), ')'
           end if
@@ -776,7 +788,6 @@ module SCF
     end if
     if (kill) then
       if (fx_id /= -1) call Fockxc_end()
-      deallocate(shell_in_element, atom_basis, basis_inf, molecular)
       deallocate(AO2MO, rho_m, Fock, orbE, oper3)
     end if
     ndschwarz = .true.
@@ -920,7 +931,7 @@ module SCF
         deallocate(AO2MOalpha)
         deallocate(AO2MObeta)
       else if (guess_type == 'read') then
-        call load_matrix_cmplx(name='ao2mo', m=AO2MO, dmi=ploop_i, dmj=ploop_j)
+        call load_matrix('ao2mo', AO2MO, ploop_i, ploop_j)
         if (ploop_i /= 2*sbdm .or. ploop_j /= 2*fbdm) call terminate(&
         'basis dimension in .ao2mo file mismatch with current job')
         rho_m = c0
@@ -1127,8 +1138,8 @@ module SCF
       exSOC = c0
       Ap = 0.0_dp
       do floop_i=1,fbdm
-        Ap(floop_i,floop_i)=dsqrt((dsqrt(evl_p2(floop_i)/(speedc*speedc)+1.0_dp)&
-        + 1.0_dp)/(2.0_dp*dsqrt(evl_p2(floop_i)/(speedc*speedc) + 1.0_dp)))
+        Ap(floop_i,floop_i)=dsqrt((dsqrt(evl_p2(floop_i)/(speedc*speedc)+1.0_dp&
+        )+ 1.0_dp)/(2.0_dp*dsqrt(evl_p2(floop_i)/(speedc*speedc) + 1.0_dp)))
       end do
       ApRp = 0.0_dp
       do floop_i=1,fbdm
@@ -1770,47 +1781,47 @@ module SCF
       shell_i = 1
       shell_start_i = 1
       do while(swloop_i <= cbdm)
-        if (shell_i > shell_in_element(molecular(atom_i) % atom_number)) then
+        if (shell_i > shell_in_element(molecule(atom_i) % atom_number)) then
           shell_i = 1
           atom_i = atom_i + 1
         end if
-        contraction_i = atom_basis(molecular(atom_i) % &
+        contraction_i = atom_basis(molecule(atom_i) % &
         basis_number + shell_i - 1) % contraction
-        L_i = atom_basis(molecular(atom_i) % basis_number + shell_i - 1) % &
+        L_i = atom_basis(molecule(atom_i) % basis_number + shell_i - 1) % &
         angular_quantum_number + 1
         M_i = swloop_i - shell_start_i + 1
         allocate(swexponents_i(contraction_i))
         allocate(swcoefficient_i(contraction_i))
         swexponents_i = &
-        atom_basis(molecular(atom_i) % basis_number + shell_i - 1) % exponents
+        atom_basis(molecule(atom_i) % basis_number + shell_i - 1) % exponents
         do swloop_m=1,contraction_i
-          swcoefficient_i(swloop_m) = atom_basis(molecular(atom_i) % &
+          swcoefficient_i(swloop_m) = atom_basis(molecule(atom_i) % &
           basis_number + shell_i - 1) % Ncoefficient(swloop_m,M_i)
         end do
-        coordinate_i = molecular(atom_i) % nucleus_position
+        coordinate_i = molecule(atom_i) % nucleus_position
         swloop_j = swloop_i
         atom_j = atom_i
         shell_j = shell_i
         shell_start_j = shell_start_i
         do while(swloop_j <= cbdm)
-          if (shell_j > shell_in_element(molecular(atom_j) % atom_number)) then
+          if (shell_j > shell_in_element(molecule(atom_j) % atom_number)) then
             shell_j = 1
             atom_j = atom_j + 1
           end if
           contraction_j = &
-          atom_basis(molecular(atom_j) % basis_number+shell_j-1) % contraction
-          L_j = atom_basis(molecular(atom_j) % basis_number + shell_j - 1) % &
+          atom_basis(molecule(atom_j) % basis_number+shell_j-1) % contraction
+          L_j = atom_basis(molecule(atom_j) % basis_number + shell_j - 1) % &
           angular_quantum_number + 1
           M_j = swloop_j - shell_start_j + 1
           allocate(swexponents_j(contraction_j))
           allocate(swcoefficient_j(contraction_j))
           swexponents_j = &
-          atom_basis(molecular(atom_j) % basis_number + shell_j - 1) % exponents
+          atom_basis(molecule(atom_j) % basis_number + shell_j - 1) % exponents
           do swloop_m=1,contraction_j
-            swcoefficient_j(swloop_m) = atom_basis(molecular(atom_j) % &
+            swcoefficient_j(swloop_m) = atom_basis(molecule(atom_j) % &
             basis_number + shell_j - 1) % Ncoefficient(swloop_m,M_j)
           end do
-          coordinate_j = molecular(atom_j) % nucleus_position
+          coordinate_j = molecule(atom_j) % nucleus_position
           do swloop_m = 1, contraction_i
             do swloop_n = 1, contraction_j
               do swloop_o = 1, contraction_i
@@ -1896,66 +1907,66 @@ module SCF
       Fock2HFcol_mic = c0
       Fock2HFexc_mic = c0
       dloop_i = i
-      contraction_i = atom_basis(molecular(basis_inf(dloop_i) % atom) % &
+      contraction_i = atom_basis(molecule(basis_inf(dloop_i) % atom) % &
       basis_number + basis_inf(dloop_i) % shell - 1) % contraction
       L_i = basis_inf(dloop_i) % L
       M_i = basis_inf(dloop_i) % M
       do dloop_m = 1, contraction_i
-        exponents_i(dloop_m) = atom_basis(molecular(basis_inf(dloop_i) % atom) &
+        exponents_i(dloop_m) = atom_basis(molecule(basis_inf(dloop_i) % atom) &
         % basis_number + basis_inf(dloop_i) % shell - 1) % exponents(dloop_m)
-        coefficient_i(dloop_m) = atom_basis(molecular(basis_inf(dloop_i)%atom) &
+        coefficient_i(dloop_m) = atom_basis(molecule(basis_inf(dloop_i)%atom) &
         % basis_number + basis_inf(dloop_i)%shell-1) % Ncoefficient(dloop_m,M_i)
       end do
-      coordinate_i = molecular(basis_inf(dloop_i) % atom) % nucleus_position
+      coordinate_i = molecule(basis_inf(dloop_i) % atom) % nucleus_position
       !----------------------------<dloop_k>-----------------------------------
       do dloop_k = cbdm, 1, -1
-        contraction_k = atom_basis(molecular(basis_inf(dloop_k) % atom) % &
+        contraction_k = atom_basis(molecule(basis_inf(dloop_k) % atom) % &
         basis_number + basis_inf(dloop_k) % shell - 1) % contraction
         L_k = basis_inf(dloop_k) % L
         M_k = basis_inf(dloop_k) % M
         do dloop_m = 1, contraction_k
-          exponents_k(dloop_m) = atom_basis(molecular(basis_inf(dloop_k) % &
+          exponents_k(dloop_m) = atom_basis(molecule(basis_inf(dloop_k) % &
           atom) % basis_number + basis_inf(dloop_k) % shell - 1) &
           % exponents(dloop_m)
-          coefficient_k(dloop_m) = atom_basis(molecular(basis_inf(dloop_k) % &
+          coefficient_k(dloop_m) = atom_basis(molecule(basis_inf(dloop_k) % &
           atom) % basis_number + basis_inf(dloop_k) % shell - 1) &
           % Ncoefficient(dloop_m,M_k)
         end do
-        coordinate_k = molecular(basis_inf(dloop_k) % atom) % nucleus_position
+        coordinate_k = molecule(basis_inf(dloop_k) % atom) % nucleus_position
         !----------------------------<dloop_j>---------------------------------
         do dloop_j = dloop_i, 1, -1
-          contraction_j = atom_basis(molecular(basis_inf(dloop_j) % atom) % &
+          contraction_j = atom_basis(molecule(basis_inf(dloop_j) % atom) % &
           basis_number + basis_inf(dloop_j) % shell - 1) % contraction
           L_j = basis_inf(dloop_j) % L
           M_j = basis_inf(dloop_j) % M
           do dloop_m = 1, contraction_j
-            exponents_j(dloop_m) = atom_basis(molecular(basis_inf(dloop_j) % &
+            exponents_j(dloop_m) = atom_basis(molecule(basis_inf(dloop_j) % &
             atom) % basis_number + basis_inf(dloop_j) % shell - 1) % &
             exponents(dloop_m)
-            coefficient_j(dloop_m) = atom_basis(molecular(basis_inf(dloop_j) % &
+            coefficient_j(dloop_m) = atom_basis(molecule(basis_inf(dloop_j) % &
             atom) % basis_number + basis_inf(dloop_j) % shell - 1) % &
             Ncoefficient(dloop_m,M_j)
           end do
-          coordinate_j = molecular(basis_inf(dloop_j) % atom) % nucleus_position
+          coordinate_j = molecule(basis_inf(dloop_j) % atom) % nucleus_position
           !----------------------------<dloop_l>-------------------------------
           do dloop_l = min(dloop_k,dloop_j+&
           (dloop_i*(dloop_i-1)-dloop_k*(dloop_k-1))/2), 1, -1
             ! Schwarz screening, |<ij||kl>| <= dsqrt(<ij||ij>) * dsqrt(<kl||kl>)
             if (dsqrt(swintegral(dloop_i,dloop_j)*swintegral(dloop_k,dloop_l))&
             < schwarz_VT) cycle
-            contraction_l = atom_basis(molecular(basis_inf(dloop_l) % atom) % &
+            contraction_l = atom_basis(molecule(basis_inf(dloop_l) % atom) % &
             basis_number + basis_inf(dloop_l) % shell - 1) % contraction
             L_l = basis_inf(dloop_l) % L
             M_l = basis_inf(dloop_l) % M
             do dloop_m = 1, contraction_l
-              exponents_l(dloop_m) = atom_basis(molecular(basis_inf(dloop_l) % &
+              exponents_l(dloop_m) = atom_basis(molecule(basis_inf(dloop_l) % &
               atom) % basis_number + basis_inf(dloop_l) % shell - 1) &
               % exponents(dloop_m)
-              coefficient_l(dloop_m) = atom_basis(molecular(basis_inf(dloop_l)%&
+              coefficient_l(dloop_m) = atom_basis(molecule(basis_inf(dloop_l)%&
               atom) % basis_number + basis_inf(dloop_l) % shell - 1) &
               % Ncoefficient(dloop_m,M_l)
             end do
-            coordinate_l = molecular(basis_inf(dloop_l)%atom) % nucleus_position
+            coordinate_l = molecule(basis_inf(dloop_l)%atom) % nucleus_position
             integral = 0.0_dp
             !===========================<ij||kl>===============================
             do dloop_m = 1, contraction_i
@@ -2635,14 +2646,14 @@ module SCF
   end subroutine calc_S2HForb
   
 !-----------------------------------------------------------------------
-!> dump molecular orbital information to .molden file
+!> dump molecule orbital information to .molden file
   subroutine dump_molden()
     implicit none
     integer :: channel, dmi, dmj, dmk
     if (.not. allocated(AO2MO)) &
-    call terminate('dump molecular orbital failed, AO2MO is empty')
+    call terminate('dump molecule orbital failed, AO2MO is empty')
     
-    ! molden file contains the real part of molecular orbital
+    ! molden file contains the real part of molecule orbital
     open(newunit=channel, file=trim(address_job)//'-real.molden', &
     status='replace', action='write', iostat=ios)
     if (ios /= 0) call terminate('dump .molden failed')
@@ -2651,44 +2662,44 @@ module SCF
     write(channel, '(A)') &
     'The real part of molecular orbitals of job '//trim(address_job)
     write(channel, *)
-    ! molecular geometry
+    ! molecule geometry
     write(channel, '(A)') '[Atoms] AU'
     do dmi = 1, atom_count
       write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
-      element_list(molecular(dmi)%atom_number), dmi, &
-      molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
-      molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
+      element_list(molecule(dmi)%atom_number), dmi, &
+      molecule(dmi)%atom_number, molecule(dmi)%nucleus_position(1), &
+      molecule(dmi)%nucleus_position(2), molecule(dmi)%nucleus_position(3)
     end do
     ! basis of each atom
     write(channel, '(A)') '[GTO]'
     do dmi = 1, atom_count
       write(channel, '(I3,I2)') dmi, 0
-      do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
-        if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+      do dmj = 0, shell_in_element(molecule(dmi) % atom_number)-1
+        if (atom_basis(molecule(dmi)%basis_number+dmj)%&
         angular_quantum_number == 0) then
           write(channel, '(A2,I2,A)') 's', &
-          atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
         angular_quantum_number == 1) then
           write(channel, '(A2,I2,A)') 'p', &
-          atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
         angular_quantum_number == 2) then
           write(channel, '(A2,I2,A)') 'd', &
-          atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
         angular_quantum_number == 3) then
           write(channel, '(A2,I2,A)') 'f', &
-          atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
         angular_quantum_number == 4) then
           write(channel, '(A2,I2,A)') 'g', &
-          atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
         end if
-        do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
+        do dmk = 1, atom_basis(molecule(dmi)%basis_number+dmj)%contraction
           write(channel, '(F13.7,F13.7)') &
-          atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
-          atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+          atom_basis(molecule(dmi)%basis_number+dmj)%exponents(dmk), &
+          atom_basis(molecule(dmi)%basis_number+dmj)%coefficient(dmk)
         end do
       end do
       write(channel, *)
@@ -2733,7 +2744,7 @@ module SCF
     close(channel)
     
     if (DKH_order /= 0) then
-      ! molden file contains the maginary part of molecular orbital
+      ! molden file contains the maginary part of molecule orbital
       open(newunit=channel, file=trim(address_job)//'-img.molden', &
       status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump .molden failed')
@@ -2742,44 +2753,44 @@ module SCF
       write(channel, '(A)') &
       'The imaginary part of molecular orbitals of job '//trim(address_job)
       write(channel, *)
-      ! molecular geometry
+      ! molecule geometry
       write(channel, '(A)') '[Atoms] AU'
       do dmi = 1, atom_count
         write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
-        element_list(molecular(dmi)%atom_number), dmi, &
-        molecular(dmi)%atom_number, molecular(dmi)%nucleus_position(1), &
-        molecular(dmi)%nucleus_position(2), molecular(dmi)%nucleus_position(3)
+        element_list(molecule(dmi)%atom_number), dmi, &
+        molecule(dmi)%atom_number, molecule(dmi)%nucleus_position(1), &
+        molecule(dmi)%nucleus_position(2), molecule(dmi)%nucleus_position(3)
       end do
       ! basis of each atom
       write(channel, '(A)') '[GTO]'
       do dmi = 1, atom_count
         write(channel, '(I3,I2)') dmi, 0
-        do dmj = 0, shell_in_element(molecular(dmi) % atom_number)-1
-          if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+        do dmj = 0, shell_in_element(molecule(dmi) % atom_number)-1
+          if (atom_basis(molecule(dmi)%basis_number+dmj)%&
           angular_quantum_number == 0) then
             write(channel, '(A2,I2,A)') 's', &
-            atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
           angular_quantum_number == 1) then
             write(channel, '(A2,I2,A)') 'p', &
-            atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
           angular_quantum_number == 2) then
             write(channel, '(A2,I2,A)') 'd', &
-            atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
           angular_quantum_number == 3) then
             write(channel, '(A2,I2,A)') 'f', &
-            atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecular(dmi)%basis_number+dmj)%&
+            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
           angular_quantum_number == 4) then
             write(channel, '(A2,I2,A)') 'g', &
-            atom_basis(molecular(dmi)%basis_number+dmj)%contraction,' 1.0'
+            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
           end if
-          do dmk = 1, atom_basis(molecular(dmi)%basis_number+dmj)%contraction
+          do dmk = 1, atom_basis(molecule(dmi)%basis_number+dmj)%contraction
             write(channel, '(F13.7,F13.7)') &
-            atom_basis(molecular(dmi)%basis_number+dmj)%exponents(dmk), &
-            atom_basis(molecular(dmi)%basis_number+dmj)%coefficient(dmk)
+            atom_basis(molecule(dmi)%basis_number+dmj)%exponents(dmk), &
+            atom_basis(molecule(dmi)%basis_number+dmj)%coefficient(dmk)
           end do
         end do
         write(channel, *)

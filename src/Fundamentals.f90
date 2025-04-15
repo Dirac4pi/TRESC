@@ -13,74 +13,92 @@ module Fundamentals
 !-----------------------------------------------------------------------
 ! definitions for programming
   
-  integer :: loop_i, loop_j, loop_k                ! universal loop variables
-  integer :: loop_m, loop_n, loop_l
-  integer :: ios                                   ! universal operating status
-  integer :: pid                                   ! process ID
-  integer,parameter :: dp = selected_real_kind(12) ! double precesion
-  integer,parameter :: sp = kind(0.0)              ! single precesion
+  integer             :: loop_i, loop_j, loop_k     ! universal loop variables
+  integer             :: loop_m, loop_n, loop_l
+  integer             :: ios                        ! universal operating status
+  integer             :: pid                        ! process ID
+  integer,parameter   :: dp = selected_real_kind(12)! double precesion
+  integer,parameter   :: sp = kind(0.0)             ! single precesion
   ! safe minimal that 1/safmin does not overflow
-  real(dp),parameter :: safmin = 1E-14
-  logical :: exists                                ! whether the file exists
-  integer,private :: clock_time1, clock_time2      ! job clock time (wall time)
-  real(sp),private :: cpu_time1, cpu_time2         ! job cpu time
-  integer :: threads_use = 8                       ! Number of threads be used
-  integer :: cpu_threads                           ! Number of threads in CPU
-  character(len = 50) :: address_molecular
+  real(dp),parameter  :: safmin = 1E-14
+  logical             :: exists                     ! whether the file exists
+  integer,private     :: clock_time1, clock_time2   ! job clock time (wall time)
+  real(sp),private    :: cpu_time1, cpu_time2       ! job cpu time
+  integer             :: threads_use = 8            ! Number of threads be used
+  integer,parameter   :: align_size = 32            ! AVX2:32, AVX512:64
+  !!DIR$ ATTRIBUTES ALIGN:align_size :: mat
+  integer             :: cpu_threads                ! Number of threads in CPU
+  character(len = 50) :: address_molecule
   character(len = 50) :: address_job
   character(len = 50) :: address_basis
-  character(len = 50) :: wd                        ! working directory
+  character(len = 50) :: wd                         ! working directory
   character(len = 20) :: usrname
   
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
 
-  complex(dp),parameter :: c0 = cmplx(0.0,0.0,dp)  ! 0 + 0i
-  complex(dp),parameter :: c1 = cmplx(1.0,0.0,dp)  ! 1 + 0i
-  complex(dp),parameter :: ci = cmplx(0.0,1.0,dp)  ! 0 + 1i
-  real(dp),parameter :: pi = 3.14159265358979323_dp
-  real(dp),parameter :: speedc = 137.035999074_dp  ! speed of light in vacuum
-  real(dp),parameter :: Ang2Bohr = 0.529177249_dp
-  real(dp),parameter :: fm2Bohr = 52917.7249_dp
+  complex(dp),parameter :: c0       = cmplx(0.0,0.0,dp)     ! 0 + 0i
+  complex(dp),parameter :: c1       = cmplx(1.0,0.0,dp)     ! 1 + 0i
+  complex(dp),parameter :: ci       = cmplx(0.0,1.0,dp)     ! 0 + 1i
+  real(dp),parameter    :: pi       = 3.14159265358979323_dp
+  real(dp),parameter    :: speedc   = 137.035999074_dp  ! vacuum light speed
+  real(dp),parameter    :: Ang2Bohr = 0.529177249_dp
+  real(dp),parameter    :: fm2Bohr  = 52917.7249_dp
   ! Correction factor for the QED radiation effect on the Bohr magnetic moment
-  real(dp),parameter :: QED_rad = sqrt(1.0/(2.0*pi*speedc) - &
+  real(dp),parameter    :: QED_rad  = sqrt(1.0/(2.0*pi*speedc) - &
   0.328/(pi*pi*speedc*speedc))
   
 !-----------------------------------------------------------------------
 ! calculation settings (with default)
   
   !-----------------<module Hamiltonian>-----------------
-  integer :: DKH_order = 2               ! 0: nonrelativistic; 1: fpFW; 2: DKH2
-  logical(kind=4) :: SRTP_type = .false. ! Second Relativized Thomas Precession
-  logical(kind=4) :: STTP_type = .false. ! Spin Tensor Thomas Precession
-  logical :: finitenuc = .false.
-  real(dp) :: cutS = 1E-5                ! threshold of evl(i_j)
+  integer         :: DKH_order   = 2      ! 0: nonrelativistic; 1: fpFW; 2: DKH2
+  logical(kind=4) :: SRTP_type   = .false.! Second Relativized Thomas Precession
+  logical(kind=4) :: STTP_type   = .false.! Spin Tensor Thomas Precession
+  logical         :: finitenuc   = .false.
+  real(dp)        :: cutS        = 1E-5   ! threshold of evl(i_j)
   !--------------------<module Atoms>--------------------
-  integer :: charge = 0                  ! charge of the system
-  integer :: spin_mult = 675             ! spin multiplicity of the system
-  integer :: electron_count              ! number of electrons of the system
-  logical :: s_h = .true.                ! Cartesian / spher-harmo basis
+  integer         :: charge      = 0      ! charge of the system
+  integer         :: spin_mult   = 675    ! spin multiplicity of the system
+  integer         :: electron_count       ! number of electrons of the system
+  logical         :: s_h         = .true. ! Cartesian / spher-harmo basis
   !---------------------<module SCF>---------------------
-  real(dp) :: schwarz_VT = 1E-9          ! Schwarz screening cutoff
-  integer :: maxiter = 128               ! upper limit of convergence loops
-  real(dp) :: conver_tol = 1E-6          ! convergence tolerence of energy
-  real(dp) :: damp = 0.0                 ! dynamical damp (-(dE)^damp+1)
-  integer :: nodiis = 8                  ! initial iteration steps without DIIS
-  integer :: subsp = 5                   ! dimension of suboptimal subspace
-  real(dp) :: diisdamp = 0.7             ! damp coefficient in DIIS
-  real(dp) :: prtlev = 0.1               ! minimun AO coefficient print output
-  real(dp) :: cutdiis = 0.0              ! cut DIIS when threshold is reached
-  real(dp) :: cutdamp = 0.01             ! cut damp when threshold is reached
-  logical :: keepspin = .false.          ! avoid spin mutations
-  logical :: d4 = .false.                ! use DFT-D4 dispersion correction
-  character(len=8) :: guess_type = 'gaussian' ! initial guess for SCF
-  logical :: molden = .false.            ! save MOs to .molden file
+  real(dp)        :: schwarz_VT  = 1E-9   ! Schwarz screening cutoff
+  integer         :: maxiter     = 128    ! upper limit of convergence loops
+  real(dp)        :: conver_tol  = 1E-6   ! convergence tolerence of energy
+  real(dp)        :: damp        = 0.0    ! dynamical damp (-(dE)^damp+1)
+  integer         :: nodiis      = 8      ! initial iteration steps without DIIS
+  integer         :: subsp       = 5      ! dimension of suboptimal subspace
+  real(dp)        :: diisdamp    = 0.7    ! damp coefficient in DIIS
+  real(dp)        :: prtlev      = 0.1    ! minimun AO coefficient print output
+  real(dp)        :: cutdiis     = 0.0    ! cut DIIS when threshold is reached
+  real(dp)        :: cutdamp     = 0.01   ! cut damp when threshold is reached
+  logical         :: keepspin    = .false.! avoid spin mutations
+  logical         :: d4          = .false.! use DFT-D4 dispersion correction
+  character(len=8):: guess_type  = 'gaussian' ! initial guess for SCF
+  logical         :: molden      = .false.! save MOs to .molden file
   !------------------<module Functional>------------------
   ! https://libxc.gitlab.io/functionals/
-  integer :: fx_id = -1                  ! exchange functional id, default HF
-  integer :: fc_id = -1                  ! correlation functional id, default HF
-  real(dp) :: x_HF = 1.0_dp              ! HF(exact exchange) componnet
-  character(len=20) :: funcemd4 = 'hf'   ! functional name in emd4
+  integer         :: fx_id       = -1     ! exchange functional ID(default HF
+  integer         :: fc_id       = -1     ! correlation functional ID(default HF
+  real(dp)        :: x_HF        = 1.0_dp ! HF(exact exchange) componnet
+  character(len=20) :: funcemd4  = 'hf'   ! functional name in emd4
+
+
+  private :: dump_matrix_real, dump_matrix_cmplx, load_matrix_real
+  private :: load_matrix_cmplx
+  public  :: dump_matrix, load_matrix, generate_output, terminate
+  public  :: lowercase
+
+  interface dump_matrix
+    module procedure dump_matrix_cmplx
+    module procedure dump_matrix_real
+  end interface
+
+  interface load_matrix
+    module procedure load_matrix_cmplx
+    module procedure load_matrix_real
+  end interface
 
   contains
   
@@ -88,16 +106,16 @@ module Fundamentals
 !> generation of output file
   subroutine generate_output()
     implicit none
-    character(8)  :: date
-    character(10) :: time
-    character(5)  :: zone
+    character(8)         :: date
+    character(10)        :: time
+    character(5)         :: zone
     integer,dimension(8) :: values
-    if (index(address_molecular,".xyz") /= 0) then
-      address_job = address_molecular(1:index(address_molecular,".xyz") - 1)
+    if (index(address_molecule,".xyz") /= 0) then
+      address_job = address_molecule(1:index(address_molecule,".xyz") - 1)
       open(60, file = trim(address_job)//".esc", &
       status = "replace", action = "write")
     else
-      address_job = address_molecular(1:index(address_molecular,&
+      address_job = address_molecule(1:index(address_molecule,&
       '\',back = .true.))
       open(60, file = trim(address_job)//"untitled.esc",&
       status = "replace", action = "write")
@@ -116,7 +134,7 @@ module Fundamentals
     write(60,"(A)") "Program/version: TRESC/development"
     write(60,*)
     write(60,"(A)") "Acknowledge: "
-    write(60,"(A)") "  TRESC is a molecular 2-component DKH2 HF/KS SCF"
+    write(60,"(A)") "  TRESC is a molecule 2-component DKH2 HF/KS SCF"
     write(60,"(A)") "  calculation program. For more:"
     write(60,"(A)") "  https://github.com/Dirac4pi/TRESC.git"
     write(60,"(A)") "  All results default to Atomic Units (A.U.)."
@@ -133,7 +151,7 @@ module Fundamentals
 !> standard termination of current job
   subroutine terminate(terminate_message)
     implicit none
-    logical :: isopen
+    logical                       :: isopen
     character(len = *),intent(in) :: terminate_message
     call lowercase(terminate_message)
     inquire(unit = 60, opened = isopen)
@@ -189,9 +207,9 @@ module Fundamentals
 !> dump complex matrix (double precesion) to address_job.name binary file
   subroutine dump_matrix_cmplx(name, m, dmi, dmj)
     character(len = *),intent(in) :: name
-    integer,intent(in) :: dmi, dmj
-    integer :: channel, a, b
-    complex(dp),intent(in) :: m(dmi, dmj)
+    integer,intent(in)            :: dmi, dmj
+    integer                       :: channel, a, b
+    complex(dp),intent(in)        :: m(dmi, dmj)
     if (size(m) < dmi*dmj) then
       call terminate('dump matrix failed, dm too large')
     else if (size(m) > dmi*dmj) then
@@ -216,9 +234,9 @@ module Fundamentals
 !> dump real matrix (double precesion) to address_job.name binary file
   subroutine dump_matrix_real(name, m, dmi, dmj)
     character(len = *),intent(in) :: name
-    integer,intent(in) :: dmi, dmj
-    integer :: channel, a, b
-    real(dp),intent(in) :: m(dmi, dmj)
+    integer,intent(in)            :: dmi, dmj
+    integer                       :: channel, a, b
+    real(dp),intent(in)           :: m(dmi, dmj)
     if (size(m) < dmi*dmj) then
       call terminate('dump matrix failed, dm too large')
     else if (size(m) > dmi*dmj) then
@@ -242,9 +260,9 @@ module Fundamentals
 !> load complex matrix (double precesion) from address_job.name binary file
   subroutine load_matrix_cmplx(name, m, dmi, dmj)
     character(len = *),intent(in) :: name
-    integer :: channel, a, b
-    integer,intent(out) :: dmi, dmj
-    complex(dp),allocatable :: m(:,:)
+    integer                       :: channel, a, b
+    integer,intent(out)           :: dmi, dmj
+    complex(dp),allocatable       :: m(:,:)
     if (allocated(m)) then
       dmi = -1
       dmj = -1
@@ -271,9 +289,9 @@ module Fundamentals
 !> load real matrix (double precesion) from address_job.name binary file
   subroutine load_matrix_real(name, m, dmi, dmj)
     character(len = *),intent(in) :: name
-    integer :: channel, a, b
-    integer,intent(out) :: dmi, dmj
-    real(dp),allocatable :: m(:,:)
+    integer                       :: channel, a, b
+    integer,intent(out)           :: dmi, dmj
+    real(dp),allocatable          :: m(:,:)
     if (allocated(m)) then
       dmi = -1
       dmj = -1
@@ -300,12 +318,11 @@ module Fundamentals
 !> convert a string to lowercase
   subroutine lowercase(inpstr)
     character(len = *) :: inpstr
-    integer :: lenstr, a, asc
+    integer            :: lenstr, a, asc
     lenstr = len(inpstr)
     do a = 1, lenstr, 1
       asc = iachar(inpstr(a:a))
       if (asc >= 65 .and. asc <= 90) inpstr(a:a) = achar(asc + 32)
     end do
   end subroutine lowercase
-  
 end module Fundamentals

@@ -56,18 +56,18 @@ module functional
     do ii = init, final, step
       kk = int((ii+1)/2)
       val = 0.0_dp
-      vec(:,1) = points(:,1) - molecular(basis_inf(kk)%atom)%nucleus_position(1)
-      vec(:,2) = points(:,2) - molecular(basis_inf(kk)%atom)%nucleus_position(2)
-      vec(:,3) = points(:,3) - molecular(basis_inf(kk)%atom)%nucleus_position(3)
-      contraction = atom_basis(molecular(basis_inf(kk)%atom) % &
+      vec(:,1) = points(:,1) - molecule(basis_inf(kk)%atom)%nucleus_position(1)
+      vec(:,2) = points(:,2) - molecule(basis_inf(kk)%atom)%nucleus_position(2)
+      vec(:,3) = points(:,3) - molecule(basis_inf(kk)%atom)%nucleus_position(3)
+      contraction = atom_basis(molecule(basis_inf(kk)%atom) % &
       basis_number + basis_inf(kk) % shell - 1)%contraction
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
       fac = AO_xyz_factor(L,M)
       do jj = 1, contraction
-        expo = atom_basis(molecular(basis_inf(kk)%atom) % &
+        expo = atom_basis(molecule(basis_inf(kk)%atom) % &
         basis_number + basis_inf(kk) % shell - 1)%exponents(jj)
-        coeff = atom_basis(molecular(basis_inf(kk)%atom) % &
+        coeff = atom_basis(molecule(basis_inf(kk)%atom) % &
         basis_number + basis_inf(kk) % shell - 1)%Ncoefficient(jj,M)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
@@ -118,8 +118,8 @@ module functional
     val = c0
     do ii = init, final, step
       kk = int((ii+1)/2)
-      vec = point - molecular(basis_inf(kk)%atom)%nucleus_position
-      contraction = atom_basis(molecular(basis_inf(kk)%atom)%&
+      vec = point - molecule(basis_inf(kk)%atom)%nucleus_position
+      contraction = atom_basis(molecule(basis_inf(kk)%atom)%&
       basis_number)%contraction
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
@@ -140,9 +140,9 @@ module functional
         end if
       end do
       do jj = 1, contraction
-        expo = atom_basis(molecular(basis_inf(kk)%atom)%&
+        expo = atom_basis(molecule(basis_inf(kk)%atom)%&
         basis_number)%exponents(jj)
-        coeff = atom_basis(molecular(basis_inf(kk)%atom)%&
+        coeff = atom_basis(molecule(basis_inf(kk)%atom)%&
         basis_number)%Ncoefficient(jj,M)
         ! d/dx
         if (mx == 0) then
@@ -216,8 +216,8 @@ module functional
     do ii = init, final, step
       kk = int((ii+1)/2)
       val = c0
-      vec = point - molecular(basis_inf(kk)%atom)%nucleus_position
-      contraction = atom_basis(molecular(basis_inf(kk)%atom)%&
+      vec = point - molecule(basis_inf(kk)%atom)%nucleus_position
+      contraction = atom_basis(molecule(basis_inf(kk)%atom)%&
       basis_number)%contraction
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
@@ -235,9 +235,9 @@ module functional
         end if
       end do
       do jj = 1, contraction
-        expo = atom_basis(molecular(basis_inf(kk)%atom)%&
+        expo = atom_basis(molecule(basis_inf(kk)%atom)%&
         basis_number)%exponents(jj)
-        coeff = atom_basis(molecular(basis_inf(kk)%atom)%&
+        coeff = atom_basis(molecule(basis_inf(kk)%atom)%&
         basis_number)%Ncoefficient(jj,M)
         ! d2/dx2
         if (mx == 0) then
@@ -317,7 +317,7 @@ module functional
       valdx = 0.0_dp
       valdy = 0.0_dp
       valdz = 0.0_dp
-      contraction = atom_basis(molecular(basis_inf(ii)%atom) % &
+      contraction = atom_basis(molecule(basis_inf(ii)%atom) % &
       basis_number + basis_inf(ii) % shell - 1) % contraction
       L = basis_inf(ii) % L
       M = basis_inf(ii) % M
@@ -334,13 +334,13 @@ module functional
           mz = mz + 1
         end if
       end do
-      vec(:,1) = point(:,1) - molecular(basis_inf(ii)%atom)%nucleus_position(1)
-      vec(:,2) = point(:,2) - molecular(basis_inf(ii)%atom)%nucleus_position(2)
-      vec(:,3) = point(:,3) - molecular(basis_inf(ii)%atom)%nucleus_position(3)
+      vec(:,1) = point(:,1) - molecule(basis_inf(ii)%atom)%nucleus_position(1)
+      vec(:,2) = point(:,2) - molecule(basis_inf(ii)%atom)%nucleus_position(2)
+      vec(:,3) = point(:,3) - molecule(basis_inf(ii)%atom)%nucleus_position(3)
       do jj = 1, contraction
-        b = atom_basis(molecular(basis_inf(ii)%atom) % &
+        b = atom_basis(molecule(basis_inf(ii)%atom) % &
         basis_number + basis_inf(ii) % shell - 1) % exponents(jj)
-        coeff = atom_basis(molecular(basis_inf(ii)%atom) % &
+        coeff = atom_basis(molecule(basis_inf(ii)%atom) % &
         basis_number + basis_inf(ii) % shell - 1) % Ncoefficient(jj,M)
         d(:) = coeff*exp(-b*(sum(vec(:,:)**2,dim=2)))
 
