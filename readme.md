@@ -13,8 +13,8 @@ free format.
 
 ## Windows 10/11
 
-1. Make sure the build tools are available on your
-station: [Visual Studio Build Tools](https://visualstudio.microsoft.com/),
+1. Make sure the build tools are available on your station:
+[Visual Studio Build Tools](https://visualstudio.microsoft.com/),
 [Intel oneAPI HPC Toolkit](
   https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html)
 and [Cmake](https://cmake.org/), and environment variables include:<br>
@@ -22,28 +22,29 @@ and [Cmake](https://cmake.org/), and environment variables include:<br>
 `NUMBER_OF_PROCESSORS = (number of physical cores of the processor)`<br>
 `OMP_PROC_BIND = true`<br>
 `OMP_STACKSIZE = 32M`<br>
-2. Download stable release of [LibXC](
-  https://libxc.gitlab.io/download/) and access to build environment in its root
-:<br>
+2. Download the stable release of [Libxc](
+  https://libxc.gitlab.io/download/) and access to the build environment in
+Libxc root:<br>
 `...\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`
+<br>and<br>
 `...\oneAPI\setvars.bat`<br>
-then build LibXC by command:<br>
+then build Libxc by command:<br>
 `cmake -S. -B./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DENABLE_FORTRAN=ON
 -DBUILD_TESTING=OFF -DBUILD_FPIC=ON -DCMAKE_BUILD_SHARED_LIBS=OFF
 -DCMAKE_Fortran_COMPILER="path\\to\\ifx.exe"
 -DCMAKE_C_COMPILER="path\\to\\icx.exe"`<br>
 and<br>
 `cd build && ninja`<br>
-then add the LibXC root to environment variables:<br>
-`LIBXC_ROOT = \path\to\LibXC`
+then add the Libxc root to environment variables:<br>
+`LIBXC_ROOT = \path\to\Libxc`
 3. Build TRESC by command:<br>
 `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release`<br>
 and<br>
 `cmake --build build`<br>
 then add `build` to $path to finish the build process.
 
-> If AVX2/AVX512 instruction set is supported, please modify the compilation
-options and compiler directives (align_size) manually
+> If AVX2 / AVX512 instruction set is supported, please modify the compilation
+options and compiler directives (e.g. align_size) manually
 
 ## Linux
 
@@ -65,7 +66,7 @@ demanding on memory and disk r/w.
 differ negligibly from the Gaussian program.
 * Kohn-Sham grid-based integration are based on Becke's fuzzy partitioning, the
 exchange-correlation energy and the partial derivative terms of the
-exchange-correlation potential are obtained by external library libxc.
+exchange-correlation potential are obtained by external library Libxc.
 * Support for density functional calculation: LDA functionals, GGA functionals
 and hybrid functionals, the results of non-relativistic calculation differ
 negligibly from the Gaussian program
