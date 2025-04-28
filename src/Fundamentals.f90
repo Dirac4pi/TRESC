@@ -24,15 +24,16 @@ module Fundamentals
   logical             :: exists                     ! whether the file exists
   integer,private     :: clock_time1, clock_time2   ! job clock time (wall time)
   real(sp),private    :: cpu_time1, cpu_time2       ! job cpu time
-  integer             :: threads_use = 8            ! Number of threads be used
+  integer             :: threads = 8                ! number of threads
   integer,parameter   :: align_size = 32            ! AVX2:32, AVX512:64
   !!DIR$ ATTRIBUTES ALIGN:align_size :: mat
-  integer             :: cpu_threads                ! Number of threads in CPU
-  character(len = 50) :: address_molecule
-  character(len = 50) :: address_job
-  character(len = 50) :: address_basis
-  character(len = 50) :: wd                         ! working directory
-  character(len = 20) :: usrname
+  integer             :: nproc                      ! number of processors
+  character(len=200)  :: address_molecule
+  character(len=200)  :: address_job
+  character(len=200)  :: address_basis
+  character(len=200)  :: wd                         ! working directory
+  character(len=50)   :: usrname
+  character(len=10),parameter   :: version = 'dev'  ! TRESC version
   
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
@@ -40,13 +41,14 @@ module Fundamentals
   complex(dp),parameter :: c0       = cmplx(0.0,0.0,dp)     ! 0 + 0i
   complex(dp),parameter :: c1       = cmplx(1.0,0.0,dp)     ! 1 + 0i
   complex(dp),parameter :: ci       = cmplx(0.0,1.0,dp)     ! 0 + 1i
-  real(dp),parameter    :: pi       = 3.14159265358979323_dp
-  real(dp),parameter    :: speedc   = 137.035999074_dp  ! vacuum light speed
+  real(dp),parameter    :: pi       = 3.14159265358979324_dp
+  real(dp),parameter    :: rpi      = 1.7724538509055159_dp ! dsqrt(pi)
+  real(dp),parameter    :: c        = 137.035999074_dp      ! vacuum light speed
+  real(dp),parameter    :: c2       = c**2                  ! c^2
   real(dp),parameter    :: Ang2Bohr = 0.529177249_dp
   real(dp),parameter    :: fm2Bohr  = 52917.7249_dp
   ! Correction factor for the QED radiation effect on the Bohr magnetic moment
-  real(dp),parameter    :: QED_rad  = sqrt(1.0/(2.0*pi*speedc) - &
-  0.328/(pi*pi*speedc*speedc))
+  real(dp),parameter    :: QED_rad  = sqrt(1.0/(2.0*pi*c) - 0.328/(pi*pi*c2))
   
 !-----------------------------------------------------------------------
 ! calculation settings (with default)
@@ -131,7 +133,7 @@ module Fundamentals
     call getlog(usrname)
     write(60,"(A,I6,A,A)") "PID = ", pid, ";  username = ", usrname
     write(60,"(A60)") 'This file is the output file of job '//address_job
-    write(60,"(A)") "Program/version: TRESC/development"
+    write(60,"(A)") "Program/version: TRESC/"//trim(version)
     write(60,*)
     write(60,"(A)") "Acknowledge: "
     write(60,"(A)") "  TRESC is a molecule 2-component DKH2 HF/KS SCF"

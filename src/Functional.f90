@@ -46,11 +46,11 @@ module functional
       final = 2*cbdm
     else if (spin == 1) then
       init = 1
-      step = 2
-      final = 2*cbdm-1
+      step = 1
+      final = cbdm
     else if (spin == 2) then
-      init = 2
-      step = 2
+      init = cbdm+1
+      step = 1
       final = 2*cbdm
     end if
     do ii = init, final, step
@@ -108,11 +108,11 @@ module functional
       final = 2*cbdm
     else if (spin == 1) then
       init = 1
-      step = 2
-      final = 2*cbdm-1
+      step = 1
+      final = cbdm
     else if (spin == 2) then
-      init = 2
-      step = 2
+      init = cbdm+1
+      step = 1
       final = 2*cbdm
     end if
     val = c0
@@ -206,11 +206,11 @@ module functional
       final = 2*cbdm
     else if (spin == 1) then
       init = 1
-      step = 2
-      final = 2*cbdm-1
+      step = 1
+      final = cbdm
     else if (spin == 2) then
-      init = 2
-      step = 2
+      init = cbdm+1
+      step = 1
       final = 2*cbdm
     end if
     do ii = init, final, step
@@ -384,21 +384,21 @@ module functional
     cdrhob = c0
     do ii = 1, cbdm
       do jj = 1, cbdm
-        crhoa(:) = crhoa(:) + mat(2*ii-1,2*jj-1)*AOAO(:,ii)*AOAO(:,jj)
-        crhob(:) = crhob(:) + mat(2*ii,2*jj)*AOAO(:,ii)*AOAO(:,jj)
+        crhoa(:) = crhoa(:) + mat(ii,jj)*AOAO(:,ii)*AOAO(:,jj)
+        crhob(:) = crhob(:) + mat(cbdm+ii,cbdm+jj)*AOAO(:,ii)*AOAO(:,jj)
 
-        cdrhoa(:,1) = cdrhoa(:,1) + mat(2*ii-1,2*jj-1)*(&
+        cdrhoa(:,1) = cdrhoa(:,1) + mat(ii,jj)*(&
         dxAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dxAOAO(:,jj))
-        cdrhoa(:,2) = cdrhoa(:,2) + mat(2*ii-1,2*jj-1)*(&
+        cdrhoa(:,2) = cdrhoa(:,2) + mat(ii,jj)*(&
         dyAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dyAOAO(:,jj))
-        cdrhoa(:,3) = cdrhoa(:,3) + mat(2*ii-1,2*jj-1)*(&
+        cdrhoa(:,3) = cdrhoa(:,3) + mat(ii,jj)*(&
         dzAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dzAOAO(:,jj))
 
-        cdrhob(:,1) = cdrhob(:,1) + mat(2*ii,2*jj)*(&
+        cdrhob(:,1) = cdrhob(:,1) + mat(cbdm+ii,cbdm+jj)*(&
         dxAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dxAOAO(:,jj))
-        cdrhob(:,2) = cdrhob(:,2) + mat(2*ii,2*jj)*(&
+        cdrhob(:,2) = cdrhob(:,2) + mat(cbdm+ii,cbdm+jj)*(&
         dyAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dyAOAO(:,jj))
-        cdrhob(:,3) = cdrhob(:,3) + mat(2*ii,2*jj)*(&
+        cdrhob(:,3) = cdrhob(:,3) + mat(cbdm+ii,cbdm+jj)*(&
         dzAOAO(:,ii)*AOAO(:,jj) + AOAO(:,ii)*dzAOAO(:,jj))
       end do
     end do
@@ -463,22 +463,22 @@ module functional
             do kk = 1, cbdm
               do ll = kk, cbdm
                 ! exchange | alpha
-                matxmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matxmic(kk, ll) = sum(weight(:)*(&
                 xvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matxmic(2*ll-1, 2*kk-1) = matxmic(2*kk-1, 2*ll-1)
+                matxmic(ll, kk) = matxmic(kk, ll)
                 ! exchange | beta
-                matxmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matxmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 xvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matxmic(2*ll, 2*kk) = matxmic(2*kk, 2*ll)
+                matxmic(cbdm+ll, cbdm+kk) = matxmic(cbdm+kk, cbdm+ll)
 
                 ! correlation | alpha
-                matcmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matcmic(kk, ll) = sum(weight(:)*(&
                 cvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matcmic(2*ll-1, 2*kk-1) = matcmic(2*kk-1, 2*ll-1)
+                matcmic(ll, kk) = matcmic(kk, ll)
                 ! correlation | beta
-                matcmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matcmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 cvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matcmic(2*ll, 2*kk) = matcmic(2*kk, 2*ll)
+                matcmic(cbdm+ll, cbdm+kk) = matcmic(cbdm+kk, cbdm+ll)
               end do
             end do
             exout = sum(weight(:)*(rhoa(:)+rhob(:))*exin(:))
@@ -489,7 +489,7 @@ module functional
             do kk = 1, cbdm
               do ll = kk, cbdm
                 ! exchange | alpha
-                matxmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matxmic(kk, ll) = sum(weight(:)*(&
                 xvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*xvsigma(1:3*nl-2:3)*(&
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -499,9 +499,9 @@ module functional
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhob(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhob(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matxmic(2*ll-1, 2*kk-1) = matxmic(2*kk-1, 2*ll-1)
+                matxmic(ll, kk) = matxmic(kk, ll)
                 ! exchange | beta
-                matxmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matxmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 xvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*xvsigma(3:3*nl:3)*(&
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -511,10 +511,10 @@ module functional
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhoa(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhoa(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matxmic(2*ll, 2*kk) = matxmic(2*kk, 2*ll)
+                matxmic(cbdm+ll, cbdm+kk) = matxmic(cbdm+kk, cbdm+ll)
 
                 ! correlation | alpha
-                matcmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matcmic(kk, ll) = sum(weight(:)*(&
                 cvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*cvsigma(1:3*nl-2:3)*(&
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -524,9 +524,9 @@ module functional
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhob(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhob(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matcmic(2*ll-1, 2*kk-1) = matcmic(2*kk-1, 2*ll-1)
+                matcmic(ll, kk) = matcmic(kk, ll)
                 ! correlation | beta
-                matcmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matcmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 cvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*cvsigma(3:3*nl:3)*(&
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -536,7 +536,7 @@ module functional
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhoa(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhoa(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matcmic(2*ll, 2*kk) = matcmic(2*kk, 2*ll)
+                matcmic(cbdm+ll, cbdm+kk) = matcmic(cbdm+kk, cbdm+ll)
               end do
             end do
             exout = sum(weight(:)*(rhoa(:)+rhob(:))*exin(:))
@@ -549,13 +549,13 @@ module functional
             do kk = 1, cbdm
               do ll = kk, cbdm
                 ! exchange | alpha
-                matxmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matxmic(kk, ll) = sum(weight(:)*(&
                 xvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matxmic(2*ll-1, 2*kk-1) = matxmic(2*kk-1, 2*ll-1)
+                matxmic(ll, kk) = matxmic(kk, ll)
                 ! exchange | beta
-                matxmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matxmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 xvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll)))
-                matxmic(2*ll, 2*kk) = matxmic(2*kk, 2*ll)
+                matxmic(cbdm+ll, cbdm+kk) = matxmic(cbdm+kk, cbdm+ll)
               end do
             end do
             exout = sum(weight(:)*(rhoa(:)+rhob(:))*exin(:))
@@ -564,7 +564,7 @@ module functional
             do kk = 1, cbdm
               do ll = kk, cbdm
                 ! exchange | alpha
-                matxmic(2*kk-1, 2*ll-1) = sum(weight(:)*(&
+                matxmic(kk, ll) = sum(weight(:)*(&
                 xvrho(1:2*nl-1:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*xvsigma(1:3*nl-2:3)*(&
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -574,9 +574,9 @@ module functional
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhob(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhob(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matxmic(2*ll-1, 2*kk-1) = matxmic(2*kk-1, 2*ll-1)
+                matxmic(ll, kk) = matxmic(kk, ll)
                 ! exchange | beta
-                matxmic(2*kk, 2*ll) = sum(weight(:)*(&
+                matxmic(cbdm+kk, cbdm+ll) = sum(weight(:)*(&
                 xvrho(2:2*nl:2)*AOAO(:,kk)*AOAO(:,ll) + &
                 2.0_dp*xvsigma(3:3*nl:3)*(&
                 drhob(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
@@ -586,7 +586,7 @@ module functional
                 drhoa(:,1)*(dxAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dxAOAO(:,ll)) + &
                 drhoa(:,2)*(dyAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dyAOAO(:,ll)) + &
                 drhoa(:,3)*(dzAOAO(:,kk)*AOAO(:,ll)+AOAO(:,kk)*dzAOAO(:,ll)))))
-                matxmic(2*ll, 2*kk) = matxmic(2*kk, 2*ll)
+                matxmic(cbdm+ll, cbdm+kk) = matxmic(cbdm+kk, cbdm+ll)
               end do
             end do
             exout = sum(weight(:)*(rhoa(:)+rhob(:))*exin(:))

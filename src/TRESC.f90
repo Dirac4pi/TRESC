@@ -12,16 +12,12 @@ program TRESC
   implicit none
   integer :: trloop_i, trloop_j, trloop_k
   integer :: cmd_count, stat1
-  character(len=30) :: cmd1
+  character(len=200) :: cmd1
   cmd_count = command_argument_count()
   if (cmd_count == 0) then
-    call terminate('no argument received')
-  else if (cmd_count == 1) then ! default SCF
-    call sconf_calc(.true.)
-    !do trloop_i = 1, 10
-    !  do batch calculation, plot with batch_plot.py
-    !end do
-  else
+    call terminate('0 argument received')
+!------------------------------------------------------------------------------
+  else if (cmd_count == 1) then
     call get_command_argument(1, cmd1, status=stat1)
     if (stat1 > 0) then
       call terminate('1st argument retrieval fails')
@@ -29,39 +25,55 @@ program TRESC
       call terminate('1st argument too long')
     end if
 
-    if ((trim(cmd1) == '-v' .or. trim(cmd1) == '-V') .and. cmd_count == 3) then
-      call mogrid(.true.)
+    if (cmd1(1:1) /= '-') then
+      call sconf_calc(.true.)
+    else if ((trim(cmd1) == '-v' .or. trim(cmd1) == '-V')) then
+      call printversion()
+    else if ((trim(cmd1) == '--version')) then
+      call printversion()
     else
-      call terminate('too many arguments')
+      call terminate('unknown argument '//trim(cmd1))
     end if
+    !do trloop_i = 1, 10
+    !  do batch calculation, plot with batch_plot.py
+    !end do
+!------------------------------------------------------------------------------
+  else if (cmd_count == 2) then
+    call get_command_argument(1, cmd1, status=stat1)
+    if (stat1 > 0) then
+      call terminate('1st argument retrieval fails')
+    else if (stat1 < 0) then
+      call terminate('1st argument too long')
+    end if
+
+    if ((trim(cmd1) == '-2c' .or. trim(cmd1) == '-2C')) then
+      call mogrid(.true., .true.)
+    else if ((trim(cmd1) == '-1c' .or. trim(cmd1) == '-1C')) then
+      call mogrid(.false., .true.)
+    else
+      call terminate('unknown argument '//trim(cmd1))
+    end if
+!------------------------------------------------------------------------------
+  else
+    call terminate('too many arguments')
   end if
 end program TRESC
   
-  
 !-----------------------------------------------------------------------
-!> test of subroutine V_Integral_1e from module Hamiltonian
-subroutine V_Integral_1e_test()
+!> print current version of TRESC
+subroutine printversion()
   use Fundamentals
-  use Hamiltonian
   implicit none
-  real(dp) :: Z = 6.0
-  real(dp) :: coe_i = 1.00000000
-  real(dp) :: coe_j = -0.00014450
-  real(dp) :: expo_i = 0.76100000
-  real(dp) :: expo_j = 8.00000000
-  character(len = 3) :: fac_i = 'zzx'
-  character(len = 3) :: fac_j = 'yyz'
-  real(dp) :: cod_i_inp(3), cod_j_inp(3)
-  cod_i_inp(1) = 0.0256
-  cod_i_inp(2) = -3.68
-  cod_i_inp(3) = 5.395
-  cod_j_inp(1) = 2.46
-  cod_j_inp(2) = -4.198
-  cod_j_inp(3) = 3.59
-  write(*,*) V_Integral_1e(&
-  Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i_inp(1),cod_i_inp(2),&
-  cod_i_inp(3),cod_j_inp(1),cod_j_inp(2),cod_j_inp(3),0.0_dp)
-end subroutine V_Integral_1e_test
+  character(len=200) :: env_TRESC = ''
+  write(*,*) 'Thomas Relativistic Electronic Structure Calculation'
+  write(*,*) 'version: '//trim(version)
+  call getenv('TRESC',env_TRESC)
+  if (env_TRESC == '') then
+    write(*,*) '$TRESC = None'
+  else
+    write(*,*) '$TRESC = '//trim(env_TRESC)
+  end if
+end subroutine printversion
   
 !-----------------------------------------------------------------------
 !> test of subroutine V_Integral_2e from module Hamiltonian
@@ -143,15 +155,16 @@ end subroutine sconf_calc
 
 !-----------------------------------------------------------------------
 !> dump grid value of molecular orbitals for visualization
-subroutine mogrid(kill_)
+subroutine mogrid(is2c, kill_)
   use Representation
   use LAPACK95
   use Fundamentals
   implicit none
+  logical,intent(in) :: is2c
   logical,intent(in) :: kill_
   integer :: channel, count
   complex(dp),allocatable :: arr(:), supparr(:)
-  character(len=30) :: cmd2, cmd3
+  character(len=30) :: cmd2
   integer :: stat2, stat3
   call get_command_argument(2, cmd2, status=stat2)
   if (stat2 > 0) then
@@ -159,20 +172,14 @@ subroutine mogrid(kill_)
   else if (stat2 < 0) then
     call terminate('2nd argument too long')
   end if
-  call get_command_argument(3, cmd3, status=stat3)
-  if (stat3 > 0) then
-    call terminate('3rd argument retrieval fails')
-  else if (stat3 < 0) then
-    call terminate('3rd argument too long')
-  end if
   address_basis = '.gbs'
   call read_gbs()
   address_molecule = '.xyz'
   call read_geometry()
   call assign_cs()
-  open(newunit=channel, file=trim(cmd3)//'.mo', action='read', iostat=ios)
+  open(newunit=channel, file=trim(cmd2)//'.mo', action='read', iostat=ios)
   if (ios /= 0) call terminate('error when opening .mo file')
-  if (cmd2 == '2c') then
+  if (is2c) then
     allocate(supparr(2*cbdm))
     read(channel,*,iostat=ios) supparr(1)
     count = 1
@@ -182,15 +189,15 @@ subroutine mogrid(kill_)
     end do
     count = count - 1
     if (count == 2*cbdm) then
-      call mogrid_becke(supparr, cmd3)
+      call mogrid_becke(supparr, cmd2)
     else if (count == 2*sbdm) then
       allocate(arr(2*sbdm))
       arr(:) = supparr(1:2*sbdm)
       call zgemm( 'N', 'N', 2*cbdm, 1, 2*sbdm, c1, &
       exc2s, 2*cbdm, arr, 2*sbdm, c0, supparr, 2*cbdm)
-      call mogrid_becke(supparr, cmd3)
+      call mogrid_becke(supparr, cmd2)
     end if
-  else if (cmd2 == '1c') then
+  else
 
   end if
   close(channel)

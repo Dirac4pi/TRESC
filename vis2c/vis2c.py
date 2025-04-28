@@ -12,7 +12,7 @@ from .dataload import load_binary, load_cube, load_xyz
 from mayavi import mlab
 from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
-import os, subprocess
+import os, subprocess, platform
 
 def numbered_rename(src: str, dst: str) -> str:
   """automatically add serial number suffixes to avoid conflicts"""
@@ -208,7 +208,10 @@ def mog2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
     raise RuntimeError('wavefunction file cannot be loaded in mog2c')
   
   print('call TRESC')
-  results = call_fortran(['TRESC', '-v', '2c', str(index)])
+  if platform.system() == "Linux":
+    results = call_fortran(['tresc', '-2c', str(index)])
+  elif platform.system() == "Windows":
+    results = call_fortran(['thomas', '-2c', str(index)])
   print(f'stdout: {results}')
 
   atoms = load_xyz('.xyz')

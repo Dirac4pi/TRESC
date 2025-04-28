@@ -37,34 +37,34 @@ module Hamiltonian
   real(dp),allocatable    :: i_V_j(:,:)    ! <AOi|V|AOj>
   complex(dp),allocatable :: exi_V_j(:,:)  ! extended i_V_j matrix
   
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pxVpx_j, i_pyVpy_j, i_pzVpz_j
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pxVpy_j, i_pyVpx_j, i_pxVpz_j
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pzVpx_j, i_pyVpz_j, i_pzVpy_j, exSOC
+  !DIR$ ATTRIBUTES ALIGN:align_size :: pxVpx, pyVpy, pzVpz
+  !DIR$ ATTRIBUTES ALIGN:align_size :: pxVpy, pyVpx, pxVpz
+  !DIR$ ATTRIBUTES ALIGN:align_size :: pzVpx, pyVpz, pzVpy, exSOC
 ! DKH2 related
-  real(dp),allocatable    :: i_pxVpx_j(:,:)! <AOi|pVp|AOj>
-  real(dp),allocatable    :: i_pyVpy_j(:,:)
-  real(dp),allocatable    :: i_pzVpz_j(:,:)
-  real(dp),allocatable    :: i_pxVpy_j(:,:)
-  real(dp),allocatable    :: i_pyVpx_j(:,:)
-  real(dp),allocatable    :: i_pxVpz_j(:,:)
-  real(dp),allocatable    :: i_pzVpx_j(:,:)
-  real(dp),allocatable    :: i_pyVpz_j(:,:)
-  real(dp),allocatable    :: i_pzVpy_j(:,:)
+  real(dp),allocatable    :: pxVpx(:,:)    ! <AOi|pVp|AOj>
+  real(dp),allocatable    :: pyVpy(:,:)
+  real(dp),allocatable    :: pzVpz(:,:)
+  real(dp),allocatable    :: pxVpy(:,:)
+  real(dp),allocatable    :: pyVpx(:,:)
+  real(dp),allocatable    :: pxVpz(:,:)
+  real(dp),allocatable    :: pzVpx(:,:)
+  real(dp),allocatable    :: pyVpz(:,:)
+  real(dp),allocatable    :: pzVpy(:,:)
   complex(dp),allocatable :: exSOC(:,:)    ! extended SOC matrix
   
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_px3Vpx_j, i_py3Vpy_j, i_pz3Vpz_j
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_px3Vpy_j, i_py3Vpx_j, i_px3Vpz_j
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_pz3Vpx_j, i_py3Vpz_j, i_pz3Vpy_j, exSR
-  real(dp),allocatable    :: i_px3Vpx_j(:,:)! <AOi|pppVp|AOj>
-  real(dp),allocatable    :: i_py3Vpy_j(:,:)
-  real(dp),allocatable    :: i_pz3Vpz_j(:,:)
-  real(dp),allocatable    :: i_px3Vpy_j(:,:)
-  real(dp),allocatable    :: i_py3Vpx_j(:,:)
-  real(dp),allocatable    :: i_px3Vpz_j(:,:)
-  real(dp),allocatable    :: i_pz3Vpx_j(:,:)
-  real(dp),allocatable    :: i_py3Vpz_j(:,:)
-  real(dp),allocatable    :: i_pz3Vpy_j(:,:)
-  complex(dp),allocatable :: exSR(:,:)    ! extended SR matrix
+  !DIR$ ATTRIBUTES ALIGN:align_size :: px3Vpx, py3Vpy, pz3Vpz
+  !DIR$ ATTRIBUTES ALIGN:align_size :: px3Vpy, py3Vpx, px3Vpz
+  !DIR$ ATTRIBUTES ALIGN:align_size :: pz3Vpx, py3Vpz, pz3Vpy, exSR
+  real(dp),allocatable    :: px3Vpx(:,:)   ! <AOi|pppVp|AOj>
+  real(dp),allocatable    :: py3Vpy(:,:)
+  real(dp),allocatable    :: pz3Vpz(:,:)
+  real(dp),allocatable    :: px3Vpy(:,:)
+  real(dp),allocatable    :: py3Vpx(:,:)
+  real(dp),allocatable    :: px3Vpz(:,:)
+  real(dp),allocatable    :: pz3Vpx(:,:)
+  real(dp),allocatable    :: py3Vpz(:,:)
+  real(dp),allocatable    :: pz3Vpy(:,:)
+  complex(dp),allocatable :: exSR(:,:)     ! extended SR matrix
   
   ! <AOi|pxVpy3|AOj> = Trans(<AOi|py3Vpx|AOj>)
  
@@ -74,23 +74,23 @@ module Hamiltonian
 !> calculate one-electron integrals in single-conf calculations
   subroutine DKH_Hamiltonian()
     implicit none
+    character(len=30) :: ch30
     write(60,'(A)') 'Module Hamiltonian:'
     ! OpenMP set up
     write(60,'(A)') '  ----------<PARALLEL>----------'
-    cpu_threads = omp_get_num_procs()
+    nproc = omp_get_num_procs()
     write(60,'(A,I3,A,I3)') &
-    '  threads using:',threads_use,' CPU threads:',cpu_threads
-    if (cpu_threads <= threads_use) then
+    '  threads using:',threads,' CPU threads:',nproc
+    if (nproc <= threads) then
       write(*,'(A,I2)') &
-      'TRESC: Calculation will perform serially! CPU threads is',cpu_threads
+      'TRESC: Calculation will perform serially! CPU threads is',nproc
       write(60,'(A)') '  Warning: calculation will be performed SERIALLY!'
     else
-      loop_i = omp_get_proc_bind()
-      if (loop_i == 0) then
-        write(60,'(A)') '  processor bind OFF'
+      call getenv('KMP_AFFINITY',ch30)
+      if (ch30 == '') then
+        write(60,'(A)') '  KMP_AFFINITY = None'
       else
-        loop_i = omp_get_num_places()
-        write(60,'(A,I2,A)') '  processor bind ON, ',loop_i,' places'
+        write(60,'(A)') '  KMP_AFFINITY = '//trim(ch30)
       end if
     end if
     write(60,'(A)') '  ----------<1E INTEGRALS>----------'
@@ -133,14 +133,9 @@ module Hamiltonian
       else
         fbdm = sbdm
       end if
-      allocate(exXm(2*sbdm,2*fbdm))
-      exXm = c0
-      do loop_i = 1, sbdm
-        do loop_j = 1, fbdm
-          exXm(2*loop_i-1,2*loop_j-1) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
-          exXm(2*loop_i,2*loop_j) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
-        end do
-      end do
+      allocate(exXm(2*sbdm,2*fbdm),source=c0)
+      exXm(1:sbdm,1:fbdm) = Xm * c1
+      exXm(sbdm+1:2*sbdm,fbdm+1:2*fbdm) = Xm * c1
       ! transpose(Xm)(Xm)=I
       call detach(i_j)
       call detach(i_p2_j)
@@ -175,25 +170,25 @@ module Hamiltonian
         call sphehar(i_j)
         call sphehar(i_V_j)
         call sphehar(i_p2_j)
-        call sphehar(i_pxVpx_j)
-        call sphehar(i_pyVpy_j)
-        call sphehar(i_pzVpz_j)
-        call sphehar(i_pxVpy_j)
-        call sphehar(i_pyVpx_j)
-        call sphehar(i_pxVpz_j)
-        call sphehar(i_pzVpx_j)
-        call sphehar(i_pyVpz_j)
-        call sphehar(i_pzVpy_j)
+        call sphehar(pxVpx)
+        call sphehar(pyVpy)
+        call sphehar(pzVpz)
+        call sphehar(pxVpy)
+        call sphehar(pyVpx)
+        call sphehar(pxVpz)
+        call sphehar(pzVpx)
+        call sphehar(pyVpz)
+        call sphehar(pzVpy)
         if (SRTP_type) then
-          call sphehar(i_px3Vpx_j)
-          call sphehar(i_py3Vpy_j)
-          call sphehar(i_pz3Vpz_j)
-          call sphehar(i_px3Vpy_j)
-          call sphehar(i_py3Vpx_j)
-          call sphehar(i_px3Vpz_j)
-          call sphehar(i_pz3Vpx_j)
-          call sphehar(i_py3Vpz_j)
-          call sphehar(i_pz3Vpy_j)
+          call sphehar(px3Vpx)
+          call sphehar(py3Vpy)
+          call sphehar(pz3Vpz)
+          call sphehar(px3Vpy)
+          call sphehar(py3Vpx)
+          call sphehar(px3Vpz)
+          call sphehar(pz3Vpx)
+          call sphehar(py3Vpz)
+          call sphehar(pz3Vpy)
         end if
         write(60,"(A)") &
         '  complete! spherical-harmonic basis (5D,7F,9G) involved.'
@@ -215,38 +210,33 @@ module Hamiltonian
       else
         fbdm = sbdm
       end if
-      allocate(exXm(2*sbdm,2*fbdm))
-      exXm = c0
-      do loop_i = 1, sbdm
-        do loop_j = 1, fbdm
-          exXm(2*loop_i-1,2*loop_j-1) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
-          exXm(2*loop_i,2*loop_j) = cmplx(Xm(loop_i,loop_j),0.0_dp,dp)
-        end do
-      end do
+      allocate(exXm(2*sbdm,2*fbdm),source=c0)
+      exXm(1:sbdm,1:fbdm) = Xm * c1
+      exXm(sbdm+1:2*sbdm,fbdm+1:2*fbdm) = Xm * c1
       ! transpose(Xm)(Xm)=I
       call detach(i_j)
       call detach(i_p2_j)
       call detach(i_V_j)
       !-------------------------------------------
-      call detach(i_pxVpx_j)
-      call detach(i_pyVpy_j)
-      call detach(i_pzVpz_j)
-      call detach(i_pxVpy_j)
-      call detach(i_pyVpx_j)
-      call detach(i_pxVpz_j)
-      call detach(i_pzVpx_j)
-      call detach(i_pyVpz_j)
-      call detach(i_pzVpy_j)
+      call detach(pxVpx)
+      call detach(pyVpy)
+      call detach(pzVpz)
+      call detach(pxVpy)
+      call detach(pyVpx)
+      call detach(pxVpz)
+      call detach(pzVpx)
+      call detach(pyVpz)
+      call detach(pzVpy)
       if (SRTP_type) then
-        call detach(i_px3Vpx_j)
-        call detach(i_py3Vpy_j)
-        call detach(i_pz3Vpz_j)
-        call detach(i_px3Vpy_j)
-        call detach(i_py3Vpx_j)
-        call detach(i_px3Vpz_j)
-        call detach(i_pz3Vpx_j)
-        call detach(i_py3Vpz_j)
-        call detach(i_pz3Vpy_j)
+        call detach(px3Vpx)
+        call detach(py3Vpy)
+        call detach(pz3Vpz)
+        call detach(px3Vpy)
+        call detach(py3Vpx)
+        call detach(px3Vpz)
+        call detach(pz3Vpx)
+        call detach(py3Vpz)
+        call detach(pz3Vpy)
       end if
       if (smallest_evl < cutS) then
         write(60,'(A,I4)') '  complete! basis dimension reduce to ', fbdm
@@ -275,600 +265,450 @@ module Hamiltonian
 !> assign value to one electron integral matrices
   subroutine assign_matrices_1e()
     implicit none
-    integer :: i                             ! openMP parallel variable
-    integer :: contraction_i                 ! contraction of atom_i, shell_i
-    integer :: L_i                           ! angular quantum number of |AOi>
-    integer :: M_i                           ! magnetic quantum number of |AOi>
-    integer :: contraction_j                 ! contraction of atom_j, shell_j
-    integer :: L_j                           ! angular quantum number of |AOj>
-    integer :: M_j                           ! magnetic quantum number of |AOj>
-    real(dp) :: exponents_i(20)              ! exponents of |AOi>
-    real(dp) :: exponents_j(20)              ! exponents of |AOj>
-    real(dp) :: coefficient_i(20)            ! coefficient of |AOi>
-    real(dp) :: coefficient_j(20)            ! coefficient of |AOj>
-    real(dp) :: coordinate_i(3)              ! coordinate of center of |AOi>
-    real(dp) :: coordinate_j(3)              ! coordinate of center of |AOj>
-    real(dp) :: coedx_i(40)                  ! coefficient.derivative x.|AOi>
-    real(dp) :: coedy_i(40)                  ! coefficient.derivative y.|AOi>
-    real(dp) :: coedz_i(40)                  ! coefficient.derivative z.|AOi>
-    real(dp) :: coedx_j(40)                  ! coefficient.derivative x.|AOj>
-    real(dp) :: coedy_j(40)                  ! coefficient.derivative y.|AOj>
-    real(dp) :: coedz_j(40)                  ! coefficient.derivative z.|AOj>
-    character(len=5) :: chardx_i(2)          ! x,y,z factor.derivative x.|AOi>
-    character(len=5) :: chardy_i(2)          ! x,y,z factor.derivative y.|AOi>
-    character(len=5) :: chardz_i(2)          ! x,y,z factor.derivative z.|AOi>
-    character(len=5) :: chardx_j(2)          ! x,y,z factor.derivative x.|AOj>
-    character(len=5) :: chardy_j(2)          ! x,y,z factor.derivative y.|AOj>
-    character(len=5) :: chardz_j(2)          ! x,y,z factor.derivative z.|AOj>
-    real(dp) :: integral_overlap
-    real(dp) :: integral_dx
-    real(dp) :: integral_dy
-    real(dp) :: integral_dz
-    real(dp) :: integral_V
-    real(dp) :: integral_DKH2(9)
-    real(dp) :: integral_SRTP(9)
-    allocate (i_j(cbdm,cbdm))
-    i_j = 0.0_dp
-    allocate (i_V_j(cbdm,cbdm))
-    i_V_j = 0.0_dp
-    allocate (i_p2_j(cbdm,cbdm))
-    i_p2_j = 0.0_dp
+    integer          :: i                    ! openMP parallel variable
+    integer          :: contri               ! contraction of atoMi, shelLi
+    integer          :: Li                   ! angular quantum number of |AOi>
+    integer          :: Mi                   ! magnetic quantum number of |AOi>
+    integer          :: contrj               ! contraction of atoMj, shelLj
+    integer          :: Lj                   ! angular quantum number of |AOj>
+    integer          :: Mj                   ! magnetic quantum number of |AOj>
+    real(dp)         :: expi(16)             ! exponents of |AOi>
+    real(dp)         :: expj(16)             ! exponents of |AOj>
+    real(dp)         :: coei(16)             ! coefficient of |AOi>
+    real(dp)         :: coej(16)             ! coefficient of |AOj>
+    real(dp)         :: codi(3)              ! coordinate of center of |AOi>
+    real(dp)         :: codj(3)              ! coordinate of center of |AOj>
+    real(dp)         :: coedx_i(32)          ! coefficient.derivative x.|AOi>
+    real(dp)         :: coedy_i(32)          ! coefficient.derivative y.|AOi>
+    real(dp)         :: coedz_i(32)          ! coefficient.derivative z.|AOi>
+    real(dp)         :: coedx_j(32)          ! coefficient.derivative x.|AOj>
+    real(dp)         :: coedy_j(32)          ! coefficient.derivative y.|AOj>
+    real(dp)         :: coedz_j(32)          ! coefficient.derivative z.|AOj>
+    integer          :: facdx_i(3,2)         ! x,y,z factor.derivative x.|AOi>
+    integer          :: facdy_i(3,2)         ! x,y,z factor.derivative y.|AOi>
+    integer          :: facdz_i(3,2)         ! x,y,z factor.derivative z.|AOi>
+    integer          :: facdx_j(3,2)         ! x,y,z factor.derivative x.|AOj>
+    integer          :: facdy_j(3,2)         ! x,y,z factor.derivative y.|AOj>
+    integer          :: facdz_j(3,2)         ! x,y,z factor.derivative z.|AOj>
+    type threadlocal    ! thread-local storage to avoid thread-sync overhead
+      real(dp), allocatable :: i_j(:,:), i_p2_j(:,:), i_V_j(:,:), pxVpx(:,:),&
+      pyVpy(:,:), pzVpz(:,:), pxVpy(:,:), pyVpx(:,:), pyVpz(:,:), pzVpy(:,:),&
+      pxVpz(:,:), pzVpx(:,:), px3Vpx(:,:), py3Vpy(:,:), pz3Vpz(:,:),&
+      px3Vpy(:,:), py3Vpx(:,:), px3Vpz(:,:), pz3Vpx(:,:),py3Vpz(:,:),pz3Vpy(:,:)
+    end type
+    type(threadlocal) :: tl
+    allocate(i_j(cbdm,cbdm),i_V_j(cbdm,cbdm),i_p2_j(cbdm,cbdm), source=0.0_dp)
     if(DKH_order == 2) then
-      allocate (i_pxVpx_j(cbdm,cbdm))
-      i_pxVpx_j = 0.0_dp
-      allocate (i_pyVpy_j(cbdm,cbdm))
-      i_pyVpy_j = 0.0_dp
-      allocate (i_pzVpz_j(cbdm,cbdm))
-      i_pzVpz_j = 0.0_dp
-      allocate (i_pxVpy_j(cbdm,cbdm))
-      i_pxVpy_j = 0.0_dp
-      allocate (i_pyVpx_j(cbdm,cbdm))
-      i_pyVpx_j = 0.0_dp
-      allocate (i_pyVpz_j(cbdm,cbdm))
-      i_pyVpz_j = 0.0_dp
-      allocate (i_pzVpy_j(cbdm,cbdm))
-      i_pzVpy_j = 0.0_dp
-      allocate (i_pxVpz_j(cbdm,cbdm))
-      i_pxVpz_j = 0.0_dp
-      allocate (i_pzVpx_j(cbdm,cbdm))
-      i_pzVpx_j = 0.0_dp
+      allocate(pxVpx(cbdm,cbdm),pyVpy(cbdm,cbdm),pzVpz(cbdm,cbdm),source=0.0_dp)
+      allocate(pxVpy(cbdm,cbdm),pyVpx(cbdm,cbdm),pyVpz(cbdm,cbdm),source=0.0_dp)
+      allocate(pzVpy(cbdm,cbdm),pxVpz(cbdm,cbdm),pzVpx(cbdm,cbdm),source=0.0_dp)
       if(SRTP_type) then
-        allocate (i_px3Vpx_j(cbdm,cbdm))
-        i_px3Vpx_j = 0.0_dp
-        allocate (i_py3Vpy_j(cbdm,cbdm))
-        i_py3Vpy_j = 0.0_dp
-        allocate (i_pz3Vpz_j(cbdm,cbdm))
-        i_pz3Vpz_j = 0.0_dp
-        allocate (i_px3Vpy_j(cbdm,cbdm))
-        i_px3Vpy_j = 0.0_dp
-        allocate (i_py3Vpx_j(cbdm,cbdm))
-        i_py3Vpx_j = 0.0_dp
-        allocate (i_px3Vpz_j(cbdm,cbdm))
-        i_px3Vpz_j = 0.0_dp
-        allocate (i_pz3Vpx_j(cbdm,cbdm))
-        i_pz3Vpx_j = 0.0_dp
-        allocate (i_py3Vpz_j(cbdm,cbdm))
-        i_py3Vpz_j = 0.0_dp
-        allocate (i_pz3Vpy_j(cbdm,cbdm))
-        i_pz3Vpy_j = 0.0_dp
+        allocate (px3Vpx(cbdm,cbdm),py3Vpy(cbdm,cbdm),source=0.0_dp)
+        allocate (pz3Vpz(cbdm,cbdm),px3Vpy(cbdm,cbdm),source=0.0_dp)
+        allocate (py3Vpx(cbdm,cbdm),px3Vpz(cbdm,cbdm),source=0.0_dp)
+        allocate (pz3Vpx(cbdm,cbdm),py3Vpz(cbdm,cbdm),source=0.0_dp)
+        allocate (pz3Vpy(cbdm,cbdm),source=0.0_dp)
       end if
     end if
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads_use) default(shared) private(i,loop_i,&
-    !$omp& loop_j,loop_k,loop_m,contraction_i,L_i,M_i,contraction_j,L_j,M_j, &
-    !$omp& exponents_i,exponents_j,coefficient_i,coefficient_j,coordinate_i,&
-    !$omp& coordinate_j,chardx_i,chardy_i,chardz_i,coedx_i,coedy_i,coedz_i, &
-    !$omp& chardx_j,chardy_j,chardz_j,coedx_j,coedy_j,coedz_j,integral_dx,&
-    !$omp& integral_dy,integral_dz,integral_overlap,integral_V,integral_DKH2,&
-    !$omp& integral_SRTP) if(threads_use < cpu_threads)
+    !$omp parallel num_threads(threads) default(shared) private(i,loop_i,  &
+    !$omp& loop_j,loop_k,loop_m,contri,Li,Mi,contrj,Lj,Mj,expi,expj,coei,coej, &
+    !$omp& codi,codj,facdx_i,facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,facdx_j,  &
+    !$omp& facdy_j,facdz_j,coedx_j,coedy_j,coedz_j,tl) if(threads < nproc)
+    allocate(&
+    tl%i_j(cbdm,cbdm),tl%i_V_j(cbdm,cbdm),tl%i_p2_j(cbdm,cbdm), source=0.0_dp)
+    if (DKH_order == 2) then
+      allocate(&
+      tl%pxVpx(cbdm,cbdm),tl%pyVpy(cbdm,cbdm),tl%pzVpz(cbdm,cbdm),source=0.0_dp)
+      allocate(&
+      tl%pxVpy(cbdm,cbdm),tl%pyVpx(cbdm,cbdm),tl%pyVpz(cbdm,cbdm),source=0.0_dp)
+      allocate(&
+      tl%pzVpy(cbdm,cbdm),tl%pxVpz(cbdm,cbdm),tl%pzVpx(cbdm,cbdm),source=0.0_dp)
+      if (SRTP_type) then
+        allocate (tl%px3Vpx(cbdm,cbdm),tl%py3Vpy(cbdm,cbdm),source=0.0_dp)
+        allocate (tl%pz3Vpz(cbdm,cbdm),tl%px3Vpy(cbdm,cbdm),source=0.0_dp)
+        allocate (tl%py3Vpx(cbdm,cbdm),tl%px3Vpz(cbdm,cbdm),source=0.0_dp)
+        allocate (tl%pz3Vpx(cbdm,cbdm),tl%py3Vpz(cbdm,cbdm),source=0.0_dp)
+        allocate (tl%pz3Vpy(cbdm,cbdm),source=0.0_dp)
+      end if
+    end if
     !$omp do schedule(static)
     do i = 1, cbdm
       loop_i = i
-      exponents_i = 0.0_dp
-      coefficient_i = 0.0_dp
-      coedx_i = 0.0_dp
-      coedy_i = 0.0_dp
-      coedz_i = 0.0_dp
-      contraction_i = atom_basis(molecule(basis_inf(loop_i) % atom) % &
+      contri = atom_basis(molecule(basis_inf(loop_i) % atom) % &
       basis_number + basis_inf(loop_i) % shell - 1) % contraction
-      L_i = basis_inf(loop_i) % L
-      M_i = basis_inf(loop_i) % M
-      do loop_k = 1, contraction_i
-        exponents_i(loop_k) = atom_basis(molecule(basis_inf(loop_i) % atom) % &
-        basis_number + basis_inf(loop_i) % shell - 1) % exponents(loop_k)
-        coefficient_i(loop_k) = atom_basis(molecule(basis_inf(loop_i) % atom) &
-        % basis_number + basis_inf(loop_i) % shell - 1) &
-        % Ncoefficient(loop_k,M_i)
-      end do
-      coordinate_i = molecule(basis_inf(loop_i) % atom) % nucleus_position
-      !-------------------------------
-      ! factor of d(x^m)*exp
-      if (index(AO_xyz_factor(L_i,M_i),'x') == 4) then
-        chardx_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:3))
-      else if(index(AO_xyz_factor(L_i,M_i),'x') == 3) then
-        chardx_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:2)//&
-        AO_xyz_factor(L_i,M_i)(4:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'x') == 2) then
-        chardx_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:1)//&
-        AO_xyz_factor(L_i,M_i)(3:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'x') == 1) then
-        chardx_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(2:4))
-      else
-        chardx_i(1) = '     '
-      end if
-      if (index(AO_xyz_factor(L_i,M_i),'y') == 4) then
-        chardy_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:3))
-      else if(index(AO_xyz_factor(L_i,M_i),'y') == 3) then
-        chardy_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:2)//&
-        AO_xyz_factor(L_i,M_i)(4:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'y') == 2) then
-        chardy_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:1)//&
-        AO_xyz_factor(L_i,M_i)(3:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'y') == 1) then
-        chardy_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(2:4))
-      else
-        chardy_i(1) = '     '
-      end if
-      if (index(AO_xyz_factor(L_i,M_i),'z') == 4) then
-        chardz_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:3))
-      else if(index(AO_xyz_factor(L_i,M_i),'z') == 3) then
-        chardz_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:2)//&
-        AO_xyz_factor(L_i,M_i)(4:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'z') == 2) then
-        chardz_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(1:1)//&
-        AO_xyz_factor(L_i,M_i)(3:4))
-      else if(index(AO_xyz_factor(L_i,M_i),'z') == 1) then
-        chardz_i(1) = adjustl('  '//AO_xyz_factor(L_i,M_i)(2:4))
-      else
-        chardz_i(1) = '     '
-      end if
+      Li = basis_inf(loop_i) % L
+      Mi = basis_inf(loop_i) % M
+      expi(1:contri) = atom_basis(molecule(basis_inf(loop_i) % atom) % &
+      basis_number + basis_inf(loop_i) % shell - 1) % exponents(1:contri)
+      coei(1:contri) = atom_basis(molecule(basis_inf(loop_i) % atom) &
+      % basis_number + basis_inf(loop_i) % shell - 1) &
+      % Ncoefficient(1:contri,Mi)
+      codi = molecule(basis_inf(loop_i) % atom) % nucleus_position
       !---------------------------------------
       ! factor of x^m*d(exp)
-      chardx_i(2) = 'x'//AO_xyz_factor(L_i,M_i)
-      chardy_i(2) = 'y'//AO_xyz_factor(L_i,M_i)
-      chardz_i(2) = 'z'//AO_xyz_factor(L_i,M_i)
+      facdx_i(:,1) = AO_fac(:,Li,Mi)
+      facdx_i(1,1) = facdx_i(1,1) + 1
+      facdy_i(:,1) = AO_fac(:,Li,Mi)
+      facdy_i(2,1) = facdy_i(2,1) + 1
+      facdz_i(:,1) = AO_fac(:,Li,Mi)
+      facdz_i(3,1) = facdz_i(3,1) + 1
+      !-------------------------------
+      ! factor of d(x^m)*exp
+      facdx_i(:,2) = AO_fac(:,Li,Mi)
+      facdx_i(1,2) = max(facdx_i(1,2)-1,0)
+      facdy_i(:,2) = AO_fac(:,Li,Mi)
+      facdy_i(2,2) = max(facdy_i(2,2)-1,0)
+      facdz_i(:,2) = AO_fac(:,Li,Mi)
+      facdz_i(3,2) = max(facdz_i(3,2)-1,0)
       !---------------------------------------
       ! coefficient of x^m*d(exp)
-      loop_k = 2
-      do while(loop_k <= 2*contraction_i)
-        coedx_i(loop_k) = -2.0_dp * coefficient_i(loop_k/2) * &
-        exponents_i(loop_k/2)
-        coedy_i(loop_k) = -2.0_dp * coefficient_i(loop_k/2) * &
-        exponents_i(loop_k/2)
-        coedz_i(loop_k) = -2.0_dp * coefficient_i(loop_k/2) * &
-        exponents_i(loop_k/2)
-        loop_k = loop_k + 2
-      end do
+      coedx_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
+      coedy_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
+      coedz_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
       !---------------------------------
       ! coefficient of d(x^m)*exp
-      loop_k = 1
-      do while(loop_k < 2*contraction_i)
-        coedx_i(loop_k) = 0.0_dp
-        coedy_i(loop_k) = 0.0_dp
-        coedz_i(loop_k) = 0.0_dp
-        do loop_m = 1, len(AO_xyz_factor(L_i,M_i))
-          if (AO_xyz_factor(L_i,M_i)(loop_m:loop_m) == 'x') &
-          coedx_i(loop_k) = coedx_i(loop_k) + coefficient_i((loop_k + 1) / 2)
-          if (AO_xyz_factor(L_i,M_i)(loop_m:loop_m) == 'y') &
-          coedy_i(loop_k) = coedy_i(loop_k) + coefficient_i((loop_k + 1) / 2)
-          if (AO_xyz_factor(L_i,M_i)(loop_m:loop_m) == 'z') &
-          coedz_i(loop_k) = coedz_i(loop_k) + coefficient_i((loop_k + 1) / 2)
-        end do
-        loop_k = loop_k + 2
-      end do
+      coedx_i(contri+1:2*contri) = AO_fac(1,Li,Mi) * coei(1:contri)
+      coedy_i(contri+1:2*contri) = AO_fac(2,Li,Mi) * coei(1:contri)
+      coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
       do loop_j = 1, cbdm
-        exponents_j = 0.0_dp
-        coefficient_j = 0.0_dp
-        coedx_j = 0.0_dp
-        coedy_j = 0.0_dp
-        coedz_j = 0.0_dp
-        contraction_j = atom_basis(molecule(basis_inf(loop_j) % atom) % &
+        contrj = atom_basis(molecule(basis_inf(loop_j) % atom) % &
         basis_number + basis_inf(loop_j) % shell - 1) % contraction
-        L_j = basis_inf(loop_j) % L
-        M_j = basis_inf(loop_j) % M
-        do loop_k = 1, contraction_j
-          exponents_j(loop_k) = atom_basis(molecule(basis_inf(loop_j) % atom)&
-          % basis_number + basis_inf(loop_j) % shell - 1) % exponents(loop_k)
-          coefficient_j(loop_k) = &
-          atom_basis(molecule(basis_inf(loop_j) % atom) % basis_number + &
-          basis_inf(loop_j) % shell - 1) % Ncoefficient(loop_k,M_j)
-        end do
-        coordinate_j = molecule(basis_inf(loop_j) % atom) % nucleus_position
-        if (index(AO_xyz_factor(L_j,M_j),'x') == 4) then
-          chardx_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:3))
-        else if(index(AO_xyz_factor(L_j,M_j),'x') == 3) then
-          chardx_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:2)//&
-          AO_xyz_factor(L_j,M_j)(4:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'x') == 2) then
-          chardx_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:1)//&
-          AO_xyz_factor(L_j,M_j)(3:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'x') == 1) then
-          chardx_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(2:4))
-        else
-          chardx_j(1) = '     '
-        end if
-        if (index(AO_xyz_factor(L_j,M_j),'y') == 4) then
-          chardy_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:3))
-        else if(index(AO_xyz_factor(L_j,M_j),'y') == 3) then
-          chardy_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:2)//&
-          AO_xyz_factor(L_j,M_j)(4:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'y') == 2) then
-          chardy_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:1)//&
-          AO_xyz_factor(L_j,M_j)(3:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'y') == 1) then
-          chardy_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(2:4))
-        else
-          chardy_j(1) = '     '
-        end if
-        if (index(AO_xyz_factor(L_j,M_j),'z') == 4) then
-          chardz_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:3))
-        else if(index(AO_xyz_factor(L_j,M_j),'z') == 3) then
-          chardz_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:2)//&
-          AO_xyz_factor(L_j,M_j)(4:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'z') == 2) then
-          chardz_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(1:1)//&
-          AO_xyz_factor(L_j,M_j)(3:4))
-        else if(index(AO_xyz_factor(L_j,M_j),'z') == 1) then
-          chardz_j(1) = adjustl('  '//AO_xyz_factor(L_j,M_j)(2:4))
-        else
-          chardz_j(1) = '     '
-        end if
-        chardx_j(2) = 'x'//AO_xyz_factor(L_j,M_j)
-        chardy_j(2) = 'y'//AO_xyz_factor(L_j,M_j)
-        chardz_j(2) = 'z'//AO_xyz_factor(L_j,M_j)
-        loop_k = 2
-        do while(loop_k <= 2*contraction_j)
-          coedx_j(loop_k) = -2.0_dp * coefficient_j(loop_k/2) * &
-          exponents_j(loop_k/2)
-          coedy_j(loop_k) = -2.0_dp * coefficient_j(loop_k/2) * &
-          exponents_j(loop_k/2)
-          coedz_j(loop_k) = -2.0_dp * coefficient_j(loop_k/2) * &
-          exponents_j(loop_k/2)
-          loop_k = loop_k + 2
-        end do
-        loop_k = 1
-        do while(loop_k < 2*contraction_j)
-          coedx_j(loop_k) = 0.0_dp
-          coedy_j(loop_k) = 0.0_dp
-          coedz_j(loop_k) = 0.0_dp
-          do loop_m = 1, len(AO_xyz_factor(L_j,M_j))
-            if (AO_xyz_factor(L_j,M_j)(loop_m:loop_m) == 'x') &
-            coedx_j(loop_k) = coedx_j(loop_k) + coefficient_j((loop_k + 1) / 2)
-            if (AO_xyz_factor(L_j,M_j)(loop_m:loop_m) == 'y') &
-            coedy_j(loop_k) = coedy_j(loop_k) + coefficient_j((loop_k + 1) / 2)
-            if (AO_xyz_factor(L_j,M_j)(loop_m:loop_m) == 'z') &
-            coedz_j(loop_k) = coedz_j(loop_k) + coefficient_j((loop_k + 1) / 2)
-          end do
-          loop_k = loop_k + 2
-        end do
+        Lj = basis_inf(loop_j) % L
+        Mj = basis_inf(loop_j) % M
+        expj(1:contrj) = atom_basis(molecule(basis_inf(loop_j) % atom) % &
+        basis_number + basis_inf(loop_j) % shell - 1) % exponents(1:contrj)
+        coej(1:contrj) = atom_basis(molecule(basis_inf(loop_j) % atom) &
+        % basis_number + basis_inf(loop_j) % shell - 1) &
+        % Ncoefficient(1:contrj,Mj)
+        codj = molecule(basis_inf(loop_j) % atom) % nucleus_position
+        !---------------------------------------
+        ! factor of x^m*d(exp)
+        facdx_j(:,1) = AO_fac(:,Lj,Mj)
+        facdx_j(1,1) = facdx_j(1,1) + 1
+        facdy_j(:,1) = AO_fac(:,Lj,Mj)
+        facdy_j(2,1) = facdy_j(2,1) + 1
+        facdz_j(:,1) = AO_fac(:,Lj,Mj)
+        facdz_j(3,1) = facdz_j(3,1) + 1
+        !-------------------------------
+        ! factor of d(x^m)*exp
+        facdx_j(:,2) = AO_fac(:,Lj,Mj)
+        facdx_j(1,2) = max(facdx_j(1,2)-1,0)
+        facdy_j(:,2) = AO_fac(:,Lj,Mj)
+        facdy_j(2,2) = max(facdy_j(2,2)-1,0)
+        facdz_j(:,2) = AO_fac(:,Lj,Mj)
+        facdz_j(3,2) = max(facdz_j(3,2)-1,0)
+        !---------------------------------------
+        ! coeffjcjent of x^m*d(exp)
+        coedx_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
+        coedy_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
+        coedz_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
+        !---------------------------------
+        ! coeffjcjent of d(x^m)*exp
+        coedx_j(contrj+1:2*contrj) = AO_fac(1,Lj,Mj) * coej(1:contrj)
+        coedy_j(contrj+1:2*contrj) = AO_fac(2,Lj,Mj) * coej(1:contrj)
+        coedz_j(contrj+1:2*contrj) = AO_fac(3,Lj,Mj) * coej(1:contrj)
         ! calc <AOi|V|AOj>
-        integral_V = calc_1e_V(contraction_i,contraction_j,coefficient_i,&
-        coefficient_j,AO_xyz_factor(L_i,M_i),AO_xyz_factor(L_j,M_j),&
-        exponents_i,exponents_j,coordinate_i,coordinate_j)
+        tl%i_V_j(loop_i,loop_j) = calc_1e_V(&
+        contri,contrj,coei(1:contri),coej(1:contrj),&
+        AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),expi(1:contri),expj(1:contrj),codi,codj)
         
         if (DKH_order == 2) then
           ! calc <AOi|pVp|AOj>,totally 9 matrices,6 matrices will be calculated
-          integral_DKH2(1) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedx_i,coedx_j,chardx_i,chardx_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(2) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedy_i,coedy_j,chardy_i,chardy_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(3) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedz_i,coedz_j,chardz_i,chardz_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(4) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedx_i,coedy_j,chardx_i,chardy_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(5) = integral_DKH2(4)
-          integral_DKH2(6) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedx_i,coedz_j,chardx_i,chardz_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(7) = integral_DKH2(6)
-          integral_DKH2(8) = calc_1e_pVp(contraction_i,contraction_j,&
-          coedy_i,coedz_j,chardy_i,chardz_j,exponents_i,exponents_j,&
-          coordinate_i,coordinate_j)
-          integral_DKH2(9) = integral_DKH2(8)
+          tl%pxVpx(loop_i,loop_j)=calc_1e_pVp(AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),&
+          contri,contrj,coedx_i(1:2*contri),coedx_j(1:2*contrj),&
+          facdx_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pyVpy(loop_i,loop_j)=calc_1e_pVp(AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),&
+          contri,contrj,coedy_i(1:2*contri),coedy_j(1:2*contrj),&
+          facdy_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pzVpz(loop_i,loop_j)=calc_1e_pVp(AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),&
+          contri,contrj,coedz_i(1:2*contri),coedz_j(1:2*contrj),&
+          facdz_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pxVpy(loop_i,loop_j)=calc_1e_pVp(AO_fac(1,Li,Mi),AO_fac(2,Lj,Mj),&
+          contri,contrj,coedx_i(1:2*contri),coedy_j(1:2*contrj),&
+          facdx_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pyVpx(loop_j,loop_i) = tl%pxVpy(loop_i,loop_j)
+          tl%pxVpz(loop_i,loop_j)=calc_1e_pVp(AO_fac(1,Li,Mi),AO_fac(3,Lj,Mj),&
+          contri,contrj,coedx_i(1:2*contri),coedz_j(1:2*contrj),&
+          facdx_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pzVpx(loop_j,loop_i) = tl%pxVpz(loop_i,loop_j)
+          tl%pyVpz(loop_i,loop_j)=calc_1e_pVp(AO_fac(2,Li,Mi),AO_fac(3,Lj,Mj),&
+          contri,contrj,coedy_i(1:2*contri),coedz_j(1:2*contrj),&
+          facdy_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pzVpy(loop_j,loop_i) = tl%pyVpz(loop_i,loop_j)
           ! calc <AOi|p^3Vp|AOj> and <AOi|pVp^3|AOj>, totally 18 matrices,
           ! 9 matrices will be calculated
           if (SRTP_type) then
-            integral_SRTP(1) = calc_1e_pppVp('xx',contraction_i,contraction_j,&
-            coedx_i,coedx_j,chardx_i,chardx_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(2) = calc_1e_pppVp('yy',contraction_i,contraction_j,&
-            coedy_i,coedy_j,chardy_i,chardy_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(3) = calc_1e_pppVp('zz',contraction_i,contraction_j,&
-            coedz_i,coedz_j,chardz_i,chardz_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(4) = calc_1e_pppVp('xy',contraction_i,contraction_j,&
-            coedx_i,coedy_j,chardx_i,chardy_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(5) = calc_1e_pppVp('yx',contraction_i,contraction_j,&
-            coedy_i,coedx_j,chardy_i,chardx_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(6) = calc_1e_pppVp('xz',contraction_i,contraction_j,&
-            coedx_i,coedz_j,chardx_i,chardz_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(7) = calc_1e_pppVp('zx',contraction_i,contraction_j,&
-            coedz_i,coedx_j,chardz_i,chardx_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(8) = calc_1e_pppVp('yz',contraction_i,contraction_j,&
-            coedy_i,coedz_j,chardy_i,chardz_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
-            integral_SRTP(9) = calc_1e_pppVp('zy',contraction_i,contraction_j,&
-            coedz_i,coedy_j,chardz_i,chardy_j,exponents_i,exponents_j,&
-            coordinate_i,coordinate_j)
+            tl%px3Vpx(loop_i,loop_j) = calc_1e_pppVp(1,AO_fac(1,Li,Mi),&
+            AO_fac(1,Lj,Mj),contri,contrj,coedx_i(1:2*contri),&
+            coedx_j(1:2*contrj),facdx_i,facdx_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%py3Vpy(loop_i,loop_j) = calc_1e_pppVp(2,AO_fac(2,Li,Mi),&
+            AO_fac(2,Lj,Mj),contri,contrj,coedy_i(1:2*contri),&
+            coedy_j(1:2*contrj),facdy_i,facdy_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%pz3Vpz(loop_i,loop_j) = calc_1e_pppVp(3,AO_fac(3,Li,Mi),&
+            AO_fac(3,Lj,Mj),contri,contrj,coedz_i(1:2*contri),&
+            coedz_j(1:2*contrj),facdz_i,facdz_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%px3Vpy(loop_i,loop_j) = calc_1e_pppVp(1,AO_fac(1,Li,Mi),&
+            AO_fac(2,Lj,Mj),contri,contrj,coedx_i(1:2*contri),&
+            coedy_j(1:2*contrj),facdx_i,facdy_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%py3Vpx(loop_i,loop_j) = calc_1e_pppVp(2,AO_fac(2,Li,Mi),&
+            AO_fac(1,Lj,Mj),contri,contrj,coedy_i(1:2*contri),&
+            coedx_j(1:2*contrj),facdy_i,facdx_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%px3Vpz(loop_i,loop_j) = calc_1e_pppVp(1,AO_fac(1,Li,Mi),&
+            AO_fac(3,Lj,Mj),contri,contrj,coedx_i(1:2*contri),&
+            coedz_j(1:2*contrj),facdx_i,facdz_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%pz3Vpx(loop_i,loop_j) = calc_1e_pppVp(3,AO_fac(3,Li,Mi),&
+            AO_fac(1,Lj,Mj),contri,contrj,coedz_i(1:2*contri),&
+            coedx_j(1:2*contrj),facdz_i,facdx_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%py3Vpz(loop_i,loop_j) = calc_1e_pppVp(2,AO_fac(2,Li,Mi),&
+            AO_fac(3,Lj,Mj),contri,contrj,coedy_i(1:2*contri),&
+            coedz_j(1:2*contrj),facdy_i,facdz_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
+            tl%pz3Vpy(loop_i,loop_j) = calc_1e_pppVp(3,AO_fac(3,Li,Mi),&
+            AO_fac(2,Lj,Mj),contri,contrj,coedz_i(1:2*contri),&
+            coedy_j(1:2*contrj),facdz_i,facdy_j,expi(1:contri),&
+            expj(1:contrj),codi,codj)
           end if
         end if
         !-------------<basis overlap integral>-------------
-        integral_overlap = 0.0_dp
-        do loop_k = 1, contraction_i
-          do loop_m = 1, contraction_j
-            integral_overlap = integral_overlap + Gaussian_Product_Integral(&
-            coefficient_i(loop_k)*coefficient_j(loop_m),AO_xyz_factor(L_i,M_i),&
-            AO_xyz_factor(L_j,M_j),exponents_i(loop_k),exponents_j(loop_m),&
-            coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-            coordinate_j(1),coordinate_j(2),coordinate_j(3))
+        do loop_k = 1, contri
+          do loop_m = 1, contrj
+            tl%i_j(loop_i,loop_j) = tl%i_j(loop_i,loop_j) + &
+            Gaussian_Product_Integral(coei(loop_k)*coej(loop_m),&
+            AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),expi(loop_k),expj(loop_m),codi,codj)
           end do
         end do
         !-------------<P2 integral>-------------
-        integral_dx = 0.0_dp
-        do loop_k = 1, 2*contraction_i
-          do loop_m = 1, 2*contraction_j
-            if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 0) then
-              integral_dx = integral_dx + Gaussian_Product_Integral(&
-              coedx_i(loop_k)*coedx_j(loop_m),chardx_i(2),chardx_j(2),&
-              exponents_i(loop_k/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 0) then
-              integral_dx = integral_dx + Gaussian_Product_Integral(&
-              coedx_i(loop_k)*coedx_j(loop_m),chardx_i(1),chardx_j(2),&
-              exponents_i((loop_k+1)/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 1) then
-              integral_dx = integral_dx + Gaussian_Product_Integral(&
-              coedx_i(loop_k)*coedx_j(loop_m),chardx_i(2),chardx_j(1),&
-              exponents_i(loop_k/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 1) then
-              integral_dx = integral_dx + Gaussian_Product_Integral(&
-              coedx_i(loop_k)*coedx_j(loop_m),chardx_i(1),chardx_j(1),&
-              exponents_i((loop_k+1)/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            end if
-          end do
-        end do
-        integral_dy = 0.0_dp
-        do loop_k = 1, 2*contraction_i
-          do loop_m = 1, 2*contraction_j
-            if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 0) then
-              integral_dy = integral_dy + Gaussian_Product_Integral(&
-              coedy_i(loop_k)*coedy_j(loop_m),chardy_i(2),chardy_j(2),&
-              exponents_i(loop_k/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 0) then
-              integral_dy = integral_dy + Gaussian_Product_Integral(&
-              coedy_i(loop_k)*coedy_j(loop_m),chardy_i(1),chardy_j(2),&
-              exponents_i((loop_k+1)/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 1) then
-              integral_dy = integral_dy + Gaussian_Product_Integral(&
-              coedy_i(loop_k)*coedy_j(loop_m),chardy_i(2),chardy_j(1),&
-              exponents_i(loop_k/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 1) then
-              integral_dy = integral_dy + Gaussian_Product_Integral(&
-              coedy_i(loop_k)*coedy_j(loop_m),chardy_i(1),chardy_j(1),&
-              exponents_i((loop_k+1)/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            end if
-          end do
-        end do
-        integral_dz = 0.0_dp
-        do loop_k = 1, 2*contraction_i
-          do loop_m = 1, 2*contraction_j
-            if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 0) then
-              integral_dz = integral_dz + Gaussian_Product_Integral(&
-              coedz_i(loop_k)*coedz_j(loop_m),chardz_i(2),chardz_j(2),&
-              exponents_i(loop_k/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 0) then
-              integral_dz = integral_dz + Gaussian_Product_Integral(&
-              coedz_i(loop_k)*coedz_j(loop_m),chardz_i(1),chardz_j(2),&
-              exponents_i((loop_k+1)/2),exponents_j(loop_m/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 0 .and. mod(loop_m,2) == 1) then
-              integral_dz = integral_dz + Gaussian_Product_Integral(&
-              coedz_i(loop_k)*coedz_j(loop_m),chardz_i(2),chardz_j(1),&
-              exponents_i(loop_k/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            else if (mod(loop_k,2) == 1 .and. mod(loop_m,2) == 1) then
-              integral_dz = integral_dz + Gaussian_Product_Integral(&
-              coedz_i(loop_k)*coedz_j(loop_m),chardz_i(1),chardz_j(1),&
-              exponents_i((loop_k+1)/2),exponents_j((loop_m+1)/2),&
-              coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-              coordinate_j(1),coordinate_j(2),coordinate_j(3))
-            end if
-          end do
-        end do
-        !$omp atomic
-        i_j(loop_i,loop_j) = i_j(loop_i,loop_j) + integral_overlap
-        !$omp atomic
-        i_p2_j(loop_i,loop_j) = i_p2_j(loop_i,loop_j) + &
-        integral_dx + integral_dy + integral_dz
-        !$omp atomic
-        i_V_j(loop_i,loop_j) = i_V_j(loop_i,loop_j) + integral_V
-        if (DKH_order == 2) then
-          !$omp atomic
-          i_pxVpx_j(loop_i,loop_j) = i_pxVpx_j(loop_i,loop_j) + integral_DKH2(1)
-          !$omp atomic
-          i_pyVpy_j(loop_i,loop_j) = i_pyVpy_j(loop_i,loop_j) + integral_DKH2(2)
-          !$omp atomic
-          i_pzVpz_j(loop_i,loop_j) = i_pzVpz_j(loop_i,loop_j) + integral_DKH2(3)
-          !$omp atomic
-          i_pxVpy_j(loop_i,loop_j) = i_pxVpy_j(loop_i,loop_j) + integral_DKH2(4)
-          !$omp atomic
-          i_pyVpx_j(loop_j,loop_i) = i_pyVpx_j(loop_j,loop_i) + integral_DKH2(5)
-          !$omp atomic
-          i_pxVpz_j(loop_i,loop_j) = i_pxVpz_j(loop_i,loop_j) + integral_DKH2(6)
-          !$omp atomic
-          i_pzVpx_j(loop_j,loop_i) = i_pzVpx_j(loop_j,loop_i) + integral_DKH2(7)
-          !$omp atomic
-          i_pyVpz_j(loop_i,loop_j) = i_pyVpz_j(loop_i,loop_j) + integral_DKH2(8)
-          !$omp atomic
-          i_pzVpy_j(loop_j,loop_i) = i_pzVpy_j(loop_j,loop_i) + integral_DKH2(9)
-          if (SRTP_type) then
-            !$omp atomic
-            i_px3Vpx_j(loop_i,loop_j) = &
-            i_px3Vpx_j(loop_i,loop_j) + integral_SRTP(1)
-            !$omp atomic
-            i_py3Vpy_j(loop_i,loop_j) = &
-            i_py3Vpy_j(loop_i,loop_j) + integral_SRTP(2)
-            !$omp atomic
-            i_pz3Vpz_j(loop_i,loop_j) = &
-            i_pz3Vpz_j(loop_i,loop_j) + integral_SRTP(3)
-            !$omp atomic
-            i_px3Vpy_j(loop_i,loop_j) = &
-            i_px3Vpy_j(loop_i,loop_j) + integral_SRTP(4)
-            !$omp atomic
-            i_py3Vpx_j(loop_i,loop_j) = &
-            i_py3Vpx_j(loop_i,loop_j) + integral_SRTP(5)
-            !$omp atomic
-            i_px3Vpz_j(loop_i,loop_j) = &
-            i_px3Vpz_j(loop_i,loop_j) + integral_SRTP(6)
-            !$omp atomic
-            i_pz3Vpx_j(loop_i,loop_j) = &
-            i_pz3Vpx_j(loop_i,loop_j) + integral_SRTP(7)
-            !$omp atomic
-            i_py3Vpz_j(loop_i,loop_j) = &
-            i_py3Vpz_j(loop_i,loop_j) + integral_SRTP(8)
-            !$omp atomic
-            i_pz3Vpy_j(loop_i,loop_j) = &
-            i_pz3Vpy_j(loop_i,loop_j) + integral_SRTP(9)
-          end if
-        end if
+        tl%i_p2_j(loop_i,loop_j) = tl%i_p2_j(loop_i,loop_j) + &
+        calc_1e_pp(AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),contri,contrj,&
+        coedx_i(1:2*contri),coedx_j(1:2*contrj),facdx_i,facdx_j,&
+        expi(1:contri),expj(1:contrj),codi,codj)
+        tl%i_p2_j(loop_i,loop_j) = tl%i_p2_j(loop_i,loop_j) + &
+        calc_1e_pp(AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),contri,contrj,&
+        coedy_i(1:2*contri),coedy_j(1:2*contrj),facdy_i,facdy_j,&
+        expi(1:contri),expj(1:contrj),codi,codj)
+        tl%i_p2_j(loop_i,loop_j) = tl%i_p2_j(loop_i,loop_j) + &
+        calc_1e_pp(AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),contri,contrj,&
+        coedz_i(1:2*contri),coedz_j(1:2*contrj),facdz_i,facdz_j,&
+        expi(1:contri),expj(1:contrj),codi,codj)
       end do
     end do
     !$omp end do
-    !$omp end parallel
-    ! consider the relation p = -iD, 
-    ! p3Vp and pVp3 change sign, p2 and pVp nochange
-    if (SRTP_type) then
-      i_px3Vpx_j = - i_px3Vpx_j
-      i_py3Vpy_j = - i_py3Vpy_j
-      i_pz3Vpz_j = - i_pz3Vpz_j
-      i_px3Vpy_j = - i_px3Vpy_j
-      i_py3Vpx_j = - i_py3Vpx_j
-      i_px3Vpz_j = - i_px3Vpz_j
-      i_pz3Vpx_j = - i_pz3Vpx_j
-      i_py3Vpz_j = - i_py3Vpz_j
-      i_pz3Vpy_j = - i_pz3Vpy_j
+    !-------------<thread sync>-------------
+    !$omp critical
+    i_j = i_j + tl%i_j
+    i_V_j = i_V_j + tl%i_V_j
+    i_p2_j = i_p2_j + tl%i_p2_j
+    if (DKH_order == 2) then
+      pxVpx = pxVpx + tl%pxVpx
+      pyVpy = pyVpy + tl%pyVpy
+      pzVpz = pzVpz + tl%pzVpz
+      pxVpy = pxVpy + tl%pxVpy
+      pyVpx = pyVpx + tl%pyVpx
+      pxVpz = pxVpz + tl%pxVpz
+      pzVpx = pzVpx + tl%pzVpx
+      pyVpz = pyVpz + tl%pyVpz
+      pzVpy = pzVpy + tl%pzVpy
+      ! consider the relation p = -iD,
+      ! p3Vp and pVp3 change sign, p2 and pVp nochange
+      if (SRTP_type) then
+        px3Vpx = px3Vpx - tl%px3Vpx
+        py3Vpy = py3Vpy - tl%py3Vpy
+        pz3Vpz = pz3Vpz - tl%pz3Vpz
+        px3Vpy = px3Vpy - tl%px3Vpy
+        py3Vpx = py3Vpx - tl%py3Vpx
+        px3Vpz = px3Vpz - tl%px3Vpz
+        pz3Vpx = pz3Vpx - tl%pz3Vpx
+        py3Vpz = py3Vpz - tl%py3Vpz
+        pz3Vpy = pz3Vpy - tl%pz3Vpy
+      end if
     end if
+    !$omp end critical
+    ! free memory for parallel threads explicitly
+    deallocate(tl%i_j, tl%i_p2_j, tl%i_V_j)
+    if (DKH_order == 2) then
+      deallocate(tl%pxVpx, tl%pyVpy, tl%pzVpz)
+      deallocate(tl%pxVpy, tl%pyVpx, tl%pxVpz)
+      deallocate(tl%pzVpx, tl%pyVpz, tl%pzVpy)
+      if (SRTP_type) then
+        deallocate(tl%px3Vpx, tl%py3Vpy, tl%pz3Vpz)
+        deallocate(tl%px3Vpy, tl%py3Vpx, tl%px3Vpz)
+        deallocate(tl%pz3Vpx, tl%py3Vpz, tl%pz3Vpy)
+      end if
+    end if
+    !$omp end parallel
   end subroutine assign_matrices_1e
 
 !-----------------------------------------------------------------------
 !> calc values to matrix <AOi|V|AOj>
-  pure function calc_1e_V(&
-  contr_i,contr_j,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j) &
-  result(integral_pot)
+  real(dp) pure function calc_1e_pp(&
+  ni,nj,contri,contrj,coei,coej,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
-    integer,intent(in) :: contr_i
-    integer,intent(in) :: contr_j
-    integer :: bloop_i,bloop_j,bloop_pot   ! loop variables only for calc_1e_V
-    real(dp),intent(in) :: coe_i(contr_i)  ! coefficients of i^th orbital
-    real(dp),intent(in) :: coe_j(contr_j)  ! coefficients of j^th orbital
-    real(dp),intent(in) :: expo_i(contr_i) ! exponents of i^th orbital
-    real(dp),intent(in) :: expo_j(contr_j) ! exponents of j^th orbital
-    real(dp),intent(in) :: cod_i(3)        ! centrol coordintates.i^th orbital
-    real(dp),intent(in) :: cod_j(3)        ! centrol coordintates.j^th orbital
-    real(dp) :: bcod_i(3)                  ! extended coordintates.i^th orbital
-    real(dp) :: bcod_j(3)                  ! extended coordintates.j^th orbital
-    real(dp) :: Z_pot, R_pot
-    real(dp) :: integral_pot
-    real(dp) :: cod_pot(3)
-    character(len = *),intent(in) :: fac_i ! xyz factor of i^th orbital
-    character(len = *),intent(in) :: fac_j ! xyz factor of j^th orbital
-    integral_pot = 0.0_dp
-    do bloop_pot = 1, atom_count
-      cod_pot = molecule(bloop_pot) % nucleus_position
-      Z_pot = real(molecule(bloop_pot) % atom_number)
-      R_pot = molecule(bloop_pot) % nucleus_radius / fm2Bohr
-      ! center of potential atom set to zero
-      bcod_i(1) = cod_i(1) - cod_pot(1)
-      bcod_i(2) = cod_i(2) - cod_pot(2)
-      bcod_i(3) = cod_i(3) - cod_pot(3)
-      bcod_j(1) = cod_j(1) - cod_pot(1)
-      bcod_j(2) = cod_j(2) - cod_pot(2)
-      bcod_j(3) = cod_j(3) - cod_pot(3)
-      do bloop_i = 1, contr_i
-        do bloop_j = 1, contr_j
-          integral_pot = integral_pot + V_Integral_1e(&
-          Z_pot,coe_i(bloop_i),coe_j(bloop_j),fac_i,fac_j,&
-          expo_i(bloop_i),expo_j(bloop_j),bcod_i(1),bcod_i(2),bcod_i(3),&
-          bcod_j(1),bcod_j(2),bcod_j(3),R_pot)
+    integer,intent(in)  :: ni              ! number of x/y/z in <i|
+    integer,intent(in)  :: nj              ! number of x/y/z in <j|
+    integer,intent(in)  :: contri          ! contraction of |i>
+    integer,intent(in)  :: contrj          ! contraction of |j>
+    real(dp),intent(in) :: coei(2*contri)  ! coefficients of i^th orbital
+    real(dp),intent(in) :: coej(2*contrj)  ! coefficients of j^th orbital
+    integer,intent(in)  :: faci(3,2)       ! xyz factor of i^th orbital
+    integer,intent(in)  :: facj(3,2)       ! xyz factor of j^th orbital
+    real(dp),intent(in) :: expi(2*contri)  ! exponents of i^th orbital
+    real(dp),intent(in) :: expj(2*contrj)  ! exponents of j^th orbital
+    real(dp),intent(in) :: codi(3)         ! centrol coordintates.i^th orbital
+    real(dp),intent(in) :: codj(3)         ! centrol coordintates.j^th orbital
+    integer             :: numi, numj
+    integer :: pploop_i,pploop_j,pploop_k,pploop_l ! loop variables
+
+    if (ni == 0) then
+      numi = 1
+    else
+      numi = 2
+    end if
+    if (nj == 0) then
+      numj = 1
+    else
+      numj = 2
+    end if
+    val = 0.0_dp
+    ! center of potential atom set to zero
+    do pploop_k = 1, numi
+      do pploop_i = 1, contri
+        do pploop_l = 1, numj
+          do pploop_j = 1, contrj
+            val = val + Gaussian_Product_Integral(    &
+            coei((pploop_k-1)*contri+pploop_i)*       &
+            coej((pploop_l-1)*contrj+pploop_j),       &
+            faci(:,pploop_k),                         &
+            facj(:,pploop_l),                         &
+            expi(pploop_i),                           &
+            expj(pploop_j),                           &
+            codi,                                     &
+            codj)
+          end do
         end do
       end do
     end do
-    return 
+    return
+  end function calc_1e_pp
+
+!-----------------------------------------------------------------------
+!> calc values to matrix <AOi|V|AOj>
+  real(dp) pure function calc_1e_V(&
+  contri,contrj,coei,coej,faci,facj,expi,expj,codi,codj) result(val)
+    implicit none
+    integer,intent(in)  :: contri          ! contraction of |i>
+    integer,intent(in)  :: contrj          ! contraction of |j>
+    real(dp),intent(in) :: coei(contri)    ! coefficients of i^th orbital
+    real(dp),intent(in) :: coej(contrj)    ! coefficients of j^th orbital
+    integer,intent(in)  :: faci(3)         ! xyz factor of i^th orbital
+    integer,intent(in)  :: facj(3)         ! xyz factor of j^th orbital
+    real(dp),intent(in) :: expi(contri)    ! exponents of i^th orbital
+    real(dp),intent(in) :: expj(contrj)    ! exponents of j^th orbital
+    real(dp),intent(in) :: codi(3)         ! centrol coordintates.i^th orbital
+    real(dp),intent(in) :: codj(3)         ! centrol coordintates.j^th orbital
+    real(dp)            :: bcodi(3)        ! extended coordintates.i^th orbital
+    real(dp)            :: bcodj(3)        ! extended coordintates.j^th orbital
+    real(dp)            :: Z_pot, R_pot
+    real(dp)            :: codpot(3)
+    integer :: bloop_i,bloop_j,bloop_pot   ! loop variables only for calc_1e_V
+
+    val = 0.0_dp
+    do bloop_pot = 1, atom_count
+      codpot = molecule(bloop_pot) % nucleus_position
+      Z_pot = real(molecule(bloop_pot) % atom_number)
+      R_pot = molecule(bloop_pot) % nucleus_radius / fm2Bohr
+      ! center of potential atom set to zero
+      bcodi(:) = codi(:) - codpot(:)
+      bcodj(:) = codj(:) - codpot(:)
+      do bloop_i = 1, contri
+        do bloop_j = 1, contrj
+          val = val + V_Integral_1e(        &
+          Z_pot,                            &
+          coei(bloop_i),                    &
+          coej(bloop_j),                    &
+          faci,                             &
+          facj,                             &
+          expi(bloop_i),                    &
+          expj(bloop_j),                    &
+          bcodi,                            &
+          bcodj,                            &
+          R_pot)
+        end do
+      end do
+    end do
+    return
   end function calc_1e_V
   
 !-----------------------------------------------------------------------
 !> calc values to matrix <AOi|pVp|AOj> (9 matrices)
 !!
 !! pxVpx pyVpy pzVpz pxVpy pyVpx pxVpz pzVpx pyVpz pzVpy
-  pure function calc_1e_pVp(&
-  contr_i,contr_j,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j) &
-  result(integral_pot)
+  real(dp) pure function calc_1e_pVp(&
+  ni,nj,contri,contrj,coei,coej,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
-    integer,intent(in) :: contr_i
-    integer,intent(in) :: contr_j
-    integer :: sloop_i,sloop_j,sloop_pot    ! loop variables for calc_1e_pVp
+    integer,intent(in)    :: ni            ! number of x/y/z in <i|
+    integer,intent(in)    :: nj            ! number of x/y/z in <j|
+    integer,intent(in)    :: contri        ! contraction of |i>
+    integer,intent(in)    :: contrj        ! contraction of |j>
     ! coefficients of first-order derivative of i^th orbital
-    real(dp),intent(in) :: coe_i(2*contr_i)
+    real(dp),intent(in)   :: coei(2*contri)
     ! coefficients of first-order derivative of j^th orbital
-    real(dp),intent(in) :: coe_j(2*contr_j)
-    real(dp),intent(in) :: expo_i(contr_i)  ! exponents of i^th orbital
-    real(dp),intent(in) :: expo_j(contr_j)  ! exponents of j^th orbital
-    real(dp),intent(in) :: cod_i(3)         ! centrol coordintates.i^th orbital
-    real(dp),intent(in) :: cod_j(3)         ! centrol coordintates.j^th orbital
-    real(dp) :: scod_i(3)                   ! extended coordintates.i^th orbital
-    real(dp) :: scod_j(3)                   ! extended coordintates.j^th orbital
-    real(dp) :: Z_pot, R_pot
-    real(dp) :: integral_pot
-    real(dp) :: cod_pot(3)
-    character(len = *),intent(in) :: fac_i(2)  ! xyz factor of i^th orbital
-    character(len = *),intent(in) :: fac_j(2)  ! xyz factor of j^th orbital
-    integral_pot = 0.0_dp
+    real(dp),intent(in)   :: coej(2*contrj)
+    integer,intent(in)    :: faci(3,2)     ! xyz factor of i^th orbital
+    integer,intent(in)    :: facj(3,2)     ! xyz factor of j^th orbital
+    real(dp),intent(in)   :: expi(contri)  ! exponents of i^th orbital
+    real(dp),intent(in)   :: expj(contrj)  ! exponents of j^th orbital
+    real(dp),intent(in)   :: codi(3)       ! centrol coordintates.i^th orbital
+    real(dp),intent(in)   :: codj(3)       ! centrol coordintates.j^th orbital
+    real(dp)              :: scodi(3)      ! extended coordintates.i^th orbital
+    real(dp)              :: scodj(3)      ! extended coordintates.j^th orbital
+    real(dp)              :: Z_pot, R_pot
+    real(dp)              :: codpot(3)
+    integer               :: numi, numj
+    integer :: sloop_i,sloop_j,sloop_k,sloop_l,sloop_pot   ! loop variables
+
+    if (ni == 0) then
+      numi = 1
+    else
+      numi = 2
+    end if
+    if (nj == 0) then
+      numj = 1
+    else
+      numj = 2
+    end if
+    val = 0.0_dp
     do sloop_pot = 1, atom_count
-      cod_pot = molecule(sloop_pot) % nucleus_position
+      codpot = molecule(sloop_pot) % nucleus_position
       Z_pot = real(molecule(sloop_pot) % atom_number)
       R_pot = molecule(sloop_pot) % nucleus_radius / fm2Bohr
       ! center of potential atom set to zero
-      scod_i(1) = cod_i(1) - cod_pot(1)
-      scod_i(2) = cod_i(2) - cod_pot(2)
-      scod_i(3) = cod_i(3) - cod_pot(3)
-      scod_j(1) = cod_j(1) - cod_pot(1)
-      scod_j(2) = cod_j(2) - cod_pot(2)
-      scod_j(3) = cod_j(3) - cod_pot(3)
-      do sloop_i = 1, 2*contr_i
-        do sloop_j = 1, 2*contr_j
-          integral_pot = integral_pot + V_Integral_1e(&
-          Z_pot,coe_i(sloop_i),coe_j(sloop_j),fac_i(2-mod(sloop_i,2)),&
-          fac_j(2-mod(sloop_j,2)),expo_i((sloop_i+mod(sloop_i,2))/2),&
-          expo_j((sloop_j+mod(sloop_j,2))/2),scod_i(1),scod_i(2),scod_i(3),&
-          scod_j(1),scod_j(2),scod_j(3),R_pot)
+      scodi(:) = codi(:) - codpot(:)
+      scodj(:) = codj(:) - codpot(:)
+      do sloop_k = 1, numi
+        do sloop_i = 1, contri
+          do sloop_l = 1, numj
+            do sloop_j = 1, contrj
+              val = val + V_Integral_1e(                &
+              Z_pot,                                    &
+              coei((sloop_k-1)*contri+sloop_i),         &
+              coej((sloop_l-1)*contrj+sloop_j),         &
+              faci(:,sloop_k),                          &
+              facj(:,sloop_l),                          &
+              expi(sloop_i),                            &
+              expj(sloop_j),                            &
+              scodi,                                    &
+              scodj,                                    &
+              R_pot)
+            end do
+          end do
         end do
       end do
     end do
@@ -879,139 +719,123 @@ module Hamiltonian
 !> calc values to matrix <AOi|p^3Vp|AOj> (9 matrices)
 !!
 !! px3Vpx py3Vpy pz3Vpz px3Vpy py3Vpx px3Vpz pz3Vpx py3Vpz pz3Vpy
-  pure function calc_1e_pppVp(&
-  char_der,contr_i,contr_j,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_i,cod_j) &
-  result(integral_pot)
+  real(dp) pure function calc_1e_pppVp(&
+  di,ni,nj,contri,contrj,coei,coej,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
-    integer,intent(in) :: contr_i
-    integer,intent(in) :: contr_j
-    integer :: tloop_i,tloop_j,tloop_pot    ! loop variables for calc_1e_pppVp
-    real(dp),intent(in) :: coe_i(2*contr_i) ! coefficients of i^th orbital
-    real(dp),intent(in) :: coe_j(2*contr_j) ! coefficients of j^th orbital
-    ! coefficients of i^th orbital after 2 derivative actions
-    real(dp) :: mcoe_i(4*contr_i)
+    integer,intent(in)  :: di              ! 1:d|i>/dx, 1:d|i>/dy, 1:d|i>/dz
+    integer,intent(in)  :: ni              ! number of x/y/z in <i|
+    integer,intent(in)  :: nj              ! number of x/y/z in <j|
+    integer,intent(in)  :: contri          ! contraction of |i>
+    integer,intent(in)  :: contrj          ! contraction of |j>
+    real(dp),intent(in) :: coei(2*contri)  ! coefficients of i^th orbital
+    real(dp),intent(in) :: coej(2*contrj)  ! coefficients of j^th orbital
+    integer,intent(in)  :: faci(3,2)       ! xyz factor of i^th orbital
+    integer,intent(in)  :: facj(3,2)       ! xyz factor of j^th orbital
+    real(dp),intent(in) :: expi(contri)    ! exponents of i^th orbital
+    real(dp),intent(in) :: expj(contrj)    ! exponents of j^th orbital
+    real(dp),intent(in) :: codi(3)         ! centrol coordintates.i^th orbital
+    real(dp),intent(in) :: codj(3)         ! centrol coordintates.j^th orbital
+    ! coordintates.i^th orbital after 3 derivative actions
+    real(dp)            :: tcodi(3)
+    ! coordintates.j^th orbital after 3 derivative actions
+    real(dp)            :: tcodj(3)
+    real(dp)            :: Z_pot, R_pot
+    real(dp)            :: codpot(3)
     ! coefficients of i^th orbital after 3 derivative actions
-    real(dp) :: tcoe_i(8*contr_i)
-    real(dp),intent(in) :: expo_i(contr_i)  ! exponents of i^th orbital
-    real(dp),intent(in) :: expo_j(contr_j)  ! exponents of j^th orbital
-    real(dp),intent(in) :: cod_i(3)         ! centrol coordintates.i^th orbital
-    real(dp),intent(in) :: cod_j(3)         ! centrol coordintates.j^th orbital
-    real(dp) :: tcod_i(3) ! coordintates.i^th orbital after 3 derivative actions
-    real(dp) :: tcod_j(3) ! coordintates.j^th orbital after 3 derivative actions
-    real(dp) :: Z_pot, R_pot
-    real(dp) :: integral_pot
-    real(dp) :: cod_pot(3)
-    ! which pVp matrix is assignning (e.g. yy for py3Vpy)
-    character(len = 2),intent(in) :: char_der
-    character(len = *),intent(in) :: fac_i(2) ! xyz factor of i^th orbital
-    ! xyz factor.i^th orbital after 2 derivative actions
-    character(len = 8) :: mfac_i(4)
+    real(dp)            :: tcoei(8*contri)
     ! xyz factor.i^th orbital after 3 derivative actions
-    character(len = 16) :: tfac_i(8)
-    character(len = *),intent(in) :: fac_j(2) ! xyz factor of j^th orbital
-    ! find the derivative of p|AOi> respect to x/y/z
-    character(len = 1) :: ele_der
-    if (char_der == 'xx' .or. char_der == 'xy' .or. char_der == 'xz') then
-      ele_der = 'x'
-    else if (char_der == 'yy' .or. char_der == 'yx' .or. char_der == 'yz') then
-      ele_der = 'y'
-    else if (char_der == 'zz' .or. char_der == 'zx' .or. char_der == 'zy') then
-      ele_der = 'z'
+    integer             :: tfaci(3,8)      ! di**max, di**max-2 ... di**0
+    integer             :: numi, numj      ! number of calls to  V_integral_1e
+    integer :: tloop_i,tloop_j,tloop_k,tloop_l,tloop_pot ! loop variables
+
+    if (nj == 0) then
+      numj = 1
+    else
+      numj = 2
     end if
-    ! derivative of xyz factor of fac_i(1,2)
-    do tloop_i = 1, 2
-      do tloop_j = 1, len(fac_i(tloop_i))
-        if (index(fac_i(tloop_i),ele_der) == tloop_j) then
-          if (tloop_j == 0) then
-            mfac_i(2*tloop_i-1) = '  '
-          else if (tloop_j == 1) then
-            mfac_i(2*tloop_i-1) = adjustl('  '//&
-            fac_i(tloop_i)(2:len(fac_i(tloop_i))))
-          else if (tloop_j == len(fac_i(tloop_i))) then
-            mfac_i(2*tloop_i-1) = '  '//&
-            fac_i(tloop_i)(1:len(fac_i(tloop_i))-1)
-          else
-            mfac_i(2*tloop_i-1) = adjustl('  '//fac_i(tloop_i)(1:tloop_j-1)//&
-            fac_i(tloop_i)(tloop_j+1:len(fac_i(tloop_i))))
-          end if
-          exit
-        end if
-      end do
-    end do
-    ! derivative of exponent of fac_i(1,2)
-    mfac_i(2) = ele_der//fac_i(1)
-    mfac_i(4) = ele_der//fac_i(2)
-    ! derivative of xyz factor of mfac_i(1,2,3,4)
-    do tloop_i = 1, 4
-      do tloop_j = 1, len(mfac_i(tloop_i))
-        if (index(mfac_i(tloop_i),ele_der) == tloop_j) then
-          if (tloop_j == 0) then
-            tfac_i(2*tloop_i-1) = '  '
-          else if (tloop_j == 1) then
-            tfac_i(2*tloop_i-1) = adjustl('  '//&
-            mfac_i(tloop_i)(2:len(mfac_i(tloop_i))))
-          else if (tloop_j == len(mfac_i(tloop_i))) then
-            tfac_i(2*tloop_i-1) = '  '//&
-            mfac_i(tloop_i)(1:len(mfac_i(tloop_i))-1)
-          else
-            tfac_i(2*tloop_i-1) = adjustl('  '//mfac_i(tloop_i)(1:tloop_j-1)//&
-            mfac_i(tloop_i)(tloop_j+1:len(mfac_i(tloop_i))))
-          end if
-          exit
-        end if
-      end do
-    end do
-    ! derivative of exponent of fac_i(1,2,3,4)
-    tfac_i(2) = ele_der//mfac_i(1)
-    tfac_i(4) = ele_der//mfac_i(2)
-    tfac_i(6) = ele_der//mfac_i(3)
-    tfac_i(8) = ele_der//mfac_i(4)
-    ! derivative of xyz factor of coe_i
-    do tloop_i = 1, 2*contr_i
-      mcoe_i(2*tloop_i-1) = 0.0_dp
-      do tloop_j = 1, len(fac_i(2-mod(tloop_i,2)))
-        if (index(fac_i(2-mod(tloop_i,2))(tloop_j:tloop_j),ele_der) /= 0) &
-        mcoe_i(2*tloop_i-1) = mcoe_i(2*tloop_i-1) + coe_i(tloop_i)
-      end do
-    end do
-    ! derivative of exponent of coe_i
-    do tloop_i = 1, 2*contr_i
-      mcoe_i(2*tloop_i) = -2.0_dp * coe_i(tloop_i) * &
-      expo_i((tloop_i+mod(tloop_i,2))/2)
-    end do
-    ! derivative of xyz factor of mcoe_i
-    do tloop_i = 1, 4*contr_i
-      tcoe_i(2*tloop_i-1) = 0.0_dp
-      do tloop_j = 1, len(mfac_i(4-mod(4-mod(tloop_i,4),4)))
-        if (index(mfac_i(4-mod(4-mod(tloop_i,4),4))(tloop_j:tloop_j),ele_der) &
-        /= 0) tcoe_i(2*tloop_i-1) = tcoe_i(2*tloop_i-1) + mcoe_i(tloop_i)
-      end do
-    end do
-    ! derivative of exponent of mcoe_i
-    do tloop_i = 1, 4*contr_i
-      tcoe_i(2*tloop_i) = -2.0_dp * mcoe_i(tloop_i) * &
-      expo_i((tloop_i+mod(4-mod(tloop_i,4),4))/4)
-    end do
-    integral_pot = 0.0_dp
+  ! combine polynomials and ignore terms with coefficient 0
+    select case(ni)
+      case(0)
+        tfaci(:,[1,2]) = faci(:,[2,2])         ! 1(1); 2(2,3);
+        tfaci(di,1) = 3
+        tfaci(di,2) = 1
+        tcoei(1:contri) = 8*expi(:)**2*coei(1:contri)
+        tcoei(contri+1:2*contri) = -6*expi(:)*coei(1:contri)
+        numi = 2
+      case(1)
+        tfaci(:,[1,2,3]) = faci(:,[2,2,2])     ! 1(1); 2(2,3,5); 3(4,6);
+        tfaci(di,1) = 4
+        tfaci(di,2) = 2
+        tfaci(di,3) = 0
+        tcoei(1:contri) = 12*expi(:)**2*coei(1:contri)
+        tcoei(contri+1:2*contri) = -10*expi(:)*coei(1:contri) + &
+        4*expi(:)**2*coei(contri+1:2*contri)
+        tcoei(2*contri+1:3*contri) = 2*coei(1:contri) - &
+        2*expi(:)*coei(contri+1:2*contri)
+        numi = 3
+      case(2)
+        tfaci(:,[1,2,3]) = faci(:,[2,2,2])     ! 1(1); 2(2,3,5); 3(4,6,7);
+        tfaci(di,1) = 5
+        tfaci(di,2) = 3
+        tfaci(di,3) = 1
+        tcoei(1:contri) = 16*expi(:)**2*coei(1:contri)
+        tcoei(contri+1:2*contri) = -14*expi(:)*coei(1:contri) + &
+        8*expi(:)**2*coei(contri+1:2*contri)
+        tcoei(2*contri+1:3*contri) = 6*coei(1:contri) - &
+        6*expi(:)*coei(contri+1:2*contri)
+        numi = 3
+      case(3)
+        tfaci(:,[1,2,3,4]) = faci(:,[2,2,2,2]) ! 1(1); 2(2,3,5); 3(4,6,7); 4(8)
+        tfaci(di,1) = 6
+        tfaci(di,2) = 4
+        tfaci(di,3) = 2
+        tfaci(di,4) = 0
+        tcoei(1:contri) = 20*expi(:)**2*coei(1:contri)
+        tcoei(contri+1:2*contri) = -18*expi(:)*coei(1:contri) + &
+        12*expi(:)**2*coei(contri+1:2*contri)
+        tcoei(2*contri+1:3*contri) = 12*coei(1:contri) - &
+        10*expi(:)*coei(contri+1:2*contri)
+        tcoei(3*contri+1:4*contri) = 2*coei(contri+1:2*contri)
+        numi = 4
+      case(4)
+        tfaci(:,[1,2,3,4]) = faci(:,[2,2,2,2]) ! 1(1); 2(2,3,5); 3(4,6,7); 4(8)
+        tfaci(di,1) = 7
+        tfaci(di,2) = 5
+        tfaci(di,3) = 3
+        tfaci(di,4) = 1
+        tcoei(1:contri) = 24*expi(:)**2*coei(1:contri)
+        tcoei(contri+1:2*contri) = -22*expi(:)*coei(1:contri) + &
+        16*expi(:)**2*coei(contri+1:2*contri)
+        tcoei(2*contri+1:3*contri) = 20*coei(1:contri) - &
+        14*expi(:)*coei(contri+1:2*contri)
+        tcoei(3*contri+1:4*contri) = 6*coei(contri+1:2*contri)
+        numi = 4
+    end select
+    val = 0.0_dp
     do tloop_pot = 1, atom_count
-      cod_pot = molecule(tloop_pot) % nucleus_position
+      codpot = molecule(tloop_pot) % nucleus_position
       Z_pot = real(molecule(tloop_pot) % atom_number)
       R_pot = molecule(tloop_pot) % nucleus_radius / fm2Bohr
       ! center of potential atom set to zero
-      tcod_i(1) = cod_i(1) - cod_pot(1)
-      tcod_i(2) = cod_i(2) - cod_pot(2)
-      tcod_i(3) = cod_i(3) - cod_pot(3)
-      tcod_j(1) = cod_j(1) - cod_pot(1)
-      tcod_j(2) = cod_j(2) - cod_pot(2)
-      tcod_j(3) = cod_j(3) - cod_pot(3)
-      do tloop_i = 1, 8*contr_i
-        do tloop_j = 1, 2*contr_j
-          integral_pot = integral_pot + &
-          V_Integral_1e(Z_pot,tcoe_i(tloop_i),coe_j(tloop_j),&
-          tfac_i(8-mod(8-mod(tloop_i,8),8)),fac_j(2-mod(tloop_j,2)),&
-          expo_i((tloop_i+mod(8-mod(tloop_i,8),8))/8),&
-          expo_j((tloop_j+mod(tloop_j,2))/2),tcod_i(1),tcod_i(2),tcod_i(3),&
-          tcod_j(1),tcod_j(2),tcod_j(3),R_pot)
+      tcodi(:) = codi(:) - codpot(:)
+      tcodj(:) = codj(:) - codpot(:)
+      do tloop_k = 1, numi
+        do tloop_i = 1, contri
+          do tloop_l = 1, numj
+            do tloop_j = 1, contrj
+              val = val + V_Integral_1e(                             &
+              Z_pot,                                                 &
+              tcoei((tloop_k-1)*contri+tloop_i),                     &
+              coej((tloop_l-1)*contrj+tloop_j),                      &
+              tfaci(:,tloop_k),                                      &
+              facj(:,tloop_l),                                       &
+              expi(tloop_i),                                         &
+              expj(tloop_j),                                         &
+              tcodi,                                                 &
+              tcodj,                                                 &
+              R_pot)
+            end do
+          end do
         end do
       end do
     end do
@@ -1020,119 +844,55 @@ module Hamiltonian
   
   
 !-----------------------------------------------------------------------
-!> full space integration of product of 2 Gaussian functions in Cartesian: 
-  pure elemental real(dp) function Gaussian_Product_Integral(&
-  coef,fac_i,fac_j,expo_i,expo_j,cod_ix,cod_iy,cod_iz,&
-  cod_jx,cod_jy,cod_jz)
+!> full space integration of product of 2 Gaussian functions in Cartesian
+  real(dp) pure function Gaussian_Product_Integral(&
+  coe,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
-    real(dp),intent(in) :: coef       ! coefficient before Gaussian product
-    real(dp) :: coeff                 ! coefficient after Gaussian product
-    real(dp) :: expo                  ! exponent of Gaussian product
-    real(dp) :: cod(3)                ! coordinate of Gaussian product
-    real(dp),intent(in) :: expo_i
-    real(dp),intent(in) :: expo_j
-    real(dp),intent(in) :: cod_ix, cod_iy, cod_iz
-    real(dp),intent(in) :: cod_jx, cod_jy, cod_jz
-    real(dp) :: cod_i_pos(3)          ! linear transformation of cod_i
-    real(dp) :: integral_x
-    real(dp) :: integral_x_mic,integral_x_mic_pre,integral_x_mic_pre_pre
-    real(dp) :: integral_y
-    real(dp) :: integral_y_mic,integral_y_mic_pre,integral_y_mic_pre_pre
-    real(dp) :: integral_z
-    real(dp) :: integral_z_mic,integral_z_mic_pre,integral_z_mic_pre_pre
-    integer :: m_x_i, m_y_i, m_z_i, m_x_j, m_y_j, m_z_j ! largest power of x,y,z
-    integer :: gloop_i,gloop_j        ! loop variables only for GPI function
-    character(len = *),intent(in) :: fac_i
-    character(len = *),intent(in) :: fac_j
-    m_x_i = 0
-    m_y_i = 0
-    m_z_i = 0
-    m_x_j = 0
-    m_y_j = 0
-    m_z_j = 0
-    integral_x = 0.0
-    integral_y = 0.0
-    integral_z = 0.0
+    real(dp),intent(in) :: coe           ! coefficient before Gaussian product
+    integer,intent(in)  :: faci(3)       ! xyz factor before Gaussian product
+    integer,intent(in)  :: facj(3)       ! xyz factor before Gaussian product
+    real(dp),intent(in) :: expi          ! exponent before Gaussian product
+    real(dp),intent(in) :: expj          ! exponent before Gaussian product
+    real(dp),intent(in) :: codi(3)       ! coordinate before Gaussian product
+    real(dp),intent(in) :: codj(3)       ! coordinate before Gaussian product
+    real(dp)            :: pcoe          ! coefficient after Gaussian product
+    real(dp)            :: invexpo       ! inverse of Gaussian product exponent
+    real(dp)            :: cod(3)        ! coordinate of Gaussian product
+    real(dp)            :: codpos(3)     ! linear transformation of cod_i
+    real(dp)            :: integral(3)   ! integral of x,y,z polinomial
+    real(dp)            :: itm
+    real(dp)            :: mic, mic_, mic__
+    integer             :: gloop_i,gloop_j,gloop_k! loop variables
+    integral = 0.0_dp
     ! Gaussian function produntion
-    coeff = coef * exp(-((cod_ix-cod_jx)**2) / (1.0_dp/expo_i+1.0_dp/expo_j))
-    coeff = coeff * exp(-((cod_iy-cod_jy)**2) / (1.0_dp/expo_i+1.0_dp/expo_j))
-    coeff = coeff * exp(-((cod_iz-cod_jz)**2) / (1.0_dp/expo_i+1.0_dp/expo_j))
-    expo = expo_i + expo_j
-    cod(1) = (cod_ix * expo_i + cod_jx * expo_j)/(expo_i + expo_j)
-    cod(2) = (cod_iy * expo_i + cod_jy * expo_j)/(expo_i + expo_j)
-    cod(3) = (cod_iz * expo_i + cod_jz * expo_j)/(expo_i + expo_j)
-    do gloop_i = 1, len(fac_i)
-      if(fac_i(gloop_i:gloop_i) == 'x') m_x_i = m_x_i + 1
-      if(fac_i(gloop_i:gloop_i) == 'y') m_y_i = m_y_i + 1
-      if(fac_i(gloop_i:gloop_i) == 'z') m_z_i = m_z_i + 1
-    end do
-    do gloop_i = 1, len(fac_j)
-      if(fac_j(gloop_i:gloop_i) == 'x') m_x_j = m_x_j + 1
-      if(fac_j(gloop_i:gloop_i) == 'y') m_y_j = m_y_j + 1
-      if(fac_j(gloop_i:gloop_i) == 'z') m_z_j = m_z_j + 1
-    end do
+    invexpo = 1.0_dp / (expi+expj)
+    pcoe = coe * exp(-(sum((codi(:)-codj(:))**2)) * (expi*expj)*invexpo)
+    cod(:) = (codi(:)*expi+codj(:)*expj) * invexpo
     ! linear transformation of integral variables
-    cod_i_pos(1) = cod_ix - cod_jx
-    cod_i_pos(2) = cod_iy - cod_jy
-    cod_i_pos(3) = cod_iz - cod_jz
-    cod(1) = cod(1) - cod_jx
-    cod(2) = cod(2) - cod_jy
-    cod(3) = cod(3) - cod_jz
-    ! binomial expansion -x
-    do gloop_i = 0, m_x_i
-      do gloop_j = 0, m_x_i - gloop_i + m_x_j   ! integral x^m*exp(-b*(x-x0)^2)
-        if (gloop_j == 0) then
-          integral_x_mic = dsqrt(pi/expo)
-        else if(gloop_j == 1) then
-          integral_x_mic_pre = integral_x_mic
-          integral_x_mic = cod(1) * integral_x_mic_pre
-        else
-          integral_x_mic_pre_pre = integral_x_mic_pre
-          integral_x_mic_pre = integral_x_mic
-          integral_x_mic = cod(1) * integral_x_mic_pre + &
-          (real(gloop_j-1)*integral_x_mic_pre_pre)/(2.0_dp*expo)
-        end if
+    codpos = codi - codj
+    cod = cod - codj
+    itm = dsqrt(pi*invexpo)
+    ! binomial expansion of x,y,z
+    do gloop_k = 1, 3
+      do gloop_i = 0, faci(gloop_k)
+        ! integral x^m*exp(-b*(x-x0)^2)
+        do gloop_j = 0, faci(gloop_k)-gloop_i+facj(gloop_k)
+          if (gloop_j == 0) then
+            mic = itm
+          else if(gloop_j == 1) then
+            mic_ = mic
+            mic = cod(gloop_k) * mic_
+          else
+            mic__ = mic_
+            mic_ = mic
+            mic = cod(gloop_k)*mic_ + 0.5_dp*(real(gloop_j-1,dp)*mic__)*invexpo
+          end if
+        end do
+        integral(gloop_k) = integral(gloop_k) + &
+        binomialcoe(faci(gloop_k),gloop_i)*(-codpos(gloop_k))**(gloop_i)*mic
       end do
-      integral_x = integral_x + binomialcoe(m_x_i,gloop_i) * &
-      (-cod_i_pos(1))**(gloop_i) * integral_x_mic
     end do
-    ! binomial expansion -y
-    do gloop_i = 0, m_y_i
-      do gloop_j = 0, m_y_i - gloop_i + m_y_j
-        if (gloop_j == 0) then
-          integral_y_mic = dsqrt(pi/expo)
-        else if(gloop_j == 1) then
-          integral_y_mic_pre = integral_y_mic
-          integral_y_mic = cod(2) * integral_y_mic_pre
-        else
-          integral_y_mic_pre_pre = integral_y_mic_pre
-          integral_y_mic_pre = integral_y_mic
-          integral_y_mic = cod(2) * integral_y_mic_pre + &
-          (real(gloop_j-1)*integral_y_mic_pre_pre)/(2.0_dp*expo)
-        end if
-      end do
-      integral_y = integral_y + binomialcoe(m_y_i,gloop_i) * &
-      (-cod_i_pos(2))**(gloop_i) * integral_y_mic
-    end do
-    ! binomial expansion -z
-    do gloop_i = 0, m_z_i
-      do gloop_j = 0, m_z_i - gloop_i + m_z_j
-        if (gloop_j == 0) then
-          integral_z_mic = dsqrt(pi/expo)
-        else if(gloop_j == 1) then
-          integral_z_mic_pre = integral_z_mic
-          integral_z_mic = cod(3) * integral_z_mic_pre
-        else
-          integral_z_mic_pre_pre = integral_z_mic_pre
-          integral_z_mic_pre = integral_z_mic
-          integral_z_mic = cod(3) * integral_z_mic_pre + &
-          (real(gloop_j-1)*integral_z_mic_pre_pre)/(2.0_dp*expo)
-        end if
-      end do
-      integral_z = integral_z + binomialcoe(m_z_i,gloop_i) * &
-      (-cod_i_pos(3))**(gloop_i) * integral_z_mic
-    end do
-    Gaussian_Product_Integral = coeff * integral_x * integral_y * integral_z
+    val = pcoe * integral(1) * integral(2) * integral(3)
     return
   end function Gaussian_Product_Integral
   
@@ -1140,341 +900,237 @@ module Hamiltonian
 !> integration of electron-nuclear attraction potential in Cartesian coordinate:
 !!
 !! inategral transformation: (x-xi)^m*(x-xj)^n*expo(-b*x^2)*expo(x^2*t^2)dxdt
-  pure elemental real(dp) function V_Integral_1e(&
-  Z,coe_i,coe_j,fac_i,fac_j,expo_i,expo_j,cod_ix,cod_iy,cod_iz,cod_jx,cod_jy,&
-  cod_jz,rn)
+  real(dp) pure function V_Integral_1e(&
+  Z,coei,coej,faci,facj,expi,expj,codi,codj,rn) result(val)
     implicit none
-    real(dp),intent(in) :: expo_i, expo_j
-    real(dp) :: expo
-    real(dp),intent(in) :: coe_i, coe_j
-    real(dp) :: coe
-    real(dp),intent(in) :: Z
+    real(dp),intent(in) :: Z                  ! atomic number of potential atom
+    real(dp),intent(in) :: coei               ! coeffcient of |i>
+    real(dp),intent(in) :: coej               ! coeffcient of |j>
+    integer,intent(in)  :: faci(3)            ! xyz factor of |i>
+    integer,intent(in)  :: facj(3)            ! xyz factor of |j>
+    real(dp),intent(in) :: expi               ! exponent of |i>
+    real(dp),intent(in) :: expj               ! exponent of |j>
+    real(dp)            :: expo               ! exponnet of product shell
+    real(dp)            :: invexpo            ! inverse of expo
+    real(dp)            :: coe                ! coefficient of product shell
+    real(dp),intent(in) :: codi(3)            ! coordination of i
+    real(dp),intent(in) :: codj(3)            ! coordination of j
     ! finite nuclear potential will not be considered if rn = 0.
     real(dp),intent(in) :: rn
-    real(dp),intent(in) :: cod_ix, cod_iy, cod_iz   ! coordination of i
-    real(dp),intent(in) :: cod_jx, cod_jy, cod_jz   ! coordination of j
-    real(dp) :: cod(3)
-    real(dp) :: R2
-    ! t-containing coefficients, t2pb_x(1) = coeff.(t^2+b)^(1/2).x integration
-    real(dp) :: t2pb_x(10)
-    ! t-containing coefficients, t2pb_y(1) = coeff.(t^2+b)^(1/2).y integration
-    real(dp) :: t2pb_y(10)
-    ! t-containing coefficients, t2pb_z(1) = coeff.(t^2+b)^(1/2).z integration
-    real(dp) :: t2pb_z(10)
+    real(dp)            :: cod(3)
+    real(dp)            :: R2
+    ! t-containing coefficients, t2pb_xyz(1) = coeff.(t^2+b)^(1/2).x integration
+    !DIR$ ATTRIBUTES ALIGN:align_size :: t2pb_xyz
+    real(dp)            :: t2pb_xyz(16,3)
     ! t-containing coefficients, t2pb(1) = coeff.(t^2+b)^(1/2).x,y,z integration
-    real(dp) :: t2pb(14)
-    real(dp) :: t2pb_mic(10)
-    real(dp) :: t2pb_mic_pre(10)
-    real(dp) :: t2pb_mic_pre_pre(10)
-    real(dp) :: integral, integral_mic, integral_mic_pre, integral_mic_pre_pre
-    real(dp) :: NX_mic(30), NX_mic_pre(30), NX_mic_pre_pre(30)
-    integer :: tayeps  ! number of Taylor expansion series of integration at X=0
+    !DIR$ ATTRIBUTES ALIGN:align_size :: t2pb, mic, mic_, mic__
+    real(dp)            :: t2pb(16), mic(16), mic_(16), mic__(16)
+    real(dp)            :: int, int_mic, int_mic_, int_mic__
+    !DIR$ ATTRIBUTES ALIGN:align_size :: NX_mic, NX_mic_, NX_mic__
+    real(dp)            :: NX_mic(32), NX_mic_(32), NX_mic__(32)
+    ! number of Taylor expansion series of integration at X=0
+    integer             :: tayeps
     ! direct integration (X > xts); Taylor expansion integration (X <= xts)
-    real(dp) :: xts
-    integer :: m_x_i, m_y_i, m_z_i, m_x_j, m_y_j, m_z_j ! largest power of x,y,z
-    integer :: vloop_i,vloop_j,vloop_k,vloop_o ! loop variable for V_Integral_1e
-    integer :: vloop_mic,vloop_mic_pre
-    character(len = *),intent(in) :: fac_i
-    character(len = *),intent(in) :: fac_j
-    m_x_i = 0
-    m_y_i = 0
-    m_z_i = 0
-    m_x_j = 0
-    m_y_j = 0
-    m_z_j = 0
-    do vloop_i = 1, len(fac_i)
-      if(fac_i(vloop_i:vloop_i) == 'x') m_x_i = m_x_i + 1
-      if(fac_i(vloop_i:vloop_i) == 'y') m_y_i = m_y_i + 1
-      if(fac_i(vloop_i:vloop_i) == 'z') m_z_i = m_z_i + 1
-    end do
-    do vloop_i = 1, len(fac_j)
-      if(fac_j(vloop_i:vloop_i) == 'x') m_x_j = m_x_j + 1
-      if(fac_j(vloop_i:vloop_i) == 'y') m_y_j = m_y_j + 1
-      if(fac_j(vloop_i:vloop_i) == 'z') m_z_j = m_z_j + 1
-    end do
-    if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 10) then
-      tayeps = 5
-      xts = 0.01
-    else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 15) then
-      tayeps = 8
-      xts = 0.1
-    else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 25) then
-      tayeps = 15
-      xts = 1.0
-    else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 35) then
-      tayeps = 20
-      xts = 1.0
-    else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 40) then
-      tayeps = 25
-      xts = 3.0
-    else if (2*(m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4) <= 50) then
-      tayeps = 30
-      xts = 4.0
-    end if
+    real(dp)            :: xts
+    integer             :: vloop_i,vloop_j,vloop_k,vloop_o ! loop variables
+    integer             :: vloop_mic,vloop_mic_
+    integer             :: max1, max2, max3
+    real(dp)            :: tmp, br2, expbr2, invbr2, prec
+
+    select case (2*(sum(faci)+sum(facj) + 4))
+      case(0:10)
+        tayeps = 5
+        xts = 0.01
+      case(11:15)
+        tayeps = 8
+        xts = 0.1
+      case(16:25)
+        tayeps = 15
+        xts = 1.0
+      case(26:35)
+        tayeps = 20
+        xts = 1.0
+      case(36:40)
+        tayeps = 25
+        xts = 3.0
+      case(41:50)
+        tayeps = 30
+        xts = 4.0
+    end select
     NX_mic = 0.0_dp
-    NX_mic_pre = 0.0_dp
-    NX_mic_pre_pre = 0.0_dp
+    NX_mic_ = 0.0_dp
+    NX_mic__ = 0.0_dp
     
     !--------------------------
-    ! Gaussian function production
-    coe = -Z * coe_i * coe_j
-    coe = coe * exp(-((cod_ix - cod_jx)**2.0_dp)&
-    /(1.0_dp/expo_i + 1.0_dp/expo_j))
-    coe = coe * exp(-((cod_iy - cod_jy)**2.0_dp)&
-    /(1.0_dp/expo_i + 1.0_dp/expo_j))
-    coe = coe * exp(-((cod_iz - cod_jz)**2.0_dp)&
-    /(1.0_dp/expo_i + 1.0_dp/expo_j))
-    !------
-    expo = expo_i + expo_j
-    !------
-    cod(1) = (cod_ix * expo_i + cod_jx * expo_j)/(expo_i + expo_j)
-    cod(2) = (cod_iy * expo_i + cod_jy * expo_j)/(expo_i + expo_j)
-    cod(3) = (cod_iz * expo_i + cod_jz * expo_j)/(expo_i + expo_j)
-    R2 = cod(1)*cod(1) + cod(2)*cod(2) + cod(3)*cod(3)
+    ! Gaussian shell production
+    coe = -Z * coei * coej
+    expo = expi + expj
+    invexpo = 1.0_dp / (expi + expj)
+    coe = coe * exp(-(sum((codi(:)-codj(:))**2)) * (expi*expj)*invexpo)
+    cod(:) = (codi(:)*expi+codj(:)*expj) * invexpo
+    R2 = sum(cod(:)**2)
+    br2 = expo*R2
+    expbr2 = exp(-br2)
     ! use binomial expansion for easy storage of t-containing coefficients.
     !--------------------------
-    ! integral of x, generate a coefficient exp(-b*((cod(1))^2*t^2)/(t^2+b))
-    t2pb_x = 0.0_dp
-    vloop_i = 0
-    do while(vloop_i <= m_x_i)
-      vloop_j = 0
-      do while(vloop_j <= m_x_j)
-        t2pb_mic = 0.0_dp
-        t2pb_mic_pre = 0.0_dp
-        t2pb_mic_pre_pre = 0.0_dp
-        do vloop_mic = 0, m_x_i + m_x_j - vloop_i - vloop_j
-          if (vloop_mic == 0) then
-            t2pb_mic(1) = dsqrt(pi)
-          else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = dsqrt(pi)
-            t2pb_mic = 0.0_dp
-            t2pb_mic(2) = cod(1) * expo * t2pb_mic_pre(1)
-          else
-            t2pb_mic_pre_pre = t2pb_mic_pre
-            t2pb_mic_pre = t2pb_mic
-            t2pb_mic = 0.0_dp
-            do vloop_mic_pre = 0, vloop_mic
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              0.5_dp * real(vloop_mic-1) * t2pb_mic_pre_pre(vloop_mic_pre+1)
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              cod(1) * expo * t2pb_mic_pre(vloop_mic_pre+1)
-            end do
-          end if
+    ! integral of x,y,z, generate coefficient exp(-b*((cod(1))^2*t^2)/(t^2+b))
+    do vloop_k = 1, 3
+      t2pb_xyz(:,vloop_k) = 0.0_dp
+      do vloop_i = 0, faci(vloop_k)
+        vloop_j = 0
+        do vloop_j = 0, facj(vloop_k)
+          mic = 0.0_dp
+          mic_ = 0.0_dp
+          mic__ = 0.0_dp
+          max1 = faci(vloop_k)+facj(vloop_k)-vloop_i-vloop_j
+          do vloop_mic = 0, max1
+            if (vloop_mic == 0) then
+              mic(1) = rpi
+            else if(vloop_mic == 1) then
+              mic_(1) = rpi
+              mic(1) = 0.0_dp
+              mic(2) = cod(vloop_k) * expo * rpi
+            else
+              mic__ = mic_
+              mic_ = mic
+              mic = 0.0_dp
+              do vloop_mic_ = 0, vloop_mic
+                mic(vloop_mic_+2) = mic(vloop_mic_+2) + &
+                0.5_dp * real(vloop_mic-1) * mic__(vloop_mic_+1) + &
+                cod(vloop_k) * expo * mic_(vloop_mic_+1)
+              end do
+            end if
+          end do
+          t2pb_xyz(:,vloop_k) = t2pb_xyz(:,vloop_k) + &
+          binomialcoe(faci(vloop_k),vloop_i) * &
+          binomialcoe(facj(vloop_k),vloop_j) * &
+          (-codi(vloop_k))**(vloop_i) * (-codj(vloop_k))**(vloop_j) * mic
         end do
-        t2pb_x = t2pb_x + &
-        binomialcoe(m_x_i,vloop_i) * binomialcoe(m_x_j,vloop_j) * &
-        (-cod_ix)**(vloop_i) * (-cod_jx)**(vloop_j) * t2pb_mic
-        vloop_j = vloop_j + 1
       end do
-      vloop_i = vloop_i + 1 
-    end do
-    !--------------------------
-    ! integral of x, generate a coefficient exp(-b*((cod(2))^2*t^2)/(t^2+b))
-    t2pb_y = 0.0_dp
-    vloop_i = 0
-    do while(vloop_i <= m_y_i)
-      vloop_j = 0
-      do while(vloop_j <= m_y_j)
-        t2pb_mic = 0.0_dp
-        t2pb_mic_pre = 0.0_dp
-        t2pb_mic_pre_pre = 0.0_dp
-        do vloop_mic = 0, m_y_i + m_y_j - vloop_i - vloop_j
-          if (vloop_mic == 0) then
-            t2pb_mic(1) = dsqrt(pi)
-          else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = dsqrt(pi)
-            t2pb_mic = 0.0_dp
-            t2pb_mic(2) = cod(2) * expo * t2pb_mic_pre(1)
-          else
-            t2pb_mic_pre_pre = t2pb_mic_pre
-            t2pb_mic_pre = t2pb_mic
-            t2pb_mic = 0.0_dp
-            do vloop_mic_pre = 0, vloop_mic
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              0.5_dp * real(vloop_mic-1) * t2pb_mic_pre_pre(vloop_mic_pre+1)
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              cod(2) * expo * t2pb_mic_pre(vloop_mic_pre+1)
-            end do
-          end if
-        end do
-        t2pb_y = t2pb_y + &
-        binomialcoe(m_y_i,vloop_i) * binomialcoe(m_y_j,vloop_j) * &
-        (-cod_iy)**(vloop_i) * (-cod_jy)**(vloop_j) * t2pb_mic
-        vloop_j = vloop_j + 1
-      end do
-      vloop_i = vloop_i + 1 
-    end do
-    !--------------------------
-    ! integral of z, generate a coefficient exp(-b*((cod(3))^2*t^2)/(t^2+b))
-    t2pb_z = 0.0_dp
-    vloop_i = 0
-    do while(vloop_i <= m_z_i)
-      vloop_j = 0
-      do while(vloop_j <= m_z_j)
-        t2pb_mic = 0.0_dp
-        t2pb_mic_pre = 0.0_dp
-        t2pb_mic_pre_pre = 0.0_dp
-        do vloop_mic = 0, m_z_i + m_z_j - vloop_i - vloop_j
-          if (vloop_mic == 0) then
-            t2pb_mic(1) = dsqrt(pi)
-          else if(vloop_mic == 1) then
-            t2pb_mic_pre(1) = dsqrt(pi)
-            t2pb_mic = 0.0_dp
-            t2pb_mic(2) = cod(3) * expo * t2pb_mic_pre(1)
-          else
-            t2pb_mic_pre_pre = t2pb_mic_pre
-            t2pb_mic_pre = t2pb_mic
-            t2pb_mic = 0.0_dp
-            do vloop_mic_pre = 0, vloop_mic
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              0.5_dp * real(vloop_mic-1) * t2pb_mic_pre_pre(vloop_mic_pre+1)
-              t2pb_mic(vloop_mic_pre + 2) = t2pb_mic(vloop_mic_pre + 2) + &
-              cod(3) * expo * t2pb_mic_pre(vloop_mic_pre+1)
-            end do
-          end if
-        end do
-        t2pb_z = t2pb_z + &
-        binomialcoe(m_z_i,vloop_i) * binomialcoe(m_z_j,vloop_j) * &
-        (-cod_iz)**(vloop_i) * (-cod_jz)**(vloop_j) * t2pb_mic
-        vloop_j = vloop_j + 1
-      end do
-      vloop_i = vloop_i + 1 
     end do
     !--------------------------
     ! integral of t
     ! 2*(-1)^k*b^((1-m)/2)*coe*(u-1)^k*(u+1)^k*exp(-b*R2*u^2)
     t2pb = 0.0_dp
-    do vloop_i = 0, m_x_i + m_x_j + 1
-      do vloop_j = 0, m_y_i + m_y_j + 1
-        do vloop_k = 0, m_z_i + m_z_j + 1
-          t2pb(vloop_i+vloop_j+vloop_k+2) = t2pb(vloop_i+vloop_j+vloop_k+2)+ &
-          t2pb_x(vloop_i+1) * t2pb_y(vloop_j+1) * t2pb_z(vloop_k+1)
+    max1 = faci(1)+facj(1)+1
+    max2 = faci(2)+facj(2)+1
+    max3 = faci(3)+facj(3)+1
+    do vloop_i = 0, max1
+      do vloop_j = 0, max2
+        tmp = t2pb_xyz(vloop_i+1,1) * t2pb_xyz(vloop_j+1,2)
+        do vloop_k = 0, max3
+          t2pb(vloop_i+vloop_j+vloop_k+2) = t2pb(vloop_i+vloop_j+vloop_k+2) + &
+          tmp * t2pb_xyz(vloop_k+1,3)
         end do
       end do
     end do
-    V_Integral_1e = 0.0_dp
-    if (abs(expo*R2) < 1E-13) then
-      vloop_i = 0 ! k = vloop_i, t2pb(vloop_i + 3) = coe
-      do while(vloop_i <= m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4)
-        integral = 0.0_dp
+    val = 0.0_dp
+    max1 = sum(faci) + sum(facj) + 4
+    if (abs(br2) < 1E-13) then
+      ! k = vloop_i, t2pb(vloop_i + 3) = coe
+      do vloop_i = 0, max1
+        int = 0.0_dp
         do vloop_j = 0, vloop_i
+          tmp = (-1.0_dp)**(vloop_j)*binomialcoe(vloop_i,vloop_j)
           do vloop_k = 0, vloop_i
-            integral_mic = 1.0_dp / (real(2*vloop_i-vloop_j-vloop_k) + 1.0_dp)
-            integral = integral + &
-            binomialcoe(vloop_i,vloop_j) * binomialcoe(vloop_i,vloop_k) * &
-            (-1.0_dp)**(vloop_j) * integral_mic
+            int_mic = 1.0_dp / (real(2*vloop_i-vloop_j-vloop_k) + 1.0_dp)
+            int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
           end do
         end do
-        V_Integral_1e = V_Integral_1e + 2.0_dp * &
-        (-1.0_dp)**(vloop_i) * expo**(-vloop_i-1) * t2pb(vloop_i+2) * integral
-        vloop_i = vloop_i + 1
+        val = val + 2.0_dp*(-1.0_dp)**(vloop_i) * &
+        expo**(-vloop_i-1) * t2pb(vloop_i+2) * int
       end do
-    else if (abs(expo*R2) <= xts) then
-      vloop_i = 0 ! k = vloop_i, t2pb(vloop_i + 3) = coe
-      do while(vloop_i <= m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4)
-        integral = 0.0_dp
-        vloop_j = 0
-        do while(vloop_j <= vloop_i)
-          vloop_k = 0
-          do while(vloop_k <= vloop_i)
-            vloop_mic = 0
-            do while(vloop_mic <= 2 * vloop_i - vloop_j - vloop_k)
+    else if (abs(br2) <= xts) then
+      ! k = vloop_i, t2pb(vloop_i + 3) = coe
+      do vloop_i = 0, max1
+        int = 0.0_dp
+        do vloop_j = 0, vloop_i
+          tmp = (-1.0_dp)**(vloop_j) * binomialcoe(vloop_i,vloop_j)
+          do vloop_k = 0, vloop_i
+            do vloop_mic = 0, 2*vloop_i - vloop_j - vloop_k
               if (vloop_mic == 0) then 
-                do vloop_o=1,tayeps
+                do vloop_o = 1, tayeps
                   NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*&
                   (1.0_dp/(real(2*vloop_o+1)*factorial(vloop_o)))
                 end do
               else if(vloop_mic == 1) then
-                NX_mic_pre = NX_mic
-                do vloop_o=1,tayeps
+                NX_mic_ = NX_mic
+                do vloop_o = 1, tayeps
                   NX_mic(vloop_o)=(-1.0_dp)**(vloop_o)*&
                   (1.0_dp/(factorial(vloop_o+1)))
                 end do
               else
-                NX_mic_pre_pre = NX_mic_pre
-                NX_mic_pre = NX_mic
-                do vloop_o=1,tayeps-1
-                  NX_mic(vloop_o)=((-1.0_dp)**(vloop_o)*&
-                  (0.5_dp/(factorial(vloop_o+1)))+(NX_mic_pre_pre(vloop_o+1))&
-                  /2.0_dp) * real(vloop_mic+1)
+                NX_mic__ = NX_mic_
+                NX_mic_ = NX_mic
+                do vloop_o = 1, tayeps-1
+                  NX_mic(vloop_o) = ((-1.0_dp)**(vloop_o) * &
+                  (0.5_dp/(factorial(vloop_o+1))) + &
+                  0.5_dp*(NX_mic__(vloop_o+1))) * real(vloop_mic+1)
                 end do
-                NX_mic(tayeps)=((-1.0_dp)**tayeps*&
+                NX_mic(tayeps)=((-1.0_dp)**tayeps * &
                 (0.5_dp/(factorial(tayeps+1)))) * real(vloop_mic+1)
               end if
-              vloop_mic = vloop_mic + 1
             end do
-            if (2 * vloop_i - vloop_j - vloop_k == 0) then
-              integral_mic = 0.0_dp
-              do vloop_o=1,tayeps
-                integral_mic = integral_mic + &
-                (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*&
+            int_mic = 0.0_dp
+            if (2*vloop_i - vloop_j - vloop_k == 0) then
+              do vloop_o = 1, tayeps
+                int_mic = int_mic + (-1.0_dp)**(vloop_o+1)*br2**(vloop_o-1) * &
                 (1.0_dp/(real(2*(vloop_o)-1)*factorial(vloop_o-1)))
               end do
-            else if (2 * vloop_i - vloop_j - vloop_k == 1) then
-              integral_mic = 0.0_dp
-              do vloop_o=1,tayeps
-                integral_mic = integral_mic + &
-                (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*&
+            else if (2*vloop_i - vloop_j - vloop_k == 1) then
+              do vloop_o = 1, tayeps
+                int_mic = int_mic + (-1.0_dp)**(vloop_o+1)*br2**(vloop_o-1) * &
                 (0.5_dp/factorial(vloop_o))
               end do
             else
-              integral_mic = 0.0_dp
-              do vloop_o=1,tayeps
-                integral_mic = integral_mic + &
-                (-1.0_dp)**(vloop_o+1)*(expo*R2)**(vloop_o-1)*&
-                (0.5_dp/factorial(vloop_o))&
-                  + (expo*R2)**(vloop_o-1)*NX_mic_pre_pre(vloop_o)/2.0_dp
+              do vloop_o = 1, tayeps
+                int_mic = int_mic + ((-1.0_dp)**(vloop_o+1)/factorial(vloop_o)+&
+                NX_mic__(vloop_o)) * 0.5_dp*br2**(vloop_o-1)
               end do
             end if
-            integral = integral + &
-            binomialcoe(vloop_i,vloop_j) * binomialcoe(vloop_i,vloop_k) * &
-            (-1.0_dp)**(vloop_j) * integral_mic
-            vloop_k = vloop_k + 1
+            int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
           end do
-          vloop_j = vloop_j + 1
         end do
-        V_Integral_1e = V_Integral_1e + 2.0_dp * &
-        (-1.0_dp)**(vloop_i) * expo**(-vloop_i-1) * t2pb(vloop_i+2) * integral
-        vloop_i = vloop_i + 1
+        val = val + 2.0_dp*(-1.0_dp)**(vloop_i) * &
+        expo**(-vloop_i-1) * t2pb(vloop_i+2) * int
       end do
     else
-      vloop_i = 0 ! k = vloop_i, t2pb(vloop_i + 3) = coe
-      do while(vloop_i <= m_x_i + m_x_j + m_y_i + m_y_j + m_z_i + m_z_j + 4)
-        integral = 0.0_dp
+      !k = vloop_i, t2pb(vloop_i + 3) = coe
+      invbr2 = 0.5_dp / br2
+      prec = 0.5_dp * dsqrt(pi/br2) * erf(dsqrt(br2))
+      do vloop_i = 0, max1
+        int = 0.0_dp
         do vloop_j = 0, vloop_i
+          tmp = (-1.0_dp)**(vloop_j) * binomialcoe(vloop_i,vloop_j)
           do vloop_k = 0, vloop_i
             do vloop_mic = 0, 2*vloop_i - vloop_j - vloop_k
               if (vloop_mic == 0) then
-                integral_mic = 0.5_dp*dsqrt(pi/(expo*R2)) * erf(dsqrt(expo*R2))
+                int_mic = prec
               else if(vloop_mic == 1) then
-                integral_mic_pre = integral_mic
-                integral_mic = (1.0_dp - exp(-expo*R2)) / (2.0_dp*expo*R2)
+                int_mic_ = int_mic
+                int_mic = (1.0_dp - expbr2) * invbr2
               else
-                integral_mic_pre_pre = integral_mic_pre
-                integral_mic_pre = integral_mic
-                integral_mic = (-(exp(-expo*R2)) + real(vloop_mic - 1) * &
-                integral_mic_pre_pre) / (2.0_dp*expo*R2)
+                int_mic__ = int_mic_
+                int_mic_ = int_mic
+                int_mic = (-expbr2 + real(vloop_mic - 1) * int_mic__) * invbr2
               end if
             end do
-            integral = integral + &
-            binomialcoe(vloop_i,vloop_j) * binomialcoe(vloop_i,vloop_k) * &
-            (-1.0_dp)**(vloop_j) * integral_mic
+            int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
           end do
         end do
-        V_Integral_1e = V_Integral_1e + 2.0_dp * &
-        (-1.0_dp)**(vloop_i) * expo**(-vloop_i-1) * t2pb(vloop_i+2) * integral
-        vloop_i = vloop_i + 1
+        val = val + 2.0_dp*(-1.0_dp)**(vloop_i) * &
+        expo**(-vloop_i-1) * t2pb(vloop_i+2) * int
       end do
     end if
-    V_Integral_1e = V_Integral_1e / dsqrt(pi)
+    val = val / rpi
     if (finitenuc) then
       ! Finite nuclear model correction, spherical electric charge
-      V_Integral_1e = V_Integral_1e - &
-      2.0_dp/3.0_dp * pi * rn * rn * exp(-expo*R2) * (-cod_ix)**(m_x_i) * &
-      (-cod_iy)**(m_y_i) * (-cod_iz)**(m_z_i) * (-cod_jx)**(m_x_j) * &
-      (-cod_jy)**(m_y_j) * (-cod_jz)**(m_z_j)
+      val = val - &
+      2.0_dp/3.0_dp * pi * rn * rn * expbr2 * (-codi(1))**(faci(1)) * &
+      (-codi(2))**(faci(2)) * (-codi(3))**(faci(3)) * (-codj(1))**(facj(1)) * &
+      (-codj(2))**(facj(2)) * (-codj(3))**(facj(3))
     end if
-    V_Integral_1e = V_Integral_1e * coe
+    val = val * coe
     return
   end function V_Integral_1e
   
@@ -2128,18 +1784,18 @@ module Hamiltonian
 !> diagonalisation of given real symmetric matrix
   subroutine diag(mat, dm, U, evl)
     implicit none
-    integer,intent(in) :: dm
-    real(dp),intent(in) :: mat(dm,dm)
+    integer,intent(in)   :: dm
+    real(dp),intent(in)  :: mat(dm,dm)
     real(dp),intent(out) :: U(dm,dm)
     real(dp),intent(out) :: evl(dm)
-    integer :: evl_count             ! number of eigenvalues found by dsyevr
-    integer :: isupp_ev(2*dm)        ! indices indicating the nonzero elements
-    integer :: lwork                 ! lwork for input of dsyevr
-    integer :: liwork                ! liwork for input of dsyevr
-    integer,allocatable :: iwork(:)  ! iwork for input of dsyevr
-    real(dp) :: mat_u(dm,dm)         ! upper triangular part
-    real(dp),allocatable :: work(:)  ! work for input of dsyevr
-    integer :: dialoop_i, dialoop_j
+    integer              :: evl_count   ! number of eigenvalues found by dsyevr
+    integer              :: isupev(2*dm)! indices of the nonzero elements
+    integer              :: lwork       ! lwork for input of dsyevr
+    integer              :: liwork      ! liwork for input of dsyevr
+    integer,allocatable  :: iwork(:)    ! iwork for input of dsyevr
+    real(dp)             :: mat_u(dm,dm)! upper triangular part
+    real(dp),allocatable :: work(:)     ! work for input of dsyevr
+    integer              :: dialoop_i, dialoop_j
     allocate(work(1))
     allocate(iwork(1))
     mat_u = 0.0_dp
@@ -2149,7 +1805,7 @@ module Hamiltonian
       end do
     end do
     call dsyevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
-    evl_count,evl,U,dm,isupp_ev,work,-1,iwork,-1,info)
+    evl_count,evl,U,dm,isupev,work,-1,iwork,-1,info)
     liwork = iwork(1)
     lwork = nint(work(1))
     deallocate(work)
@@ -2157,7 +1813,7 @@ module Hamiltonian
     allocate(work(lwork))
     allocate(iwork(liwork))
     call dsyevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
-    evl_count,evl,U,dm,isupp_ev,work,lwork,iwork,liwork,info)
+    evl_count,evl,U,dm,isupev,work,lwork,iwork,liwork,info)
     if(info < 0) then
       call terminate('illegal input of dsyevr')
     else if(info > 0) then
@@ -2174,15 +1830,15 @@ module Hamiltonian
   
   subroutine symm_orth(mat, dm, X, min_evl)
     implicit none
-    integer,intent(in) :: dm
-    real(dp),intent(in) :: mat(dm,dm)
+    integer,intent(in)   :: dm
+    real(dp),intent(in)  :: mat(dm,dm)
     real(dp),intent(out) :: X(:,:)
     real(dp),intent(out) :: min_evl
-    real(dp) :: U(dm,dm)
-    real(dp) :: supU(dm,dm)
-    real(dp) :: evl(dm)
-    real(dp) :: mat_u(dm,dm)
-    integer :: symloop_i
+    real(dp)             :: U(dm,dm)
+    real(dp)             :: supU(dm,dm)
+    real(dp)             :: evl(dm)
+    real(dp)             :: mat_u(dm,dm)
+    integer              :: symloop_i
     call diag(mat, dm, U, evl)
     min_evl = evl(1)
     mat_u = 0.0_dp
@@ -2209,14 +1865,14 @@ module Hamiltonian
 !! X mat XT = I
   subroutine can_orth(mat, dm, X, dm2)
     implicit none
-    integer,intent(in) :: dm
-    real(dp),intent(in) :: mat(dm,dm)
+    integer,intent(in)               :: dm
+    real(dp),intent(in)              :: mat(dm,dm)
     real(dp),allocatable,intent(out) :: X(:,:)
-    integer,intent(out) :: dm2
-    real(dp) :: U(dm,dm)
-    real(dp) :: evl(dm)
-    integer :: supU(dm)
-    integer :: canloop_i, canloop_j, canloop_k
+    integer,intent(out)              :: dm2
+    real(dp)                         :: U(dm,dm)
+    real(dp)                         :: evl(dm)
+    integer                          :: supU(dm)
+    integer                          :: canloop_i, canloop_j, canloop_k
     call diag(mat, dm, U, evl)
     supU = 0
     dm2 = dm

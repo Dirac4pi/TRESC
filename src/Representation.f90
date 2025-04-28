@@ -153,9 +153,9 @@ module Representation
     ! Processes all the gird lattice points of an atom center at once,
     ! improving efficiency and avoiding stack overflows
 
-    !$omp parallel num_threads(threads_use) default(shared) private(i, nr, nl, &
+    !$omp parallel num_threads(threads) default(shared) private(i, nr, nl, &
     !$omp Fockxmic, Fockcmic, exm, ecm, pos3w1)&
-    !$omp& if(threads_use < cpu_threads)
+    !$omp& if(threads < nproc)
     !$omp do schedule(static)
     do i = 1, atom_count
       if (molecule(i)%atom_number <= 2) then
@@ -214,9 +214,9 @@ module Representation
       wr(ii) = (2.0_dp*pi / real(nr+1)) * p**3 * ((x_i+1)**2.5 / (1-x_i)**3.5)
     end do
     if (nl == 230) then
-     call LD0230(lx, ly, lz, wl, nl2)
+      call LD0230(lx, ly, lz, wl, nl2)
     else if (nl == 434) then
-     call LD0434(lx, ly, lz, wl, nl2)
+      call LD0434(lx, ly, lz, wl, nl2)
     end if
     wl = wl * 4.0_dp * pi ! sphere weight
     do ii = 1, nr

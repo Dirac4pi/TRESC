@@ -49,8 +49,28 @@ module Atoms
   '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxz'   ,              &! M=13
   '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxy'   ,              &! M=14
   '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxx'      /)           ! M=15 <G
-  
-  
+
+!-----------------------------------------------------------------------
+! AO basis definations, sequence consistent with Gaussian (and Multiwfn)
+  integer, parameter :: AO_fac(3,5,15) = reshape( [                   &! (L,M)
+!(x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)
+  0,0,0,    1,0,0,    2,0,0,    3,0,0,    0,0,4,                      &! M=1  <S
+  0,0,0,    0,1,0,    0,2,0,    0,3,0,    0,1,3,                      &! M=2
+  0,0,0,    0,0,1,    0,0,2,    0,0,3,    0,2,2,                      &! M=3
+  0,0,0,    0,0,0,    1,1,0,    1,2,0,    0,3,1,                      &! M=4  <P
+  0,0,0,    0,0,0,    1,0,1,    2,1,0,    0,4,0,                      &! M=5
+  0,0,0,    0,0,0,    0,1,1,    2,0,1,    1,0,3,                      &! M=6  <D
+  0,0,0,    0,0,0,    0,0,0,    1,0,2,    1,1,2,                      &! M=7
+  0,0,0,    0,0,0,    0,0,0,    0,1,2,    1,2,1,                      &! M=8
+  0,0,0,    0,0,0,    0,0,0,    0,2,1,    1,3,0,                      &! M=9
+  0,0,0,    0,0,0,    0,0,0,    1,1,1,    2,0,2,                      &! M=10 <F
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    2,1,1,                      &! M=11
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    2,2,0,                      &! M=12
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    3,0,1,                      &! M=13
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    3,1,0,                      &! M=14
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    4,0,0                       &! M=15 <G
+  ], [3,5,15])
+
   ! transformation matrix from Cartesian basis to spher-harmo basis
   real(dp),parameter :: c2sd(6,5) = (/                           &! (6D,5D)
   -.5, -.5, 1., 0., 0., 0.,                                               &! D0
@@ -293,7 +313,7 @@ module Atoms
     integer            :: atom                 ! atom of |AO>
     integer            :: shell                ! shell of |AO>
     integer            :: shell_start          ! start point of an shell
-    real(dp)           :: exponents(20)        ! exponents of |AO>
+    real(dp)           :: exponents(16)        ! exponents of |AO>
     integer            :: L                    ! angular quantum number of |AO>
     integer            :: M                    ! magnetic quantum number of |AO>
     integer            :: ix,iy,iz
@@ -381,7 +401,7 @@ module Atoms
     ! normalization coefficient is taken into contraction coefficient
     do loop_i = 1, basis_count
       contraction = atom_basis(loop_i) % contraction
-      exponents(1:contraction) = atom_basis(loop_i) % exponents(:)
+      exponents(1:contraction) = atom_basis(loop_i) % exponents(1:contraction)
       L = atom_basis(loop_i) % angular_quantum_number + 1
       do loop_j = 1, contraction
         do loop_k = 1, (L+1)*L/2
@@ -592,7 +612,7 @@ module Atoms
           else if (index(keyword,'threads') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I2)",iostat = ios) threads_use
+              "(I2)",iostat = ios) threads
               if (ios /= 0) call terminate(&
               "threads setting should be written as 'threads=n'")
             else
@@ -906,7 +926,7 @@ module Atoms
     implicit none
     real(dp),intent(in) :: a
     integer,intent(in)  :: l,m,n
-    integer :: s,hl,hm,hn
+    integer             :: s,hl,hm,hn
     if (l == 0) then
       hl = 1
     else
@@ -992,16 +1012,9 @@ module Atoms
       end if
     end do
 
-    allocate(exc2s(2*cbdm,2*sbdm))
-    exc2s = c0
-    do csloop_i = 1, cbdm
-      do csloop_j = 1, sbdm
-        exc2s(2*csloop_i-1,2*csloop_j-1) = &
-        cmplx(c2s(csloop_i,csloop_j),0.0_dp,dp)
-        exc2s(2*csloop_i,2*csloop_j) = &
-        cmplx(c2s(csloop_i,csloop_j),0.0_dp,dp)
-      end do
-    end do
+    allocate(exc2s(2*cbdm,2*sbdm),source=c0)
+    exc2s(1:cbdm,1:sbdm) = c2s * c1
+    exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
   end subroutine assign_cs
 
 !-----------------------------------------------------------------------

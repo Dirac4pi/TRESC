@@ -6,11 +6,11 @@
 # "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 # "D:\oneAPI\setvars.bat"
 # ---------------release---------------
-# cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-# cmake --build build
+# cmake -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+# cmake --build build/release
 # ----------------debug----------------
-# cmake -B debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
-# cmake --build debug
+# cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+# cmake --build build/debug
 #===============================================================================
 
 
@@ -48,6 +48,7 @@ set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
 
 set(CMAKE_Fortran_OBJECT_OUTPUT_DIR "${CMAKE_BINARY_DIR}")
 file(MAKE_DIRECTORY ${CMAKE_Fortran_OBJECT_OUTPUT_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
 
 #-------------------------------------------------------------------------------
@@ -74,8 +75,8 @@ foreach(src_file IN LISTS TRESC_SOURCES)
 endforeach()
 add_executable(TRESC ${TRESC_SOURCES})
 set_target_properties(TRESC PROPERTIES
-  OUTPUT_NAME_DEBUG "TRESCdebug"
-  OUTPUT_NAME_RELEASE "TRESC"
+  OUTPUT_NAME_DEBUG "thomasdebug"
+  OUTPUT_NAME_RELEASE "thomas"
 )
 # dependencies
 set_source_files_properties(
@@ -409,36 +410,22 @@ if(WIN32)
     COMMENT "Setting stack size"
   )
 elseif(UNIX)
-
+  set(TRESC_SH "${CMAKE_BINARY_DIR}/tresc.sh")
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(TRESC_SH "${CMAKE_BINARY_DIR}/TRESC.sh")
     add_custom_command(TARGET TRESC POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E echo "#!/bin/bash" > ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "ulimit -s 65536" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "d=\$(cd -- " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "\"\$(dirname " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "\"\$0\")\" && pwd)" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "exec \"\$d/" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "TRESC\" " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "\"\$@\"" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E chmod +x ${TRESC_SH}
-      COMMENT "Generating Linux run wrapper: TRESC.sh (with stack size)"
+      COMMAND ${CMAKE_COMMAND} -E copy
+              "${CMAKE_SOURCE_DIR}/tresc.sh"
+              "${TRESC_SH}"
+      COMMAND ${CMAKE_COMMAND} -E chmod +x "${TRESC_SH}"
+      COMMENT "Copying tresc.sh to build directory"
     )
   elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(TRESC_SH "${CMAKE_BINARY_DIR}/TRESCdebug.sh")
     add_custom_command(TARGET TRESC POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E echo "#!/bin/bash" > ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "ulimit -s 65536" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "d=\$(cd -- " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "\"\$(dirname " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "\"\$0\")\" && pwd)" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "exec \"\$d/" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo -n "TRESCdebug\" " >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E echo "\"\$@\"" >> ${TRESC_SH}
-      COMMAND ${CMAKE_COMMAND} -E chmod +x ${TRESC_SH}
-      COMMENT "Generating Linux run wrapper: TRESCdebug.sh (with stack size)"
+      COMMAND ${CMAKE_COMMAND} -E copy
+              "${CMAKE_SOURCE_DIR}/tresc.sh"
+              "${TRESC_SH}"
+      COMMAND ${CMAKE_COMMAND} -E chmod +x "${TRESC_SH}"
+      COMMENT "Copying tresc.sh to build directory"
     )
   endif()
 endif()
