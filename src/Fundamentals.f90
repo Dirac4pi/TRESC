@@ -31,8 +31,8 @@ module Fundamentals
   character(len=200)  :: address_molecule
   character(len=200)  :: address_job
   character(len=200)  :: address_basis
-  character(len=200)  :: wd                         ! working directory
-  character(len=50)   :: usrname
+  character(len=200)  :: wd = ''                    ! working directory
+  character(len=50)   :: usrname = ''
   character(len=10),parameter   :: version = 'dev'  ! TRESC version
   
 !-----------------------------------------------------------------------
@@ -131,14 +131,14 @@ module Fundamentals
     if (ios == 0) write(60,"(A)") "WD = "//wd
     pid = getpid()
     call getlog(usrname)
-    write(60,"(A,I6,A,A)") "PID = ", pid, ";  username = ", usrname
+    write(60,"(A,I7,A,A)") "PID = ", pid, ";  username = ", usrname
     write(60,"(A60)") 'This file is the output file of job '//address_job
     write(60,"(A)") "Program/version: TRESC/"//trim(version)
     write(60,*)
     write(60,"(A)") "Acknowledge: "
     write(60,"(A)") "  TRESC is a molecule 2-component DKH2 HF/KS SCF"
     write(60,"(A)") "  calculation program. For more:"
-    write(60,"(A)") "  https://github.com/Dirac4pi/TRESC.git"
+    write(60,"(A)") "  https://github.com/Dirac4pi/TRESC"
     write(60,"(A)") "  All results default to Atomic Units (A.U.)."
     write(60,*)
     write(60,"(A)") "External libs:"
@@ -183,23 +183,23 @@ module Fundamentals
       if (terminate_message == 'keep') write(60,'(A)') 'process holding...'
       close(60)
       if (terminate_message == 'normal') then
-        write(*,"(A)") 'TRESC: Normal termination of job '//address_job
+        write(*,"(A)") 'tkernel: Normal termination of job '//address_job
         stop 0
       else if (terminate_message == 'keep') then
-        write(*,"(A)") 'TRESC: Normal termination of job '//address_job
+        write(*,"(A)") 'tkernel: Normal termination of job '//address_job
         write(*,'(A)') 'holding...'
       else
-        write(0,"(A)") 'TRESC Error: '//terminate_message
+        write(0,"(A)") 'tkernel error: '//terminate_message
         stop 1
       end if
     else
       if (terminate_message == 'normal') then
-        write(*,"(A)") 'TRESC: Normal termination'
+        write(*,"(A)") 'tkernel: Normal termination'
         stop 0
       else if (terminate_message == 'keep') then
-        write(*,"(A)") 'TRESC: holding...'
+        write(*,"(A)") 'tkernel: holding...'
       else
-        write(0,"(A)") 'TRESC Error: '//terminate_message
+        write(0,"(A)") 'tkernel error: '//terminate_message
         stop 1
       end if
     end if

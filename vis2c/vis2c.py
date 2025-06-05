@@ -2,33 +2,37 @@
 python module in vis2c
 visualizing 2-component complex orbital
 coding:UTF-8
-env:2cvis
+env:vis2c
 '''
 
-from .dataload import load_mo_from_molden
-from .fileconv import mog_init, call_fortran
-from .plot3D import cmplx_orb_plot_cub, cmplx_orb_plot_mog
-from .dataload import load_binary, load_cube, load_xyz
+import subprocess
+import dataload as dl
+import fileconv  as fc
+import plot3D as p3
+from os import path, rename
 from mayavi import mlab
 from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
-import os, subprocess, platform
+from numpy import sqrt, square, arctan2
+
+# True: alpha and beta visualization as phase, False: as components
+spin_phase = True
 
 def numbered_rename(src: str, dst: str) -> str:
   """automatically add serial number suffixes to avoid conflicts"""
-  if not os.path.exists(src):
+  if not path.exists(src):
     raise FileNotFoundError(f"file not exists: {src}")
   
-  base, ext = os.path.splitext(dst)
+  base, ext = path.splitext(dst)
   counter = 1
-  while os.path.exists(dst):
+  while path.exists(dst):
     dst = f"{base}_{counter}{ext}"
     counter += 1
   
-  os.rename(src, dst)
+  rename(src, dst)
   return dst
 
-def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
+def cub2c(real:str, img:str, index:int=0, isovalue:float=0.05)->None:
   '''
   2-component complex MO visualization, uniform cube grid net.
   --
@@ -40,14 +44,17 @@ def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
   isovalue: isovalue of amplitude.\n
   Returns: None
   '''
-  if not real.endswith('.molden'):
-    real = real + '.molden'
-  if not img.endswith('.molden'):
-    img = img + '.molden'
-  if not os.path.exists(real):
-    raise RuntimeError(f"can't find file {real}, may be it's not .molden file")
-  if not os.path.exists(img):
-    raise RuntimeError(f"can't find file {img}, may be it's not .molden file")
+  if not real.endswith('.molden.input'):
+    real = real + '.molden.input'
+  if not img.endswith('.molden.input'):
+    img = img + '.molden.input'
+  if not path.exists(real):
+    raise RuntimeError(\
+      f"can't find file {real}, may be it's not .molden.input file")
+  if not path.exists(img):
+    raise RuntimeError(\
+      f"can't find file {img}, may be it's not .molden.input file")
+  print(f'spin_phase = {spin_phase}')
   with open(real, 'r') as f:
     orbcount = 0
     while True:
@@ -110,7 +117,7 @@ def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
   img = numbered_rename('orbital.cub','img.cub')
 
   print('loading and plotting, please be patient...')
-  atoms, real_mat_alpha, nmo = load_cube(real, 1)
+  atoms, real_mat_alpha, nmo = dl.load_cube(real, 1)
   if nmo == 0:
     raise RuntimeError('no orbital info in cube file '+real)
   elif nmo != 2:
@@ -120,19 +127,31 @@ def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
   x = real_mat_alpha['x']
   y = real_mat_alpha['y']
   z = real_mat_alpha['z']
-  real_val_alpha = real_mat_alpha['value']
-  atoms, real_mat_beta, nmo = load_cube(real, 2)
-  real_val_beta = real_mat_beta['value']
-  atoms, img_mat_alpha, nmo = load_cube(img, 1)
-  img_val_alpha = img_mat_alpha['value']
-  atoms, img_mat_beta, nmo = load_cube(img, 2)
-  img_val_beta = img_mat_beta['value']
-  
+  ar = real_mat_alpha['value']
+  atoms, real_mat_beta, nmo = dl.load_cube(real, 2)
+  br = real_mat_beta['value']
+  atoms, img_mat_alpha, nmo = dl.load_cube(img, 1)
+  ai = img_mat_alpha['value']
+  atoms, img_mat_beta, nmo = dl.load_cube(img, 2)
+  bi = img_mat_beta['value']
   # plot the complex 2c orbital
-  isovla = cmplx_orb_plot_cub('alpha', atoms, real_val_alpha, img_val_alpha, \
-                              x, y, z, isovalue)
-  isovlb = cmplx_orb_plot_cub('beta', atoms, real_val_beta, img_val_beta, \
-                              x, y, z, isovalue)
+  if spin_phase:
+    sa = sqrt(square(ar) + square(ai))
+    sb = sqrt(square(br) + square(bi))
+    mod = sqrt(square(ar) + square(ai) + square(br) + square(bi))
+    sp = arctan2(sa, sb)
+    mr = ar + br
+    mi = ai + bi
+    mp = arctan2(mr, mi)
+    isovla = p3.cmplx_orb_plot_cub('spin', atoms, mod, sp, x, y, z, isovalue)
+    isovlb = p3.cmplx_orb_plot_cub('orb', atoms, mod, mp, x, y, z, isovalue)
+  else:
+    moda = sqrt(square(ar) + square(ai))
+    pha = arctan2(ar, ai)
+    modb = sqrt(square(br) + square(bi))
+    phb = arctan2(br, bi)
+    isovla = p3.cmplx_orb_plot_cub('alpha', atoms, moda, pha, x, y, z, isovalue)
+    isovlb = p3.cmplx_orb_plot_cub('beta', atoms, modb, phb, x, y, z, isovalue)
   # UI regulation isovalue
   class IsoValueController(HasTraits):
     isova = Float(isovla, desc="isova", auto_set=False, enter_set=True)
@@ -141,30 +160,38 @@ def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
     def update_isova(self,event):
       old_isov = event.old
       new_isov = event.new
-      mlab.close('alpha(amplitude)')
-      mlab.close(f'alpha(phase), isovalue={old_isov}')
-      cmplx_orb_plot_cub('alpha', atoms, real_val_alpha, img_val_alpha, \
-                        x, y, z, new_isov)
+      if spin_phase:
+        mlab.close('spin(amplitude)')
+        mlab.close(f'spin(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_cub('spin', atoms, mod, sp, x, y, z, new_isov)
+      else:
+        mlab.close('alpha(amplitude)')
+        mlab.close(f'alpha(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_cub('alpha', atoms, moda, pha, x, y, z, new_isov)
       mlab.draw()
       mlab.view()
     @observe('isovb')
     def update_isovb(self,event):
       old_isov = event.old
       new_isov = event.new
-      mlab.close('beta(amplitude)')
-      mlab.close(f'beta(phase), isovalue={old_isov}')
-      cmplx_orb_plot_cub('beta', atoms, real_val_beta, img_val_beta, \
-                        x, y, z, new_isov)
+      if spin_phase:
+        mlab.close('orb(amplitude)')
+        mlab.close(f'orb(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_cub('orb', atoms, mod, mp, x, y, z, new_isov)
+      else:
+        mlab.close('beta(amplitude)')
+        mlab.close(f'beta(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_cub('beta', atoms, modb, phb, x, y, z, new_isov)
       mlab.draw()
       mlab.view()
     viewalpha = View(
-      Item('isova', label="Alpha_isovalue", show_label=True),
+      Item('isova', label="isovalue(a)", show_label=True),
       width=300,
       height=200,
       resizable=True
     )
     viewbeta = View(
-      Item('isovb', label="Beta_isovalue", show_label=True),
+      Item('isovb', label="isovalue(b)", show_label=True),
       width=300,
       height=200,
       resizable=True
@@ -172,34 +199,37 @@ def cub2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
-def mog2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
+def mog2c(real:str, img:str, index:int=1, isovalue:float=0.05)->None:
   '''
   2-component complex MO visualization, irregular grid net.
   --
   !!! 2 molden format file contain (alpha real & beta real),\n
   (alpha imagine & beta imagine) of a selected 2-component complex orbital.\n
-  real: title of -real.molden file.\n
-  img: title of -img.molden file.\n
+  real: title of -real.molden.input file.\n
+  img: title of -img.molden.input file.\n
   index: index of MO.\n
   isovalue: isovalue of amplitude of MO.\n
   Returns: None
   '''
-  if not real.endswith('.molden'):
-    real = real + '.molden'
-  if not img.endswith('.molden'):
-    img = img + '.molden'
-  if not os.path.exists(real):
-    raise RuntimeError(f"can't find file {real}, may be it's not .molden file")
-  if not os.path.exists(img):
-    raise RuntimeError(f"can't find file {img}, may be it's not .molden file")
+  if not real.endswith('.molden.input'):
+    real = real + '.molden.input'
+  if not img.endswith('.molden.input'):
+    img = img + '.molden.input'
+  if not path.exists(real):
+    raise RuntimeError(\
+      f"can't find file {real}, may be it's not .molden.input file")
+  if not path.exists(img):
+    raise RuntimeError(\
+      f"can't find file {img}, may be it's not .molden.input file")
 
-  real = mog_init(real)
+  print(f'spin_phase = {spin_phase}')
+  real = fc.mog_init(real)
   print(f'generate {index}.mo')
-  if real.endswith('.molden'):
-    realMOalpha = load_mo_from_molden(real, 'alpha', index)
-    realMObeta = load_mo_from_molden(real, 'beta', index)
-    imgMOalpha = load_mo_from_molden(img, 'alpha', index)
-    imgMObeta = load_mo_from_molden(img, 'beta', index)
+  if real.endswith('.molden.input'):
+    realMOalpha = dl.load_mo_from_molden(real, 'alpha', index)
+    realMObeta = dl.load_mo_from_molden(real, 'beta', index)
+    imgMOalpha = dl.load_mo_from_molden(img, 'alpha', index)
+    imgMObeta = dl.load_mo_from_molden(img, 'beta', index)
     with open(str(index)+'.mo','w') as f:
       for i in range(len(realMOalpha)):
         f.write('('+str(realMOalpha[i])+','+str(imgMOalpha[i])+')\n')
@@ -207,40 +237,51 @@ def mog2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
   else:
     raise RuntimeError('wavefunction file cannot be loaded in mog2c')
   
-  print('call TRESC')
-  if platform.system() == "Linux":
-    results = call_fortran(['tresc', '-2c', str(index)])
-  elif platform.system() == "Windows":
-    results = call_fortran(['thomas', '-2c', str(index)])
+  print('call TRESC...')
+  results = fc.call_executable(['TRESC.sh', '-2c', str(index)])
   print(f'stdout: {results}')
 
-  atoms = load_xyz('.xyz')
+  atoms = dl.load_xyz('.xyz')
 
-  x = load_binary('.mogx')
-  size = x.size
-  y = load_binary('.mogy')
-  if y.size != size:
+  x = dl.load_binary('.mogx')
+  y = dl.load_binary('.mogy')
+  if y.size != x.size:
     raise RuntimeError('x, y size not match')
-  z = load_binary('.mogz')
-  if z.size != size:
+  z = dl.load_binary('.mogz')
+  if z.size != x.size:
     raise RuntimeError('x, z size not match')
 
-  ar = load_binary(str(index)+'.mogar')
-  if ar.size != size:
+  ar = dl.load_binary(str(index)+'.mogar')
+  if ar.size != x.size:
     raise RuntimeError('x, ar size not match')
-  ai = load_binary(str(index)+'.mogai')
-  if ai.size != size:
+  ai = dl.load_binary(str(index)+'.mogai')
+  if ai.size != x.size:
     raise RuntimeError('x, ai size not match')
-  br = load_binary(str(index)+'.mogbr')
-  if br.size != size:
+  br = dl.load_binary(str(index)+'.mogbr')
+  if br.size != x.size:
     raise RuntimeError('x, br size not match')
-  bi = load_binary(str(index)+'.mogbi')
-  if bi.size != size:
+  bi = dl.load_binary(str(index)+'.mogbi')
+  if bi.size != x.size:
     raise RuntimeError('x, bi size not match')
 
   # plot the complex 2c orbital
-  isovla = cmplx_orb_plot_mog('alpha', atoms, ar, ai, x, y, z, isovalue)
-  isovlb = cmplx_orb_plot_mog('beta', atoms, br, bi, x, y, z, isovalue)
+  if spin_phase:
+    sa = sqrt(square(ar) + square(ai))
+    sb = sqrt(square(br) + square(bi))
+    mod = sqrt(square(ar) + square(ai) + square(br) + square(bi))
+    sp = arctan2(sa, sb)
+    mr = ar + br
+    mi = ai + bi
+    mp = arctan2(mr, mi)
+    isovla = p3.cmplx_orb_plot_mog('spin', atoms, mod, sp, x, y, z, isovalue)
+    isovlb = p3.cmplx_orb_plot_mog('orb', atoms, mod, mp, x, y, z, isovalue)
+  else:
+    moda = sqrt(square(ar) + square(ai))
+    pha = arctan2(ar, ai)
+    modb = sqrt(square(br) + square(bi))
+    phb = arctan2(br, bi)
+    isovla = p3.cmplx_orb_plot_mog('alpha', atoms, moda, pha, x, y, z, isovalue)
+    isovlb = p3.cmplx_orb_plot_mog('beta', atoms, modb, phb, x, y, z, isovalue)
   # UI regulation isovalue
   class IsoValueController(HasTraits):
     isova = Float(isovla, desc="isova", auto_set=False, enter_set=True)
@@ -249,32 +290,45 @@ def mog2c(real:str, img:str, index:int=0, isovalue:float=0.1)->None:
     def update_isova(self,event):
       old_isov = event.old
       new_isov = event.new
-      mlab.close('alpha(amplitude)')
-      mlab.close(f'alpha(phase), isovalue={old_isov}')
-      cmplx_orb_plot_mog('alpha', atoms, ar, ai, x, y, z, new_isov)
+      if spin_phase:
+        mlab.close('spin(amplitude)')
+        mlab.close(f'spin(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_mog('spin', atoms, mod, sp, x, y, z, new_isov)
+      else:
+        mlab.close('alpha(amplitude)')
+        mlab.close(f'alpha(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_mog('alpha', atoms, moda, pha, x, y, z, new_isov)
       mlab.draw()
       mlab.view()
     @observe('isovb')
     def update_isovb(self,event):
       old_isov = event.old
       new_isov = event.new
-      mlab.close('beta(amplitude)')
-      mlab.close(f'beta(phase), isovalue={old_isov}')
-      cmplx_orb_plot_mog('beta', atoms, br, bi, x, y, z, new_isov)
+      if spin_phase:
+        mlab.close('orb(amplitude)')
+        mlab.close(f'orb(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_mog('orb', atoms, mod, mp, x, y, z, new_isov)
+      else:
+        mlab.close('beta(amplitude)')
+        mlab.close(f'beta(phase), isovalue={old_isov}')
+        p3.cmplx_orb_plot_mog('beta', atoms, modb, phb, x, y, z, new_isov)
       mlab.draw()
       mlab.view()
     viewalpha = View(
-      Item('isova', label="Alpha_isovalue", show_label=True),
+      Item('isova', label="isovalue(a)", show_label=True),
       width=300,
       height=200,
       resizable=True
     )
     viewbeta = View(
-      Item('isovb', label="Beta_isovalue", show_label=True),
+      Item('isovb', label="isovalue(b)", show_label=True),
       width=300,
       height=200,
       resizable=True
     )
   controller = IsoValueController()
   controller.configure_traits()
+if __name__ == "__main__":
+  import sys
+  mog2c(*sys.argv[1:])
 

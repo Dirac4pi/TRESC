@@ -2,15 +2,14 @@
 # CMake script for Thomas Relativistic Electronic Structure Calculation (TRESC)
 # System: Linux / Windows
 
-# ----------------envar----------------
-# "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-# "D:\oneAPI\setvars.bat"
 # ---------------release---------------
-# cmake -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+# cmake -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_Fortran_COMPILER=ifx
 # cmake --build build/release
+# chmod +x tshell.sh && cp tshell.sh build
 # ----------------debug----------------
-# cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+# cmake -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_Fortran_COMPILER=ifx
 # cmake --build build/debug
+# chmod +x tshell.sh && cp tshell.sh build
 #===============================================================================
 
 
@@ -25,6 +24,7 @@ project(TRESC
 #-------------------------------------------------------------------------------
 # General build settings
 #-------------------------------------------------------------------------------
+set(CMAKE_Fortran_COMPILER_PREPROCESS ON)
 enable_language(Fortran)
 set(CMAKE_Fortran_LINKER_LANGUAGE 
 "Fortran" CACHE STRING "Set linker language to Fortran" FORCE)
@@ -65,7 +65,7 @@ set(TRESC_SOURCES
   src/Representation.f90
   src/Hamiltonian.f90
   src/SCF.f90
-  src/TRESC.f90
+  src/Tkernel.f90
 )
 # check exists
 foreach(src_file IN LISTS TRESC_SOURCES)
@@ -75,8 +75,8 @@ foreach(src_file IN LISTS TRESC_SOURCES)
 endforeach()
 add_executable(TRESC ${TRESC_SOURCES})
 set_target_properties(TRESC PROPERTIES
-  OUTPUT_NAME_DEBUG "thomasdebug"
-  OUTPUT_NAME_RELEASE "thomas"
+  OUTPUT_NAME_DEBUG "tkerneld"
+  OUTPUT_NAME_RELEASE "tkernel"
 )
 # dependencies
 set_source_files_properties(
@@ -152,9 +152,9 @@ set_source_files_properties(
 ${CMAKE_SOURCE_DIR}/src/Representation.f90"
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/TRESC.f90
+  ${CMAKE_SOURCE_DIR}/src/Tkernel.f90
   PROPERTIES
-  OBJECT_OUTPUT_NAME "TRESC"
+  OBJECT_OUTPUT_NAME "Tkernel"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
   OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/SCF.f90
 )
@@ -256,11 +256,12 @@ target_link_libraries(TRESC PRIVATE
 )
 
 
+
 #-------------------------------------------------------------------------------
 # Platform-agnostic compiler configuration
 #-------------------------------------------------------------------------------
 if(WIN32)
-  set(CMAKE_Fortran_COMPILER ifx)
+  set(CMAKE_Fortran_COMPILER "ifx" CACHE STRING "Intel Fortran" FORCE)
   # general compile options
   string(CONCAT COMPILE_STR
     "/module:${CMAKE_Fortran_MODULE_DIR} "
@@ -294,12 +295,12 @@ if(WIN32)
   )
   set(CMAKE_Fortran_FLAGS_RELEASE "${RELEASE_STR}")
 elseif(UNIX)
-  set(CMAKE_Fortran_COMPILER ifx)
+  set(CMAKE_Fortran_COMPILER "ifx" CACHE STRING "Intel Fortran" FORCE)
   # general compile options
   string(CONCAT COMPILE_STR
     "-module ${CMAKE_Fortran_MODULE_DIR} "
     "-nologo "
-    "-qmkl-ilp64 "
+    "-qmkl=parallel "
     "-threads "
     "-assume byterecl "
     "-qopenmp "
@@ -376,22 +377,26 @@ elseif(UNIX)
       "-nologo "
       "-fuse-ld=lld "            # link by ld.lld
       "-g "
-      "-Qopenmp "
-      "-qmkl-ilp64 "
+      "-qopenmp "
+      "-qmkl=parallel "
       "<OBJECTS> "
       "-o <TARGET> "
-      "-Wl,--start-group,<LINK_LIBRARIES>,--end-group" # manually pass to ld.lld
+      "-Xlinker --start-group "  # manually pass to ld.lld
+      "<LINK_LIBRARIES> "
+      "-Xlinker --end-group"
     )
   elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     string(CONCAT LINK_EXECUTABLE_STR
       "<CMAKE_Fortran_COMPILER> "
       "-nologo "
-      "-ipo "                    # with -fuse-ld=lld
-      "-Qopenmp "
-      "-qmkl-ilp64 "
+      "-ipo "  # with -fuse-ld=lld
+      "-qopenmp "
+      "-qmkl=parallel "
       "<OBJECTS> "
       "-o <TARGET> "
-      "-Wl,--start-group,<LINK_LIBRARIES>,--end-group" # manually pass to ld.lld
+      "-Xlinker --start-group "  # manually pass to ld.lld
+      "<LINK_LIBRARIES> "
+      "-Xlinker --end-group"
     )
   endif()
 endif()
@@ -409,23 +414,4 @@ if(WIN32)
     COMMAND editbin /STACK:33554432 $<TARGET_FILE:TRESC>
     COMMENT "Setting stack size"
   )
-elseif(UNIX)
-  set(TRESC_SH "${CMAKE_BINARY_DIR}/tresc.sh")
-  if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_custom_command(TARGET TRESC POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-              "${CMAKE_SOURCE_DIR}/tresc.sh"
-              "${TRESC_SH}"
-      COMMAND ${CMAKE_COMMAND} -E chmod +x "${TRESC_SH}"
-      COMMENT "Copying tresc.sh to build directory"
-    )
-  elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_custom_command(TARGET TRESC POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy
-              "${CMAKE_SOURCE_DIR}/tresc.sh"
-              "${TRESC_SH}"
-      COMMAND ${CMAKE_COMMAND} -E chmod +x "${TRESC_SH}"
-      COMMENT "Copying tresc.sh to build directory"
-    )
-  endif()
 endif()

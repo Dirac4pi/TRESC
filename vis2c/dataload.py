@@ -193,10 +193,10 @@ def load_binary(title:str):
   """
   load data from binary file
   --
-  default as 8 byte float (double precision in fortran)
+  default as 8 byte float (double precision in Fortran)
   --
-  title: title of binary file
-  return: Contents of the binary file
+  title: title of binary file\n
+  return: Contents of the binary file\n
   """
 
   try:
@@ -252,7 +252,7 @@ def load_mo_from_molden(molden_path: str, spin: str, mo_index: int):
   spin = spin.lower()
   if spin != 'alpha' and spin != 'beta':
     raise RuntimeError('parameter spin error')
-  if mo_index <= 0:
+  if int(mo_index) <= 0:
     raise RuntimeError('parameter mo_index error')
   with open(molden_path, 'r') as f:
     lines = f.readlines()
@@ -270,9 +270,8 @@ def load_mo_from_molden(molden_path: str, spin: str, mo_index: int):
       continue
     if not in_mo_section:
       continue
-    
     if line.strip().startswith("Spin="):
-      if current_index == mo_index:
+      if current_index == int(mo_index):
         break
       current_spin = line.split("=")[1].strip().lower()
       if current_spin == spin:
@@ -280,9 +279,8 @@ def load_mo_from_molden(molden_path: str, spin: str, mo_index: int):
         current_index += 1
       else:
         is_spin = False
-
     elif is_spin and line.split()[0].isdigit():
-      if current_index == mo_index:
+      if current_index == int(mo_index):
         mo_coeffs.append(float(line.split()[1]))
   
   return mo_coeffs

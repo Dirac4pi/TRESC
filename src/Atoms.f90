@@ -30,25 +30,6 @@ module Atoms
      2.42,1.81,                        1.59,1.38,1.34,1.25,1.08,1.10, &  ! 3-10
      3.14,2.66,                        2.29,2.10,2.02,1.98,1.93,2.00, &  ! 11-18
      3.84,3.33,3.21,3.02,2.89,2.63,2.83,2.68,2.61,2.34,2.49,2.31     /)  ! 19-30
-!-----------------------------------------------------------------------
-! AO basis definations
-  ! sequence consistent with Gaussian (and Multiwfn)
-  character(len=4),parameter :: AO_xyz_factor(5,15) = (/              &! (L,M)
-  '    '  ,  'x   '  ,  'xx  '  ,  'xxx '  ,  'zzzz'   ,              &! M=1  <S
-  '    '  ,  'y   '  ,  'yy  '  ,  'yyy '  ,  'yzzz'   ,              &! M=2
-  '    '  ,  'z   '  ,  'zz  '  ,  'zzz '  ,  'yyzz'   ,              &! M=3
-  '    '  ,  '    '  ,  'xy  '  ,  'xyy '  ,  'yyyz'   ,              &! M=4  <P
-  '    '  ,  '    '  ,  'xz  '  ,  'xxy '  ,  'yyyy'   ,              &! M=5
-  '    '  ,  '    '  ,  'yz  '  ,  'xxz '  ,  'xzzz'   ,              &! M=6  <D
-  '    '  ,  '    '  ,  '    '  ,  'xzz '  ,  'xyzz'   ,              &! M=7
-  '    '  ,  '    '  ,  '    '  ,  'yzz '  ,  'xyyz'   ,              &! M=8
-  '    '  ,  '    '  ,  '    '  ,  'yyz '  ,  'xyyy'   ,              &! M=9
-  '    '  ,  '    '  ,  '    '  ,  'xyz '  ,  'xxzz'   ,              &! M=10 <F
-  '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxyz'   ,              &! M=11
-  '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxyy'   ,              &! M=12
-  '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxz'   ,              &! M=13
-  '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxy'   ,              &! M=14
-  '    '  ,  '    '  ,  '    '  ,  '    '  ,  'xxxx'      /)           ! M=15 <G
 
 !-----------------------------------------------------------------------
 ! AO basis definations, sequence consistent with Gaussian (and Multiwfn)
@@ -122,58 +103,58 @@ module Atoms
   ! number of shells in each element
   integer    :: shell_in_element(50)
 
-  ! The arrays in molecule, atom_basis and basis_inf will not involved in
+  ! The arrays in mol, atom_basis and basis_inf will not involved in
   ! arithmetic, but are read frequently, so they are stored as static arrays
   ! and are not memory aligned.
 
   type atom_basis_type                 ! dimension basis_count
     integer  :: atom_number            ! atomic number of basis atom
-    integer  :: angular_quantum_number ! angular quantum number of shell
-    integer  :: contraction            ! contraction of basis shell
-    real(dp) :: exponents(16)          ! exponents of primitive shell
-    real(dp) :: coefficient(16)        ! contraction coeff of prim shell
-    real(dp) :: Ncoefficient(16,16)    ! normalized coeff of prim shell
+    integer  :: L                      ! angular quantum number of shell
+    integer  :: contr                  ! contr of basis shell
+    real(dp) :: expo(16)               ! expo of primitive shell
+    real(dp) :: coe(16)                ! contr coeff of prim shell
+    real(dp) :: Ncoe(16,16)            ! normalized coeff of prim shell
   end type atom_basis_type
   
   type(atom_basis_type) :: atom_basis(5000)   ! basis CGTOs
 
   ! info of each Cartesian basis(directly related to atoms, dimension cbdm)
   type basis_inf_type
-    integer  :: atom                   ! which atom center in molecule
+    integer  :: atom                   ! which atom center in mol
     integer  :: shell                  ! shell number
     integer  :: L                      ! angular quantum number, S:1, P:2 ...
     integer  :: M                      ! magnetic quantum number
   end type basis_inf_type
   
-  type(basis_inf_type) :: basis_inf(500)
+  type(basis_inf_type) :: basis_inf(2000)
 !-----------------------------------------------------------------------
-! molecule definations
-  integer    :: atom_count             ! number of atoms in molecule
-  type molecule_type
+! molecular definations
+  integer    :: atom_count             ! number of atoms in mol
+  type mol_type
     integer  :: basis_number           ! serial number of each atom in basis set
-    integer  :: atom_number            ! atomic number of each atom in molecule
-    real(dp) :: nucleus_position(3)    ! position of each atom, (x,y,z)
-    ! nucleus radius of each atom in molecule 0.836*A^(1/3)+0.57 (fm)
-    real(dp) :: nucleus_radius
-  end type molecule_type
-  type(molecule_type) :: molecule(100) ! system composed only of atom
+    integer  :: atom_number            ! atomic number of each atom in mol
+    real(dp) :: pos(3)                 ! position of each atom, (x,y,z)
+    ! nucleus radius of each atom in mol 0.836*A^(1/3)+0.57 (fm)
+    real(dp) :: rad
+  end type mol_type
+  type(mol_type) :: mol(100) ! system composed only of atom
   
-  real(dp)   :: S__2                   ! <S**2> of molecule
-  real(dp)   :: totalpha, totbeta      ! total alpha, beta electron of molecule
+  real(dp)   :: S__2                   ! <S**2> of mol
+  real(dp)   :: totalpha, totbeta      ! total alpha, beta electron of mol
   real(dp)   :: S__2orb, Szorb         ! <S**2>, Sz of orbital
   real(dp)   :: totalphaorb, totbetaorb! total alpha, beta electron of orbital
   
-  private :: get_basis_count
+  private :: get_basis_count,AON
   public  :: read_gbs, read_geometry, read_keywords
-  public  :: input_check, input_print, AON, assign_cs, dftd4
+  public  :: input_check, input_print, assign_cs, dftd4
 
 
   contains
   
 !-----------------------------------------------------------------------
-!> get CGTOs from .gbs file, sharing of exponents is not allowed
+!> get CGTOs from .gbs file, sharing of expo is not allowed
 !!
-!> default and only: spher-harmo segment contraction basis
+!> default and only: spher-harmo segment contr basis
 !!
 !> minimal basis set are not available
   subroutine read_gbs()
@@ -183,6 +164,13 @@ module Atoms
     if(index(address_basis,'.gbs') == 0) then
       call terminate('input basis set file is not .gbs file')
     end if
+
+    inquire(file = address_basis, exist = exists, name = address_basis)
+    if (.not. exists) then
+      call terminate('basis file '//address_basis//' do not exist')
+    end if
+
+
     open(11,file = address_basis,status = "old",action = "read",iostat = ios)
     if (ios /= 0) call terminate('basis set file '&
     //address_basis//' could not be found')
@@ -207,28 +195,28 @@ module Atoms
       atom_basis(loop_j) % atom_number = loop_i
       angular_loop: do
         read(11,*,iostat = ios) basis_angular_name, &
-        atom_basis(loop_j) % contraction  ! scale factor defaults to 1.00
+        atom_basis(loop_j) % contr  ! scale factor defaults to 1.00
         if (ios /= 0) then
           call terminate(&
           'read basis file failed, may caused by incorrect formatting')
         end if 
         if (basis_angular_name == 'S') then
-          atom_basis(loop_j) % angular_quantum_number = 0
+          atom_basis(loop_j) % L = 0
         else if (basis_angular_name == 'P') then
-          atom_basis(loop_j) % angular_quantum_number = 1
+          atom_basis(loop_j) % L = 1
         else if (basis_angular_name == 'D') then
-          atom_basis(loop_j) % angular_quantum_number = 2
+          atom_basis(loop_j) % L = 2
         else if (basis_angular_name == 'F') then
-          atom_basis(loop_j) % angular_quantum_number = 3
+          atom_basis(loop_j) % L = 3
         else if (basis_angular_name == 'G') then
-          atom_basis(loop_j) % angular_quantum_number = 4
+          atom_basis(loop_j) % L = 4
         end if
         atom_basis(loop_j) % atom_number = loop_i
         loop_k = 1
-        contraction_loop: do
-          if (loop_k <= atom_basis(loop_j) % contraction) then
+        contr_loop: do
+          if (loop_k <= atom_basis(loop_j) % contr) then
             read(11,*,iostat = ios) atom_basis(loop_j) % &
-            exponents(loop_k), atom_basis(loop_j) % coefficient(loop_k)
+            expo(loop_k), atom_basis(loop_j) % coe(loop_k)
             if (ios /= 0) then
               call terminate(&
               'read basis file failed, try denote scientific notation with E')
@@ -238,7 +226,7 @@ module Atoms
           end if
           loop_j = loop_j + 1
           exit
-        end do contraction_loop 
+        end do contr_loop 
         loop_m = loop_m + 1
         if (loop_m == shell_in_element(loop_i)) exit
       end do angular_loop
@@ -301,19 +289,19 @@ module Atoms
 
   
 !-----------------------------------------------------------------------
-!> get static geometry of molecule from .xyz file
+!> get static geometry of mol from .xyz file
 !!
 !! will also allocate basis_inf and calculate cbdm and sbdm
 !!
 !! must be called after read_gbs
   subroutine read_geometry()
     implicit none
-    character(len = 2) :: molecule_element_name, title_note
-    integer            :: contraction          ! contraction of atom, shell
+    character(len = 2) :: mol_element_name, title_note
+    integer            :: contr          ! contr of atom, shell
     integer            :: atom                 ! atom of |AO>
     integer            :: shell                ! shell of |AO>
     integer            :: shell_start          ! start point of an shell
-    real(dp)           :: exponents(16)        ! exponents of |AO>
+    real(dp)           :: expo(16)        ! expo of |AO>
     integer            :: L                    ! angular quantum number of |AO>
     integer            :: M                    ! magnetic quantum number of |AO>
     integer            :: ix,iy,iz
@@ -338,83 +326,67 @@ module Atoms
       end if
     end do
     read(12,*)
-    loop_i = 1
     do loop_j = 1, atom_count, 1
-      loop_k = 1
-      read(12,*,iostat = ios) molecule_element_name, molecule(loop_j) % &
-      nucleus_position(1), molecule(loop_j) % nucleus_position(2), &
-      molecule(loop_j) % nucleus_position(3)
-      molecule(loop_j) % nucleus_position(1) = &
-      molecule(loop_j) % nucleus_position(1) / Ang2Bohr ! Angstorm -> Bohr
-      molecule(loop_j) % nucleus_position(2) = &
-      molecule(loop_j) % nucleus_position(2) / Ang2Bohr
-      molecule(loop_j) % nucleus_position(3) = &
-      molecule(loop_j) % nucleus_position(3) / Ang2Bohr
+      read(12,*,iostat=ios) mol_element_name, &
+      mol(loop_j)%pos(1:3)
+      mol(loop_j)%pos(1:3) = &
+      mol(loop_j)%pos(1:3) / Ang2Bohr
       if (ios /= 0) then
         call terminate(&
         'read geometry file failed, may caused by the absence of atom')
       end if
-      do while(adjustl(molecule_element_name) /= adjustl(element_list(loop_i)))
+      loop_i = 1
+      do while(adjustl(mol_element_name) /= adjustl(element_list(loop_i)))
         loop_i = loop_i + 1
-        if (loop_i >= element_count + 1) then
+        if (loop_i > element_count) then
           call terminate(&
           'geometry file: element not contained in current program')
         end if
       end do
+      loop_k = 1
       do while(atom_basis(loop_k) % atom_number /= loop_i)
         loop_k = loop_k + 1
         if (loop_k >= basis_count) call terminate(&
         'there are elements in geometry file not contained in basis set file')
       end do
-      molecule(loop_j) % basis_number = loop_k
-      molecule(loop_j) % atom_number = loop_i
-      molecule(loop_j) % nucleus_radius = 0.836 * &
-      real(element_massnumber(loop_i)) ** (1/3) + 0.57
-      loop_i = 1
+      mol(loop_j) % basis_number = loop_k
+      mol(loop_j) % atom_number = loop_i
+      mol(loop_j) % rad = 0.836 * &
+      real(element_massnumber(loop_i))**(1.0_dp/3.0_dp) + 0.57
     end do
-    read(12,*,iostat = ios) molecule_element_name, molecule(atom_count+1) % &
-    nucleus_position(1), molecule(atom_count+1) % nucleus_position(2), &
-    molecule(atom_count+1) % nucleus_position(3)
+    read(12,*,iostat=ios) mol_element_name, &
+    mol(atom_count+1)%pos(1:3)
     if (ios == 0) call terminate(&
     'read geometry file failed, may caused by redundancy of atoms')
-    ! calculation settings will be read in module Fundamentals
     close(12)
-    electron_count = 0
-    do loop_i = 1, atom_count, 1
-      electron_count = electron_count + molecule(loop_i) % atom_number
-    end do
+    electron_count = sum(mol(1:atom_count) % atom_number)
 
     ! get the dimension of Cartesian basis
     cbdm = 0
     sbdm = 0
     do loop_i = 1, atom_count
-      do loop_j = 1, shell_in_element(molecule(loop_i) % atom_number)
+      do loop_j = 1, shell_in_element(mol(loop_i) % atom_number)
         cbdm = cbdm + &
-        (atom_basis(molecule(loop_i) % basis_number + loop_j - 1) &
-        % angular_quantum_number + 2) * &
-        (atom_basis(molecule(loop_i) % basis_number + loop_j - 1) &
-        % angular_quantum_number + 1) / 2
-        sbdm = sbdm + 2 * (atom_basis(molecule(loop_i) % &
-        basis_number + loop_j - 1) % angular_quantum_number) + 1
+        (atom_basis(mol(loop_i) % basis_number + loop_j - 1) &
+        % L + 2) * &
+        (atom_basis(mol(loop_i) % basis_number + loop_j - 1) &
+        % L + 1) / 2
+        sbdm = sbdm + 2 * (atom_basis(mol(loop_i) % &
+        basis_number + loop_j - 1) % L) + 1
       end do
     end do
-    ! normalization coefficient is taken into contraction coefficient
+    ! normalization coefficient is taken into contr coefficient
     do loop_i = 1, basis_count
-      contraction = atom_basis(loop_i) % contraction
-      exponents(1:contraction) = atom_basis(loop_i) % exponents(1:contraction)
-      L = atom_basis(loop_i) % angular_quantum_number + 1
-      do loop_j = 1, contraction
+      contr = atom_basis(loop_i) % contr
+      expo(1:contr) = atom_basis(loop_i) % expo(1:contr)
+      L = atom_basis(loop_i) % L + 1
+      do loop_j = 1, contr
         do loop_k = 1, (L+1)*L/2
-          ix = 0
-          iy = 0
-          iz = 0
-          do loop_m = 1, len(AO_xyz_factor(L,loop_k))
-            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'x') ix = ix + 1
-            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'y') iy = iy + 1
-            if(AO_xyz_factor(L,loop_k)(loop_m:loop_m) == 'z') iz = iz + 1
-          end do
-          atom_basis(loop_i) % Ncoefficient(loop_j,loop_k) = atom_basis(loop_i)&
-          % coefficient(loop_j) * AON(exponents(loop_j),ix,iy,iz)
+          ix = AO_fac(1,L,loop_k)
+          iy = AO_fac(2,L,loop_k)
+          iz = AO_fac(3,L,loop_k)
+          atom_basis(loop_i) % Ncoe(loop_j,loop_k) = atom_basis(loop_i)&
+          % coe(loop_j) * AON(expo(loop_j),ix,iy,iz)
         end do
       end do
     end do
@@ -424,12 +396,12 @@ module Atoms
     shell = 1
     shell_start = 1
     do while(loop_i <= cbdm)
-      if (shell > shell_in_element(molecule(atom) % atom_number)) then
+      if (shell > shell_in_element(mol(atom) % atom_number)) then
         shell = 1
         atom = atom + 1
       end if
-      L = atom_basis(molecule(atom) % basis_number + shell - 1)&
-      % angular_quantum_number + 1
+      L = atom_basis(mol(atom) % basis_number + shell - 1)&
+      % L + 1
       M = loop_i - shell_start + 1
       ! prepare for openMP parallel computation
       basis_inf(loop_i) % atom = atom
@@ -437,7 +409,7 @@ module Atoms
       basis_inf(loop_i) % L = L
       basis_inf(loop_i) % M = M
       loop_i = loop_i + 1
-      if (loop_i - shell_start >= (L + 1) * L / 2) then
+      if (loop_i-shell_start >= (L+1)*L/2) then
         shell = shell + 1
         shell_start = loop_i
       end if
@@ -453,9 +425,9 @@ module Atoms
     write(60,"(A)") '  '//address_basis
     write(60,"(A)") '  ----------<BASIS>----------'
     loop_i = 1
-    do while(loop_i <= basis_count)  ! print only basis of atoms in molecule
+    do while(loop_i <= basis_count)  ! print only basis of atoms in mol
       do loop_j = 1, atom_count
-        if (molecule(loop_j) % basis_number == loop_i) exit
+        if (mol(loop_j) % basis_number == loop_i) exit
       end do
       if (loop_j == atom_count + 1) then
         loop_i = loop_i + 1
@@ -464,15 +436,14 @@ module Atoms
       write(60,"(A10,A2,A)") &
       '  element ',element_list(atom_basis(loop_i) % atom_number),':'
       loop_k = 0
-      do while(loop_k <= shell_in_element(molecule(loop_j) % atom_number) - 1)
+      do while(loop_k <= shell_in_element(mol(loop_j) % atom_number) - 1)
         write(60,"(A15,I1,A1)") '  -- shell l = ',&
-        atom_basis(loop_i + loop_k) % angular_quantum_number,':'
+        atom_basis(loop_i + loop_k) % L,':'
         loop_m = 1
-        do while(loop_m <= atom_basis(loop_i + loop_k) % contraction)
+        do while(loop_m <= atom_basis(loop_i + loop_k) % contr)
           write(60,"(A7,E12.5E2,A6,F9.5)") &
           '  exp: ',atom_basis(loop_i + loop_k) % &
-          exponents(loop_m), ', coe:',&
-          atom_basis(loop_i + loop_k) % coefficient(loop_m)
+          expo(loop_m), ', coe:',atom_basis(loop_i + loop_k) % coe(loop_m)
           loop_m = loop_m + 1
         end do
         loop_k = loop_k + 1
@@ -490,10 +461,10 @@ module Atoms
     write(60,"(A)") '  ----------<GEOMETRY>----------'
     do loop_i = 1, atom_count
       write(60,"(A2, A2, A3, F9.5, A3, F9.5, A3, F9.5)") &
-      '  ',element_list(molecule(loop_i) % atom_number), '   ',&
-      molecule(loop_i) % nucleus_position(1), '   ', &
-      molecule(loop_i) % nucleus_position(2), '   ', &
-      molecule(loop_i) % nucleus_position(3)
+      '  ',element_list(mol(loop_i) % atom_number), '   ',&
+      mol(loop_i) % pos(1), '   ', &
+      mol(loop_i) % pos(2), '   ', &
+      mol(loop_i) % pos(3)
     end do
     write(60,"(A34,I4,A2,I4)") '  scalar/spinor Cartesian basis dimension: ', &
     cbdm, ' /', 2*cbdm
@@ -581,10 +552,10 @@ module Atoms
               if (address_basis == '') call terminate (&
               "Environment variable 'TRESC' could not be found")
               if (index(keyword,'.gbs') /= 0) then
-                address_basis = trim(address_basis) // '\basis\'&
+                address_basis = trim(address_basis) // '/basis/'&
                 // keyword(index(keyword,'=') + 1:len(trim(keyword)))
               else
-                address_basis = trim(address_basis) // '\basis\'&
+                address_basis = trim(address_basis) // '/basis/'&
                 // keyword(index(keyword,'=') + 1:len(trim(keyword))) // '.gbs'
               end if
             else
@@ -924,43 +895,21 @@ module Atoms
 !> normalization factor of each basis
   pure elemental real(dp) function AON(a,l,m,n)
     implicit none
+    real(dp),parameter  :: d(0:4) = &
+    [1.0_dp, 1.0_dp, 1.0_dp/3.0_dp, 1.0_dp/15.0_dp, 1.0_dp/105.0_dp]
+    real(dp),parameter  :: cfc = 2.0_dp/pi
     real(dp),intent(in) :: a
     integer,intent(in)  :: l,m,n
-    integer             :: s,hl,hm,hn
-    if (l == 0) then
-      hl = 1
-    else
-      hl = 1
-      do s=1, 2*l-1, 2
-        hl = hl * s
-      end do
-    end if
-    if (m == 0) then
-      hm = 1
-    else
-      hm = 1
-      do s=1, 2*m-1, 2
-        hm = hm * s
-      end do
-    end if
-    if (n == 0) then
-      hn = 1
-    else
-      hn = 1
-      do s=1, 2*n-1, 2
-        hn = hn * s
-      end do
-    end if
-    AON = (2.0_dp*a/pi)**(0.75)*dsqrt((4.0_dp*a)**(l+m+n)/&
-    (real(hl)*real(hm)*real(hn)))
+    AON = (cfc*a)**(0.75)*dsqrt((4.0_dp*a)**(l+m+n) * d(l)*d(m)*d(n))
     return
   end function AON
 
 !-----------------------------------------------------------------------
 !> assign matrix c2s and exc2s
-  subroutine assign_cs()
+  subroutine assign_cs(is2c)
     implicit none
-    integer :: csloop_i, csloop_j, csloop_k, csloop_l
+    logical,intent(in) :: is2c      ! true: allocate exc2s, false: not allocate
+    integer            :: csloop_i, csloop_j, csloop_k, csloop_l
     
     if (allocated(c2s)) call terminate(&
     'call assign_cs error, c2s already allocated')
@@ -1012,9 +961,11 @@ module Atoms
       end if
     end do
 
-    allocate(exc2s(2*cbdm,2*sbdm),source=c0)
-    exc2s(1:cbdm,1:sbdm) = c2s * c1
-    exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
+    if (is2c) then
+      allocate(exc2s(2*cbdm,2*sbdm),source=c0)
+      exc2s(1:cbdm,1:sbdm) = c2s * c1
+      exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
+    end if
   end subroutine assign_cs
 
 !-----------------------------------------------------------------------

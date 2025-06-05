@@ -1,4 +1,4 @@
-!> @file TRESC.f90
+!> @file Tkernel.f90
 !!
 !! @brief TRESC startup procedure
 !!
@@ -7,11 +7,11 @@
 !! @code UTF-8
 !!
 !! @author dirac4pi
-program TRESC
+program Tkernel
   use Fundamentals
   implicit none
-  integer :: trloop_i, trloop_j, trloop_k
-  integer :: cmd_count, stat1
+  integer            :: trloop_i, trloop_j, trloop_k
+  integer            :: cmd_count, stat1
   character(len=200) :: cmd1
   cmd_count = command_argument_count()
   if (cmd_count == 0) then
@@ -47,17 +47,16 @@ program TRESC
     end if
 
     if ((trim(cmd1) == '-2c' .or. trim(cmd1) == '-2C')) then
-      call mogrid(.true., .true.)
+      call mo2cgrid(.true.)
     else if ((trim(cmd1) == '-1c' .or. trim(cmd1) == '-1C')) then
-      call mogrid(.false., .true.)
+      call mo1cgrid(.true.)
     else
       call terminate('unknown argument '//trim(cmd1))
     end if
-!------------------------------------------------------------------------------
   else
     call terminate('too many arguments')
   end if
-end program TRESC
+end program Tkernel
   
 !-----------------------------------------------------------------------
 !> print current version of TRESC
@@ -74,43 +73,6 @@ subroutine printversion()
     write(*,*) '$TRESC = '//trim(env_TRESC)
   end if
 end subroutine printversion
-  
-!-----------------------------------------------------------------------
-!> test of subroutine V_Integral_2e from module Hamiltonian
-subroutine V_Integral_2e_test()
-  use Fundamentals
-  use Hamiltonian
-  implicit none
-  real(dp) :: ai = 1.05700000000000
-  real(dp) :: aj = 0.761000000000000
-  real(dp) :: ak = 33.8700000000000
-  real(dp) :: al = 0.761000000000000
-  character(len = 3) :: fac_i = 'xz '
-  character(len = 3) :: fac_j = 'yzz'
-  character(len = 3) :: fac_k = '   '
-  character(len = 3) :: fac_l = 'yzz'
-  real(dp) :: cod_i(3), cod_j(3), cod_k(3), cod_l(3)
-  cod_i(1) = -9.05312365384779
-  cod_i(2) = 1.79901241370262
-  cod_i(3) = -1.65096194451096
-    
-  cod_j(1) = -9.72713758901604
-  cod_j(2) = 0.845838045467446
-  cod_j(3) = 0.000000000000000E+000
-    
-  cod_k(1) = -9.05312365384779
-  cod_k(2) = 1.79901241370262
-  cod_k(3) = 1.65096194451096
-    
-  cod_l(1) = -9.72713758901604
-  cod_l(2) = 0.845838045467446
-  cod_l(3) = 0.000000000000000E+000
-    
-  write(*,*) &
-  3.141241390*1.7805530990*6.081100279-002*1.7805530990*V_Integral_2e(&
-  fac_i,fac_j,fac_k,fac_l,ai,aj,ak,al,cod_i(1),cod_i(2),cod_i(3),cod_j(1),&
-  cod_j(2),cod_j(3),cod_k(1),cod_k(2),cod_k(3),cod_l(1),cod_l(2),cod_l(3))
-end subroutine V_Integral_2e_test
     
 !-----------------------------------------------------------------------
 !> standard single-configuration calculation
@@ -119,7 +81,7 @@ subroutine sconf_calc(kill_)
   use Fundamentals
   implicit none
   logical,intent(in) :: kill_  ! whether to kill the process after SCF
-  integer :: molstat
+  integer            :: molstat
   call get_command_argument(1, address_molecule, status=molstat)
   if (molstat > 0) then
     call terminate('molecule adress retrieval fails')
@@ -154,53 +116,95 @@ subroutine sconf_calc(kill_)
 end subroutine sconf_calc
 
 !-----------------------------------------------------------------------
-!> dump grid value of molecular orbitals for visualization
-subroutine mogrid(is2c, kill_)
+!> dump grid value of 2-component molecular orbitals for visualization
+subroutine mo2cgrid(kill_)
   use Representation
   use LAPACK95
   use Fundamentals
   implicit none
-  logical,intent(in) :: is2c
-  logical,intent(in) :: kill_
-  integer :: channel, count
+  logical,intent(in)      :: kill_
+  integer                 :: channel, count
   complex(dp),allocatable :: arr(:), supparr(:)
-  character(len=30) :: cmd2
-  integer :: stat2, stat3
+  character(len=30)       :: cmd2
+  integer                 :: stat2
   call get_command_argument(2, cmd2, status=stat2)
   if (stat2 > 0) then
     call terminate('2nd argument retrieval fails')
   else if (stat2 < 0) then
     call terminate('2nd argument too long')
   end if
+
   address_basis = '.gbs'
   call read_gbs()
   address_molecule = '.xyz'
   call read_geometry()
-  call assign_cs()
+  call assign_cs(.true.)
   open(newunit=channel, file=trim(cmd2)//'.mo', action='read', iostat=ios)
   if (ios /= 0) call terminate('error when opening .mo file')
-  if (is2c) then
-    allocate(supparr(2*cbdm))
-    read(channel,*,iostat=ios) supparr(1)
-    count = 1
-    do while(ios == 0)
-      count = count + 1
-      read(channel,*,iostat=ios) supparr(count)
-    end do
-    count = count - 1
-    if (count == 2*cbdm) then
-      call mogrid_becke(supparr, cmd2)
-    else if (count == 2*sbdm) then
-      allocate(arr(2*sbdm))
-      arr(:) = supparr(1:2*sbdm)
-      call zgemm( 'N', 'N', 2*cbdm, 1, 2*sbdm, c1, &
-      exc2s, 2*cbdm, arr, 2*sbdm, c0, supparr, 2*cbdm)
-      call mogrid_becke(supparr, cmd2)
-    end if
-  else
-
+  allocate(supparr(2*cbdm))
+  read(channel,*,iostat=ios) supparr(1)
+  count = 1
+  do while(ios == 0)
+    count = count + 1
+    read(channel,*,iostat=ios) supparr(count)
+  end do
+  count = count - 1
+  if (count == 2*cbdm) then
+    call mogrid_becke(.true., supparr, cmd2)
+  else if (count == 2*sbdm) then
+    allocate(arr(2*sbdm))
+    arr(:) = supparr(1:2*sbdm)
+    call zgemm( 'N', 'N', 2*cbdm, 1, 2*sbdm, c1, &
+    exc2s, 2*cbdm, arr, 2*sbdm, c0, supparr, 2*cbdm)
+    call mogrid_becke(.true., supparr, cmd2)
   end if
   close(channel)
   if (kill_) call terminate('normal')
+end subroutine mo2cgrid
 
-end subroutine mogrid
+!-----------------------------------------------------------------------
+!> dump grid value of scalar molecular orbitals for visualization
+subroutine mo1cgrid(kill_)
+  use Representation
+  use LAPACK95
+  use Fundamentals
+  implicit none
+  logical,intent(in)      :: kill_
+  integer                 :: channel, count
+  real(dp),allocatable    :: arr(:), supparr(:)
+  character(len=30)       :: cmd2
+  integer                 :: stat2
+  call get_command_argument(2, cmd2, status=stat2)
+  if (stat2 > 0) then
+    call terminate('2nd argument retrieval fails')
+  else if (stat2 < 0) then
+    call terminate('2nd argument too long')
+  end if
+
+  address_basis = '.gbs'
+  call read_gbs()
+  address_molecule = '.xyz'
+  call read_geometry()
+  call assign_cs(.false.)
+  open(newunit=channel, file=trim(cmd2)//'.mo', action='read', iostat=ios)
+  if (ios /= 0) call terminate('error when opening .mo file')
+  allocate(supparr(cbdm))
+  read(channel,*,iostat=ios) supparr(1)
+  count = 1
+  do while(ios == 0)
+    count = count + 1
+    read(channel,*,iostat=ios) supparr(count)
+  end do
+  count = count - 1
+  if (count == cbdm) then
+    call mogrid_becke(.false., supparr*c1, cmd2)
+  else if (count == sbdm) then
+    allocate(arr(sbdm))
+    arr(:) = supparr(1:sbdm)
+    call dgemm( 'N', 'N', cbdm, 1, sbdm, 1.0_dp, &
+    c2s, cbdm, arr, sbdm, 0.0_dp, supparr, cbdm)
+    call mogrid_becke(.false., supparr*c1, cmd2)
+  end if
+  close(channel)
+  if (kill_) call terminate('normal')
+end subroutine mo1cgrid

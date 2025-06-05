@@ -14,7 +14,39 @@ free format.
 > If AVX2 / AVX512 instruction set is supported, please modify the compilation
 options and compiler directives (e.g. align_size) manually
 
-## Linux
+## Linux (Ubuntu as example)
+
+1. Deploy build tools by root or sudo user:<br>
+`sudo apt install ninja-build`<br>
+`sudo apt install cmake`<br>
+2. Install [Intel oneAPI HPC Toolkit](
+https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html),
+and append the following to `~/.bashrc`:<br>
+`export ONEAPI_ROOT="/path/to/oneapi"`<br>
+`export PATH="$ONEAPI_ROOT/compiler/latest/bin:$PATH"`<br>
+`source $ONEAPI_ROOT/compiler/latest/env/vars.sh`<br>
+`source $ONEAPI_ROOT/mkl/latest/env/vars.sh`<br>
+`source $ONEAPI_ROOT/mpi/latest/env/vars.sh`<br>
+3. Download the stable release of [Libxc](
+  https://libxc.gitlab.io/download/) and build it by:<br>
+`cmake -S. -B./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DENABLE_FORTRAN=ON
+-DBUILD_TESTING=OFF -DBUILD_FPIC=ON
+-DCMAKE_Fortran_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/ifx"
+-DCMAKE_C_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/icx"
+-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
+-DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -O3 -xCORE-AVX2"`<br>
+then<br>
+`cd build && ninja`<br>
+append to `~/.bashrc` after a successful build:<br>
+`export LIBXC_ROOT="/path/to/libxc"`
+4. Change directory to TRESC root and build it by:<br>
+`cmake -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release`<br>
+then<br>
+`cmake --build build/release`<br>
+`chmod +x tshell.sh && cp tshell.sh build`<br>
+append to `~/.bashrc` when everything is done:<br>
+`export TRESC="/path/to/TRESC"`<br>
+`export PATH="$TRESC/build:$PATH`<br>
 
 ## Windows 10/11
 
@@ -33,8 +65,7 @@ Libxc root:
 `...\oneAPI\setvars.bat`<br>
 build Libxc by command:<br>
 `cmake -S. -B./build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DENABLE_FORTRAN=ON
--DBUILD_TESTING=OFF -DBUILD_FPIC=ON -DCMAKE_BUILD_SHARED_LIBS=OFF
--DCMAKE_Fortran_COMPILER="path\\to\\ifx.exe"
+-DBUILD_TESTING=OFF -DBUILD_FPIC=ON -DCMAKE_Fortran_COMPILER="path\\to\\ifx.exe"
 -DCMAKE_C_COMPILER="path\\to\\icx.exe"`<br>
 then<br>
 `cd build && ninja`<br>

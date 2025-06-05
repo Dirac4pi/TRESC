@@ -8,24 +8,13 @@
 !!
 !! @author dirac4pi
 
-
-!!!!!!!!!!!!添加变量对齐&&数组并行&&尽量避免除法
-!!!!!!!!!!!!添加omp simd (无分支，大量数据，内存对齐，内层循环)
-!!!!!!!!!!!!Fock2e:更均匀分配任务，让每个线程都有事做，让每个线程访问连续内存(内层循环在前)。
-!!!!!!!!!!!!减少同步：critical、atomic、barrier(可能影响极大)
-!!!!!!!!!!!!保证「工作集」≤ L1 缓存（通常是32 kB）
-!!!!!工作集（Working Set）：单次循环内频繁访问的数据总量。
-!!!!!不一定是整个数组，而是循环中同时活跃的数据部分。
-
-
-
 module SCF
   use Hamiltonian
   use Atoms
   use Fundamentals
   use Representation
   
-  ! density matrices and molecule orbital coefficients
+  ! density matrices and mol orbital coefficients
   integer                 :: Nalpha, Nbeta  ! number of alpha and beta elctron
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   !DIR$ ATTRIBUTES ALIGN:align_size :: AO2MO, AO2MOalpha, AO2MObeta
@@ -87,18 +76,18 @@ module SCF
   
   !--------------<two electron Fock>--------------
   !DIR$ ATTRIBUTES ALIGN:align_size :: Fock2HFcol, Fock2HFexc, Fock2KSexc
-  !DIR$ ATTRIBUTES ALIGN:align_size :: Fock2KScor, swintegral
+  !DIR$ ATTRIBUTES ALIGN:align_size :: Fock2KScor, swint
   complex(dp),allocatable :: Fock2HFcol(:,:)! HF Coulomb matrix
   complex(dp),allocatable :: Fock2HFexc(:,:)! HF Exchange matrix
   complex(dp),allocatable :: Fock2KSexc(:,:)! KS Exchange matrix
   complex(dp),allocatable :: Fock2KScor(:,:)! KS correlation matrix
-  real(dp),allocatable    :: swintegral(:,:)! <ij||ij> as well as <kl||kl>
+  real(dp),allocatable    :: swint(:,:)! <ij||ij> as well as <kl||kl>
   logical                 :: ndschwarz = .true.
   
-  ! orbital energy and molecule energy
+  ! orbital energy and mol energy
   !DIR$ ATTRIBUTES ALIGN:align_size :: orbE
   real(dp),allocatable    :: orbE(:)        ! orbital energy
-  real(dp)                :: molE_pre, molE ! molecule energy
+  real(dp)                :: molE_pre, molE ! mol energy
   real(dp)                :: Virial         ! Virial ratio
   real(dp)                :: nucE           ! nuclear repulsion energy
   real(dp)                :: HFCol          ! Hartree-Fock Coulomb energy
@@ -121,8 +110,8 @@ module SCF
   complex(dp),allocatable :: rho_history(:,:,:)! coeff of subsp iteration
   complex(dp),allocatable :: Rsd(:,:,:)        ! residuals of rho_m
   complex(dp),allocatable :: DIISmat(:,:)      ! A
-  complex(dp),allocatable :: DIISwork(:)
-  integer                 :: lDIISwork
+  complex(dp),allocatable :: DIIuork(:)
+  integer                 :: lDIIuork
   integer,allocatable     :: ipiv(:)
   integer                 :: DIIsinfo
   real(dp)                :: damp_coe          ! damp coeff of direct/DIIS SCF
@@ -143,12 +132,12 @@ module SCF
     nucE = 0.0_dp
     do loop_i = 1, atom_count
       do loop_j = loop_i + 1, atom_count
-        nucE = nucE + (real(molecule(loop_i) % atom_number) * &
-        real(molecule(loop_j) % atom_number))/dsqrt((molecule(loop_i) % &
-        nucleus_position(1) - molecule(loop_j) % nucleus_position(1))**2 + &
-        (molecule(loop_i) % nucleus_position(2) - molecule(loop_j) % &
-        nucleus_position(2))**2 + (molecule(loop_i) % nucleus_position(3) - &
-        molecule(loop_j) % nucleus_position(3))**2)
+        nucE = nucE + (real(mol(loop_i) % atom_number) * &
+        real(mol(loop_j) % atom_number))/dsqrt((mol(loop_i) % &
+        pos(1) - mol(loop_j) % pos(1))**2 + &
+        (mol(loop_i) % pos(2) - mol(loop_j) % &
+        pos(2))**2 + (mol(loop_i) % pos(3) - &
+        mol(loop_j) % pos(3))**2)
       end do
     end do
     if (nucE >= 1E12) call terminate(&
@@ -497,7 +486,7 @@ module SCF
           DIISmat(loop_j, subsp+1) = c1
         end do
         ! solveg residual equation
-        ! dgesv and dspsv will cause V_Integral_2e conflict for unknown reason
+        ! dgesv and dspsv will cause V_integral_2e conflict for unknown reason
         ! since DIISmat (and its inverse) is real symmetric, plus the column 
         ! vector is simple, use the inverse of DIISmat to solve directly
         call zgetrf(subsp+1, subsp+1, DIISmat, subsp+1, ipiv, DIISinfo)
@@ -506,13 +495,13 @@ module SCF
         else if (DIISinfo > 0) then
           call terminate('DIIS solution failure, internal error of dgetrf')
         end if
-        allocate(DIISwork(1))
-        call zgetri(subsp+1, DIISmat, subsp+1, ipiv, DIISwork, -1, DIISinfo)
-        lDIISwork = nint(real(DIISwork(1)))
-        deallocate(DIISwork)
-        allocate(DIISwork(lDIISwork))
-        call zgetri(subsp+1,DIISmat,subsp+1,ipiv,DIISwork,lDIISwork,DIISinfo)
-        deallocate(DIISwork)
+        allocate(DIIuork(1))
+        call zgetri(subsp+1, DIISmat, subsp+1, ipiv, DIIuork, -1, DIISinfo)
+        lDIIuork = nint(real(DIIuork(1)))
+        deallocate(DIIuork)
+        allocate(DIIuork(lDIIuork))
+        call zgetri(subsp+1,DIISmat,subsp+1,ipiv,DIIuork,lDIIuork,DIISinfo)
+        deallocate(DIIuork)
         if (DIISinfo < 0) then
           call terminate('DIIS solution failure, illegal input of dgetri')
         else if (DIISinfo > 0) then
@@ -567,7 +556,7 @@ module SCF
     write(60,*)
     write(60,'(A)') &
     '  ============================================================='
-    write(60,'(A)') '                        molecule INFO'
+    write(60,'(A)') '                        mol INFO'
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A,F12.6)') &
@@ -653,14 +642,14 @@ module SCF
           if (abs(AO2MO(loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(loop_j,&
             loop_i)), ',', aimag(AO2MO(loop_j,loop_i)), ')'
           end if
           if (abs(AO2MO(sbdm+loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(sbdm+loop_j,&
             loop_i)), ',', aimag(AO2MO(sbdm+loop_j,loop_i)), ')'
           end if
@@ -686,14 +675,14 @@ module SCF
           if (abs(AO2MO(loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(loop_j,&
             loop_i)), ',', aimag(AO2MO(loop_j,loop_i)), ')'
           end if
           if (abs(AO2MO(sbdm+loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(sbdm+loop_j,&
             loop_i)), ',', aimag(AO2MO(sbdm+loop_j,loop_i)), ')'
           end if
@@ -722,14 +711,14 @@ module SCF
           if (abs(AO2MO(loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(loop_j,&
             loop_i)), ',', aimag(AO2MO(loop_j,loop_i)), ')'
           end if
           if (abs(AO2MO(sbdm+loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(sbdm+loop_j,&
             loop_i)), ',', aimag(AO2MO(sbdm+loop_j,loop_i)), ')'
           end if
@@ -756,14 +745,14 @@ module SCF
           if (abs(AO2MO(loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   A #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(loop_j,&
             loop_i)), ',', aimag(AO2MO(loop_j,loop_i)), ')'
           end if
           if (abs(AO2MO(sbdm+loop_j,loop_i)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
             '             --   B #',ishell,' L=',basis_inf(loop_j)%L-1,'     ',&
-            element_list(molecule(basis_inf(loop_j)%atom)%atom_number),' #',&
+            element_list(mol(basis_inf(loop_j)%atom)%atom_number),' #',&
             basis_inf(loop_j)%atom,'    (', real(AO2MO(sbdm+loop_j,&
             loop_i)), ',', aimag(AO2MO(sbdm+loop_j,loop_i)), ')'
           end if
@@ -775,7 +764,7 @@ module SCF
     '  ============================================================='
     write(60,*)
     if (molden) then
-      write(60,'(A)') '  dumping AO2MO to '//trim(address_job)//'.molden'
+      write(60,'(A)') '  dumping AO2MO to '//trim(address_job)//'.molden.input'
       call dump_molden()
       write(60,'(A)') '  complete!'
     end if
@@ -790,7 +779,7 @@ module SCF
     deallocate(oper4, oper6)
     deallocate(isupp_ev_f, Rsd, DIISmat, ipiv)
     deallocate(rho_history, rho_pre, rho_pre_pre)
-    deallocate(swintegral)
+    deallocate(swint)
     deallocate(Fock1, Fock2HFexc, Fock2HFcol)
     if (allocated(Fock2KScor)) deallocate(Fock2KScor)
     if (allocated(Fock2KSexc)) deallocate(Fock2KSexc)
@@ -1522,7 +1511,7 @@ module SCF
       deallocate(pxVepz, pzVepx, pyVepz, pzVepy, ARVeRA, AVeA)
       deallocate(oper1, oper2, oper3, oper4, oper5)
       deallocate(Ap, ApRp, SRp, ARVRA, AVA, exAO2p2)
-      ! deallocate one-electron integrals to reduce memory usage
+      ! deallocate one-electron ints to reduce memory usage
       deallocate(pxVpx, pyVpy, pzVpz, pxVpy, pyVpx)
       deallocate(pxVpz, pzVpx, pyVpz, pzVpy)
       if (SRTP_type) then
@@ -1537,61 +1526,56 @@ module SCF
 !!
 !! "direct" calculation to avoid memory overflow and large amount of disk r&w
 !!
-!! but 2 electron integral should be calculated in each SCF iteration
+!! but 2 electron int should be calculated in each SCF iteration
   subroutine Fock2e()
     implicit none
-    integer  :: i                   ! for parallel computation, dloop_i = i
-    integer  :: dloop_i, dloop_j    ! loop variables for Fock2e routine
-    integer  :: dloop_k, dloop_l
-    integer  :: dloop_m, dloop_n
-    integer  :: dloop_o, dloop_p
+    integer  :: i, j                ! for parallel computation, ui = i, uk = j
+    integer  :: ui, uj              ! loop variables for Fock2e routine
+    integer  :: uk, ul
+    integer  :: um, un
+    integer  :: uo, up
     integer  :: addi, addj          ! serial scalar for atomic operation
-    real(dp) :: integral
+    real(dp) :: int
     !----------------------------------
-    integer  :: contraction_i       ! contraction of atom_i, shell_i
-    integer  :: atom_i              ! which atom is the i^th component of |AOi>
-    integer  :: shell_i             ! which shell is the i^th component of |AOi>
-    integer  :: L_i                 ! angular quantum number of |AOi>
-    integer  :: M_i                 ! magnetic quantum number of |AOi>
+    integer  :: contri              ! contr of atomi, shelli
+    integer  :: atomi               ! which atom is the i^th component of |AOi>
+    integer  :: shelli              ! which shell is the i^th component of |AOi>
+    integer  :: Li                  ! angular quantum number of |AOi>
+    integer  :: Mi                  ! magnetic quantum number of |AOi>
     !----------------------------------
-    integer  :: contraction_j       ! contraction of atom_j, shell_j
-    integer  :: atom_j              ! which atom is the j_th component of |AOj>
-    integer  :: shell_j             ! which shell is the j_th component of |AOj>
-    integer  :: L_j                 ! angular quantum number of |AOj>
-    integer  :: M_j                 ! magnetic quantum number of |AOj>
+    integer  :: contrj              ! contr of atomj, shellj
+    integer  :: atomj               ! which atom is the j_th component of |AOj>
+    integer  :: shellj              ! which shell is the j_th component of |AOj>
+    integer  :: Lj                  ! angular quantum number of |AOj>
+    integer  :: Mj                  ! magnetic quantum number of |AOj>
     !----------------------------------
-    integer  :: contraction_k       ! contraction of atom_k, shell_k
-    integer  :: L_k                 ! angular quantum number of |AOk>
-    integer  :: M_k                 ! magnetic quantum number of |AOk>
+    integer  :: contrk              ! contr of atoMk, shelLk
+    integer  :: Lk                  ! angular quantum number of |AOk>
+    integer  :: Mk                  ! magnetic quantum number of |AOk>
     !----------------------------------
-    integer  :: contraction_l       ! contraction of atom_l, shell_l
-    integer  :: L_l                 ! angular quantum number of |AOl>
-    integer  :: M_l                 ! magnetic quantum number of |AOl>
-    real(dp) :: exponents_i(20)     ! exponents of |AOi>
-    real(dp) :: exponents_j(20)     ! exponents of |AOj>
-    real(dp) :: exponents_k(20)     ! exponents of |AOk>
-    real(dp) :: exponents_l(20)     ! exponents of |AOl>
-    real(dp) :: coefficient_i(20)   ! coefficient of |AOi>
-    real(dp) :: coefficient_j(20)   ! coefficient of |AOj>
-    real(dp) :: coefficient_k(20)   ! coefficient of |AOk>
-    real(dp) :: coefficient_l(20)   ! coefficient of |AOl>
-    real(dp) :: coordinate_i(3)     ! coordinate of center of |AOi>
-    real(dp) :: coordinate_j(3)     ! coordinate of center of |AOj>
-    real(dp) :: coordinate_k(3)     ! coordinate of center of |AOk>
-    real(dp) :: coordinate_l(3)     ! coordinate of center of |AOl>
-    real(dp) :: swintegral_mic
-    integer  :: swloop_i, swloop_j  ! loop variables only for schwarz screening
-    integer  :: swloop_m, swloop_n
-    integer  :: swloop_o, swloop_p
-    integer  :: shell_start_i                       ! start point of an shell
-    integer  :: shell_start_j                       ! start point of an shell
-    real(dp),allocatable :: swexponents_i(:)        ! expo of |AOi> for schwarz
-    real(dp),allocatable :: swexponents_j(:)        ! expo of |AOj> for schwarz
-    real(dp),allocatable :: swcoefficient_i(:)      ! coeff of |AOi> for schwarz
-    real(dp),allocatable :: swcoefficient_j(:)      ! coeff of |AOj> for schwarz
-    complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)    ! micro 2e Fock matrix
-    complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)    ! micro 2e Fock matrix
+    integer  :: contrl              ! contr of atoMl, shelLl
+    integer  :: Ll                  ! angular quantum number of |AOl>
+    integer  :: Ml                  ! magnetic quantum number of |AOl>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, expk, expl
+    !DIR$ ATTRIBUTES ALIGN:align_size :: coei, coej, coek, coel
+    real(dp) :: expi(20)            ! expo of |AOi>
+    real(dp) :: expj(20)            ! expo of |AOj>
+    real(dp) :: expk(20)            ! expo of |AOk>
+    real(dp) :: expl(20)            ! expo of |AOl>
+    real(dp) :: coei(20)            ! coefficient of |AOi>
+    real(dp) :: coej(20)            ! coefficient of |AOj>
+    real(dp) :: coek(20)            ! coefficient of |AOk>
+    real(dp) :: coel(20)            ! coefficient of |AOl>
+    real(dp) :: codi(3)             ! coordinate of center of |AOi>
+    real(dp) :: codj(3)             ! coordinate of center of |AOj>
+    real(dp) :: codk(3)             ! coordinate of center of |AOk>
+    real(dp) :: codl(3)             ! coordinate of center of |AOl>
+    real(dp) :: swint_mic
+    !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic
+    complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
+    complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp),allocatable :: supp1(:,:), supp2(:,:), supp3(:,:)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Fock2_assigned
     integer :: Fock2_assigned(2,8)         ! avoid duplicate assignment of Fock2
     integer :: assigned
     integer :: iassign
@@ -1601,108 +1585,66 @@ module SCF
       write(60,'(a)') '  -- Schwarz screening of <ij||kl>'
       allocate(Fock2HFcol(2*fbdm,2*fbdm))
       allocate(Fock2HFexc(2*fbdm,2*fbdm))
-      allocate(swintegral(cbdm,cbdm))
-      swintegral = 0.0_dp
-      swloop_i = 1
-      atom_i = 1
-      shell_i = 1
-      shell_start_i = 1
-      do while(swloop_i <= cbdm)
-        if (shell_i > shell_in_element(molecule(atom_i) % atom_number)) then
-          shell_i = 1
-          atom_i = atom_i + 1
-        end if
-        contraction_i = atom_basis(molecule(atom_i) % &
-        basis_number + shell_i - 1) % contraction
-        L_i = atom_basis(molecule(atom_i) % basis_number + shell_i - 1) % &
-        angular_quantum_number + 1
-        M_i = swloop_i - shell_start_i + 1
-        allocate(swexponents_i(contraction_i))
-        allocate(swcoefficient_i(contraction_i))
-        swexponents_i = &
-        atom_basis(molecule(atom_i) % basis_number + shell_i - 1) % exponents
-        do swloop_m=1,contraction_i
-          swcoefficient_i(swloop_m) = atom_basis(molecule(atom_i) % &
-          basis_number + shell_i - 1) % Ncoefficient(swloop_m,M_i)
-        end do
-        coordinate_i = molecule(atom_i) % nucleus_position
-        swloop_j = swloop_i
-        atom_j = atom_i
-        shell_j = shell_i
-        shell_start_j = shell_start_i
-        do while(swloop_j <= cbdm)
-          if (shell_j > shell_in_element(molecule(atom_j) % atom_number)) then
-            shell_j = 1
-            atom_j = atom_j + 1
-          end if
-          contraction_j = &
-          atom_basis(molecule(atom_j) % basis_number+shell_j-1) % contraction
-          L_j = atom_basis(molecule(atom_j) % basis_number + shell_j - 1) % &
-          angular_quantum_number + 1
-          M_j = swloop_j - shell_start_j + 1
-          allocate(swexponents_j(contraction_j))
-          allocate(swcoefficient_j(contraction_j))
-          swexponents_j = &
-          atom_basis(molecule(atom_j) % basis_number + shell_j - 1) % exponents
-          do swloop_m=1,contraction_j
-            swcoefficient_j(swloop_m) = atom_basis(molecule(atom_j) % &
-            basis_number + shell_j - 1) % Ncoefficient(swloop_m,M_j)
-          end do
-          coordinate_j = molecule(atom_j) % nucleus_position
-          do swloop_m = 1, contraction_i
-            do swloop_n = 1, contraction_j
-              do swloop_o = 1, contraction_i
-                do swloop_p = 1, contraction_j
-                  if (L_i >= L_j) then
-                    swintegral_mic = swcoefficient_i(swloop_m) * &
-                    swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * &
-                    swcoefficient_j(swloop_p) * V_Integral_2e(&
-                    AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), &
-                    AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), &
-                    swexponents_i(swloop_m),swexponents_j(swloop_n),&
-                    swexponents_i(swloop_o),swexponents_j(swloop_p),&
-                    coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                    coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                    coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                    coordinate_j(1),coordinate_j(2),coordinate_j(3))
-                  else
-                    swintegral_mic = swcoefficient_i(swloop_m) * &
-                    swcoefficient_j(swloop_n) * swcoefficient_i(swloop_o) * &
-                    swcoefficient_j(swloop_p) * V_Integral_2e(&
-                    AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), &
-                    AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i), &
-                    swexponents_j(swloop_n),swexponents_i(swloop_m),&
-                    swexponents_j(swloop_p),swexponents_i(swloop_o),&
-                    coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                    coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                    coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                    coordinate_i(1),coordinate_i(2),coordinate_i(3))
-                  end if
-                  swintegral(swloop_i,swloop_j) = &
-                  swintegral(swloop_i,swloop_j) + swintegral_mic
+      allocate(swint(cbdm,cbdm))
+      swint = 0.0_dp
+      do ui = 1, cbdm
+        contri = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % contr
+        Li = basis_inf(ui) % L
+        Mi = basis_inf(ui) % M
+        expi(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % expo(1:contri)
+        coei(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % Ncoe(1:contri,Mi)
+        codi = mol(basis_inf(ui)%atom) % pos
+        do uj = ui, cbdm
+          contrj = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % contr
+          Lj = basis_inf(uj) % L
+          Mj = basis_inf(uj) % M
+          expj(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % expo(1:contrj)
+          coej(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % Ncoe(1:contrj,Mj)
+          codj = mol(basis_inf(uj)%atom) % pos
+          if (Li >= Lj) then
+            do um = 1, contri
+              do un = 1, contrj
+                do uo = 1, contri
+                  do up = 1, contrj
+                    swint_mic=coei(um)*coej(un)*coei(uo)*coej(up)*&
+                    V_integral_2e(&
+                    AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj), &
+                    AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj), &
+                    expi(um),expj(un),expi(uo),expj(up),&
+                    codi,codj,codi,codj)
+                    swint(ui,uj) = swint(ui,uj) + swint_mic
+                  end do
                 end do
               end do
             end do
-          end do
-          swintegral(swloop_j,swloop_i) = swintegral(swloop_i,swloop_j)
-          deallocate(swexponents_j)
-          deallocate(swcoefficient_j)
-          swloop_j = swloop_j + 1
-          if (swloop_j - shell_start_j >= (L_j + 1) * L_j / 2) then
-            shell_j = shell_j + 1
-            shell_start_j = swloop_j
+          else
+            do um = 1, contri
+              do un = 1, contrj
+                do uo = 1, contri
+                  do up = 1, contrj
+                    swint_mic=coei(um)*coej(un)*coei(uo)*coej(up)*&
+                    V_integral_2e(&
+                    AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi), &
+                    AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi), &
+                    expj(un),expi(um),expj(up),expi(uo),&
+                    codj,codi,codj,codi)
+                    swint(ui,uj) = swint(ui,uj) + swint_mic
+                  end do
+                end do
+              end do
+            end do
           end if
+          swint(uj,ui) = swint(ui,uj)
         end do
-        deallocate(swexponents_i)
-        deallocate(swcoefficient_i)
-        swloop_i = swloop_i + 1
-        if (swloop_i - shell_start_i >= (L_i + 1) * L_i / 2) then
-          shell_i = shell_i + 1
-          shell_start_i = swloop_i
-        end if
       end do
       write(60,'(A,E10.2,A)') &
-      '  -- complete! cutoff:',schwarz_VT,'; stored in swintegral'
+      '  -- complete! cutoff:',schwarz_VT,'; stored in swint'
     end if
     if (s_h) then
       allocate(supp1(2*sbdm,2*cbdm))
@@ -1719,535 +1661,407 @@ module SCF
     supp1 = c0
     supp3 = c0
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads) default(shared) private(i,dloop_i,&
-    !$omp& dloop_j,dloop_k,dloop_l,dloop_m,dloop_n,dloop_o,dloop_p,integral,&
-    !$omp& contraction_i,L_i,M_i,contraction_j,L_j,M_j,contraction_k,L_k,M_k,&
-    !$omp& contraction_l,L_l,M_l,exponents_i,exponents_j,exponents_k,addi,addj,&
-    !$omp& exponents_l,coefficient_i,coefficient_j,coefficient_k,coefficient_l,&
-    !$omp& coordinate_i,coordinate_j,coordinate_k,coordinate_l,HFcol_mic,&
-    !$omp& HFexc_mic,Fock2_assigned,assigned,iassign,carry)&
+    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp& ul,um,un,uo,up,int,contri,Li,Mi,contrj,Lj,Mj,contrk,Lk,Mk,contrl,Ll,&
+    !$omp& Ml,expi,expj,expk,expl,coei,coej,coek,coel,codi,codj,codk,codl,addi,&
+    !$omp& addj,HFcol_mic,HFexc_mic,Fock2_assigned,assigned,iassign,carry)&
     !$omp& if(threads < nproc)
-    !$omp do schedule(dynamic,6)
+    HFcol_mic = c0
+    HFexc_mic = c0
+    !$omp do schedule(dynamic,5) collapse(2)
     ! (ij|kl)=(ji|kl)=(ij|lk)=(ji|lk)=(kl|ij)=(kl|ji)=(lk|ij)=(lk|ji)
-    !----------------------------<dloop_i>-------------------------------------
     do i = cbdm, 1, -1
-      HFcol_mic = c0
-      HFexc_mic = c0
-      dloop_i = i
-      contraction_i = atom_basis(molecule(basis_inf(dloop_i) % atom) % &
-      basis_number + basis_inf(dloop_i) % shell - 1) % contraction
-      L_i = basis_inf(dloop_i) % L
-      M_i = basis_inf(dloop_i) % M
-      do dloop_m = 1, contraction_i
-        exponents_i(dloop_m) = atom_basis(molecule(basis_inf(dloop_i) % atom) &
-        % basis_number + basis_inf(dloop_i) % shell - 1) % exponents(dloop_m)
-        coefficient_i(dloop_m) = atom_basis(molecule(basis_inf(dloop_i)%atom) &
-        % basis_number + basis_inf(dloop_i)%shell-1) % Ncoefficient(dloop_m,M_i)
-      end do
-      coordinate_i = molecule(basis_inf(dloop_i) % atom) % nucleus_position
-      !----------------------------<dloop_k>-----------------------------------
-      do dloop_k = cbdm, 1, -1
-        contraction_k = atom_basis(molecule(basis_inf(dloop_k) % atom) % &
-        basis_number + basis_inf(dloop_k) % shell - 1) % contraction
-        L_k = basis_inf(dloop_k) % L
-        M_k = basis_inf(dloop_k) % M
-        do dloop_m = 1, contraction_k
-          exponents_k(dloop_m) = atom_basis(molecule(basis_inf(dloop_k) % &
-          atom) % basis_number + basis_inf(dloop_k) % shell - 1) &
-          % exponents(dloop_m)
-          coefficient_k(dloop_m) = atom_basis(molecule(basis_inf(dloop_k) % &
-          atom) % basis_number + basis_inf(dloop_k) % shell - 1) &
-          % Ncoefficient(dloop_m,M_k)
-        end do
-        coordinate_k = molecule(basis_inf(dloop_k) % atom) % nucleus_position
-        !----------------------------<dloop_j>---------------------------------
-        do dloop_j = dloop_i, 1, -1
-          contraction_j = atom_basis(molecule(basis_inf(dloop_j) % atom) % &
-          basis_number + basis_inf(dloop_j) % shell - 1) % contraction
-          L_j = basis_inf(dloop_j) % L
-          M_j = basis_inf(dloop_j) % M
-          do dloop_m = 1, contraction_j
-            exponents_j(dloop_m) = atom_basis(molecule(basis_inf(dloop_j) % &
-            atom) % basis_number + basis_inf(dloop_j) % shell - 1) % &
-            exponents(dloop_m)
-            coefficient_j(dloop_m) = atom_basis(molecule(basis_inf(dloop_j) % &
-            atom) % basis_number + basis_inf(dloop_j) % shell - 1) % &
-            Ncoefficient(dloop_m,M_j)
-          end do
-          coordinate_j = molecule(basis_inf(dloop_j) % atom) % nucleus_position
-          !----------------------------<dloop_l>-------------------------------
-          do dloop_l = min(dloop_k,dloop_j+&
-          (dloop_i*(dloop_i-1)-dloop_k*(dloop_k-1))/2), 1, -1
+      do j = cbdm, 1, -1
+        !----------------------------<ui>-------------------------------------
+        ui = i
+        contri = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % contr
+        Li = basis_inf(ui) % L
+        Mi = basis_inf(ui) % M
+        expi(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % expo(1:contri)
+        coei(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
+        basis_number+basis_inf(ui)%shell-1) % Ncoe(1:contri,Mi)
+        codi = mol(basis_inf(ui)%atom) % pos
+        !----------------------------<uk>-----------------------------------
+        uk = j
+        contrk = atom_basis(mol(basis_inf(uk)%atom)%&
+        basis_number+basis_inf(uk)%shell-1) % contr
+        Lk = basis_inf(uk) % L
+        Mk = basis_inf(uk) % M
+        expk(1:contrk) = atom_basis(mol(basis_inf(uk)%atom)%&
+        basis_number+basis_inf(uk)%shell-1) % expo(1:contrk)
+        coek(1:contrk) = atom_basis(mol(basis_inf(uk)%atom)%&
+        basis_number+basis_inf(uk)%shell-1) % Ncoe(1:contrk,Mk)
+        codk = mol(basis_inf(uk)%atom) % pos
+        !----------------------------<uj>---------------------------------
+        do uj = ui, 1, -1
+          contrj = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % contr
+          Lj = basis_inf(uj) % L
+          Mj = basis_inf(uj) % M
+          expj(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % expo(1:contrj)
+          coej(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
+          basis_number+basis_inf(uj)%shell-1) % Ncoe(1:contrj,Mj)
+          codj = mol(basis_inf(uj)%atom) % pos
+          !----------------------------<ul>-------------------------------
+          do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |<ij||kl>| <= dsqrt(<ij||ij>) * dsqrt(<kl||kl>)
-            if (dsqrt(swintegral(dloop_i,dloop_j)*swintegral(dloop_k,dloop_l))&
-            < schwarz_VT) cycle
-            contraction_l = atom_basis(molecule(basis_inf(dloop_l) % atom) % &
-            basis_number + basis_inf(dloop_l) % shell - 1) % contraction
-            L_l = basis_inf(dloop_l) % L
-            M_l = basis_inf(dloop_l) % M
-            do dloop_m = 1, contraction_l
-              exponents_l(dloop_m) = atom_basis(molecule(basis_inf(dloop_l) % &
-              atom) % basis_number + basis_inf(dloop_l) % shell - 1) &
-              % exponents(dloop_m)
-              coefficient_l(dloop_m) = atom_basis(molecule(basis_inf(dloop_l)%&
-              atom) % basis_number + basis_inf(dloop_l) % shell - 1) &
-              % Ncoefficient(dloop_m,M_l)
-            end do
-            coordinate_l = molecule(basis_inf(dloop_l)%atom) % nucleus_position
-            integral = 0.0_dp
+            if (dsqrt(swint(ui,uj)*swint(uk,ul)) < schwarz_VT) cycle
+            contrl = atom_basis(mol(basis_inf(ul)%atom)%&
+            basis_number+basis_inf(ul)%shell-1) % contr
+            Ll = basis_inf(ul) % L
+            Ml = basis_inf(ul) % M
+            expl(1:contrl) = atom_basis(mol(basis_inf(ul)%atom)%&
+            basis_number+basis_inf(ul)%shell-1) % expo(1:contrl)
+            coel(1:contrl) = atom_basis(mol(basis_inf(ul)%atom)%&
+            basis_number+basis_inf(ul)%shell-1) % Ncoe(1:contrl,Ml)
+            codl = mol(basis_inf(ul)%atom) % pos
+            int = 0.0_dp
             !===========================<ij||kl>===============================
-            do dloop_m = 1, contraction_i
-              do dloop_n = 1, contraction_j
-                do dloop_o = 1, contraction_k
-                  do dloop_p = 1, contraction_l
-                    if (L_i >= L_j .and. L_k >= L_l) then
-                      integral = integral + coefficient_i(dloop_m) * &
-                      coefficient_j(dloop_n) * coefficient_k(dloop_o) * &
-                      coefficient_l(dloop_p) * V_Integral_2e(&
-                      AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j),&
-                      AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l),&
-                      exponents_i(dloop_m),exponents_j(dloop_n),&
-                      exponents_k(dloop_o),exponents_l(dloop_p),&
-                      coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                      coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                      coordinate_k(1),coordinate_k(2),coordinate_k(3),&
-                      coordinate_l(1),coordinate_l(2),coordinate_l(3))
-                    else if (L_i >= L_j .and. L_k < L_l) then
-                      integral = integral + coefficient_i(dloop_m) * &
-                      coefficient_j(dloop_n) * coefficient_k(dloop_o) * &
-                      coefficient_l(dloop_p) * V_Integral_2e(&
-                      AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j),&
-                      AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k),&
-                      exponents_i(dloop_m),exponents_j(dloop_n),&
-                      exponents_l(dloop_p),exponents_k(dloop_o),&
-                      coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                      coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                      coordinate_l(1),coordinate_l(2),coordinate_l(3),&
-                      coordinate_k(1),coordinate_k(2),coordinate_k(3))
-                    else if (L_i < L_j .and. L_k >= L_l) then
-                      integral = integral + coefficient_i(dloop_m) * &
-                      coefficient_j(dloop_n) * coefficient_k(dloop_o) * &
-                      coefficient_l(dloop_p) * V_Integral_2e(&
-                      AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i),&
-                      AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l),&
-                      exponents_j(dloop_n),exponents_i(dloop_m),&
-                      exponents_k(dloop_o),exponents_l(dloop_p),&
-                      coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                      coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                      coordinate_k(1),coordinate_k(2),coordinate_k(3),&
-                      coordinate_l(1),coordinate_l(2),coordinate_l(3))
-                    else
-                      integral = integral + coefficient_i(dloop_m) *&
-                       coefficient_j(dloop_n) * coefficient_k(dloop_o) * &
-                       coefficient_l(dloop_p) * V_Integral_2e(&
-                       AO_xyz_factor(L_j,M_j), AO_xyz_factor(L_i,M_i),&
-                       AO_xyz_factor(L_l,M_l), AO_xyz_factor(L_k,M_k),&
-                      exponents_j(dloop_n),exponents_i(dloop_m),&
-                      exponents_l(dloop_p),exponents_k(dloop_o),&
-                      coordinate_j(1),coordinate_j(2),coordinate_j(3),&
-                      coordinate_i(1),coordinate_i(2),coordinate_i(3),&
-                      coordinate_l(1),coordinate_l(2),coordinate_l(3),&
-                      coordinate_k(1),coordinate_k(2),coordinate_k(3))
-                    end if
-                    !----------<DEBUG>----------
-                    !if (dloop_i == 79 .and. dloop_j == 34 .and. dloop_k == 52 &
-                    !.and. dloop_l == 34) then
-                    !  write(60,*) 'integral',integral
-                    !  write(60,*) &
-                    !  AO_xyz_factor(L_i,M_i), AO_xyz_factor(L_j,M_j), &
-                    !  AO_xyz_factor(L_k,M_k), AO_xyz_factor(L_l,M_l)
-                    !  write(60,*) &
-                    !  exponents_i(dloop_m),exponents_j(dloop_n),&
-                    !  exponents_k(dloop_o),exponents_l(dloop_p)
-                    !  write(60,*) &
-                    !  coordinate_i,coordinate_j,&
-                    !  coordinate_k,coordinate_l
-                    !  write(60,*)
-                    !  write(60,*) &
-                    !  coefficient_i(dloop_m), coefficient_j(dloop_n), &
-                    !  coefficient_k(dloop_o), coefficient_l(dloop_p)
-                    !end if
-                    !----------<DEBUG>----------
+            if (Li >= Lj .and. Lk >= Ll) then
+              do um = 1, contri
+                do un = 1, contrj
+                  do uo = 1, contrk
+                    do up = 1, contrl
+                      int = int + coei(um) * &
+                      coej(un) * coek(uo) * &
+                      coel(up) * V_integral_2e(&
+                      AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj),&
+                      AO_fac(:,Lk,Mk), AO_fac(:,Ll,Ml),&
+                      expi(um),expj(un),&
+                      expk(uo),expl(up),&
+                      codi,codj,codk,codl)
+                    end do
                   end do
                 end do
               end do
-            end do
-            !----------<DEBUG>----------
-            !if (inin) write(60,'(I3,I3,I3,I3,F)') &
-            !dloop_i, dloop_j, dloop_k, dloop_l,integral
-            !----------<DEBUG>----------
-
+            else if (Li >= Lj .and. Lk < Ll) then
+              do um = 1, contri
+                do un = 1, contrj
+                  do uo = 1, contrk
+                    do up = 1, contrl
+                      int = int + coei(um) * &
+                      coej(un) * coek(uo) * &
+                      coel(up) * V_integral_2e(&
+                      AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj),&
+                      AO_fac(:,Ll,Ml), AO_fac(:,Lk,Mk),&
+                      expi(um),expj(un),&
+                      expl(up),expk(uo),&
+                      codi,codj,codl,codk)
+                    end do
+                  end do
+                end do
+              end do
+            else if (Li < Lj .and. Lk >= Ll) then
+              do um = 1, contri
+                do un = 1, contrj
+                  do uo = 1, contrk
+                    do up = 1, contrl
+                      int = int + coei(um) * &
+                      coej(un) * coek(uo) * &
+                      coel(up) * V_integral_2e(&
+                      AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi),&
+                      AO_fac(:,Lk,Mk), AO_fac(:,Ll,Ml),&
+                      expj(un),expi(um),&
+                      expk(uo),expl(up),&
+                      codj,codi,codk,codl)
+                    end do
+                  end do
+                end do
+              end do
+            else
+              do um = 1, contri
+                do un = 1, contrj
+                  do uo = 1, contrk
+                    do up = 1, contrl
+                      int = int + coei(um) *&
+                      coej(un) * coek(uo) * &
+                      coel(up) * V_integral_2e(&
+                      AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi),&
+                      AO_fac(:,Ll,Ml), AO_fac(:,Lk,Mk),&
+                      expj(un),expi(um),&
+                      expl(up),expk(uo),&
+                      codj,codi,codl,codk)
+                    end do
+                  end do
+                end do
+              end do
+            end if
             ! assign values to two-electron Fock matrix
             ! ref page 261 of Quantum Chemistry: Basic Principles and
-            ! Ab-initio Calculations, Volume 2 | 2nd Edition
-            !------------------------<COULOMB INTEGRAL>------------------------
+            ! ab-initio Calculations, Volume 2 | 2nd Edition
+            !------------------------<COULOMB>------------------------
+            Fock2_assigned = 0
+            carry = .true.
+            assigned = 1
+            Fock2_assigned(1,1) = ui
+            Fock2_assigned(2,1) = uj
+            HFcol_mic(ui,uj) = HFcol_mic(ui,uj) + int*rho_m(uk,ul)
+            HFcol_mic(ui,uj) = HFcol_mic(ui,uj) + int*rho_m(cbdm+uk,cbdm+ul)
+            HFcol_mic(cbdm+ui,cbdm+uj) = &
+            HFcol_mic(cbdm+ui,cbdm+uj) + int*rho_m(uk,ul)
+            HFcol_mic(cbdm+ui,cbdm+uj) = &
+            HFcol_mic(cbdm+ui,cbdm+uj) + int*rho_m(cbdm+uk,cbdm+ul)
+            if (uk /= ul) then
+              HFcol_mic(ui,uj) = HFcol_mic(ui,uj) + int*rho_m(ul,uk)
+              HFcol_mic(ui,uj) = HFcol_mic(ui,uj) + int*rho_m(cbdm+ul,cbdm+uk)
+              HFcol_mic(cbdm+ui,cbdm+uj) = &
+              HFcol_mic(cbdm+ui,cbdm+uj) + int*rho_m(ul,uk)
+              HFcol_mic(cbdm+ui,cbdm+uj) = &
+              HFcol_mic(cbdm+ui,cbdm+uj) + int*rho_m(cbdm+ul,cbdm+uk)
+            end if
+            do iassign = 1, assigned
+              if (Fock2_assigned(1,iassign) == uj .and. &
+              Fock2_assigned(2,iassign) == ui) then
+                carry = .false.
+                exit
+              end if
+            end do
+            if (carry) then
+              assigned = assigned + 1
+              Fock2_assigned(1,assigned) = uj
+              Fock2_assigned(2,assigned) = ui
+              HFcol_mic(uj,ui) = HFcol_mic(uj,ui) + int*rho_m(uk,ul)
+              HFcol_mic(uj,ui) = HFcol_mic(uj,ui) + int*rho_m(cbdm+uk,cbdm+ul)
+              HFcol_mic(cbdm+uj,cbdm+ui) = &
+              HFcol_mic(cbdm+uj,cbdm+ui) + int*rho_m(uk,ul)
+              HFcol_mic(cbdm+uj,cbdm+ui) = &
+              HFcol_mic(cbdm+uj,cbdm+ui) + int*rho_m(cbdm+uk,cbdm+ul)
+              if (uk /= ul) then
+                HFcol_mic(uj,ui) = HFcol_mic(uj,ui) + int*rho_m(ul,uk)
+                HFcol_mic(uj,ui) = HFcol_mic(uj,ui) + int*rho_m(cbdm+ul,cbdm+uk)
+                HFcol_mic(cbdm+uj,cbdm+ui) = &
+                HFcol_mic(cbdm+uj,cbdm+ui) + int*rho_m(ul,uk)
+                HFcol_mic(cbdm+uj,cbdm+ui) = &
+                HFcol_mic(cbdm+uj,cbdm+ui) + int*rho_m(cbdm+ul,cbdm+uk)
+              end if
+            end if
+            carry = .true.
+            do iassign = 1, assigned
+              if (Fock2_assigned(1,iassign) == uk .and. &
+              Fock2_assigned(2,iassign) == ul) then
+                carry = .false.
+                exit
+              end if
+            end do
+            if (carry) then
+              assigned = assigned + 1
+              Fock2_assigned(1,assigned) = uk
+              Fock2_assigned(2,assigned) = ul
+              HFcol_mic(uk,ul) = HFcol_mic(uk,ul)+int*rho_m(ui,uj)
+              HFcol_mic(uk,ul) = HFcol_mic(uk,ul)+int*rho_m(cbdm+ui,cbdm+uj)
+              HFcol_mic(cbdm+uk,cbdm+ul) = &
+              HFcol_mic(cbdm+uk,cbdm+ul) + int*rho_m(ui,uj)
+              HFcol_mic(cbdm+uk,cbdm+ul) = &
+              HFcol_mic(cbdm+uk,cbdm+ul) + int*rho_m(cbdm+ui,cbdm+uj)
+              if (ui /= uj) then
+                HFcol_mic(uk,ul) = HFcol_mic(uk,ul) + int*rho_m(uj,ui)
+                HFcol_mic(uk,ul) = HFcol_mic(uk,ul) + int*rho_m(cbdm+uj,cbdm+ui)
+                HFcol_mic(cbdm+uk,cbdm+ul) = &
+                HFcol_mic(cbdm+uk,cbdm+ul) + int*rho_m(uj,ui)
+                HFcol_mic(cbdm+uk,cbdm+ul) = &
+                HFcol_mic(cbdm+uk,cbdm+ul) + int*rho_m(cbdm+uj,cbdm+ui)
+              end if
+            end if
+            carry = .true.
+            do iassign = 1, assigned
+              if (Fock2_assigned(1,iassign) == ul .and. &
+              Fock2_assigned(2,iassign) == uk) then
+                carry = .false.
+                exit
+              end if
+            end do
+            if (carry) then
+              assigned = assigned + 1
+              Fock2_assigned(1,assigned) = ul
+              Fock2_assigned(2,assigned) = uk
+              HFcol_mic(ul,uk) = HFcol_mic(ul,uk) + int*rho_m(ui,uj)
+              HFcol_mic(ul,uk) = HFcol_mic(ul,uk) + int*rho_m(cbdm+ui,cbdm+uj)
+              HFcol_mic(cbdm+ul,cbdm+uk) = &
+              HFcol_mic(cbdm+ul,cbdm+uk) + int*rho_m(ui,uj)
+              HFcol_mic(cbdm+ul,cbdm+uk) = &
+              HFcol_mic(cbdm+ul,cbdm+uk) + int*rho_m(cbdm+ui,cbdm+uj)
+              if (ui /= uj) then
+                HFcol_mic(ul,uk) = HFcol_mic(ul,uk) + int*rho_m(uj,ui)
+                HFcol_mic(ul,uk) = HFcol_mic(ul,uk) + int*rho_m(cbdm+uj,cbdm+ui)
+                HFcol_mic(cbdm+ul,cbdm+uk) = &
+                HFcol_mic(cbdm+ul,cbdm+uk) + int*rho_m(uj,ui)
+                HFcol_mic(cbdm+ul,cbdm+uk) = &
+                HFcol_mic(cbdm+ul,cbdm+uk) + int*rho_m(cbdm+uj,cbdm+ui)
+              end if
+            end if
+            !------------------------<EXCHANGE int>------------------------
             Fock2_assigned = 0
               carry = .true.
               assigned = 1
-              Fock2_assigned(1,1) = dloop_i
-              Fock2_assigned(2,1) = dloop_j
-              HFcol_mic(dloop_i,dloop_j) = &
-              HFcol_mic(dloop_i,dloop_j) + &
-              integral*rho_m(dloop_k,dloop_l)             ! alpha->alpha Coulomb
-              HFcol_mic(dloop_i,dloop_j) = &
-              HFcol_mic(dloop_i,dloop_j) + &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_l)    ! alpha->beta Coulomb
-              HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) = &
-              HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) + &
-              integral*rho_m(dloop_k,dloop_l)              ! beta->alpha Coulomb
-              HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) = &
-              HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) + &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_l)     ! beta->beta Coulomb
-              if (dloop_k /= dloop_l) then
-                HFcol_mic(dloop_i,dloop_j) = &
-                HFcol_mic(dloop_i,dloop_j) + &
-                integral*rho_m(dloop_l,dloop_k)           ! alpha->alpha Coulomb
-                HFcol_mic(dloop_i,dloop_j) = &
-                HFcol_mic(dloop_i,dloop_j) + &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_k)  ! alpha->beta Coulomb
-                HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) = &
-                HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) + &
-                integral*rho_m(dloop_l,dloop_k)            ! beta->alpha Coulomb
-                HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) = &
-                HFcol_mic(cbdm+dloop_i,cbdm+dloop_j) + &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_k)   ! beta->beta Coulomb
+              Fock2_assigned(1,1) = ui
+              Fock2_assigned(2,1) = uk
+              HFexc_mic(ui,uk) = HFexc_mic(ui,uk) - int*rho_m(uj,ul)
+              HFexc_mic(cbdm+ui,cbdm+uk) = &
+              HFexc_mic(cbdm+ui,cbdm+uk) - int*rho_m(cbdm+uj,cbdm+ul)
+              if (ui == uk .and. ul /= uj) then
+                HFexc_mic(ui,uk) = HFexc_mic(ui,uk) - int*rho_m(ul,uj)
+                HFexc_mic(cbdm+ui,cbdm+uk) = &
+                HFexc_mic(cbdm+ui,cbdm+uk) - int*rho_m(cbdm+ul,cbdm+uj)
               end if
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_j .and. &
-              Fock2_assigned(2,iassign) == dloop_i) then
+              if (Fock2_assigned(1,iassign) == uk .and. &
+              Fock2_assigned(2,iassign) == ui) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_j
-              Fock2_assigned(2,assigned) = dloop_i
-              HFcol_mic(dloop_j,dloop_i) = &
-              HFcol_mic(dloop_j,dloop_i) + &
-              integral*rho_m(dloop_k,dloop_l)             ! alpha->alpha Coulomb
-              HFcol_mic(dloop_j,dloop_i) = &
-              HFcol_mic(dloop_j,dloop_i) + &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_l)    ! alpha->beta Coulomb
-              HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) = &
-              HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) + &
-              integral*rho_m(dloop_k,dloop_l)              ! beta->alpha Coulomb
-              HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) = &
-              HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) + &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_l)     ! beta->beta Coulomb
-              if (dloop_k /= dloop_l) then
-                HFcol_mic(dloop_j,dloop_i) = &
-                HFcol_mic(dloop_j,dloop_i) + &
-                integral*rho_m(dloop_l,dloop_k)           ! alpha->alpha Coulomb
-                HFcol_mic(dloop_j,dloop_i) = &
-                HFcol_mic(dloop_j,dloop_i) + &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_k)  ! alpha->beta Coulomb
-                HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) = &
-                HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) + &
-                integral*rho_m(dloop_l,dloop_k)            ! beta->alpha Coulomb
-                HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) = &
-                HFcol_mic(cbdm+dloop_j,cbdm+dloop_i) + &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_k)   ! beta->beta Coulomb
+              Fock2_assigned(1,assigned) = uk
+              Fock2_assigned(2,assigned) = ui
+              HFexc_mic(uk,ui) = HFexc_mic(uk,ui) - int*rho_m(ul,uj)
+              HFexc_mic(cbdm+uk,cbdm+ui) = &
+              HFexc_mic(cbdm+uk,cbdm+ui) - int*rho_m(cbdm+ul,cbdm+uj)
+              if (uk == ui .and. ul /= uj) then
+                HFexc_mic(uk,ui) = HFexc_mic(uk,ui) - int*rho_m(uj,ul)
+                HFexc_mic(cbdm+uk,cbdm+ui) = &
+                HFexc_mic(cbdm+uk,cbdm+ui) - int*rho_m(cbdm+uj,cbdm+ul)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_k .and. &
-              Fock2_assigned(2,iassign) == dloop_l) then
+              if (Fock2_assigned(1,iassign) == ui .and. &
+              Fock2_assigned(2,iassign) == ul) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_k
-              Fock2_assigned(2,assigned) = dloop_l
-              HFcol_mic(dloop_k,dloop_l) = &
-              HFcol_mic(dloop_k,dloop_l) + &
-              integral*rho_m(dloop_i,dloop_j)             ! alpha->alpha Coulomb
-              HFcol_mic(dloop_k,dloop_l) = &
-              HFcol_mic(dloop_k,dloop_l) + &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_j)    ! alpha->beta Coulomb
-              HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) = &
-              HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) + &
-              integral*rho_m(dloop_i,dloop_j)              ! beta->alpha Coulomb
-              HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) = &
-              HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) + &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_j)     ! beta->beta Coulomb
-              if (dloop_i /= dloop_j) then
-                HFcol_mic(dloop_k,dloop_l) = &
-                HFcol_mic(dloop_k,dloop_l) + &
-                integral*rho_m(dloop_j,dloop_i)           ! alpha->alpha Coulomb
-                HFcol_mic(dloop_k,dloop_l) = &
-                HFcol_mic(dloop_k,dloop_l) + &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_i)  ! alpha->beta Coulomb
-                HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) = &
-                HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) + &
-                integral*rho_m(dloop_j,dloop_i)            ! beta->alpha Coulomb
-                HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) = &
-                HFcol_mic(cbdm+dloop_k,cbdm+dloop_l) + &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_i)   ! beta->beta Coulomb
+              Fock2_assigned(1,assigned) = ui
+              Fock2_assigned(2,assigned) = ul
+              HFexc_mic(ui,ul) = HFexc_mic(ui,ul) - int*rho_m(uj,uk)
+              HFexc_mic(cbdm+ui,cbdm+ul) = &
+              HFexc_mic(cbdm+ui,cbdm+ul) - int*rho_m(cbdm+uj,cbdm+uk)
+              if (ui == ul .and. uk /= uj) then
+                HFexc_mic(ui,ul) = HFexc_mic(ui,ul) - int*rho_m(uk,uj)
+                HFexc_mic(cbdm+ui,cbdm+ul) = &
+                HFexc_mic(cbdm+ui,cbdm+ul) - int*rho_m(cbdm+uk,cbdm+uj)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_l .and. &
-              Fock2_assigned(2,iassign) == dloop_k) then
+              if (Fock2_assigned(1,iassign) == ul .and. &
+               Fock2_assigned(2,iassign) == ui) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_l
-              Fock2_assigned(2,assigned) = dloop_k
-              HFcol_mic(dloop_l,dloop_k) = &
-              HFcol_mic(dloop_l,dloop_k) + &
-              integral*rho_m(dloop_i,dloop_j)             ! alpha->alpha Coulomb
-              HFcol_mic(dloop_l,dloop_k) = &
-              HFcol_mic(dloop_l,dloop_k) + &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_j)    ! alpha->beta Coulomb
-              HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) = &
-              HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) + &
-              integral*rho_m(dloop_i,dloop_j)              ! beta->alpha Coulomb
-              HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) = &
-              HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) + &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_j)     ! beta->beta Coulomb
-              if (dloop_i /= dloop_j) then
-                HFcol_mic(dloop_l,dloop_k) = HFcol_mic(dloop_l,dloop_k) + &
-                integral*rho_m(dloop_j,dloop_i)           ! alpha->alpha Coulomb
-                HFcol_mic(dloop_l,dloop_k) = &
-                HFcol_mic(dloop_l,dloop_k) + &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_i)  ! alpha->beta Coulomb
-                HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) = &
-                HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) + &
-                integral*rho_m(dloop_j,dloop_i)            ! beta->alpha Coulomb
-                HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) = &
-                HFcol_mic(cbdm+dloop_l,cbdm+dloop_k) + &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_i)   ! beta->beta Coulomb
-              end if
-            end if
-            !------------------------<EXCHANGE INTEGRAL>------------------------
-            Fock2_assigned = 0
-              carry = .true.
-              assigned = 1
-              Fock2_assigned(1,1) = dloop_i
-              Fock2_assigned(2,1) = dloop_k
-              HFexc_mic(dloop_i,dloop_k) = &
-              HFexc_mic(dloop_i,dloop_k) - &
-              integral*rho_m(dloop_j,dloop_l)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_i,cbdm+dloop_k) = &
-              HFexc_mic(cbdm+dloop_i,cbdm+dloop_k) - &
-              integral*rho_m(cbdm+dloop_j,cbdm+dloop_l)     ! beta->beta Exchange
-              if (dloop_i == dloop_k .and. dloop_l /= dloop_j) then
-                HFexc_mic(dloop_i,dloop_k) = &
-                HFexc_mic(dloop_i,dloop_k) - &
-                integral*rho_m(dloop_l,dloop_j)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_i,cbdm+dloop_k) = &
-                HFexc_mic(cbdm+dloop_i,cbdm+dloop_k) - &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_j)  ! beta->beta Exchange
-              end if
-            do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_k .and. &
-              Fock2_assigned(2,iassign) == dloop_i) then
-                carry = .false.
-                exit
-              end if
-            end do
-            if (carry) then
-              assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_k
-              Fock2_assigned(2,assigned) = dloop_i
-              HFexc_mic(dloop_k,dloop_i) = &
-              HFexc_mic(dloop_k,dloop_i) - &
-              integral*rho_m(dloop_l,dloop_j)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_k,cbdm+dloop_i) = &
-              HFexc_mic(cbdm+dloop_k,cbdm+dloop_i) - &
-              integral*rho_m(cbdm+dloop_l,cbdm+dloop_j)    ! beta->beta Exchange
-              if (dloop_k == dloop_i .and. dloop_l /= dloop_j) then
-                HFexc_mic(dloop_k,dloop_i) = &
-                HFexc_mic(dloop_k,dloop_i) - &
-                integral*rho_m(dloop_j,dloop_l)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_k,cbdm+dloop_i) = &
-                HFexc_mic(cbdm+dloop_k,cbdm+dloop_i) - &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_l)  ! beta->beta Exchange
+              Fock2_assigned(1,assigned) = ul
+              Fock2_assigned(2,assigned) = ui
+              HFexc_mic(ul,ui) = HFexc_mic(ul,ui) - int*rho_m(uk,uj)
+              HFexc_mic(cbdm+ul,cbdm+ui) = &
+              HFexc_mic(cbdm+ul,cbdm+ui) - int*rho_m(cbdm+uk,cbdm+uj)
+              if (ul == ui .and. uk /= uj) then
+                HFexc_mic(ul,ui) = HFexc_mic(ul,ui) - int*rho_m(uj,uk)
+                HFexc_mic(cbdm+ul,cbdm+ui) = &
+                HFexc_mic(cbdm+ul,cbdm+ui) - int*rho_m(cbdm+uj,cbdm+uk)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_i .and. &
-              Fock2_assigned(2,iassign) == dloop_l) then
+              if (Fock2_assigned(1,iassign) == uj .and. &
+              Fock2_assigned(2,iassign) == uk) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_i
-              Fock2_assigned(2,assigned) = dloop_l
-              HFexc_mic(dloop_i,dloop_l) = &
-              HFexc_mic(dloop_i,dloop_l) - &
-              integral*rho_m(dloop_j,dloop_k)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_i,cbdm+dloop_l) = &
-              HFexc_mic(cbdm+dloop_i,cbdm+dloop_l) - &
-              integral*rho_m(cbdm+dloop_j,cbdm+dloop_k)    ! beta->beta Exchange
-              if (dloop_i == dloop_l .and. dloop_k /= dloop_j) then
-                HFexc_mic(dloop_i,dloop_l) = &
-                HFexc_mic(dloop_i,dloop_l) - &
-                integral*rho_m(dloop_k,dloop_j)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_i,cbdm+dloop_l) = &
-                HFexc_mic(cbdm+dloop_i,cbdm+dloop_l) - &
-                integral*rho_m(cbdm+dloop_k,cbdm+dloop_j)  ! beta->beta Exchange
+              Fock2_assigned(1,assigned) = uj
+              Fock2_assigned(2,assigned) = uk
+              HFexc_mic(uj,uk) = HFexc_mic(uj,uk) - int*rho_m(ui,ul)
+              HFexc_mic(cbdm+uj,cbdm+uk) = &
+              HFexc_mic(cbdm+uj,cbdm+uk) - int*rho_m(cbdm+ui,cbdm+ul)
+              if (uj == uk .and. ul /= ui) then
+                HFexc_mic(uj,uk) = HFexc_mic(uj,uk) - int*rho_m(ul,ui)
+                HFexc_mic(cbdm+uj,cbdm+uk) = &
+                HFexc_mic(cbdm+uj,cbdm+uk) - int*rho_m(cbdm+ul,cbdm+ui)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_l .and. &
-               Fock2_assigned(2,iassign) == dloop_i) then
+              if (Fock2_assigned(1,iassign) == uk .and. &
+              Fock2_assigned(2,iassign) == uj) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_l
-              Fock2_assigned(2,assigned) = dloop_i
-              HFexc_mic(dloop_l,dloop_i) = &
-              HFexc_mic(dloop_l,dloop_i) - &
-              integral*rho_m(dloop_k,dloop_j)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_l,cbdm+dloop_i) = &
-              HFexc_mic(cbdm+dloop_l,cbdm+dloop_i) - &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_j)    ! beta->beta Exchange
-              if (dloop_l == dloop_i .and. dloop_k /= dloop_j) then
-                HFexc_mic(dloop_l,dloop_i) = &
-                HFexc_mic(dloop_l,dloop_i) - &
-                integral*rho_m(dloop_j,dloop_k)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_l,cbdm+dloop_i) = &
-                HFexc_mic(cbdm+dloop_l,cbdm+dloop_i) - &
-                integral*rho_m(cbdm+dloop_j,cbdm+dloop_k)  ! beta->beta Exchange
+              Fock2_assigned(1,assigned) = uk
+              Fock2_assigned(2,assigned) = uj
+              HFexc_mic(uk,uj) = HFexc_mic(uk,uj) - int*rho_m(ul,ui)
+              HFexc_mic(cbdm+uk,cbdm+uj) = &
+              HFexc_mic(cbdm+uk,cbdm+uj) - int*rho_m(cbdm+ul,cbdm+ui)
+              if (uk == uj .and. ui /= ul) then
+                HFexc_mic(uk,uj) = HFexc_mic(uk,uj) - int*rho_m(ui,ul)
+                HFexc_mic(cbdm+uk,cbdm+uj) = &
+                HFexc_mic(cbdm+uk,cbdm+uj) - int*rho_m(cbdm+ui,cbdm+ul)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_j .and. &
-              Fock2_assigned(2,iassign) == dloop_k) then
+              if (Fock2_assigned(1,iassign) == uj .and. &
+              Fock2_assigned(2,iassign) == ul) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_j
-              Fock2_assigned(2,assigned) = dloop_k
-              HFexc_mic(dloop_j,dloop_k) = &
-              HFexc_mic(dloop_j,dloop_k) - &
-              integral*rho_m(dloop_i,dloop_l)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_j,cbdm+dloop_k) = &
-              HFexc_mic(cbdm+dloop_j,cbdm+dloop_k) - &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_l)    ! beta->beta Exchange
-              if (dloop_j == dloop_k .and. dloop_l /= dloop_i) then
-                HFexc_mic(dloop_j,dloop_k) = &
-                HFexc_mic(dloop_j,dloop_k) - &
-                integral*rho_m(dloop_l,dloop_i)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_j,cbdm+dloop_k) = &
-                HFexc_mic(cbdm+dloop_j,cbdm+dloop_k) - &
-                integral*rho_m(cbdm+dloop_l,cbdm+dloop_i)  ! beta->beta Exchange
+              Fock2_assigned(1,assigned) = uj
+              Fock2_assigned(2,assigned) = ul
+              HFexc_mic(uj,ul) = HFexc_mic(uj,ul) - int*rho_m(ui,uk)
+              HFexc_mic(cbdm+uj,cbdm+ul) = &
+              HFexc_mic(cbdm+uj,cbdm+ul) - int*rho_m(cbdm+ui,cbdm+uk)
+              if (uj == ul .and. uk /= ui) then
+                HFexc_mic(uj,ul) = HFexc_mic(uj,ul) - int*rho_m(uk,ui)
+                HFexc_mic(cbdm+uj,cbdm+ul) = &
+                HFexc_mic(cbdm+uj,cbdm+ul) - int*rho_m(cbdm+uk,cbdm+ui)
               end if
             end if
             carry = .true.
             do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_k .and. &
-              Fock2_assigned(2,iassign) == dloop_j) then
+              if (Fock2_assigned(1,iassign) == ul .and. &
+              Fock2_assigned(2,iassign) == uj) then
                 carry = .false.
                 exit
               end if
             end do
             if (carry) then
               assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_k
-              Fock2_assigned(2,assigned) = dloop_j
-              HFexc_mic(dloop_k,dloop_j) = &
-              HFexc_mic(dloop_k,dloop_j) - &
-              integral*rho_m(dloop_l,dloop_i)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_k,cbdm+dloop_j) = &
-              HFexc_mic(cbdm+dloop_k,cbdm+dloop_j) - &
-              integral*rho_m(cbdm+dloop_l,cbdm+dloop_i)    ! beta->beta Exchange
-              if (dloop_k == dloop_j .and. dloop_i /= dloop_l) then
-                HFexc_mic(dloop_k,dloop_j) = &
-                HFexc_mic(dloop_k,dloop_j) - &
-                integral*rho_m(dloop_i,dloop_l)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_k,cbdm+dloop_j) = &
-                HFexc_mic(cbdm+dloop_k,cbdm+dloop_j) - &
-                integral*rho_m(cbdm+dloop_i,cbdm+dloop_l)  ! beta->beta Exchange
-              end if
-            end if
-            carry = .true.
-            do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_j .and. &
-              Fock2_assigned(2,iassign) == dloop_l) then
-                carry = .false.
-                exit
-              end if
-            end do
-            if (carry) then
-              assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_j
-              Fock2_assigned(2,assigned) = dloop_l
-              HFexc_mic(dloop_j,dloop_l) = &
-              HFexc_mic(dloop_j,dloop_l) - &
-              integral*rho_m(dloop_i,dloop_k)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_j,cbdm+dloop_l) = &
-              HFexc_mic(cbdm+dloop_j,cbdm+dloop_l) - &
-              integral*rho_m(cbdm+dloop_i,cbdm+dloop_k)    ! beta->beta Exchange
-              if (dloop_j == dloop_l .and. dloop_k /= dloop_i) then
-                HFexc_mic(dloop_j,dloop_l) = &
-                HFexc_mic(dloop_j,dloop_l) - &
-                integral*rho_m(dloop_k,dloop_i)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_j,cbdm+dloop_l) = &
-                HFexc_mic(cbdm+dloop_j,cbdm+dloop_l) - &
-                integral*rho_m(cbdm+dloop_k,cbdm+dloop_i)  ! beta->beta Exchange
-              end if
-            end if
-            carry = .true.
-            do iassign = 1, assigned
-              if (Fock2_assigned(1,iassign) == dloop_l .and. &
-              Fock2_assigned(2,iassign) == dloop_j) then
-                carry = .false.
-                exit
-              end if
-            end do
-            if (carry) then
-              assigned = assigned + 1
-              Fock2_assigned(1,assigned) = dloop_l
-              Fock2_assigned(2,assigned) = dloop_j
-              HFexc_mic(dloop_l,dloop_j) = &
-              HFexc_mic(dloop_l,dloop_j) - &
-              integral*rho_m(dloop_k,dloop_i)            ! alpha->alpha Exchange
-              HFexc_mic(cbdm+dloop_l,cbdm+dloop_j) = &
-              HFexc_mic(cbdm+dloop_l,cbdm+dloop_j) - &
-              integral*rho_m(cbdm+dloop_k,cbdm+dloop_i)    ! beta->beta Exchange
-              if (dloop_l == dloop_j .and. dloop_i /= dloop_k) then
-                HFexc_mic(dloop_l,dloop_j) = &
-                HFexc_mic(dloop_l,dloop_j) - &
-                integral*rho_m(dloop_i,dloop_k)          ! alpha->alpha Exchange
-                HFexc_mic(cbdm+dloop_l,cbdm+dloop_j) = &
-                HFexc_mic(cbdm+dloop_l,cbdm+dloop_j) - &
-                integral*rho_m(cbdm+dloop_i,cbdm+dloop_k)  ! beta->beta Exchange
+              Fock2_assigned(1,assigned) = ul
+              Fock2_assigned(2,assigned) = uj
+              HFexc_mic(ul,uj) = HFexc_mic(ul,uj) - int*rho_m(uk,ui)
+              HFexc_mic(cbdm+ul,cbdm+uj) = &
+              HFexc_mic(cbdm+ul,cbdm+uj) - int*rho_m(cbdm+uk,cbdm+ui)
+              if (ul == uj .and. ui /= uk) then
+                HFexc_mic(ul,uj) = HFexc_mic(ul,uj) - int*rho_m(ui,uk)
+                HFexc_mic(cbdm+ul,cbdm+uj) = &
+                HFexc_mic(cbdm+ul,cbdm+uj) - int*rho_m(cbdm+ui,cbdm+uk)
               end if
             end if
           end do
-        end do
-      end do
-      do addi = 1, 2*cbdm
-        do addj = 1, 2*cbdm
-            !$omp atomic
-            supp1(addi,addj) = supp1(addi,addj) + HFcol_mic(addi,addj)
-            !$omp atomic
-            supp3(addi,addj) = supp3(addi,addj) + HFexc_mic(addi,addj)
         end do
       end do
     end do
     !$omp end do
+    !-------------<thread sync>-------------
+    !$omp critical
+    supp1 = supp1 + HFcol_mic
+    supp3 = supp3 + HFexc_mic
+    !$omp end critical
     !$omp end parallel
     ! assign Kohn-Sham matrices
     if (fx_id /= -1) then
@@ -2476,60 +2290,60 @@ module SCF
   end subroutine calc_S2HForb
   
 !-----------------------------------------------------------------------
-!> dump molecule orbital information to .molden file
+!> dump mol orbital information to .molden.input file
   subroutine dump_molden()
     implicit none
     integer :: channel, dmi, dmj, dmk
     if (.not. allocated(AO2MO)) &
-    call terminate('dump molecule orbital failed, AO2MO is empty')
+    call terminate('dump mol orbital failed, AO2MO is empty')
     
-    ! molden file contains the real part of molecule orbital
-    open(newunit=channel, file=trim(address_job)//'-real.molden', &
+    ! molden file contains the real part of mol orbital
+    open(newunit=channel, file=trim(address_job)//'-real.molden.input', &
     status='replace', action='write', iostat=ios)
-    if (ios /= 0) call terminate('dump .molden failed')
+    if (ios /= 0) call terminate('dump .molden.input failed')
     write(channel, '(A)') '[Molden Format]'
     write(channel, '(A)') '[Title]'
     write(channel, '(A)') &
     'The real part of molecular orbitals of job '//trim(address_job)
     write(channel, *)
-    ! molecule geometry
+    ! mol geometry
     write(channel, '(A)') '[Atoms] AU'
     do dmi = 1, atom_count
       write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
-      element_list(molecule(dmi)%atom_number), dmi, &
-      molecule(dmi)%atom_number, molecule(dmi)%nucleus_position(1), &
-      molecule(dmi)%nucleus_position(2), molecule(dmi)%nucleus_position(3)
+      element_list(mol(dmi)%atom_number), dmi, &
+      mol(dmi)%atom_number, mol(dmi)%pos(1), &
+      mol(dmi)%pos(2), mol(dmi)%pos(3)
     end do
     ! basis of each atom
     write(channel, '(A)') '[GTO]'
     do dmi = 1, atom_count
       write(channel, '(I3,I2)') dmi, 0
-      do dmj = 0, shell_in_element(molecule(dmi) % atom_number)-1
-        if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-        angular_quantum_number == 0) then
+      do dmj = 0, shell_in_element(mol(dmi) % atom_number)-1
+        if (atom_basis(mol(dmi)%basis_number+dmj)%&
+        L == 0) then
           write(channel, '(A2,I2,A)') 's', &
-          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-        angular_quantum_number == 1) then
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+        L == 1) then
           write(channel, '(A2,I2,A)') 'p', &
-          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-        angular_quantum_number == 2) then
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+        L == 2) then
           write(channel, '(A2,I2,A)') 'd', &
-          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-        angular_quantum_number == 3) then
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+        L == 3) then
           write(channel, '(A2,I2,A)') 'f', &
-          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-        else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-        angular_quantum_number == 4) then
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+        L == 4) then
           write(channel, '(A2,I2,A)') 'g', &
-          atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
         end if
-        do dmk = 1, atom_basis(molecule(dmi)%basis_number+dmj)%contraction
+        do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
           write(channel, '(F13.7,F13.7)') &
-          atom_basis(molecule(dmi)%basis_number+dmj)%exponents(dmk), &
-          atom_basis(molecule(dmi)%basis_number+dmj)%coefficient(dmk)
+          atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
+          atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
         end do
       end do
       write(channel, *)
@@ -2574,53 +2388,53 @@ module SCF
     close(channel)
     
     if (DKH_order /= 0) then
-      ! molden file contains the maginary part of molecule orbital
-      open(newunit=channel, file=trim(address_job)//'-img.molden', &
+      ! molden file contains the maginary part of mol orbital
+      open(newunit=channel, file=trim(address_job)//'-img.molden.input', &
       status='replace', action='write', iostat=ios)
-      if (ios /= 0) call terminate('dump .molden failed')
+      if (ios /= 0) call terminate('dump .molden.input failed')
       write(channel, '(A)') '[Molden Format]'
       write(channel, '(A)') '[Title]'
       write(channel, '(A)') &
       'The imaginary part of molecular orbitals of job '//trim(address_job)
       write(channel, *)
-      ! molecule geometry
+      ! mol geometry
       write(channel, '(A)') '[Atoms] AU'
       do dmi = 1, atom_count
         write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
-        element_list(molecule(dmi)%atom_number), dmi, &
-        molecule(dmi)%atom_number, molecule(dmi)%nucleus_position(1), &
-        molecule(dmi)%nucleus_position(2), molecule(dmi)%nucleus_position(3)
+        element_list(mol(dmi)%atom_number), dmi, &
+        mol(dmi)%atom_number, mol(dmi)%pos(1), &
+        mol(dmi)%pos(2), mol(dmi)%pos(3)
       end do
       ! basis of each atom
       write(channel, '(A)') '[GTO]'
       do dmi = 1, atom_count
         write(channel, '(I3,I2)') dmi, 0
-        do dmj = 0, shell_in_element(molecule(dmi) % atom_number)-1
-          if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-          angular_quantum_number == 0) then
+        do dmj = 0, shell_in_element(mol(dmi) % atom_number)-1
+          if (atom_basis(mol(dmi)%basis_number+dmj)%&
+          L == 0) then
             write(channel, '(A2,I2,A)') 's', &
-            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-          angular_quantum_number == 1) then
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+          L == 1) then
             write(channel, '(A2,I2,A)') 'p', &
-            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-          angular_quantum_number == 2) then
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+          L == 2) then
             write(channel, '(A2,I2,A)') 'd', &
-            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-          angular_quantum_number == 3) then
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+          L == 3) then
             write(channel, '(A2,I2,A)') 'f', &
-            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
-          else if (atom_basis(molecule(dmi)%basis_number+dmj)%&
-          angular_quantum_number == 4) then
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
+          L == 4) then
             write(channel, '(A2,I2,A)') 'g', &
-            atom_basis(molecule(dmi)%basis_number+dmj)%contraction,' 1.0'
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
           end if
-          do dmk = 1, atom_basis(molecule(dmi)%basis_number+dmj)%contraction
+          do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
             write(channel, '(F13.7,F13.7)') &
-            atom_basis(molecule(dmi)%basis_number+dmj)%exponents(dmk), &
-            atom_basis(molecule(dmi)%basis_number+dmj)%coefficient(dmk)
+            atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
+            atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
           end do
         end do
         write(channel, *)

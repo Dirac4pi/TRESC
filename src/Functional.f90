@@ -25,16 +25,16 @@ module functional
 !> grid points, spin=0:total =1:alpha =2:beta
   pure subroutine grid(arr, n, points, spin, dats)
     implicit none
-    complex(dp),intent(in) :: arr(2*cbdm)
-    integer(8),intent(in) :: n
-    real(dp),intent(in) :: points(n, 3)
-    integer,intent(in) :: spin
+    complex(dp),intent(in)  :: arr(:)
+    integer(8),intent(in)   :: n
+    real(dp),intent(in)     :: points(n, 3)
+    integer,intent(in)      :: spin
     complex(dp),intent(out) :: dats(n)
     integer :: ii, jj, kk
-    integer :: contraction
+    integer :: contr
     real(dp) :: vec(n, 3)
     integer :: L, M
-    character(len=4) :: fac
+    integer :: fac(3)
     real(dp) :: coeff
     real(dp) :: expo
     real(dp) :: val(n)
@@ -54,32 +54,30 @@ module functional
       final = 2*cbdm
     end if
     do ii = init, final, step
-      kk = int((ii+1)/2)
+      if ((spin==1) .or. (spin==0 .and. ii<=cbdm)) then
+        kk = ii
+      else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
+        kk = ii - cbdm
+      end if
       val = 0.0_dp
-      vec(:,1) = points(:,1) - molecule(basis_inf(kk)%atom)%nucleus_position(1)
-      vec(:,2) = points(:,2) - molecule(basis_inf(kk)%atom)%nucleus_position(2)
-      vec(:,3) = points(:,3) - molecule(basis_inf(kk)%atom)%nucleus_position(3)
-      contraction = atom_basis(molecule(basis_inf(kk)%atom) % &
-      basis_number + basis_inf(kk) % shell - 1)%contraction
+      vec(:,1) = points(:,1) - mol(basis_inf(kk)%atom)%pos(1)
+      vec(:,2) = points(:,2) - mol(basis_inf(kk)%atom)%pos(2)
+      vec(:,3) = points(:,3) - mol(basis_inf(kk)%atom)%pos(3)
+      contr = atom_basis(mol(basis_inf(kk)%atom) % &
+      basis_number + basis_inf(kk) % shell - 1) % contr
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
-      fac = AO_xyz_factor(L,M)
-      do jj = 1, contraction
-        expo = atom_basis(molecule(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%exponents(jj)
-        coeff = atom_basis(molecule(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%Ncoefficient(jj,M)
+      fac(:) = AO_fac(:,L,M)
+      do jj = 1, contr
+        expo = atom_basis(mol(basis_inf(kk)%atom) % &
+        basis_number + basis_inf(kk) % shell - 1)%expo(jj)
+        coeff = atom_basis(mol(basis_inf(kk)%atom) % &
+        basis_number + basis_inf(kk) % shell - 1)%Ncoe(jj,M)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
-      do jj = 1, 4
-        if (fac(jj:jj) == 'x') then
-          val(:) = val(:) * vec(:,1)
-        else if(fac(jj:jj) == 'y') then
-          val(:) = val(:) * vec(:,2)
-        else if(fac(jj:jj) == 'z') then
-          val(:) = val(:) * vec(:,3)
-        end if
-      end do
+      val(:) = val(:) * (vec(:,1)**fac(1))
+      val(:) = val(:) * (vec(:,2)**fac(3))
+      val(:) = val(:) * (vec(:,3)**fac(3))
       dats = dats + val * arr(ii)
     end do
   end subroutine grid
@@ -92,11 +90,10 @@ module functional
     real(dp),intent(in) :: point(3)
     integer,intent(in) :: spin
     integer :: ii, jj, kk
-    integer :: contraction
+    integer :: contr
     real(dp) :: vec(3)
     integer :: L, M
-    integer :: mx, my, mz
-    character(len=4) :: fac
+    integer :: fac(3)
     real(dp) :: coeff
     real(dp) :: expo
     complex(dp) :: val(3), valdx, valdy, valdz
@@ -117,61 +114,53 @@ module functional
     end if
     val = c0
     do ii = init, final, step
-      kk = int((ii+1)/2)
-      vec = point - molecule(basis_inf(kk)%atom)%nucleus_position
-      contraction = atom_basis(molecule(basis_inf(kk)%atom)%&
-      basis_number)%contraction
+      if ((spin==1) .or. (spin==0 .and. ii<=cbdm)) then
+        kk = ii
+      else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
+        kk = ii - cbdm
+      end if
+      vec = point - mol(basis_inf(kk)%atom)%pos
+      contr = atom_basis(mol(basis_inf(kk)%atom)%&
+      basis_number)%contr
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
-      fac = AO_xyz_factor(L,M)
+      fac = AO_fac(:,L,M)
       valdx = c0
       valdy = c0
       valdz = c0
-      mx = 0
-      my = 0
-      mz = 0
-      do jj = 1, 4
-        if (fac(jj:jj) == 'x') then
-          mx = mx + 1
-        else if(fac(jj:jj) == 'y') then
-          my = my + 1
-        else if(fac(jj:jj) == 'z') then
-          mz = mz + 1
-        end if
-      end do
-      do jj = 1, contraction
-        expo = atom_basis(molecule(basis_inf(kk)%atom)%&
-        basis_number)%exponents(jj)
-        coeff = atom_basis(molecule(basis_inf(kk)%atom)%&
-        basis_number)%Ncoefficient(jj,M)
+      do jj = 1, contr
+        expo = atom_basis(mol(basis_inf(kk)%atom)%&
+        basis_number)%expo(jj)
+        coeff = atom_basis(mol(basis_inf(kk)%atom)%&
+        basis_number)%Ncoe(jj,M)
         ! d/dx
-        if (mx == 0) then
+        if (fac(1) == 0) then
           valdx = valdx + &
-          (-2*expo*vec(1)**(mx+1))*vec(2)**my*vec(3)**mz&
+          (-2*expo*vec(1)**(fac(1)+1))*vec(2)**fac(2)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
           valdx = valdx + &
-          (mx*vec(1)**(mx-1)-2*expo*vec(1)**(mx+1))*vec(2)**my*vec(3)**mz&
+          (fac(1)*vec(1)**(fac(1)-1)-2*expo*vec(1)**(fac(1)+1))*vec(2)**fac(2)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
         ! d/dy
-        if (my == 0) then
+        if (fac(2) == 0) then
           valdy = valdy + &
-          (-2*expo*vec(2)**(my+1))*vec(1)**mx*vec(3)**mz&
+          (-2*expo*vec(2)**(fac(2)+1))*vec(1)**fac(1)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
           valdy = valdy + &
-          (my*vec(2)**(my-1)-2*expo*vec(2)**(my+1))*vec(1)**mx*vec(3)**mz&
+          (fac(2)*vec(2)**(fac(2)-1)-2*expo*vec(2)**(fac(2)+1))*vec(1)**fac(1)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
         ! d/dz
-        if (mz == 0) then
+        if (fac(3) == 0) then
           valdz = valdz + &
-          (-2*expo*vec(3)**(mz+1))*vec(1)**mx*vec(2)**my&
+          (-2*expo*vec(3)**(fac(3)+1))*vec(1)**fac(1)*vec(2)**fac(2)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
           valdz = valdz + &
-          (mz*vec(3)**(mz-1)-2*expo*vec(3)**(mz+1))*vec(1)**mx*vec(2)**my&
+          (fac(3)*vec(3)**(fac(3)-1)-2*expo*vec(3)**(fac(3)+1))*vec(1)**fac(1)*vec(2)**fac(2)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
       end do
@@ -190,11 +179,10 @@ module functional
     real(dp),intent(in) :: point(3)
     integer,intent(in) :: spin
     integer :: ii, jj, kk
-    integer :: contraction
+    integer :: contr
     real(dp) :: vec(3)
     integer :: L, M
-    integer :: mx, my, mz
-    character(len=4) :: fac
+    integer :: fac(3)
     real(dp) :: coeff
     real(dp) :: expo
     complex(dp) :: val, valdx, valdy, valdz
@@ -214,71 +202,63 @@ module functional
       final = 2*cbdm
     end if
     do ii = init, final, step
-      kk = int((ii+1)/2)
+      if ((spin==1) .or. (spin==0 .and. ii<=cbdm)) then
+        kk = ii
+      else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
+        kk = ii - cbdm
+      end if
       val = c0
-      vec = point - molecule(basis_inf(kk)%atom)%nucleus_position
-      contraction = atom_basis(molecule(basis_inf(kk)%atom)%&
-      basis_number)%contraction
+      vec = point - mol(basis_inf(kk)%atom)%pos
+      contr = atom_basis(mol(basis_inf(kk)%atom)%&
+      basis_number)%contr
       L = basis_inf(kk) % L
       M = basis_inf(kk) % M
-      fac = AO_xyz_factor(L,M)
-      mx = 0
-      my = 0
-      mz = 0
-      do jj = 1, 4
-        if (fac(jj:jj) == 'x') then
-          mx = mx + 1
-        else if(fac(jj:jj) == 'y') then
-          my = my + 1
-        else if(fac(jj:jj) == 'z') then
-          mz = mz + 1
-        end if
-      end do
-      do jj = 1, contraction
-        expo = atom_basis(molecule(basis_inf(kk)%atom)%&
-        basis_number)%exponents(jj)
-        coeff = atom_basis(molecule(basis_inf(kk)%atom)%&
-        basis_number)%Ncoefficient(jj,M)
+      fac = AO_fac(:,L,M)
+      do jj = 1, contr
+        expo = atom_basis(mol(basis_inf(kk)%atom)%&
+        basis_number)%expo(jj)
+        coeff = atom_basis(mol(basis_inf(kk)%atom)%&
+        basis_number)%Ncoe(jj,M)
         ! d2/dx2
-        if (mx == 0) then
+        if (fac(1) == 0) then
           valdx = (4*expo**2*vec(1)**2 - 2*expo)&
-          * vec(2)**my * vec(3)**mz&
+          * vec(2)**fac(2) * vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
-        else if (mx == 1) then
+        else if (fac(1) == 1) then
           valdx = (4*expo**2*vec(1)**3 - 4*expo*vec(1))&
-          * vec(2)**my * vec(3)**mz&
+          * vec(2)**fac(2) * vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
-          valdx = ((mx-1)*mx*vec(1)**(mx-2) - 2*expo*(2*mx+1)*vec(1)**mx + &
-          4*expo**2*vec(1)**(mx+2))*vec(2)**my*vec(3)**mz&
+          valdx = ((fac(1)-1)*fac(1)*vec(1)**(fac(1)-2) - 2*expo*(2*fac(1)+1)*vec(1)**fac(1) + &
+          4*expo**2*vec(1)**(fac(1)+2))*vec(2)**fac(2)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
         ! d2/dy2
-        if (my == 0) then
+        if (fac(2) == 0) then
           valdy = (4*expo**2*vec(2)**2 - 2*expo)&
-          * vec(1)**mx * vec(3)**mz&
+          * vec(1)**fac(1) * vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
-        else if (my == 1) then
+        else if (fac(2) == 1) then
           valdy = (4*expo**2*vec(2)**3 - 4*expo*vec(2))&
-          * vec(1)**mx * vec(3)**mz&
+          * vec(1)**fac(1) * vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
-          valdy = ((my-1)*my*vec(2)**(my-2) - 2*expo*(2*my+1)*vec(2)**my + &
-          4*expo**2*vec(2)**(my+2))*vec(1)**mx*vec(3)**mz&
+          valdy = ((fac(2)-1)*fac(2)*vec(2)**(fac(2)-2) - 2*expo*(2*fac(2)+1)*vec(2)**fac(2) + &
+          4*expo**2*vec(2)**(fac(2)+2))*vec(1)**fac(1)*vec(3)**fac(3)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
         ! d2/dz2
-        if (mz == 0) then
+        if (fac(3) == 0) then
           valdz = (4*expo**2*vec(3)**2 - 2*expo)&
-          * vec(1)**mx * vec(2)**my&
+          * vec(1)**fac(1) * vec(2)**fac(2)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
-        else if (mz == 1) then
+        else if (fac(3) == 1) then
           valdz = (4*expo**2*vec(3)**3 - 4*expo*vec(3))&
-          * vec(1)**mx * vec(2)**my&
+          * vec(1)**fac(1) * vec(2)**fac(2)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         else
-          valdz = ((mz-1)*mz*vec(3)**(mz-2) - 2*expo*(2*mz+1)*vec(3)**mz + &
-          4*expo**2*vec(3)**(mz+2))*vec(1)**mx*vec(2)**my&
+          valdz = ((fac(3)-1)*fac(3)*vec(3)**(fac(3)-2) - 2*expo*(2*fac(3)+1)*vec(3)**fac(3) + &
+          4*expo**2*vec(3)**(fac(3)+2))*vec(1)**fac(1)*vec(2)**fac(2)&
           * coeff * exp(-expo*(vec(1)**2+vec(2)**2+vec(3)**2))
         end if
         val = val + valdx + valdy + valdz ! Laplace operator
@@ -303,11 +283,10 @@ module functional
     complex(dp) :: crhoa(n), crhob(n)
     complex(dp) :: cdrhoa(n, 3), cdrhob(n, 3)
     integer :: ii, jj
-    integer :: contraction
+    integer :: contr
     real(dp) :: vec(n, 3)
     integer :: L, M
-    integer :: mx, my, mz
-    character(len=4) :: fac
+    integer :: fac(3)
     real(dp) :: coeff
     real(dp) :: b
     real(dp) :: val(n), valdx(n), valdy(n), valdz(n)
@@ -317,31 +296,19 @@ module functional
       valdx = 0.0_dp
       valdy = 0.0_dp
       valdz = 0.0_dp
-      contraction = atom_basis(molecule(basis_inf(ii)%atom) % &
-      basis_number + basis_inf(ii) % shell - 1) % contraction
+      contr = atom_basis(mol(basis_inf(ii)%atom) % &
+      basis_number + basis_inf(ii) % shell - 1) % contr
       L = basis_inf(ii) % L
       M = basis_inf(ii) % M
-      fac = AO_xyz_factor(L,M)
-      mx = 0
-      my = 0
-      mz = 0
-      do jj = 1, 4
-        if (fac(jj:jj) == 'x') then
-          mx = mx + 1
-        else if(fac(jj:jj) == 'y') then
-          my = my + 1
-        else if(fac(jj:jj) == 'z') then
-          mz = mz + 1
-        end if
-      end do
-      vec(:,1) = point(:,1) - molecule(basis_inf(ii)%atom)%nucleus_position(1)
-      vec(:,2) = point(:,2) - molecule(basis_inf(ii)%atom)%nucleus_position(2)
-      vec(:,3) = point(:,3) - molecule(basis_inf(ii)%atom)%nucleus_position(3)
-      do jj = 1, contraction
-        b = atom_basis(molecule(basis_inf(ii)%atom) % &
-        basis_number + basis_inf(ii) % shell - 1) % exponents(jj)
-        coeff = atom_basis(molecule(basis_inf(ii)%atom) % &
-        basis_number + basis_inf(ii) % shell - 1) % Ncoefficient(jj,M)
+      fac = AO_fac(:,L,M)
+      vec(:,1) = point(:,1) - mol(basis_inf(ii)%atom)%pos(1)
+      vec(:,2) = point(:,2) - mol(basis_inf(ii)%atom)%pos(2)
+      vec(:,3) = point(:,3) - mol(basis_inf(ii)%atom)%pos(3)
+      do jj = 1, contr
+        b = atom_basis(mol(basis_inf(ii)%atom) % &
+        basis_number + basis_inf(ii) % shell - 1) % expo(jj)
+        coeff = atom_basis(mol(basis_inf(ii)%atom) % &
+        basis_number + basis_inf(ii) % shell - 1) % Ncoe(jj,M)
         d(:) = coeff*exp(-b*(sum(vec(:,:)**2,dim=2)))
 
         ! calculate the grid value
@@ -349,30 +316,33 @@ module functional
         val(:) = val(:) + d(:)
 
         ! d/dx
-        if (mx == 0) then
+        if (fac(1) == 0) then
           valdx(:) = valdx(:) + (-2*b*vec(:,1))*d(:)
         else
-          valdx(:) = valdx(:) + (mx*vec(:,1)**(mx-1)-2*b*vec(:,1)**(mx+1))*d(:)
+          valdx(:) = valdx(:) + &
+          (fac(1)*vec(:,1)**(fac(1)-1)-2*b*vec(:,1)**(fac(1)+1))*d(:)
         end if
 
         ! d/dy
-        if (my == 0) then
+        if (fac(2) == 0) then
           valdy(:) = valdy(:) + (-2*b*vec(:,2))*d(:)
         else
-          valdy(:) = valdy(:) + (my*vec(:,2)**(my-1)-2*b*vec(:,2)**(my+1))*d(:)
+          valdy(:) = valdy(:) + &
+          (fac(2)*vec(:,2)**(fac(2)-1)-2*b*vec(:,2)**(fac(2)+1))*d(:)
         end if
         
         ! d/dz
-        if (mz == 0) then
+        if (fac(3) == 0) then
           valdz(:) = valdz(:) + (-2*b*vec(:,3))*d(:)
         else
-          valdz(:) = valdz(:) + (mz*vec(:,3)**(mz-1)-2*b*vec(:,3)**(mz+1))*d(:)
+          valdz(:) = valdz(:) + &
+          (fac(3)*vec(:,3)**(fac(3)-1)-2*b*vec(:,3)**(fac(3)+1))*d(:)
         end if
       end do
-      val(:) = val(:) * vec(:,1)**mx*vec(:,2)**my*vec(:,3)**mz
-      valdx(:) = valdx(:) * vec(:,2)**my*vec(:,3)**mz
-      valdy(:) = valdy(:) * vec(:,1)**mx*vec(:,3)**mz
-      valdz(:) = valdz(:) * vec(:,1)**mx*vec(:,2)**my
+      val(:) = val(:) * vec(:,1)**fac(1)*vec(:,2)**fac(2)*vec(:,3)**fac(3)
+      valdx(:) = valdx(:) * vec(:,2)**fac(2)*vec(:,3)**fac(3)
+      valdy(:) = valdy(:) * vec(:,1)**fac(1)*vec(:,3)**fac(3)
+      valdz(:) = valdz(:) * vec(:,1)**fac(1)*vec(:,2)**fac(2)
       AOAO(:,ii) = val(:)
       dxAOAO(:,ii) = valdx(:)
       dyAOAO(:,ii) = valdy(:)
@@ -418,19 +388,25 @@ module functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)
     integer :: ii, jj, kk, ll
     integer(8),intent(in) :: nr, nl
-    real(dp),intent(in) :: pos3w1(100,434,4)
+    real(dp),intent(in) :: pos3w1(434,4,100)
     real(dp),intent(out) :: ex
     real(dp),optional :: ec
     real(dp),intent(out) :: matx(2*cbdm, 2*cbdm)
     real(dp),optional :: matc(2*cbdm, 2*cbdm)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: pos, weight, rhoa, rhob
     real(dp) :: pos(nl, 3)
     real(dp) :: weight(nl)
     real(dp) :: rhoa(nl), rhob(nl)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: xvrho, cvrho, xvsigma, cvsigma
     real(dp) :: xvrho(2*nl), cvrho(2*nl), xvsigma(3*nl), cvsigma(3*nl)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: rho, drhoa, drhob, sigma
     real(dp) :: rho(2*nl), drhoa(nl, 3), drhob(nl, 3), sigma(3*nl)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: exin, ecin
     real(dp) :: exin(nl), ecin(nl), exout, ecout
+    !DIR$ ATTRIBUTES ALIGN:align_size :: matxmic, matcmic
     real(dp) :: matxmic(2*cbdm, 2*cbdm)
     real(dp) :: matcmic(2*cbdm, 2*cbdm)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: AOAO, dxAOAO, dyAOAO, dzAOAO
     real(dp) :: AOAO(nl, cbdm), dxAOAO(nl, cbdm)
     real(dp) :: dyAOAO(nl, cbdm), dzAOAO(nl, cbdm)
     matx = 0.0_dp
@@ -442,10 +418,10 @@ module functional
     exout = 0.0_dp
     ecout = 0.0_dp
     do ii = 1, nr
-      pos(:,1) = pos3w1(ii,1:nl,1)
-      pos(:,2) = pos3w1(ii,1:nl,2)
-      pos(:,3) = pos3w1(ii,1:nl,3)
-      weight(:) = pos3w1(ii,1:nl,4)
+      pos(:,1) = pos3w1(1:nl,1,ii)
+      pos(:,2) = pos3w1(1:nl,2,ii)
+      pos(:,3) = pos3w1(1:nl,3,ii)
+      weight(:) = pos3w1(1:nl,4,ii)
 
       call grid_xc(&
       rho_m, nl, pos, rhoa, rhob, drhoa, drhob, AOAO, dxAOAO, dyAOAO, dzAOAO)

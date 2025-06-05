@@ -6,7 +6,9 @@ env:base
 '''
 
 import os, subprocess
-
+import sys
+from cclib.io import ccread
+from cclib.parser.utils import convertor
 
 def isfloat(string:str) -> bool:
   '''
@@ -72,7 +74,7 @@ def gjf2xyz(doc:str='') -> None:
           if i != -1:
             j = line.find(')')
             line = line[0:i]+line[j+1:-1]
-          cood.append(line+'\n')
+          cood.append(line)
           natom += 1
       wxyz.write(str(natom)+'\n')
       wxyz.write('\n')
@@ -85,12 +87,12 @@ def mog_init(title:str) -> str:
   """
   generate geometry(.xyz) and basis set(.gbs) file
   --
-  title: file name of .chk, .molden or .gbw file\n
+  title: file name of .chk, .molden.input or .gbw file\n
   number: orbital number\n
   return: modified title
   """
   # ----------<formatting>----------
-  if title.endswith('.molden'):
+  if title.endswith('.molden.input'):
     print('This is a molden file')
   elif title.endswith('.chk'):
     print('This is a Gaussian checkpoint file')
@@ -114,11 +116,11 @@ def mog_init(title:str) -> str:
     100
     2
     6
-    ./{title+'.molden'}
+    ./{title+'.molden.input'}
     0
     q
     """
-    title = title + '.molden'
+    title = title + '.molden.input'
     try:
       process = subprocess.run(
         'multiwfn',
@@ -140,11 +142,11 @@ def mog_init(title:str) -> str:
     100
     2
     6
-    ./{title[0:-5] + '.molden'}
+    ./{title[0:-5] + '.molden.input'}
     0
     q
     """
-    title = title[0:-5] + '.molden'
+    title = title[0:-5] + '.molden.input'
     try:
       process = subprocess.run(
         'multiwfn',
@@ -164,7 +166,7 @@ def mog_init(title:str) -> str:
     try:
       base_name = os.path.splitext(title)[0]
       output_molden_input = f"{base_name}.molden.input"
-      output_molden = f"{base_name}.molden"
+      output_molden = f"{base_name}.molden.input"
       subprocess.run(
         ['orca_2mkl', base_name, "-molden"],
         check=True,
@@ -188,7 +190,7 @@ def mog_init(title:str) -> str:
   print('generate .xyz')
   try:
     subprocess.run(
-      ["obabel", title, "-O", '.xyz'],
+      ["obabel", "-imolden", title, "-O", '.xyz'],
       check=True,
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE,
@@ -238,15 +240,15 @@ def mog_init(title:str) -> str:
   print('mog_grid initialized')
   return title
 
-def call_fortran(command: list):
+def call_executable(command: list):
   """
-  call Fortran command-line programs and handling errors
+  call executable command-line programs and handling errors
   --
   command: command list(such as ["./program", "arg1", "arg2"])
   return: standard output
   """
-  if list == []:
-    raise RuntimeError('None command reserved')
+  if not command:
+    raise RuntimeError('No command reserved')
   try:
     result = subprocess.run(
       command,
@@ -256,7 +258,6 @@ def call_fortran(command: list):
       text=True
     )
     return result.stdout
-  
   except subprocess.CalledProcessError as e:
     # Fortran: stop(1) returns error
     error_message = f"""
@@ -269,9 +270,116 @@ def call_fortran(command: list):
     {e.stdout}
     """
     raise RuntimeError(error_message) from e
-
   except FileNotFoundError as e:
     raise RuntimeError(f"can't found {command[0]}") from e
-
   except Exception as e:
     raise RuntimeError(f"error: {str(e)}") from e
+
+def convert_to_orca(input_file, output_file):
+  try:
+    data = ccread(input_file)
+  except Exception as e:
+    raise ValueError(f"Failed to parse {input_file}: {str(e)}")
+  if not hasattr(data, 'atomcoords'):
+    raise RuntimeError("No coordinate information found in the input file")
+  orca_template = """\
+! wB97M-V def2-TZVP def2/J RIJCOSX strongSCF noautostart miniprint nopop
+%maxcore 4000
+%pal nprocs 32 end
+* xyz {charge} {mult}
+{coordinates}
+*
+"""
+  charge = getattr(data, 'charge', 0)
+  mult = getattr(data, 'mult', 1)
+
+  coordinates = "\n".join(
+    f"{data.atomnos[i]} {x:.6f} {y:.6f} {z:.6f}"
+    for i, (x, y, z) in enumerate(data.atomcoords[-1])
+  )
+  with open(output_file, 'w') as f:
+    f.write(orca_template.format(
+      charge=charge,
+      mult=mult,
+      coordinates=coordinates
+    ))
+  print(f"Successfully generated ORCA input: {output_file}")
+
+def load_orb(filename):
+  """Fast parser for Molden files to extract orbital energies and occupations.
+  """
+  alpha, beta = [], []
+  current_spin = None
+  energy = None
+  occ = None
+  index = 0
+  with open(filename, 'r') as f:
+    for line in f:
+      line = line.strip()
+      # Detect MO section
+      if line == '[MO]':
+        index += 1
+        current_spin = None
+        energy = None
+        occ = None
+      # Detect spin state
+      elif 'Spin=' in line:
+        if 'Alpha' in line:
+          current_spin = 'alpha'
+        elif 'Beta' in line:
+          current_spin = 'beta'
+      # Parse energy
+      elif line.startswith('Ene='):
+        energy = float(line.split('=')[1])
+      # Parse occupation
+      elif line.startswith('Occup='):
+        occ = float(line.split('=')[1])
+        # Only store if we have both energy and occupation
+        if energy is not None and current_spin is not None:
+          if current_spin == 'alpha':
+            alpha.append((index, energy, occ))
+          elif current_spin == 'beta':
+            beta.append((index, energy, occ))
+  return alpha, beta
+
+def print_orb(orbitals, spin, lumo_cutoff=10):
+  """Print orbital information up to LUMO+10 with correct HOMO marking"""
+  if not orbitals:
+    print(f"No {spin} orbitals found")
+    return
+  # Find HOMO (last occupied orbital with occupation > 0.1)
+  homo_index = 0
+  for i, (idx, en, occ) in enumerate(orbitals):
+    if occ < 0.1:  # Consider orbitals with < 0.1 occupation as unoccupied
+      homo_index = i-1
+      break
+  else:
+    # All orbitals are occupied (unlikely but possible)
+    homo_index = len(orbitals) - 1
+  print(homo_index)
+  # Determine print range (HOMO-10 to LUMO+10)
+  start = max(0, homo_index - 10)
+  end = min(len(orbitals), homo_index + lumo_cutoff + 1)
+  print(f"\n{spin} Orbitals (showing HOMO-10 to LUMO+{lumo_cutoff}):")
+  print("-" * 50)
+  print(f"{'Index':<6}{'Energy(Ha)':<15}{'Occupation':<10}")
+  print("-" * 50)
+  ii = start
+  for idx, en, occ in orbitals[start:end]:
+    print(f"{ii:<6}{en:<15.6f}{occ:<10.3f}")
+    ii += 1
+
+if __name__ == "__main__":
+  if len(sys.argv) != 3:
+    print("Usage: python convert_to_orca.py input.[gjf|com|xyz] output.inp")
+    sys.exit(1)
+  input_file = sys.argv[1]
+  output_file = sys.argv[2]
+  if input_file.endswith('.gjf'):
+    gjf2xyz()
+    input_file = input_file.rstrip('.gjf') + '.xyz'
+  try:
+    convert_to_orca(input_file, output_file)
+  except Exception as e:
+    print(f"Error: {str(e)}")
+    sys.exit(1)
