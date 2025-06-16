@@ -137,7 +137,9 @@ module Atoms
     ! nucleus radius of each atom in mol 0.836*A^(1/3)+0.57 (fm)
     real(dp) :: rad
   end type mol_type
-  type(mol_type) :: mol(100) ! system composed only of atom
+  type(mol_type) :: mol(100)           ! system composed only of atom
+
+  type(mol_type) :: trafomol(100)      ! mol in frame of motion
   
   real(dp)   :: S__2                   ! <S**2> of mol
   real(dp)   :: totalpha, totbeta      ! total alpha, beta electron of mol
@@ -624,23 +626,50 @@ module Atoms
             call terminate('unknown keyword detected in module Hamiltonian')
           end if
         end do module_Hamiltonian
-      ! --------------------<module Radiation>--------------------
-      else if (trim(module_name) == '%radiation') then
-        module_Radiation: do
+      ! --------------------<module Representation>--------------------
+      else if (trim(module_name) == '%representation') then
+        module_Representation: do
           read(12,*,iostat = ios) keyword
           call lowercase(keyword)
           if (ios /= 0 .or. keyword == '') then
-            call terminate('empty line detected in module Radiation.')
+            call terminate('empty line detected in module Representation.')
           else if (index(keyword,'!') == 1) then
-            cycle module_Radiation
-          else if (trim(keyword) == 'endradiation') then
-            exit module_Radiation
+            cycle module_Representation
+          else if (trim(keyword) == 'endrepresentation') then
+            exit module_Representation
           else if (trim(keyword) == 'end') then
             call terminate("end of module should be written as 'endmodulename'")
+          else if (index(keyword,'betax=') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=')+1 : len(trim(keyword))),&
+              "(E12.5)",iostat = ios) beta(1)
+              if (ios /= 0) call terminate(&
+              "v_x/c should be written as 'betax=n'")
+            else
+              call terminate("v_x/c should be written as 'betax=n'")
+            end if
+          else if (index(keyword,'betay=') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=')+1 : len(trim(keyword))),&
+              "(E12.5)",iostat = ios) beta(2)
+              if (ios /= 0) call terminate(&
+              "v_y/c should be written as 'betay=n'")
+            else
+              call terminate("v_y/c should be written as 'betay=n'")
+            end if
+          else if (index(keyword,'betaz=') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=')+1 : len(trim(keyword))),&
+              "(E12.5)",iostat = ios) beta(3)
+              if (ios /= 0) call terminate(&
+              "v_z/c should be written as 'betaz=n'")
+            else
+              call terminate("v_z/c should be written as 'betaz=n'")
+            end if
           else
-            call terminate('unknown keyword detected in module Radiation')
+            call terminate('unknown keyword detected in module Representation')
           end if
-        end do module_Radiation
+        end do module_Representation
       ! -----------------------<module SCF>-----------------------
       else if (trim(module_name) == '%scf') then
         module_SCF: do
@@ -889,6 +918,16 @@ module Atoms
     if (cutS < 0.0) call terminate('cutS should large than 0')
     if (x_HF > 1.000001 .or. x_HF < -0.000001) &
     call terminate('xhf should be in range [0,1]')
+    if (beta(1) < 0.0 .or. beta(1) >= 1.0) call terminate("&
+    betax should be in range [0,1)")
+    if (beta(2) < 0.0 .or. beta(2) >= 1.0) call terminate("&
+    betay should be in range [0,1)")
+    if (beta(3) < 0.0 .or. beta(3) >= 1.0) call terminate("&
+    betaz should be in range [0,1)")
+    beta2 = sum(beta(:)**2)
+    if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
+    beta2 should be in range [0,1)")
+    gamma = (1.0_dp-beta2)**(-0.5_dp)
   end subroutine input_check
 
 !-----------------------------------------------------------------------

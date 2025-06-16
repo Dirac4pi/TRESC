@@ -1,6 +1,6 @@
 !> @file Representation.f90
 !!
-!! @brief representation transformation of states
+!! @brief representation transformation and frame transformation
 !!
 !! @syntax Fortran 2008 free format
 !!
@@ -30,10 +30,10 @@ module Representation
     integer                     :: Archannel, Aichannel, Brchannel, Bichannel
     integer                     :: xchannel, ychannel ,zchannel
     integer                     :: r          ! record position
-    integer(8)                  :: npoints    ! number of grid points
     !DIR$ ATTRIBUTES ALIGN:align_size :: datsa, datsb, pos3
     complex(dp)                 :: datsa(43400), datsb(43400)
-    real(dp)                    :: pos3(434,3,100)
+    real(dp)                    :: pos3(434,3,100), trafopos3(434,3,100)
+    character(len=100)          :: input_line
     inquire(file='.mogx',exist=exists)
     if (.not. exists) then
       open(newunit=xchannel, file='.mogx', access='direct', &
@@ -64,69 +64,69 @@ module Representation
       form='unformatted', recl=8, status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump binary .mog failed')
     end if
-    npoints = 0
     do ii = 1, atom_count
-      if (ii == 1 .or. ii == 3 .or. ii == 4 .or. (ii >= 67 .and. ii <= 75)) then
-        if (mol(ii)%atom_number <= 2) then
-          nr = 35
-          nl = 230
-        else if (mol(ii)%atom_number <= 10) then
-          nr = 65
-          nl = 434
-        else if (mol(ii)%atom_number <= 18) then
-          nr = 80
-          nl = 434
-        else
-          nr = 100
-          nl = 434
-        end if
+      if (mol(ii)%atom_number <= 2) then
+        nr = 35
+        nl = 230
+      else if (mol(ii)%atom_number <= 10) then
+        nr = 65
+        nl = 434
+      else if (mol(ii)%atom_number <= 18) then
+        nr = 80
+        nl = 434
       else
-        nr = 0
-        nl = 0
+        nr = 100
+        nl = 434
       end if
-      npoints = npoints + nr*nl
     end do
     if (is2c) then
-      write(Archannel,rec=1) npoints
-      write(Aichannel,rec=1) npoints
-      write(Brchannel,rec=1) npoints
-      write(Bichannel,rec=1) npoints
-    else
-      write(Archannel,rec=1) npoints
+      write(*,*) "Is this molecule in motion?"
+      write(*,*) "if yes, input x,y,z components of velocity in NATRUAL UNIT"
+      write(*,*) "if not, press ENTER"
+      read(*, '(A)', iostat=ios) input_line
+      if (ios == 0) read(input_line, *, iostat=ios) beta(1), beta(2), beta(3)
+      if (ios /= 0 .or. len_trim(input_line) == 0) beta = 0.0
+      write(*,*) "recieved..."
+      beta2 = sum(beta(:)**2)
+      if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
+      beta2 should be in range [0,1)")
+      gamma = (1.0_dp-beta2)**(-0.5_dp)
+      call mol_frametrafo()
+      if (beta2 > 1E-6) then
+      write(*,*)
+      write(*,*) "------------------------------------------------------------"
+      write(*,*) "Electronic structure in motion frame differs from rest frame"
+      write(*,*) "* has nothing to do with SOC etc.(affecting wavefunction),"
+      write(*,*) "  but due to changes in measurement;"
+      write(*,*) "* is not self-consistent."
+      write(*,*) "------------------------------------------------------------"
+      write(*,*)
+      end if
     end if
-    if (.not. exists) then
-      write(xchannel,rec=1) npoints
-      write(ychannel,rec=1) npoints
-      write(zchannel,rec=1) npoints
-    end if
-    r = 2
+    r = 1
     do ii = 1, atom_count
-      if (ii == 1 .or. ii == 3 .or. ii == 4 .or. (ii >= 67 .and. ii <= 75)) then
-        if (mol(ii)%atom_number <= 2) then
-          nr = 35
-          nl = 230
-        else if (mol(ii)%atom_number <= 10) then
-          nr = 65
-          nl = 434
-        else if (mol(ii)%atom_number <= 18) then
-          nr = 80
-          nl = 434
-        else
-          nr = 100
-          nl = 434
-        end if
+      if (mol(ii)%atom_number <= 2) then
+        nr = 35
+        nl = 230
+      else if (mol(ii)%atom_number <= 10) then
+        nr = 65
+        nl = 434
+      else if (mol(ii)%atom_number <= 18) then
+        nr = 80
+        nl = 434
       else
-        nr = 0
-        nl = 0
+        nr = 100
+        nl = 434
       end if
       call Chebyshev2_Lebedev_noweight(ii, nr, nl, pos3)
-      !$omp parallel num_threads(14) default(shared) private(i)&
+      !$omp parallel num_threads(16) default(shared) private(i)&
       !$omp& if(atom_count > 20)
       !$omp do schedule(static)
       do i = 1, nr
         if (is2c) then
-          call grid(arr, nl, pos3(1:nl,:,i), 1, datsa((i-1)*nl+1:i*nl))
-          call grid(arr, nl, pos3(1:nl,:,i), 2, datsb((i-1)*nl+1:i*nl))
+          call grid_frametrafo_mo(&
+          arr,nl,pos3(1:nl,:,i),trafopos3(1:nl,:,i),&
+          datsa((i-1)*nl+1:i*nl),datsb((i-1)*nl+1:i*nl))
         else
           ! always alpha
           call grid(arr, nl, pos3(1:nl,:,i), 1, datsa((i-1)*nl+1:i*nl))
@@ -134,6 +134,7 @@ module Representation
       end do
       !$omp end do
       !$omp end parallel
+      pos3 = trafopos3
       do jj = 1, nr
         do kk = 1, nl
           if (is2c) then
@@ -141,13 +142,18 @@ module Representation
             write(Aichannel, rec=r) aimag(datsa((jj-1)*nl+kk))
             write(Brchannel, rec=r) real(datsb((jj-1)*nl+kk))
             write(Bichannel, rec=r) aimag(datsb((jj-1)*nl+kk))
+            if (.not. exists) then
+              write(xchannel, rec=r) trafopos3(kk,1,jj)
+              write(ychannel, rec=r) trafopos3(kk,2,jj)
+              write(zchannel, rec=r) trafopos3(kk,3,jj)
+            end if
           else
             write(Archannel, rec=r) real(datsa((jj-1)*nl+kk))
-          end if
-          if (.not. exists) then
-            write(xchannel, rec=r) pos3(kk,1,jj)
-            write(ychannel, rec=r) pos3(kk,2,jj)
-            write(zchannel, rec=r) pos3(kk,3,jj)
+            if (.not. exists) then
+              write(xchannel, rec=r) pos3(kk,1,jj)
+              write(ychannel, rec=r) pos3(kk,2,jj)
+              write(zchannel, rec=r) pos3(kk,3,jj)
+            end if
           end if
           r = r + 1
         end do
@@ -240,14 +246,14 @@ module Representation
   pure subroutine Chebyshev2_Lebedev(count, nr, nl, pos3w1)
     implicit none
     integer(8),intent(in) :: count, nr, nl
-    integer :: ii, jj
-    integer :: nl2
+    integer               :: ii, jj
+    integer               :: nl2
     !DIR$ ATTRIBUTES ALIGN:align_size :: wr, R
-    real(dp) :: wr(nr), R(nr)
-    real(dp),intent(out) :: pos3w1(434,4,100) ! x, y, z, weight
+    real(dp)              :: wr(nr), R(nr)
+    real(dp),intent(out)  :: pos3w1(434,4,100) ! x, y, z, weight
     !DIR$ ATTRIBUTES ALIGN:align_size :: lx, ly, lz, wl
-    real(dp) :: lx(nl), ly(nl), lz(nl), wl(nl)
-    real(dp) :: p, x_i, point(3), spacew
+    real(dp)              :: lx(nl), ly(nl), lz(nl), wl(nl)
+    real(dp)              :: p, x_i, point(3), spacew
     ! assign radial grid points (Gauss weight) using 2nd Chebyshev method
     if (mol(count)%atom_number == 1) then
       p = CSD_CovR(mol(count)%atom_number)
@@ -290,14 +296,14 @@ module Representation
   pure subroutine Chebyshev2_Lebedev_noweight(count, nr, nl, pos3)
     implicit none
     integer(8),intent(in) :: count, nr, nl
-    integer :: ii, jj
-    integer :: nl2
+    integer               :: ii, jj
+    integer               :: nl2
     !DIR$ ATTRIBUTES ALIGN:align_size :: R
-    real(dp) :: R(nr)
-    real(dp),intent(out) :: pos3(434,3,100) ! x, y, z
+    real(dp)              :: R(nr)
+    real(dp),intent(out)  :: pos3(434,3,100) ! x, y, z
     !DIR$ ATTRIBUTES ALIGN:align_size :: lx, ly, lz, wl
-    real(dp) :: lx(nl), ly(nl), lz(nl), wl(nl)
-    real(dp) :: p, x_i
+    real(dp)              :: lx(nl), ly(nl), lz(nl), wl(nl)
+    real(dp)              :: p, x_i
     ! assign radial grid points (Gauss weight) using 2nd Chebyshev method
     if (mol(count)%atom_number == 1) then
       p = CSD_CovR(mol(count)%atom_number)
@@ -330,12 +336,12 @@ module Representation
 !> calculate weight of a given coordinate in Becke's fuzzy grid
   pure subroutine Becke_weight(point, count, weight)
     implicit none
-    real(dp), intent(in) :: point(3)
+    real(dp), intent(in)   :: point(3)
     integer(8), intent(in) :: count
-    real(dp), intent(out) :: weight
-    real(dp) :: weights(atom_count)
-    real(dp) :: ri, rj, R, chi, miu_, miu, a, niu, s
-    integer :: ii, jj
+    real(dp), intent(out)  :: weight
+    real(dp)               :: weights(atom_count)
+    real(dp)               :: ri, rj, R, chi, miu_, miu, a, niu, s
+    integer                :: ii, jj
     weights = 1.0_dp
     do ii = 1, atom_count
       ri = dsqrt(sum((point(:)-mol(ii)%pos(:))**2))
@@ -364,11 +370,102 @@ module Representation
   pure recursive real(dp) function Becke_miu(x, p) result(y)
     implicit none
     real(dp),intent(in) :: x
-    integer,intent(in) :: p ! number of remaining iterations
+    integer,intent(in)  :: p ! number of remaining iterations
     if (p <= 1) then
       y = 1.5_dp*x - 0.5_dp*x**3
     else
       y = 1.5_dp*Becke_miu(x, p-1) - 0.5_dp*Becke_miu(x, p-1)**3
     end if
   end function Becke_miu
+
+!------------------------------------------------------------
+!> assign molecule in frame of motion (trafomol)
+  subroutine mol_frametrafo()
+    implicit none
+    integer :: ii, jj, kk
+    real(dp) :: trafocoe, dot
+    ! Lorentz transformation of x, leads to length contraction
+    ! x' = x - gamma/(gamma+1.0_dp)(x.beta) * beta
+    trafomol = mol
+    trafocoe = -gamma/(gamma+1.0_dp)
+    do ii = 1, atom_count
+      dot = trafocoe*sum(beta(:)*mol(ii)%pos(:))
+      trafomol(ii)%pos(:) = mol(ii)%pos(:) + dot*beta(:)
+    end do
+  end subroutine mol_frametrafo
+
+!------------------------------------------------------------
+!> reference frame transformation of a (basis repre) vector
+!!
+!! input "points" is the coordinates in rest frame
+!!
+!! “simultaneous” in motion frame: x_rest = L(x_motion)|t_motion=0,
+!! in this case, x' = x_rest; x = x_motion
+  pure subroutine grid_frametrafo_mo(arr, n, points, trafopoints, datsa, datsb)
+    implicit none
+    complex(dp),intent(in)  :: arr(:)
+    integer(8),intent(in)   :: n
+    real(dp),intent(in)     :: points(n, 3)
+    real(dp),intent(out)    :: trafopoints(n, 3)
+    complex(dp),intent(out) :: datsa(n), datsb(n)
+    real(dp)                :: sz(n), trafosz(n), amp(n)
+    real(dp)                :: a2, b2
+    integer                 :: ii, jj, kk
+    integer                 :: contr
+    real(dp)                :: vec(n, 3)
+    integer                 :: L, M
+    integer                 :: fac(3)
+    real(dp)                :: coeff
+    real(dp)                :: expo
+    real(dp)                :: val(n)
+    real(dp)                :: codcoe, coddot, spincoe
+    ! Lorentz transformation of x, leads to length contraction
+    ! x = x' + gamma**2/(gamma+1.0_dp)(x'.beta) * beta
+    codcoe = -gamma/(gamma+1.0_dp)
+    do ii = 1, n
+      coddot = codcoe*sum(beta(:)*points(ii,:))
+      trafopoints(ii,:) = points(ii,:) + coddot*beta(:)
+    end do
+    
+    datsa = c0
+    datsb = c0
+    do kk = 1, cbdm
+      val = 0.0_dp
+      vec(:,1) = points(:,1) - mol(basis_inf(kk)%atom)%pos(1)
+      vec(:,2) = points(:,2) - mol(basis_inf(kk)%atom)%pos(2)
+      vec(:,3) = points(:,3) - mol(basis_inf(kk)%atom)%pos(3)
+      contr = atom_basis(mol(basis_inf(kk)%atom) % &
+      basis_number + basis_inf(kk) % shell - 1) % contr
+      L = basis_inf(kk) % L
+      M = basis_inf(kk) % M
+      fac(:) = AO_fac(:,L,M)
+      do jj = 1, contr
+        expo = atom_basis(mol(basis_inf(kk)%atom) % &
+        basis_number + basis_inf(kk) % shell - 1)%expo(jj)
+        coeff = atom_basis(mol(basis_inf(kk)%atom) % &
+        basis_number + basis_inf(kk) % shell - 1)%Ncoe(jj,M)
+        val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
+      end do
+      val(:) = val(:) * (vec(:,1)**fac(1))
+      val(:) = val(:) * (vec(:,2)**fac(3))
+      val(:) = val(:) * (vec(:,3)**fac(3))
+      datsa = datsa + val * arr(kk)
+      datsb = datsb + val * arr(kk+cbdm)
+    end do
+
+    ! Imitative transformation of s, causes s_z to away from +-1/2,
+    ! also means mixing of alpha and beta components
+    ! s' = (1-gamma/(gamma+1)*beta(3)**2)/(1-beta(3)**2)**0.5 * s
+    spincoe = (1.0_dp+codcoe*beta(3)**2) * (1.0_dp-beta(3)**2)**(-0.5_dp)
+    sz = real(datsa*conjg(datsa) - datsb*conjg(datsb))
+    amp = real(datsa*conjg(datsa) + datsb*conjg(datsb))
+    trafosz = spincoe * sz
+    do ii = 1, n
+      a2 = 0.5_dp*(trafosz(ii)+amp(ii))
+      b2 = 0.5_dp*(amp(ii)-trafosz(ii))
+      datsa(ii) = datsa(ii) * a2/(datsa(ii)*conjg(datsa(ii)))
+      datsb(ii) = datsb(ii) * b2/(datsb(ii)*conjg(datsb(ii)))
+    end do
+  end subroutine grid_frametrafo_mo
+
 end module Representation

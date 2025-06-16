@@ -211,6 +211,7 @@ def mog2c(real:str, img:str, index:int=1, isovalue:float=0.05)->None:
   isovalue: isovalue of amplitude of MO.\n
   Returns: None
   '''
+  isovalue = float(isovalue)
   if not real.endswith('.molden.input'):
     real = real + '.molden.input'
   if not img.endswith('.molden.input'):
@@ -238,8 +239,7 @@ def mog2c(real:str, img:str, index:int=1, isovalue:float=0.05)->None:
     raise RuntimeError('wavefunction file cannot be loaded in mog2c')
   
   print('call TRESC...')
-  results = fc.call_executable(['TRESC.sh', '-2c', str(index)])
-  print(f'stdout: {results}')
+  fc.call_executable(['tshell.sh', '-2c', str(index)])
 
   atoms = dl.load_xyz('.xyz')
 

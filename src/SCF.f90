@@ -7,7 +7,6 @@
 !! @code UTF-8
 !!
 !! @author dirac4pi
-
 module SCF
   use Hamiltonian
   use Atoms
@@ -124,6 +123,7 @@ module SCF
 !> HF/KS-SCF procedure for DKH0/DKH2 Hamiltonian
   subroutine DKH_SCF()
     implicit none
+    character(len = 40) :: keyword
     write(60,'(A)') 'Module SCF:'
     write(60,'(A)') '  construct one electron Fock matrix'
     call Fock1e()
@@ -173,15 +173,70 @@ module SCF
     allocate(rho_pre(2*sbdm, 2*sbdm))
     allocate(rho_pre_pre(2*sbdm, 2*sbdm))
     do loop_i = 1, maxiter
-      if (loop_i /= 1) &
-      write(60,*)
-      write(60,*)
-      write(60,'(A,I3)') '  SCF iter ',loop_i
-      if (loop_i == 1) then
+      if (loop_i /= 1) then
+        write(60,*)
+        write(60,*)
+        write(60,'(A,I3)') '  SCF iter ',loop_i
+        open(12, file=address_molecule, status="old", action="read")
+        do
+          read(12,*,iostat = ios) keyword
+          if (ios /= 0) exit
+          call lowercase(keyword)
+          if (index(keyword,'threads') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(I2)",iostat = ios) threads_new
+              if (threads_new /= threads) then
+                threads = threads_new
+                write(60,'(A,I2)') '  number of threads change to ',threads
+              end if
+            end if
+          else if (index(keyword,'damp') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) damp_new
+              if (damp_new /= damp) then
+                damp = damp_new
+                write(60,'(A,F20.12)') '  dynamical damp change to ',damp
+              end if
+            end if
+          else if (index(keyword,'diisdamp') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) diisdamp_new
+              if (diisdamp_new /= diisdamp) then
+                diisdamp = diisdamp_new
+                write(60,'(A,F20.12)') &
+                '  dynamical damp in DIIS change to ',diisdamp
+              end if
+            end if
+          else if (index(keyword,'cutdiis') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) cutdiis_new
+              if (cutdiis_new /= cutdiis) then
+                cutdiis = cutdiis_new
+                write(60,'(A,F20.12)') '  DIIS threshold change to ',cutdiis
+              end if
+            end if
+          else if (index(keyword,'cutdamp') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) cutdamp_new
+              if (cutdamp_new /= cutdamp) then
+                cutdamp = cutdamp_new
+                write(60,'(A,F20.12)') '  damp threshold change to ',cutdamp
+              end if
+            end if
+          end if
+        end do
+        close(12)
+      else
         write(60,'(A)') '  read density matrix'
         call assign_rou()
         write(60,'(A)') '  complete! stored in rho_m'
       end if
+
       write(60,'(A)') '  construct two electron Fock matrix'
       call Fock2e()
       if (fx_id /= -1) then

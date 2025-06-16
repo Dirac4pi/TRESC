@@ -43,8 +43,7 @@ def mog1c(mofile:str, spin:str, index:int=1, isovalue:float=0.05)->None:
     raise RuntimeError('wavefunction file cannot be loaded in mog2c')
   
   print('call TRESC...')
-  results = fc.call_executable(['TRESC.sh', '-1c', str(index)])
-  print(f'stdout: {results}')
+  fc.call_executable(['tkernel.sh', '-1c', str(index)])
 
   atoms = dl.load_xyz('.xyz')
 

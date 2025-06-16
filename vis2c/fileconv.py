@@ -248,32 +248,15 @@ def call_executable(command: list):
   return: standard output
   """
   if not command:
-    raise RuntimeError('No command reserved')
+    raise RuntimeError("No command reserved")
   try:
-    result = subprocess.run(
-      command,
-      check=True,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE,
-      text=True
-    )
-    return result.stdout
+    result = subprocess.run(command, check=True, text=True)
   except subprocess.CalledProcessError as e:
-    # Fortran: stop(1) returns error
-    error_message = f"""
-    Fortran error stop({e.returncode}):
-    ----------------------------
-    (stderr):
-    {e.stderr}
-    ----------------------------
-    (stdout):
-    {e.stdout}
-    """
-    raise RuntimeError(error_message) from e
+    raise RuntimeError(f"Process failed with return code {e.returncode}") from e
   except FileNotFoundError as e:
-    raise RuntimeError(f"can't found {command[0]}") from e
+    raise RuntimeError(f"Can't find {command[0]}") from e
   except Exception as e:
-    raise RuntimeError(f"error: {str(e)}") from e
+    raise RuntimeError(f"Error: {str(e)}") from e
 
 def convert_to_orca(input_file, output_file):
   try:

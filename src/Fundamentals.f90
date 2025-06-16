@@ -25,6 +25,7 @@ module Fundamentals
   integer,private     :: clock_time1, clock_time2   ! job clock time (wall time)
   real(sp),private    :: cpu_time1, cpu_time2       ! job cpu time
   integer             :: threads = 8                ! number of threads
+  integer             :: threads_new
   integer,parameter   :: align_size = 32            ! AVX2:32, AVX512:64
   !!DIR$ ATTRIBUTES ALIGN:align_size :: mat
   integer             :: nproc                      ! number of processors
@@ -69,16 +70,24 @@ module Fundamentals
   integer         :: maxiter     = 128    ! upper limit of convergence loops
   real(dp)        :: conver_tol  = 1E-6   ! convergence tolerence of energy
   real(dp)        :: damp        = 0.0    ! dynamical damp (-(dE)^damp+1)
+  real(dp)        :: damp_new
   integer         :: nodiis      = 8      ! initial iteration steps without DIIS
   integer         :: subsp       = 5      ! dimension of suboptimal subspace
   real(dp)        :: diisdamp    = 0.7    ! damp coefficient in DIIS
+  real(dp)        :: diisdamp_new
   real(dp)        :: prtlev      = 0.1    ! minimun AO coefficient print output
   real(dp)        :: cutdiis     = 0.0    ! cut DIIS when threshold is reached
+  real(dp)        :: cutdiis_new
   real(dp)        :: cutdamp     = 0.01   ! cut damp when threshold is reached
+  real(dp)        :: cutdamp_new
   logical         :: keepspin    = .false.! avoid spin mutations
   logical         :: d4          = .false.! use DFT-D4 dispersion correction
   character(len=8):: guess_type  = 'gaussian' ! initial guess for SCF
   logical         :: molden      = .false.! save MOs to .molden file
+  !------------------<module Representation>------------------
+  real(dp)        :: beta(3)     = 0.0_dp ! v/c of frame of motion
+  real(dp)        :: beta2       = 0.0_dp ! |beta|**2
+  real(dp)        :: gamma       = 1.0_dp ! Lorentz contraction
   !------------------<module Functional>------------------
   ! https://libxc.gitlab.io/functionals/
   integer         :: fx_id       = -1     ! exchange functional ID(default HF
