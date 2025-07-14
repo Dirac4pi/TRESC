@@ -1,8 +1,7 @@
 '''
-python module in vis2c
 plot 2D objects
 coding:UTF-8
-env:base
+env:vis2c
 '''
 
 import numpy as np

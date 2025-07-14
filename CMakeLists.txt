@@ -55,22 +55,22 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 # Source files and executable
 #-------------------------------------------------------------------------------
 set(TRESC_SOURCES
-  src/Fundamentals.f90
-  src/Atoms.f90
-  src/Functional.f90
-  src/GRysroot.f90
-  src/Rysdata.f90
-  src/Rys.f90
-  src/Lebedev.f90
-  src/Representation.f90
-  src/Hamiltonian.f90
-  src/SCF.f90
-  src/Tkernel.f90
+  tkernel/Fundamentals.f90
+  tkernel/Atoms.f90
+  tkernel/Functional.f90
+  tkernel/GRysroot.f90
+  tkernel/Rysdata.f90
+  tkernel/Rys.f90
+  tkernel/Lebedev.f90
+  tkernel/Representation.f90
+  tkernel/Hamiltonian.f90
+  tkernel/SCF.f90
+  tkernel/Tkernel.f90
 )
 # check exists
-foreach(src_file IN LISTS TRESC_SOURCES)
-  if(NOT EXISTS ${CMAKE_SOURCE_DIR}/${src_file})
-    message(FATAL_ERROR "Missing source file: ${CMAKE_SOURCE_DIR}/${src_file}")
+foreach(tkernel_file IN LISTS TRESC_SOURCES)
+  if(NOT EXISTS ${CMAKE_SOURCE_DIR}/${tkernel_file})
+    message(FATAL_ERROR "Missing source file: ${CMAKE_SOURCE_DIR}/${tkernel_file}")
   endif()
 endforeach()
 add_executable(TRESC ${TRESC_SOURCES})
@@ -80,83 +80,83 @@ set_target_properties(TRESC PROPERTIES
 )
 # dependencies
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Fundamentals.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Fundamentals.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Fundamentals"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Atoms.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Atoms.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Atoms"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/Fundamentals.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/Fundamentals.f90
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Rysdata.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Rysdata.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Rysdata"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/Fundamentals.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/Fundamentals.f90
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/GRysroot.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/GRysroot.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "GRysroot"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/Fundamentals.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/Fundamentals.f90
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Rys.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Rys.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Rys"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/Rysdata.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/Rysdata.f90
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Lebedev.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Lebedev.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Lebedev"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/Atoms.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/Atoms.f90
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Functional.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Functional.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Functional"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/src/Atoms.f90"
+  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/tkernel/Atoms.f90"
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Representation.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Representation.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Representation"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/src/Lebedev.f90;
-${CMAKE_SOURCE_DIR}/src/Functional.f90"
+  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/tkernel/Lebedev.f90;
+${CMAKE_SOURCE_DIR}/tkernel/Functional.f90"
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Hamiltonian.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Hamiltonian.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Hamiltonian"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/src/GRysroot.f90;
-${CMAKE_SOURCE_DIR}/src/Rys.f90;${CMAKE_SOURCE_DIR}/src/Atoms.f90"
+  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/tkernel/GRysroot.f90;
+${CMAKE_SOURCE_DIR}/tkernel/Rys.f90;${CMAKE_SOURCE_DIR}/tkernel/Atoms.f90"
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/SCF.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/SCF.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "SCF"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/src/Hamiltonian.f90;
-${CMAKE_SOURCE_DIR}/src/Representation.f90"
+  OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/tkernel/Hamiltonian.f90;
+${CMAKE_SOURCE_DIR}/tkernel/Representation.f90"
 )
 set_source_files_properties(
-  ${CMAKE_SOURCE_DIR}/src/Tkernel.f90
+  ${CMAKE_SOURCE_DIR}/tkernel/Tkernel.f90
   PROPERTIES
   OBJECT_OUTPUT_NAME "Tkernel"
   Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR}
-  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/src/SCF.f90
+  OBJECT_DEPENDS ${CMAKE_SOURCE_DIR}/tkernel/SCF.f90
 )
 
 
@@ -233,7 +233,7 @@ endif()
 #-------------------------------------------------------------------------------
 target_include_directories(TRESC PRIVATE
   "${LIBXC_ROOT}/build"
-  "${CMAKE_SOURCE_DIR}/src"
+  "${CMAKE_SOURCE_DIR}/tkernel"
   "${ONEAPI_ROOT}/mkl/latest/include/mkl/intel64/ilp64"
   "${ONEAPI_ROOT}/mpi/latest/include"
   "${ONEAPI_ROOT}/mpi/latest/include/mpi/ilp64"

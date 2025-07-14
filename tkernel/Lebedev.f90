@@ -6,7 +6,7 @@
 !!
 !! @code UTF-8
 !!
-!! @author (modified by Dirac4pi)
+!! @author Christoph van Wuellen (modified by Dirac4pi)
 module Lebedev
   implicit none
 

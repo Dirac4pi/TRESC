@@ -25,24 +25,27 @@ module Representation
     complex(dp),intent(in)      :: arr(:)     ! input array (basis repre)
     character(len=*),intent(in) :: title      ! title of .mog file
     integer(8)                  :: i, ii, jj, kk, ll  ! loop varables
-    integer(8)                  :: nl, nr
+    integer(8)                  :: nl(atom_count), nr(atom_count), cnr, cnl
     integer                     :: xloop_k, xloop_l
     integer                     :: Archannel, Aichannel, Brchannel, Bichannel
     integer                     :: xchannel, ychannel ,zchannel
     integer                     :: r          ! record position
+    character(len=200)          :: env_TRESC
+    character(len=100)          :: line
+    logical                     :: mog_element
     !DIR$ ATTRIBUTES ALIGN:align_size :: datsa, datsb, pos3
     complex(dp)                 :: datsa(43400), datsb(43400)
     real(dp)                    :: pos3(434,3,100), trafopos3(434,3,100)
     character(len=100)          :: input_line
     inquire(file='.mogx',exist=exists)
     if (.not. exists) then
-      open(newunit=xchannel, file='.mogx', access='direct', &
+      open(newunit=xchannel, file=trim(jobname)//'.mogx', access='direct', &
       form='unformatted', recl=8, status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump binary .mog failed')
-      open(newunit=ychannel, file='.mogy', access='direct', &
+      open(newunit=ychannel, file=trim(jobname)//'.mogy', access='direct', &
       form='unformatted', recl=8, status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump binary .mog failed')
-      open(newunit=zchannel, file='.mogz', access='direct', &
+      open(newunit=zchannel, file=trim(jobname)//'.mogz', access='direct', &
       form='unformatted', recl=8, status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump binary .mog failed')
     end if
@@ -64,21 +67,61 @@ module Representation
       form='unformatted', recl=8, status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('dump binary .mog failed')
     end if
-    do ii = 1, atom_count
-      if (mol(ii)%atom_number <= 2) then
-        nr = 35
-        nl = 230
-      else if (mol(ii)%atom_number <= 10) then
-        nr = 65
-        nl = 434
-      else if (mol(ii)%atom_number <= 18) then
-        nr = 80
-        nl = 434
-      else
-        nr = 100
-        nl = 434
+    call getenv('TRESC',env_TRESC)
+    open(30, file=trim(env_TRESC)//'/settings.ini', status='old', &
+    action='read', iostat=ios)
+    if (ios /= 0) then
+      call terminate("can't open file "//trim(env_TRESC)//'/settings.ini')
+    end if
+    do
+      read(30, '(A)', iostat=ios) line
+      if (ios /= 0) then
+        call terminate("no mogtype in "//trim(env_TRESC)//'/settings.ini')
+      else if(index(line,'mogtype=') == 1) then
+        call lowercase(line)
+        if (line(index(line,'=')+1:index(line,'=')+1) == 'e') then
+          mog_element = .true.
+        else if(line(index(line,'=')+1:index(line,'=')+1) == 'i') then
+          mog_element = .false.
+        end if
+        exit
       end if
     end do
+    if (ios /= 0) then
+      call terminate("can't read file "//trim(env_TRESC)//'/settings.ini')
+    end if
+    nr = 0
+    nl = 0
+    if (mog_element) then
+      do
+        read(30, '(A)', iostat=ios) line
+        if (index(line,'//') == 1) cycle
+        if (index(line,'nr[') /= 1) exit
+        read(line(4:index(line,']=')-1), '(I)') r
+        read(line(index(line,']=')+2:index(line,',')-1), '(I)') cnr
+        line = line(index(line,']=')+2:)
+        read(line(index(line,']=')+2:index(line,';')-1), '(I)') cnl
+        do ii = 1, atom_count
+          if (mol(ii)%atom_number == r) then
+            nr(ii) = cnr
+            nl(ii) = cnl
+          end if
+        end do
+      end do
+    else
+      do
+        read(30, '(A)', iostat=ios) line
+        if (index(line,'//') == 1) cycle
+        if (index(line,'nr{') /= 1) exit
+        read(line(4:index(line,'}=')-1), '(I)') r
+        read(line(index(line,'}=')+2:index(line,',')-1), '(I)') cnr
+        line = line(index(line,'}=')+2:)
+        read(line(index(line,'}=')+2:index(line,';')-1), '(I)') cnl
+        nr(r) = cnr
+        nl(r) = cnl
+      end do
+    end if
+    close(30)
     if (is2c) then
       write(*,*) "Is this molecule in motion?"
       write(*,*) "if yes, input x,y,z components of velocity in NATRUAL UNIT"
@@ -96,59 +139,46 @@ module Representation
       write(*,*)
       write(*,*) "------------------------------------------------------------"
       write(*,*) "Electronic structure in motion frame differs from rest frame"
-      write(*,*) "* has nothing to do with SOC etc.(affecting wavefunction),"
-      write(*,*) "  but due to changes in measurement;"
-      write(*,*) "* is not self-consistent."
+      write(*,*) "due to changes in measurement;"
+      write(*,*) "Electronic structure in motion frame is not self-consistent."
       write(*,*) "------------------------------------------------------------"
       write(*,*)
       end if
     end if
     r = 1
     do ii = 1, atom_count
-      if (mol(ii)%atom_number <= 2) then
-        nr = 35
-        nl = 230
-      else if (mol(ii)%atom_number <= 10) then
-        nr = 65
-        nl = 434
-      else if (mol(ii)%atom_number <= 18) then
-        nr = 80
-        nl = 434
-      else
-        nr = 100
-        nl = 434
-      end if
-      call Chebyshev2_Lebedev_noweight(ii, nr, nl, pos3)
+      call Chebyshev2_Lebedev_noweight(ii, nr(ii), nl(ii), pos3)
       !$omp parallel num_threads(16) default(shared) private(i)&
-      !$omp& if(atom_count > 20)
+      !$omp& if(atom_count > 5)
       !$omp do schedule(static)
-      do i = 1, nr
+      do i = 1, nr(ii)
         if (is2c) then
           call grid_frametrafo_mo(&
-          arr,nl,pos3(1:nl,:,i),trafopos3(1:nl,:,i),&
-          datsa((i-1)*nl+1:i*nl),datsb((i-1)*nl+1:i*nl))
+          arr,nl(ii),pos3(1:nl(ii),:,i),trafopos3(1:nl(ii),:,i),&
+          datsa((i-1)*nl(ii)+1:i*nl(ii)),datsb((i-1)*nl(ii)+1:i*nl(ii)))
         else
           ! always alpha
-          call grid(arr, nl, pos3(1:nl,:,i), 1, datsa((i-1)*nl+1:i*nl))
+          call grid(arr,nl(ii),pos3(1:nl(ii),:,i),1,&
+          datsa((i-1)*nl(ii)+1:i*nl(ii)))
         end if
       end do
       !$omp end do
       !$omp end parallel
       pos3 = trafopos3
-      do jj = 1, nr
-        do kk = 1, nl
+      do jj = 1, nr(ii)
+        do kk = 1, nl(ii)
           if (is2c) then
-            write(Archannel, rec=r) real(datsa((jj-1)*nl+kk))
-            write(Aichannel, rec=r) aimag(datsa((jj-1)*nl+kk))
-            write(Brchannel, rec=r) real(datsb((jj-1)*nl+kk))
-            write(Bichannel, rec=r) aimag(datsb((jj-1)*nl+kk))
+            write(Archannel, rec=r) real(datsa((jj-1)*nl(ii)+kk))
+            write(Aichannel, rec=r) aimag(datsa((jj-1)*nl(ii)+kk))
+            write(Brchannel, rec=r) real(datsb((jj-1)*nl(ii)+kk))
+            write(Bichannel, rec=r) aimag(datsb((jj-1)*nl(ii)+kk))
             if (.not. exists) then
               write(xchannel, rec=r) trafopos3(kk,1,jj)
               write(ychannel, rec=r) trafopos3(kk,2,jj)
               write(zchannel, rec=r) trafopos3(kk,3,jj)
             end if
           else
-            write(Archannel, rec=r) real(datsa((jj-1)*nl+kk))
+            write(Archannel, rec=r) real(datsa((jj-1)*nl(ii)+kk))
             if (.not. exists) then
               write(xchannel, rec=r) pos3(kk,1,jj)
               write(ychannel, rec=r) pos3(kk,2,jj)
@@ -173,6 +203,150 @@ module Representation
       close(zchannel)
     end if
   end subroutine mogrid_becke
+
+!------------------------------------------------------------
+!> generate Gaussian cube file for input MO
+  subroutine dump_cube(is2c, arr, title, spin)
+    implicit none
+    logical,intent(in)          :: is2c
+    complex(dp),intent(in)      :: arr(2*cbdm)
+    character(len=*),intent(in) :: title
+    character(len=200)          :: env_TRESC
+    character(len=100)          :: line
+    integer,optional            :: spin
+    integer                     :: end
+    integer                     :: i, ii, jj, kk
+    real(dp)                    :: maxx, minx, maxy, miny, maxz, minz
+    real(dp)                    :: deltax, deltay, deltaz
+    integer(8)                  :: nx, ny, nz
+    !DIR$ ATTRIBUTES ALIGN:align_size :: points, datsa, datsb
+    real(dp),allocatable        :: points(:,:)
+    complex(dp),allocatable     :: datsa(:), datsb(:)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: dats
+    complex(dp),allocatable     :: dats(:,:,:)
+
+    call getenv('TRESC',env_TRESC)
+    open(30, file=trim(env_TRESC)//'/settings.ini', status='old', &
+    action='read', iostat=ios)
+    if (ios /= 0) then
+      call terminate("can't open file "//trim(env_TRESC)//'/settings.ini')
+    end if
+    do
+      read(30, '(A)', iostat=ios) line
+      if (ios /= 0) then
+        call terminate("no nx,ny,nz in "//trim(env_TRESC)//'/settings.ini')
+      else if(index(line,'nx=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') nx
+      else if(index(line,'ny=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') ny
+      else if(index(line,'nz=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') nz
+        exit
+      end if
+    end do
+    close(30)
+    allocate(dats(2*nz,ny,nx))
+    allocate(points(nz,3), datsa(nz), datsb(nz))
+    if (is2c) then
+      open(99, file=trim(title)//"-real.cub", status="replace", action="write")
+      write(99,'(A)') 'generate by TRESC: real part of 2-component orb '&
+      //trim(title)
+      write(99,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
+      open(100, file=trim(title)//"-img.cub", status="replace", action="write")
+      write(100,'(A)') 'generated by TRESC: imaginary part of 2-component orb '&
+      //trim(title)
+      write(100,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
+    else
+      open(99, file=trim(title)//".cub", status="replace", action="write")
+      write(99,'(A)') 'generated by TRESC'
+      write(99,'(A,I,A)') 'total ',nx*ny*nz,' points'
+    end if
+    ! generate grid points
+    maxx = maxval(mol(:)%pos(1)) + 3.0
+    minx = minval(mol(:)%pos(1)) - 3.0
+    deltax = (maxx-minx) / nx
+    maxy = maxval(mol(:)%pos(2)) + 3.0
+    miny = minval(mol(:)%pos(2)) - 3.0
+    deltay = (maxy-miny) / ny
+    maxz = maxval(mol(:)%pos(3)) + 3.0
+    minz = minval(mol(:)%pos(3)) - 3.0
+    deltaz = (maxz-minz) / nz
+    if (is2c) then
+      write(99,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(99,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(99,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(99,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      write(100,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(100,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(100,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(100,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      do ii = 1, atom_count
+        write(99,'(I4,4F14.8)') mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+        write(100,'(I4,4F14.8)')mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+      end do
+      write(99,'(I3,A4,A4)') 2, trim(title), trim(title)
+      write(100,'(I3,A4,A4)') 2, trim(title), trim(title)
+    else
+      write(99,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(99,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(99,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(99,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      do ii = 1, atom_count
+        write(99,'(I4,4F14.8)') mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+      end do
+      do ii = 1, len(title)
+        if (is_alpha(title(ii:ii))) exit
+      end do
+      write(99,'(I3,A4)') 1, trim(title(:ii-1)//title(ii+1:))
+    end if
+    !$omp parallel num_threads(10) default(shared) private(i, ii, jj, kk, &
+    !$omp& points, datsa, datsb) if(atom_count > 5)
+    !$omp do schedule(static)
+    do i = 1, nx
+      ii = i
+      points(:,1) = minx + (ii-1) * deltax
+      do jj = 1, ny
+        points(:,2) = miny + (jj-1) * deltay
+        do kk = 1, nz
+          points(kk,3) = minz + (kk-1) * deltaz
+        end do
+        if (is2c) then
+          call grid(arr, nz, points, 1, datsa)
+          call grid(arr, nz, points, 2, datsb)
+          do kk = 1, nz
+            dats(2*kk-1,jj,ii) = datsa(kk)
+            dats(2*kk,jj,ii) = datsb(kk)
+          end do
+        else
+          call grid(arr, nz, points, spin, dats(1:nz,jj,ii))
+        end if
+      end do
+    end do
+    !$omp end do
+    !$omp end parallel
+    do ii = 1, nx
+      do jj = 1, ny
+        if (is2c) then
+          do kk = 1, 2*nz, 6
+            end = min(kk+5, 2*nz)
+            write(99, '(6ES15.6)') real(dats(kk:end,jj,ii))
+            write(100, '(6ES15.6)') aimag(dats(kk:end,jj,ii))
+          end do
+        else
+          do kk = 1, nz, 6
+            end = min(kk+5, nz)
+            write(99, '(6ES15.6)') real(dats(kk:end,jj,ii))
+          end do
+        end if
+      end do
+    end do
+    close(99)
+    if (is2c) close(100)
+    deallocate(dats, points, datsa, datsb)
+  end subroutine dump_cube
 
 !------------------------------------------------------------
 !> transform states from basis repre to real space repre (Becke's fuzzy grid)
@@ -431,26 +605,23 @@ module Representation
     datsb = c0
     do kk = 1, cbdm
       val = 0.0_dp
-      vec(:,1) = points(:,1) - mol(basis_inf(kk)%atom)%pos(1)
-      vec(:,2) = points(:,2) - mol(basis_inf(kk)%atom)%pos(2)
-      vec(:,3) = points(:,3) - mol(basis_inf(kk)%atom)%pos(3)
-      contr = atom_basis(mol(basis_inf(kk)%atom) % &
-      basis_number + basis_inf(kk) % shell - 1) % contr
-      L = basis_inf(kk) % L
-      M = basis_inf(kk) % M
-      fac(:) = AO_fac(:,L,M)
+      vec(:,1) = points(:,1) - basis_inf(kk) % pos(1)
+      vec(:,2) = points(:,2) - basis_inf(kk) % pos(2)
+      vec(:,3) = points(:,3) - basis_inf(kk) % pos(3)
+      contr    = basis_inf(kk) % contr
+      L        = basis_inf(kk) % L
+      M        = basis_inf(kk) % M
+      fac(:)   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo = atom_basis(mol(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%expo(jj)
-        coeff = atom_basis(mol(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%Ncoe(jj,M)
+        expo   = basis_inf(kk) % expo(jj)
+        coeff  = basis_inf(kk) % Ncoe(jj,M)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
       val(:) = val(:) * (vec(:,1)**fac(1))
       val(:) = val(:) * (vec(:,2)**fac(3))
       val(:) = val(:) * (vec(:,3)**fac(3))
-      datsa = datsa + val * arr(kk)
-      datsb = datsb + val * arr(kk+cbdm)
+      datsa  = datsa + val * arr(kk)
+      datsb  = datsb + val * arr(kk+cbdm)
     end do
 
     ! Imitative transformation of s, causes s_z to away from +-1/2,

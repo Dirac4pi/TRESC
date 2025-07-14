@@ -1,6 +1,6 @@
 !> @file Atoms.f90
 !!
-!! @brief atomic imfo and corresponding atomic basis
+!! @brief construct polyatomic model
 !!
 !! @syntax Fortran 2008 free format
 !!
@@ -32,8 +32,29 @@ module Atoms
      3.84,3.33,3.21,3.02,2.89,2.63,2.83,2.68,2.61,2.34,2.49,2.31     /)  ! 19-30
 
 !-----------------------------------------------------------------------
-! AO basis definations, sequence consistent with Gaussian (and Multiwfn)
-  integer, parameter :: AO_fac(3,5,15) = reshape( [                   &! (L,M)
+! AO basis definations, sequence consistent with ORCA(.molden.input)
+integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
+!(x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)
+  0,0,0,    1,0,0,    2,0,0,    3,0,0,    4,0,0,                      &! M=1  <S
+  0,0,0,    0,1,0,    0,2,0,    0,3,0,    0,4,0,                      &! M=2
+  0,0,0,    0,0,1,    0,0,2,    0,0,3,    0,0,4,                      &! M=3
+  0,0,0,    0,0,0,    1,1,0,    1,2,0,    3,1,0,                      &! M=4  <P
+  0,0,0,    0,0,0,    1,0,1,    2,1,0,    3,0,1,                      &! M=5
+  0,0,0,    0,0,0,    0,1,1,    2,0,1,    1,3,0,                      &! M=6  <D
+  0,0,0,    0,0,0,    0,0,0,    1,0,2,    0,3,1,                      &! M=7
+  0,0,0,    0,0,0,    0,0,0,    0,1,2,    1,0,3,                      &! M=8
+  0,0,0,    0,0,0,    0,0,0,    0,2,1,    0,1,3,                      &! M=9
+  0,0,0,    0,0,0,    0,0,0,    1,1,1,    2,2,0,                      &! M=10 <F
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    2,0,2,                      &! M=11
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    0,2,2,                      &! M=12
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    2,1,1,                      &! M=13
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    1,2,1,                      &! M=14
+  0,0,0,    0,0,0,    0,0,0,    0,0,0,    1,1,2                       &! M=15 <G
+  ], [3,5,15])
+
+!-----------------------------------------------------------------------
+! AO basis definations, sequence consistent with Gaussian09(.fch)
+  integer, parameter :: g_AO_fac(3,5,15) = reshape( [                   &! (L,M)
 !(x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)   (x,y,z)
   0,0,0,    1,0,0,    2,0,0,    3,0,0,    0,0,4,                      &! M=1  <S
   0,0,0,    0,1,0,    0,2,0,    0,3,0,    0,1,3,                      &! M=2
@@ -54,49 +75,102 @@ module Atoms
 
   ! transformation matrix from Cartesian basis to spher-harmo basis
   real(dp),parameter :: c2sd(6,5) = (/                           &! (6D,5D)
-  -.5, -.5, 1., 0., 0., 0.,                                               &! D0
-  0., 0., 0., 0., 1., 0.,                                                 &! D+1
-  0., 0., 0., 0., 0., 1.,                                                 &! D-1
-  .8660254037844386, -.8660254037844386, 0., 0., 0., 0.,                  &! D+2
-  0., 0., 0., 1., 0., 0.                                                 /)! D-2
+  -0.5_dp, -0.5_dp, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                       &! D0
+  0.0_dp,  0.0_dp,  0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp,                       &! D+1
+  0.0_dp,  0.0_dp,  0.0_dp, 0.0_dp, 0.0_dp, 1.0_dp,                       &! D-1
+  dsqrt(3.0_dp)/2.0_dp, -dsqrt(3.0_dp)/2.0_dp,                            &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                                         &! D+2
+  0.0_dp,  0.0_dp,  0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp                       /)! D-2
   
   real(dp),parameter :: c2sf(10,7) = (/                          &! (10F,7F)
-  0., 0., 1., 0., 0., -.6708203932499369, 0., 0., -.6708203932499369, 0., &! F0
-  -.6123724356957945, 0., 0., -.27386127875258304,                        &
-  0., 0., 1.0954451150103321, 0., 0., 0.,                                 &! F+1
-  0., -.6123724356957945, 0., 0., -.27386127875258304,                    &
-  0., 0., 1.0954451150103321, 0., 0.,                                     &! F-1
-  0., 0., 0., 0., 0., .8660254037844386, 0., 0., -.8660254037844386, 0.,  &! F+2
-  0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,                                 &! F-2
-  .7905694150420949, 0., 0., -1.0606601717798212, 0., 0., 0., 0., 0., 0., &! F+3
-  0., -.7905694150420949, 0., 0., 1.0606601717798212, 0., 0., 0., 0., 0. /)! F-3
+  0.0_dp, 0.0_dp, 1.0_dp, 0.0_dp, 0.0_dp, -1.5_dp/dsqrt(5.0_dp), 0.0_dp,  &
+  0.0_dp, -1.5_dp/dsqrt(5.0_dp), 0.0_dp,                                  &! F0
+  -dsqrt(3.0_dp/8.0_dp), 0.0_dp, 0.0_dp, -dsqrt(3.0_dp/40.0_dp),          &
+  0.0_dp, 0.0_dp, dsqrt(6.0_dp/5.0_dp), 0.0_dp, 0.0_dp, 0.0_dp,           &! F+1
+  0.0_dp, -dsqrt(3.0_dp/8.0_dp), 0.0_dp, 0.0_dp, -dsqrt(3.0_dp/40.0_dp),  &
+  0.0_dp, 0.0_dp, dsqrt(6.0_dp/5.0_dp), 0.0_dp, 0.0_dp,                   &! F-1
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, dsqrt(3.0_dp)/2.0_dp, 0.0_dp,   &
+  0.0_dp, -dsqrt(3.0_dp)/2.0_dp, 0.0_dp,                                  &! F+2
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,         &
+  0.0_dp, 1.0_dp,                                                         &! F-2
+  dsqrt(5.0_dp/8.0_dp), 0.0_dp, 0.0_dp, -3.0_dp/dsqrt(8.0_dp), 0.0_dp,    &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                                 &! F+3
+  0.0_dp, -dsqrt(5.0_dp/8.0_dp), 0.0_dp, 0.0_dp, 3.0_dp/dsqrt(8.0_dp),    &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp                                 /)! F-3
   
   real(dp),parameter :: c2sg(15,9) = (/                          &! (15G,9G)
-  1., 0., -.87831006565368, 0., .375, 0., 0., 0., 0., &
-  -.87831006565368, 0., .21957751641342, 0., 0., .375,                    &! G0
-  0., 0., 0., 0., 0., 1.1952286093343936, 0., -.4008918628686366,         &
-  0., 0., 0., 0., -.8964214570007951, 0., 0.,                             &! G+1
-  0., 1.1952286093343936, 0., -.8964214570007951, 0.,                     &
-  0., 0., 0., 0., 0., -.4008918628686366, 0., 0., 0., 0.,                 &! G-1
-  0., 0., -.9819805060619656, 0., .5590169943749475, 0., 0.,              &
-  0., 0., .9819805060619656, 0., 0., 0., 0., -.5590169943749475,          &! G+2
-  0., 0., 0., 0., 0., 0., 1.1338934190276817, 0.,                         &
-  -.4225771273642583, 0., 0., 0., 0., -.4225771273642583, 0.,             &! G-2
-  0., 0., 0., 0., 0., 0., 0., -1.0606601717798212,                        &
-  0., 0., 0., 0., .7905694150420949, 0., 0.,                              &! G+3
-  0., 0., 0., -.7905694150420949, 0., 0., 0., 0.,                         &
-  0., 0., 1.0606601717798212, 0., 0., 0., 0.,                             &! G-3
-  0., 0., 0., 0., .739509972887452, 0., 0., 0.,                           &
-  0., 0., 0., -1.299038105676658, 0., 0., .739509972887452,               &! G+4
-  0., 0., 0., 0., 0., 0., 0., 0., -1.118033988749895,                     &
-  0., 0., 0., 0., 1.118033988749895, 0.                                  /)! G-4
+  0.375_dp, 0.375_dp, 1.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,     &
+  0.0_dp, 3.0_dp/4.0_dp*dsqrt(3.0_dp/35.0_dp),                            &
+  -3.0_dp*dsqrt(3.0_dp/35.0_dp), -3.0_dp*dsqrt(3.0_dp/35.0_dp), 0.0_dp,   &
+  0.0_dp, 0.0_dp,                                                         &! G0
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -1.5_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp,  &
+  0.0_dp, 2.0_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,   &
+  0.0_dp, -1.5_dp/dsqrt(14.0_dp), 0.0_dp,                                 &! G+1
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                         &
+  -1.5_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp, 2.0_dp*dsqrt(5.0_dp/14.0_dp),    &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -1.5_dp/dsqrt(14.0_dp), 0.0_dp,         &! G-1
+  -dsqrt(5.0_dp)/4.0_dp, dsqrt(5.0_dp)/4.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,    &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp*dsqrt(3.0_dp/28.0_dp),   &
+  -3.0_dp*dsqrt(3.0_dp/28.0_dp), 0.0_dp, 0.0_dp, 0.0_dp,                  &! G+2
+  0.0_dp, 0.0_dp, 0.0_dp, -dsqrt(5.0_dp/28.0_dp), 0.0_dp,                 &
+  -dsqrt(5.0_dp/28.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+  0.0_dp, 0.0_dp, 3.0_dp/dsqrt(7.0_dp),                                   &! G-2
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, dsqrt(5.0_dp/8.0_dp), 0.0_dp, 0.0_dp,   &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -3.0_dp/dsqrt(8.0_dp),  &
+  0.0_dp,                                                                 &! G+3
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -dsqrt(5.0_dp/8.0_dp),  &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp/dsqrt(8.0_dp), 0.0_dp,   &
+  0.0_dp,                                                                 &! G-3
+  dsqrt(35.0_dp)/8.0_dp, dsqrt(35.0_dp)/8.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,   &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, &
+  0.0_dp,                                                                 &! G+4
+  0.0_dp, 0.0_dp, 0.0_dp, dsqrt(5.0_dp)/2.0_dp, 0.0_dp,                   &
+  -dsqrt(5.0_dp)/2.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,  &
+  0.0_dp, 0.0_dp, 0.0_dp                                                 /)! G-4
+
+  real(dp),parameter :: g_c2sg(15,9) = (/                        &! (15G,9G)
+  1.0_dp, 0.0_dp, -3.0_dp*dsqrt(3.0_dp/35.0_dp), 0.0_dp, 0.375_dp, 0.0_dp,&
+  0.0_dp, 0.0_dp, 0.0_dp, -3.0_dp*dsqrt(3.0_dp/35.0_dp), 0.0_dp,          &
+  3.0_dp/4.0_dp*dsqrt(3.0_dp/35.0_dp), 0.0_dp, 0.0_dp, 0.375_dp,          &! G0
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 2.0_dp*dsqrt(5.0_dp/14.0_dp),   &
+  0.0_dp, -1.5_dp/dsqrt(14.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,         &
+  -1.5_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp, 0.0_dp,                          &! G+1
+  0.0_dp, 2.0_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp,                           &
+  -1.5_dp*dsqrt(5.0_dp/14.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,  &
+  0.0_dp, -1.5_dp/dsqrt(14.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,         &! G-1
+  0.0_dp, 0.0_dp, -3.0_dp*dsqrt(3.0_dp/28.0_dp), 0.0_dp,                  &
+  dsqrt(5.0_dp)/4.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                   &
+  3.0_dp*dsqrt(3.0_dp/28.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,           &
+  -dsqrt(5.0_dp)/4.0_dp,                                                  &! G+2
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp/dsqrt(7.0_dp),   &
+  0.0_dp, -dsqrt(5.0_dp/28.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,         &
+  -dsqrt(5.0_dp/28.0_dp), 0.0_dp,                                         &! G-2
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                 &
+  -3.0_dp/dsqrt(8.0_dp), 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                  &
+  dsqrt(5.0_dp/8.0_dp), 0.0_dp, 0.0_dp,                                   &! G+3
+  0.0_dp, 0.0_dp, 0.0_dp, -dsqrt(5.0_dp/8.0_dp), 0.0_dp, 0.0_dp, 0.0_dp,  &
+  0.0_dp, 0.0_dp, 0.0_dp, 3.0_dp/dsqrt(8.0_dp), 0.0_dp, 0.0_dp, 0.0_dp,   &
+  0.0_dp,                                                                 &! G-3
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, dsqrt(35.0_dp)/8.0_dp, 0.0_dp, 0.0_dp,  &
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, -3.0_dp/4.0_dp*dsqrt(3.0_dp), 0.0_dp,   &
+  0.0_dp, dsqrt(35.0_dp)/8.0_dp,                                          &! G+4
+  0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,         &
+  -dsqrt(5.0_dp)/2.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                  &
+  dsqrt(5.0_dp)/2.0_dp, 0.0_dp                                           /)! G-4
+
   !DIR$ ATTRIBUTES ALIGN:align_size :: c2s
   real(dp),allocatable    :: c2s(:,:)  ! convert Cartesian to spher-harmo
   !DIR$ ATTRIBUTES ALIGN:align_size :: exc2s
   complex(dp),allocatable :: exc2s(:,:)
+  !DIR$ ATTRIBUTES ALIGN:align_size :: m_c2s
+  real(dp),allocatable    :: m_c2s(:,:)  ! convert Cartesian to spher-harmo
+  !DIR$ ATTRIBUTES ALIGN:align_size :: m_exc2s
+  complex(dp),allocatable :: m_exc2s(:,:)
   
   integer    :: cbdm                   ! Cartesian basis dimension
+  integer    :: m_cbdm                 ! Cartesian basis dimension (molden)
   integer    :: sbdm                   ! spher-harmo basis dimension
+  integer    :: m_sbdm                 ! spher-harmo basis dimension (molden)
   ! final basis dimension (after canonical orthogonalisation)
   integer    :: fbdm                   ! final basis dimension
   integer    :: basis_count            ! number of basis in basis set
@@ -113,10 +187,10 @@ module Atoms
     integer  :: contr                  ! contr of basis shell
     real(dp) :: expo(16)               ! expo of primitive shell
     real(dp) :: coe(16)                ! contr coeff of prim shell
-    real(dp) :: Ncoe(16,16)            ! normalized coeff of prim shell
   end type atom_basis_type
   
   type(atom_basis_type) :: atom_basis(5000)   ! basis CGTOs
+  type(atom_basis_type) :: m_atom_basis(5000) ! basis CGTOs from molden
 
   ! info of each Cartesian basis(directly related to atoms, dimension cbdm)
   type basis_inf_type
@@ -124,12 +198,17 @@ module Atoms
     integer  :: shell                  ! shell number
     integer  :: L                      ! angular quantum number, S:1, P:2 ...
     integer  :: M                      ! magnetic quantum number
+    real(dp) :: pos(3)                 ! position of each atom, (x,y,z)
+    integer  :: contr                  ! contr of basis shell
+    real(dp) :: expo(16)               ! expo of primitive shell
+    real(dp) :: coe(16)                ! coe of primitive shell
+    real(dp) :: Ncoe(16,16)            ! normalized coeff (contr,M)
   end type basis_inf_type
   
   type(basis_inf_type) :: basis_inf(2000)
+  type(basis_inf_type) :: m_basis_inf(2000)
 !-----------------------------------------------------------------------
 ! molecular definations
-  integer    :: atom_count             ! number of atoms in mol
   type mol_type
     integer  :: basis_number           ! serial number of each atom in basis set
     integer  :: atom_number            ! atomic number of each atom in mol
@@ -137,8 +216,10 @@ module Atoms
     ! nucleus radius of each atom in mol 0.836*A^(1/3)+0.57 (fm)
     real(dp) :: rad
   end type mol_type
+  integer        :: atom_count         ! number of atoms in mol
   type(mol_type) :: mol(100)           ! system composed only of atom
-
+  integer        :: m_atom_count       ! number of atoms in m_mol
+  type(mol_type) :: m_mol(100)         ! system composed only of atom (molden)
   type(mol_type) :: trafomol(100)      ! mol in frame of motion
   
   real(dp)   :: S__2                   ! <S**2> of mol
@@ -146,10 +227,15 @@ module Atoms
   real(dp)   :: S__2orb, Szorb         ! <S**2>, Sz of orbital
   real(dp)   :: totalphaorb, totbetaorb! total alpha, beta electron of orbital
   
-  private :: get_basis_count,AON
-  public  :: read_gbs, read_geometry, read_keywords
-  public  :: input_check, input_print, assign_cs, dftd4
+  private :: get_basis_count, AON, load_1MO_molden, load_MOs_molden
+  public  :: load_b_gbs, load_g_xyz, load_gb_molden, read_keywords
+  public  :: input_check, input_print, assign_cs, m_assign_cs, dftd4
+  public  :: load_MO_molden
 
+  interface load_MO_molden
+    module procedure load_1MO_molden
+    module procedure load_MOs_molden
+  end interface load_MO_molden
 
   contains
   
@@ -159,24 +245,20 @@ module Atoms
 !> default and only: spher-harmo segment contr basis
 !!
 !> minimal basis set are not available
-  subroutine read_gbs()
+  subroutine load_b_gbs()
     implicit none
-    character(len = 3) :: basis_element_name
-    character(len = 1) :: basis_angular_name
-    if(index(address_basis,'.gbs') == 0) then
-      call terminate('input basis set file is not .gbs file')
-    end if
-
-    inquire(file = address_basis, exist = exists, name = address_basis)
-    if (.not. exists) then
-      call terminate('basis file '//address_basis//' do not exist')
-    end if
-
-
-    open(11,file = address_basis,status = "old",action = "read",iostat = ios)
-    if (ios /= 0) call terminate('basis set file '&
-    //address_basis//' could not be found')
+    character(len=3) :: basis_element_name
+    character(len=1) :: basis_angular_name
+    if(index(address_basis,'.gbs') == 0) call terminate(&
+    'input basis set file is not .gbs file')
+    inquire(file=address_basis, exist=exists, name=address_basis)
+    if (.not. exists) call terminate(&
+    'basis file '//address_basis//' do not exist')
+    open(11, file=address_basis, status="old", action="read", iostat=ios)
+    if (ios /= 0) call terminate(&
+    'basis set file '//address_basis//' could not be read')
     call get_basis_count()
+
     do
       read(11,*) basis_element_name
       if (index(basis_element_name,'!')==0 .and. basis_element_name/='') exit
@@ -184,7 +266,7 @@ module Atoms
     loop_i = 1
     loop_j = 1
     loop_m = 0
-    element_loop: do
+    do
       if (adjustl(basis_element_name(index(basis_element_name,'-')+1:&
       index(basis_element_name,'-')+2)) /= adjustl(element_list(loop_i))) then
         loop_i = loop_i + 1
@@ -195,7 +277,7 @@ module Atoms
         cycle
       end if
       atom_basis(loop_j) % atom_number = loop_i
-      angular_loop: do
+      do
         read(11,*,iostat = ios) basis_angular_name, &
         atom_basis(loop_j) % contr  ! scale factor defaults to 1.00
         if (ios /= 0) then
@@ -215,7 +297,7 @@ module Atoms
         end if
         atom_basis(loop_j) % atom_number = loop_i
         loop_k = 1
-        contr_loop: do
+        do
           if (loop_k <= atom_basis(loop_j) % contr) then
             read(11,*,iostat = ios) atom_basis(loop_j) % &
             expo(loop_k), atom_basis(loop_j) % coe(loop_k)
@@ -228,48 +310,332 @@ module Atoms
           end if
           loop_j = loop_j + 1
           exit
-        end do contr_loop 
+        end do
         loop_m = loop_m + 1
         if (loop_m == shell_in_element(loop_i)) exit
-      end do angular_loop
+      end do
       read(11,*)  ! skip the separator between elements
       loop_m = 0
       loop_i = 1
       read(11,*,iostat = ios) basis_element_name
       if (ios < 0) exit
       if (ios > 0) call terminate('Error encountered while reading .gbs file.')
-    end do element_loop
+    end do
     close(11)
-  end subroutine read_gbs
-  
+  end subroutine load_b_gbs
+
+!-----------------------------------------------------------------------
+!> load geometry and CGTOs from .molden file
+!!
+!! default and only: spher-harmo segment contr basis
+!!
+!! tomol: whether the wave-function is projected to the current molecule (geom)
+  subroutine load_gb_molden(tomol)
+    implicit none
+    logical,intent(in) :: tomol
+    character(len=200) :: line
+    character(len=2)   :: e
+    integer            :: a, b, ix, iy, iz
+    real(dp)           :: f1, f2, f3
+    integer            :: contr                ! contr of atom, shell
+    real(dp)           :: expo(16)             ! expo of |AO>
+    real(dp)           :: coe(16)              ! coe of |AO>
+    integer            :: mdloop_i, mdloop_j , mdloop_k, mdloop_l
+    ! load geometry
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    if (ios /= 0) call terminate('molden file '&
+    //address_molden//' could not be read')
+    do
+      read(14,*) line
+      if (index(line,'[Atoms]')/=0) exit
+    end do
+    mdloop_i = 1
+    do
+      read(14,*,iostat=ios) e, a, b, f1, f2, f3
+      if (ios /= 0) exit
+      m_mol(mdloop_i)%atom_number = b
+      m_mol(mdloop_i)%pos(1) = f1
+      m_mol(mdloop_i)%pos(2) = f2
+      m_mol(mdloop_i)%pos(3) = f3
+      mdloop_i = mdloop_i + 1
+    end do
+    m_atom_count = mdloop_i - 1
+    close(14)
+    ! load basis
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    do
+      read(14,*) line
+      if (index(line,'[GTO]') /= 0) exit
+    end do
+    mdloop_i = 1
+    mdloop_j = 1
+    read(14,*) line
+    m_cbdm = 0
+    m_sbdm = 0
+    do
+      read(14,*,iostat=ios) e, a
+      if (ios /= 0) exit
+      call lowercase(e)
+      select case(trim(e))
+        case('s')
+          b = 1
+        case('p')
+          b = 2
+        case('d')
+          b = 3
+        case('f')
+          b = 4
+        case('g')
+          b = 5
+        case default
+          mdloop_j = mdloop_j + 1
+          cycle
+      end select
+      m_cbdm = m_cbdm + b*(b+1)/2
+      m_sbdm = m_sbdm + 2*b-1
+      do mdloop_l = 1, a
+        read(14,*) f1, f2
+        m_basis_inf(mdloop_i:mdloop_i+b*(b+1)/2-1)%expo(mdloop_l) = f1
+        m_basis_inf(mdloop_i:mdloop_i+b*(b+1)/2-1)%coe(mdloop_l)  = f2
+      end do
+      do mdloop_k = 1, b*(b+1)/2
+        m_basis_inf(mdloop_i)%L     = b
+        m_basis_inf(mdloop_i)%M     = mdloop_k
+        m_basis_inf(mdloop_i)%contr = a
+        m_basis_inf(mdloop_i)%atom  = mdloop_j
+        !!!!!! this is very important !!!!!!
+        ! mol: the wave-function is projected to the current molecule (geometry)
+        ! m_mol: keep the original wave-function
+        if (tomol) then
+          m_basis_inf(mdloop_i)%pos = mol(mdloop_j)%pos
+        else
+          m_basis_inf(mdloop_i)%pos = m_mol(mdloop_j)%pos
+        end if
+        mdloop_i = mdloop_i + 1
+      end do
+    end do
+    close(14)
+    ! normalization coefficient is taken into contr coefficient
+    do mdloop_i = 1, m_cbdm
+      contr = m_basis_inf(mdloop_i) % contr
+      expo(1:contr) = m_basis_inf(mdloop_i) % expo(1:contr)
+      coe(1:contr)  = m_basis_inf(mdloop_i) % coe(1:contr)
+      b = m_basis_inf(mdloop_i) % L
+      do mdloop_j = 1, contr
+        do mdloop_k = 1, (b+1)*b/2
+          ix = AO_fac(1,b,mdloop_k)
+          iy = AO_fac(2,b,mdloop_k)
+          iz = AO_fac(3,b,mdloop_k)
+          m_basis_inf(mdloop_i)%Ncoe(mdloop_j,mdloop_k) = coe(mdloop_j) * &
+          AON(expo(mdloop_j),ix,iy,iz)
+        end do
+      end do
+    end do
+  end subroutine load_gb_molden
+
+!-----------------------------------------------------------------------
+!> load all MO coeffs from .molden file
+!!
+!! default and only: spher-harmo segment contr basis
+  subroutine load_MOs_molden(moa, mob)
+    implicit none
+    real(dp),intent(out)  ::  moa(:,:)   ! alpha orbitals
+    real(dp),intent(out)  ::  mob(:,:)   ! beta orbitals
+    logical               ::  isorca     ! whether .molden is generated by ORCA
+    integer               ::  ii, jj, kk ! loop variables
+    character(len=200)    ::  line
+    integer               ::  a
+
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    if (ios /= 0) call terminate('molden file '&
+    //address_molden//' could not be read')
+    do
+      read(14,'(A)') line
+      if (index(line,'[Title]')/=0) exit
+    end do
+    read(14,'(A)') line
+    call lowercase(line)
+    if (index(line,'orca') == 0) then
+      isorca = .true.
+    else
+      isorca = .false.
+    end if
+    close(14)
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    ii = 1
+    jj = 1
+    do
+      read(14,'(A)',iostat=ios) line
+      if (ios /= 0) exit
+      if (index(line,'=')/=0 .and. index(line,'Alpha')/=0) then
+        read(14,'(A)') line
+        do kk = 1, m_sbdm
+          read(14,*) a, moa(kk,ii)
+        end do
+        ii = ii + 1
+      else if (index(line,'=')/=0 .and. index(line,'Beta')/=0) then
+        read(14,'(A)') line
+        do kk = 1, m_sbdm
+          read(14,*) a, mob(kk,jj)
+        end do
+        jj = jj + 1
+      end if
+    end do
+    close(14)
+    ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
+    ! so convert them
+    if (isorca) then
+      if (.not. allocated(m_c2s)) call m_assign_cs(.true.)
+      ii = 1
+      jj = 1
+      do while(ii <= m_cbdm)
+        if (m_basis_inf(ii)%L == 4) then
+          moa(jj+5,:) = -moa(jj+5,:)
+          mob(jj+5,:) = -mob(jj+5,:)
+          moa(jj+6,:) = -moa(jj+6,:)
+          mob(jj+6,:) = -mob(jj+6,:)
+        else if (m_basis_inf(ii)%L == 5) then
+          moa(jj+5,:) = -moa(jj+5,:)
+          mob(jj+5,:) = -mob(jj+5,:)
+          moa(jj+6,:) = -moa(jj+6,:)
+          mob(jj+6,:) = -mob(jj+6,:)
+          moa(jj+7,:) = -moa(jj+7,:)
+          mob(jj+7,:) = -mob(jj+7,:)
+          moa(jj+8,:) = -moa(jj+8,:)
+          mob(jj+8,:) = -mob(jj+8,:)
+        end if
+        ii = ii + (m_basis_inf(ii)%L+(m_basis_inf(ii)%L+1))/2
+        jj = jj + 2*m_basis_inf(ii)%L-1
+      end do
+    end if
+  end subroutine load_MOs_molden
+
+!-----------------------------------------------------------------------
+!> load MO coeffs from .molden file
+!!
+!! default and only: spher-harmo segment contr basis
+!!
+!! imo: which mo to be loaded, if imo<=0, will ignore it
+  subroutine load_1MO_molden(imoa, moa, imob, mob)
+    implicit none
+    integer,intent(in)    ::  imoa       ! which alpha mo to be loaded
+    integer,intent(in)    ::  imob       ! which beta mo to be loaded
+    real(dp),intent(out)  ::  moa(:)     ! alpha orbital
+    real(dp),intent(out)  ::  mob(:)     ! beta orbital
+    logical               ::  isorca     ! whether .molden is generated by ORCA
+    integer               ::  ii, jj, kk ! loop variables
+    character(len=200)    ::  line
+    integer               ::  a
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    if (ios /= 0) call terminate('molden file '&
+    //address_molden//' could not be read')
+    do
+      read(14,'(A)') line
+      if (index(line,'[Title]') /= 0) exit
+    end do
+    read(14,'(A)') line
+    call lowercase(line)
+    if (index(line,'orca') == 0) then
+      isorca = .true.
+    else
+      isorca = .false.
+    end if
+    close(14)
+    open(14, file=address_molden, status="old", action="read", iostat=ios)
+    ii = 1
+    jj = 1
+    do
+      read(14,'(A)',iostat=ios) line
+      if (ios /= 0) exit
+      if (index(line,'=')/=0 .and. index(line,'Alpha')/=0) then
+        if (ii == imoa) then
+          read(14,'(A)') line
+          do kk = 1, m_sbdm
+            read(14,*) a, moa(kk)
+          end do
+        else
+          read(14,'(A)') line
+          do kk = 1, m_sbdm
+            read(14,'(A)') line
+          end do
+        end if
+        ii = ii + 1
+      else if (index(line,'=')/=0 .and. index(line,'Beta')/=0) then
+        if (jj == imob) then
+          read(14,'(A)') line
+          do kk = 1, m_sbdm
+            read(14,*) a, mob(kk)
+          end do
+        else
+          read(14,'(A)') line
+          do kk = 1, m_sbdm
+            read(14,'(A)') line
+          end do
+        end if
+        jj = jj + 1
+      end if
+      if (ii == m_sbdm+1 .and. jj == m_sbdm+1) exit
+      if ((ii>imoa .or. imoa<=0) .and. (jj>imob .or. imob<=0)) exit
+    end do
+    close(14)
+    if (imoa <= 0) moa = 0.0_dp
+    if (imob <= 0) mob = 0.0_dp
+    ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
+    ! so convert them
+    if (isorca) then
+      if (.not. allocated(m_c2s)) call m_assign_cs(.true.)
+      ii = 1
+      jj = 1
+      do while(ii <= m_cbdm)
+        if (m_basis_inf(ii)%L == 4) then
+          moa(jj+5) = -moa(jj+5)
+          mob(jj+5) = -mob(jj+5)
+          moa(jj+6) = -moa(jj+6)
+          mob(jj+6) = -mob(jj+6)
+        else if (m_basis_inf(ii)%L == 5) then
+          moa(jj+5) = -moa(jj+5)
+          mob(jj+5) = -mob(jj+5)
+          moa(jj+6) = -moa(jj+6)
+          mob(jj+6) = -mob(jj+6)
+          moa(jj+7) = -moa(jj+7)
+          mob(jj+7) = -mob(jj+7)
+          moa(jj+8) = -moa(jj+8)
+          mob(jj+8) = -mob(jj+8)
+        end if
+        ii = ii + (m_basis_inf(ii)%L+(m_basis_inf(ii)%L+1))/2
+        jj = jj + 2*m_basis_inf(ii)%L-1
+      end do
+    end if
+  end subroutine load_1MO_molden
+
 !-----------------------------------------------------------------------
 !> get the number of basis functions in .gbs file
   subroutine get_basis_count()
     implicit none
-    character(len = 200) :: line_str
+    character(len = 200) :: line
     loop_i = 0
     loop_j = 0
     open(13,file = address_basis,status = "old",action = "read")
     do
-      read(13,'(A200)') line_str
-      if (index(line_str,'!') == 0 .and. line_str /= '') exit
+      read(13,'(A200)') line
+      if (index(line,'!') == 0 .and. line /= '') exit
     end do
     do
       if (ios < 0) exit
       if (ios > 0) call terminate('Error encountered while reading .gbs file.')
-      if (index(line_str,'S') /= 0 .or. &
-      index(line_str,'P') /= 0 .or. index(line_str,'D') /= 0 &
-      .or. index(line_str,'F') /= 0 .or. index(line_str,'G') /= 0) then
-        if (index(line_str,'1.00') /= 0 .or. index(line_str,'1.0') /= 0) then
+      if (index(line,'S') /= 0 .or. &
+      index(line,'P') /= 0 .or. index(line,'D') /= 0 &
+      .or. index(line,'F') /= 0 .or. index(line,'G') /= 0) then
+        if (index(line,'1.00') /= 0 .or. index(line,'1.0') /= 0) then
           loop_i = loop_i + 1
-          read(13,'(A200)',iostat = ios) line_str
+          read(13,'(A200)',iostat = ios) line
           cycle
         end if
       end if
-      if (index(line_str,'0') /= 0 .and. index(line_str,'.') == 0) then
+      if (index(line,'0') /= 0 .and. index(line,'.') == 0) then
         do loop_l = 1, element_count
-          if (adjustl(line_str(index(line_str,'-')+1:&
-          index(line_str,'-')+2)) == adjustl(element_list(loop_l))) then
+          if (adjustl(line(index(line,'-')+1:&
+          index(line,'-')+2)) == adjustl(element_list(loop_l))) then
             loop_k = loop_l
             exit
           end if
@@ -279,45 +645,43 @@ module Atoms
           'basis file: element not included in current program')
         end if
       end if
-      if (index(line_str,'***') /= 0) then
+      if (index(line,'***') /= 0) then
         shell_in_element(loop_k) = loop_i - loop_j
         loop_j = loop_i
       end if  
-      read(13,'(A200)',iostat = ios) line_str
+      read(13,'(A200)',iostat = ios) line
     end do
     close(13)
     basis_count = loop_i
   end subroutine get_basis_count
 
-  
 !-----------------------------------------------------------------------
-!> get static geometry of mol from .xyz file
+!> load static geometry of mol from .xyz file
 !!
 !! will also allocate basis_inf and calculate cbdm and sbdm
 !!
-!! must be called after read_gbs
-  subroutine read_geometry()
+!! must be called after load_b_gbs
+  subroutine load_g_xyz()
     implicit none
     character(len = 2) :: mol_element_name, title_note
-    integer            :: contr          ! contr of atom, shell
+    integer            :: contr                ! contr of atom, shell
     integer            :: atom                 ! atom of |AO>
     integer            :: shell                ! shell of |AO>
     integer            :: shell_start          ! start point of an shell
-    real(dp)           :: expo(16)        ! expo of |AO>
+    real(dp)           :: expo(16)             ! expo of |AO>
+    real(dp)           :: coe(16)              ! coe of |AO>
     integer            :: L                    ! angular quantum number of |AO>
     integer            :: M                    ! magnetic quantum number of |AO>
     integer            :: ix,iy,iz
-    if(index(address_molecule,'.xyz') == 0) then
-      call terminate('input geometry file is not .xyz file')
-    end if
-    inquire(file = address_molecule, exist = exists)
-    if (.not. exists) then
-      call terminate('geometry file '//address_molecule//' do not exist')
-    end if
-    open(12,file = address_molecule,status = "old",action = "read")
+    if(index(address_molecule,'.xyz') == 0) call terminate(&
+    'input geometry file is not .xyz file')
+    inquire(file=address_molecule, exist=exists)
+    if (.not. exists) call terminate(&
+    'geometry file '//address_molecule//' do not exist')
+    open(12, file=address_molecule, status="old", action="read")
     read(12,*) title_note
     do
-      read(title_note,"(I3)",iostat = ios) atom_count
+      read(title_note, "(I3)", iostat=ios) atom_count
       if (ios == 0) then
         exit
       else if (ios /= 0 .and. index(title_note,'!') == 1) then
@@ -329,21 +693,15 @@ module Atoms
     end do
     read(12,*)
     do loop_j = 1, atom_count, 1
-      read(12,*,iostat=ios) mol_element_name, &
-      mol(loop_j)%pos(1:3)
-      mol(loop_j)%pos(1:3) = &
-      mol(loop_j)%pos(1:3) / Ang2Bohr
-      if (ios /= 0) then
-        call terminate(&
-        'read geometry file failed, may caused by the absence of atom')
-      end if
+      read(12,*,iostat=ios) mol_element_name, mol(loop_j)%pos(1:3)
+      mol(loop_j)%pos(1:3) = mol(loop_j)%pos(1:3) / Ang2Bohr
+      if (ios /= 0) call terminate(&
+      'read geometry file failed, may caused by the absence of atom')
       loop_i = 1
       do while(adjustl(mol_element_name) /= adjustl(element_list(loop_i)))
         loop_i = loop_i + 1
-        if (loop_i > element_count) then
-          call terminate(&
-          'geometry file: element not contained in current program')
-        end if
+        if (loop_i > element_count) call terminate(&
+        'geometry file: element not contained in current program')
       end do
       loop_k = 1
       do while(atom_basis(loop_k) % atom_number /= loop_i)
@@ -369,27 +727,9 @@ module Atoms
     do loop_i = 1, atom_count
       do loop_j = 1, shell_in_element(mol(loop_i) % atom_number)
         cbdm = cbdm + &
-        (atom_basis(mol(loop_i) % basis_number + loop_j - 1) &
-        % L + 2) * &
-        (atom_basis(mol(loop_i) % basis_number + loop_j - 1) &
-        % L + 1) / 2
-        sbdm = sbdm + 2 * (atom_basis(mol(loop_i) % &
-        basis_number + loop_j - 1) % L) + 1
-      end do
-    end do
-    ! normalization coefficient is taken into contr coefficient
-    do loop_i = 1, basis_count
-      contr = atom_basis(loop_i) % contr
-      expo(1:contr) = atom_basis(loop_i) % expo(1:contr)
-      L = atom_basis(loop_i) % L + 1
-      do loop_j = 1, contr
-        do loop_k = 1, (L+1)*L/2
-          ix = AO_fac(1,L,loop_k)
-          iy = AO_fac(2,L,loop_k)
-          iz = AO_fac(3,L,loop_k)
-          atom_basis(loop_i) % Ncoe(loop_j,loop_k) = atom_basis(loop_i)&
-          % coe(loop_j) * AON(expo(loop_j),ix,iy,iz)
-        end do
+        (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L+2) * &
+        (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L+1) / 2
+        sbdm = sbdm + 2 * (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L) + 1
       end do
     end do
     ! generate basis_inf
@@ -402,21 +742,39 @@ module Atoms
         shell = 1
         atom = atom + 1
       end if
-      L = atom_basis(mol(atom) % basis_number + shell - 1)&
-      % L + 1
+      L = atom_basis(mol(atom)%basis_number+shell-1)%L + 1
       M = loop_i - shell_start + 1
-      ! prepare for openMP parallel computation
-      basis_inf(loop_i) % atom = atom
-      basis_inf(loop_i) % shell = shell
-      basis_inf(loop_i) % L = L
-      basis_inf(loop_i) % M = M
+      basis_inf(loop_i)%atom  = atom
+      basis_inf(loop_i)%shell = shell
+      basis_inf(loop_i)%L     = L
+      basis_inf(loop_i)%M     = M
+      basis_inf(loop_i)%pos   = mol(atom)%pos
+      basis_inf(loop_i)%contr = atom_basis(mol(atom)%basis_number+shell-1)%contr
+      basis_inf(loop_i)%expo  = atom_basis(mol(atom)%basis_number+shell-1)%expo
+      basis_inf(loop_i)%coe   = atom_basis(mol(atom)%basis_number+shell-1)%coe
       loop_i = loop_i + 1
       if (loop_i-shell_start >= (L+1)*L/2) then
         shell = shell + 1
         shell_start = loop_i
       end if
     end do
-  end subroutine read_geometry
+    ! normalization coefficient is taken into contr coefficient
+    do loop_i = 1, cbdm
+      contr = basis_inf(loop_i) % contr
+      expo(1:contr) = basis_inf(loop_i) % expo(1:contr)
+      coe(1:contr)  = basis_inf(loop_i) % coe(1:contr)
+      L = basis_inf(loop_i) % L
+      do loop_j = 1, contr
+        do loop_k = 1, (L+1)*L/2
+          ix = AO_fac(1,L,loop_k)
+          iy = AO_fac(2,L,loop_k)
+          iz = AO_fac(3,L,loop_k)
+          basis_inf(loop_i)%Ncoe(loop_j,loop_k) = coe(loop_j) * &
+          AON(expo(loop_j),ix,iy,iz)
+        end do
+      end do
+    end do
+  end subroutine load_g_xyz
 
 !-----------------------------------------------------------------------
 !> print basis set information, geometry information and calculation settings
@@ -424,7 +782,7 @@ module Atoms
     implicit none
     write(60,"(A)") 'Module Atoms:'
     write(60,"(A)") '  input basis set file path: '
-    write(60,"(A)") '  '//address_basis
+    write(60,"(A)") '  '//trim(address_basis)
     write(60,"(A)") '  ----------<BASIS>----------'
     loop_i = 1
     do while(loop_i <= basis_count)  ! print only basis of atoms in mol
@@ -455,10 +813,10 @@ module Atoms
     end do
     write(60,*)
     write(60,"(A)") '  input geometry file path: '
-    if (index(address_molecule,'\') == 0) then
-      write(60,"(A)") '  WD\'//address_molecule
+    if (index(address_molecule,'/') == 0) then
+      write(60,"(A)") '  WD/'//trim(address_molecule)
     else
-      write(60,"(A)") '  '//address_molecule
+      write(60,"(A)") '  '//trim(address_molecule)
     end if
     write(60,"(A)") '  ----------<GEOMETRY>----------'
     do loop_i = 1, atom_count
@@ -468,11 +826,9 @@ module Atoms
       mol(loop_i) % pos(2), '   ', &
       mol(loop_i) % pos(3)
     end do
-    write(60,"(A34,I4,A2,I4)") '  scalar/spinor Cartesian basis dimension: ', &
-    cbdm, ' /', 2*cbdm
+    write(60,"(A22,I4,A2,I4)") '  scalar/spinor cbdm: ', cbdm, ' /', 2*cbdm
     if (s_h) then
-      write(60,"(A34,I4,A2,I4)") &
-      '  scalar/spinor spherical-harmonic basis dimension: ', sbdm, ' /', 2*sbdm
+      write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
     else
       sbdm = cbdm
     end if
@@ -533,7 +889,7 @@ module Atoms
             else
               call terminate("charge setting should be written as 'charge=n'")
             end if
-            write(60,"(A,I2)") "  Charge is changed to ",charge
+            write(60,"(A,I2)") "  Charge set ",charge
           else if (index(keyword,'spin') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -544,7 +900,7 @@ module Atoms
               call terminate(&
               "spin multiplicity setting should be written as 'spin=n'")
             end if
-            write(60,"(A,I2)") "  Spin multiplicity is changed to ",spin_mult
+            write(60,"(A,I2)") "  Spin multiplicity set ",spin_mult
           else if (index(keyword,'cartesian') == 1) then
             s_h = .false.
             write(60,'(A)') '  Cartesian basis will be used'
@@ -591,10 +947,10 @@ module Atoms
             else
               call terminate("threads setting should be written as 'threads=n'")
             end if
-          else if (trim(keyword) == 'dkh0') then
+          else if (trim(keyword) == 'nr') then
             DKH_order = 0
             write(60,"(A)") "  nonrelativistic Hamiltonian will be considered"
-          else if (trim(keyword) == 'dkh1') then
+          else if (trim(keyword) == 'fpfw') then
             DKH_order = 1
             write(60,"(A)") "  fpFW Hamiltonian will be considered"
           else if (trim(keyword) == 'dkh2') then
@@ -603,7 +959,7 @@ module Atoms
           else if (trim(keyword) == 'srtp') then
             SRTP_type = .true.
             write(60,"(A)") &
-            "  second Relativized Thomas Precession will be considered"
+            "  Second Relativized Thomas Precession will be considered"
           else if (trim(keyword) == 'sttp') then
             STTP_type = .true.
             write(60,"(A)") "  spin Tensor Thomas Precession will be considered"
@@ -767,7 +1123,7 @@ module Atoms
           else if (index(keyword,'molden') == 1) then
             molden = .true.
             write(60,'(A)') &
-            '  canonical orbitals will be dumped to .molden file'
+            '  canonical orbitals will be dumped to .molden.d'
           else if (index(keyword,'cutdiis') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -809,8 +1165,11 @@ module Atoms
               guess_type = keyword(index(keyword,'=') + 1 : len(trim(keyword)))
               if (ios /= 0) call terminate(&
               "Initial guess setting should be written as 'guess=***'")
-              if (guess_type == 'read') write(60,"(A)") &
-              "  initial guess read from .ao2mo file"
+              if (guess_type == 'read') then
+                write(60,"(A)") "  initial guess read from .ao2mo file"
+              else if (guess_type == 'molden') then
+                write(60,"(A)") "  initial guess read from .molden file"
+              end if
             else
               call terminate(&
               "Initial guess setting should be written as 'guess=***'")
@@ -878,8 +1237,22 @@ module Atoms
   subroutine input_check()
     implicit none
     if (address_basis == '') call terminate('No basis set specified.')
-    if (guess_type /= 'gaussian' .and. guess_type /= 'read') call terminate(&
-    'Unrecognisable initial guess setting.')
+    if (guess_type == 'molden') then
+      address_molden = trim(address_job)//'.molden.input'
+      inquire(file=address_molden, exist=exists, name=address_molden)
+      if (.not. exists) then
+        address_molden = trim(address_job)//'.molden'
+        inquire(file=address_molden, exist=exists, name=address_molden)
+        if (.not. exists) call terminate(&
+        'molden file '//address_molden//' do not exist')
+      end if
+    else if (guess_type == 'fch') then
+
+    else if (guess_type == 'ao2mo') then
+
+    else
+      call terminate('Unrecognisable initial guess setting.')
+    end if
     electron_count = electron_count - charge
     if (electron_count <= 0) call terminate('charge is set incorrectly.')
     if (spin_mult == 675) then  ! default lowest spin
@@ -950,10 +1323,7 @@ module Atoms
     logical,intent(in) :: is2c      ! true: allocate exc2s, false: not allocate
     integer            :: csloop_i, csloop_j, csloop_k, csloop_l
     
-    if (allocated(c2s)) call terminate(&
-    'call assign_cs error, c2s already allocated')
-    if (allocated(exc2s)) call terminate(&
-    'call assign_cs error, exc2s already allocated')
+    if (allocated(c2s)) deallocate(c2s)
     
     allocate(c2s(cbdm,sbdm))
     c2s = 0.0_dp
@@ -988,7 +1358,7 @@ module Atoms
         end do
         csloop_k = csloop_k + 7
         csloop_i = csloop_i + 10
-      else if(basis_inf(csloop_i) % L == 4) then ! G
+      else if(basis_inf(csloop_i) % L == 5) then ! G
         do csloop_j = 0, 14
           do csloop_l = 0, 8
             c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
@@ -1001,11 +1371,74 @@ module Atoms
     end do
 
     if (is2c) then
+      if (allocated(exc2s)) deallocate(exc2s)
       allocate(exc2s(2*cbdm,2*sbdm),source=c0)
       exc2s(1:cbdm,1:sbdm) = c2s * c1
       exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
     end if
   end subroutine assign_cs
+
+!-----------------------------------------------------------------------
+!> assign matrix m_c2s and m_exc2s
+  subroutine m_assign_cs(is2c)
+    implicit none
+    logical,intent(in) :: is2c    ! true: allocate m_exc2s, false: not allocate
+    integer            :: csloop_i, csloop_j, csloop_k, csloop_l
+    
+    if (allocated(m_c2s)) deallocate(m_c2s)
+    
+    allocate(m_c2s(m_cbdm,m_sbdm))
+    m_c2s = 0.0_dp
+    csloop_i = 1 ! row
+    csloop_k = 1 ! column
+    do while(csloop_i <= m_cbdm)
+      if (m_basis_inf(csloop_i) % L == 1) then ! S
+        m_c2s(csloop_i, csloop_k) = 1.0_dp
+        csloop_k = csloop_k + 1
+        csloop_i = csloop_i + 1
+      else if(m_basis_inf(csloop_i) % L == 2) then ! P
+        do csloop_j = 0, 2
+          m_c2s(csloop_i+csloop_j, csloop_k+csloop_j) = 1.0_dp
+        end do
+        csloop_k = csloop_k + 3
+        csloop_i = csloop_i + 3
+      else if(m_basis_inf(csloop_i) % L == 3) then ! D
+        do csloop_j = 0, 5
+          do csloop_l = 0, 4
+            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
+            c2sd(1+csloop_j, 1+csloop_l)
+          end do
+        end do
+        csloop_k = csloop_k + 5
+        csloop_i = csloop_i + 6
+      else if(m_basis_inf(csloop_i) % L == 4) then ! F
+        do csloop_j = 0, 9
+          do csloop_l = 0, 6
+            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
+            c2sf(1+csloop_j, 1+csloop_l)
+          end do
+        end do
+        csloop_k = csloop_k + 7
+        csloop_i = csloop_i + 10
+      else if(m_basis_inf(csloop_i) % L == 5) then ! G
+        do csloop_j = 0, 14
+          do csloop_l = 0, 8
+            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
+            c2sg(1+csloop_j, 1+csloop_l)
+          end do
+        end do
+        csloop_k = csloop_k + 9
+        csloop_i = csloop_i + 15
+      end if
+    end do
+
+    if (is2c) then
+      if (allocated(m_exc2s)) deallocate(m_exc2s)
+      allocate(m_exc2s(2*m_cbdm,2*m_sbdm),source=c0)
+      m_exc2s(1:m_cbdm,1:m_sbdm) = m_c2s * c1
+      m_exc2s(m_cbdm+1:2*m_cbdm,m_sbdm+1:2*m_sbdm) = m_c2s * c1
+    end if
+  end subroutine m_assign_cs
 
 !-----------------------------------------------------------------------
 !> calculate D4 dispersion correction by DFT-D4

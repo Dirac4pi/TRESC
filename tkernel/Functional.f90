@@ -54,31 +54,28 @@ module functional
       final = 2*cbdm
     end if
     do ii = init, final, step
-      if ((spin==1) .or. (spin==0 .and. ii<=cbdm)) then
+      if (ii <= cbdm) then
         kk = ii
-      else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
+      else
         kk = ii - cbdm
       end if
       val = 0.0_dp
-      vec(:,1) = points(:,1) - mol(basis_inf(kk)%atom)%pos(1)
-      vec(:,2) = points(:,2) - mol(basis_inf(kk)%atom)%pos(2)
-      vec(:,3) = points(:,3) - mol(basis_inf(kk)%atom)%pos(3)
-      contr = atom_basis(mol(basis_inf(kk)%atom) % &
-      basis_number + basis_inf(kk) % shell - 1) % contr
-      L = basis_inf(kk) % L
-      M = basis_inf(kk) % M
-      fac(:) = AO_fac(:,L,M)
+      vec(:,1) = points(:,1) - basis_inf(kk) % pos(1)
+      vec(:,2) = points(:,2) - basis_inf(kk) % pos(2)
+      vec(:,3) = points(:,3) - basis_inf(kk) % pos(3)
+      contr    = basis_inf(kk) % contr
+      L        = basis_inf(kk) % L
+      M        = basis_inf(kk) % M
+      fac(:)   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo = atom_basis(mol(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%expo(jj)
-        coeff = atom_basis(mol(basis_inf(kk)%atom) % &
-        basis_number + basis_inf(kk) % shell - 1)%Ncoe(jj,M)
+        expo   = basis_inf(kk) % expo(jj)
+        coeff  = basis_inf(kk) % Ncoe(jj,M)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
       val(:) = val(:) * (vec(:,1)**fac(1))
       val(:) = val(:) * (vec(:,2)**fac(3))
       val(:) = val(:) * (vec(:,3)**fac(3))
-      dats = dats + val * arr(ii)
+      dats   = dats + val * arr(ii)
     end do
   end subroutine grid
 
@@ -119,20 +116,17 @@ module functional
       else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
         kk = ii - cbdm
       end if
-      vec = point - mol(basis_inf(kk)%atom)%pos
-      contr = atom_basis(mol(basis_inf(kk)%atom)%&
-      basis_number)%contr
-      L = basis_inf(kk) % L
-      M = basis_inf(kk) % M
-      fac = AO_fac(:,L,M)
+      vec   = point - basis_inf(kk) % pos
+      contr = basis_inf(kk) % contr
+      L     = basis_inf(kk) % L
+      M     = basis_inf(kk) % M
+      fac   = AO_fac(:,L,M)
       valdx = c0
       valdy = c0
       valdz = c0
       do jj = 1, contr
-        expo = atom_basis(mol(basis_inf(kk)%atom)%&
-        basis_number)%expo(jj)
-        coeff = atom_basis(mol(basis_inf(kk)%atom)%&
-        basis_number)%Ncoe(jj,M)
+        expo  = basis_inf(kk) % expo(jj)
+        coeff = basis_inf(kk) % Ncoe(jj,M)
         ! d/dx
         if (fac(1) == 0) then
           valdx = valdx + &
@@ -208,17 +202,14 @@ module functional
         kk = ii - cbdm
       end if
       val = c0
-      vec = point - mol(basis_inf(kk)%atom)%pos
-      contr = atom_basis(mol(basis_inf(kk)%atom)%&
-      basis_number)%contr
-      L = basis_inf(kk) % L
-      M = basis_inf(kk) % M
-      fac = AO_fac(:,L,M)
+      vec   = point - basis_inf(kk) % pos
+      contr = basis_inf(kk) % contr
+      L     = basis_inf(kk) % L
+      M     = basis_inf(kk) % M
+      fac   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo = atom_basis(mol(basis_inf(kk)%atom)%&
-        basis_number)%expo(jj)
-        coeff = atom_basis(mol(basis_inf(kk)%atom)%&
-        basis_number)%Ncoe(jj,M)
+        expo  = basis_inf(kk) % expo(jj)
+        coeff = basis_inf(kk) % Ncoe(jj,M)
         ! d2/dx2
         if (fac(1) == 0) then
           valdx = (4*expo**2*vec(1)**2 - 2*expo)&
@@ -296,20 +287,17 @@ module functional
       valdx = 0.0_dp
       valdy = 0.0_dp
       valdz = 0.0_dp
-      contr = atom_basis(mol(basis_inf(ii)%atom) % &
-      basis_number + basis_inf(ii) % shell - 1) % contr
-      L = basis_inf(ii) % L
-      M = basis_inf(ii) % M
+      contr = basis_inf(ii) % contr
+      L     = basis_inf(ii) % L
+      M     = basis_inf(ii) % M
       fac = AO_fac(:,L,M)
-      vec(:,1) = point(:,1) - mol(basis_inf(ii)%atom)%pos(1)
-      vec(:,2) = point(:,2) - mol(basis_inf(ii)%atom)%pos(2)
-      vec(:,3) = point(:,3) - mol(basis_inf(ii)%atom)%pos(3)
+      vec(:,1) = point(:,1) - basis_inf(ii) % pos(1)
+      vec(:,2) = point(:,2) - basis_inf(ii) % pos(2)
+      vec(:,3) = point(:,3) - basis_inf(ii) % pos(3)
       do jj = 1, contr
-        b = atom_basis(mol(basis_inf(ii)%atom) % &
-        basis_number + basis_inf(ii) % shell - 1) % expo(jj)
-        coeff = atom_basis(mol(basis_inf(ii)%atom) % &
-        basis_number + basis_inf(ii) % shell - 1) % Ncoe(jj,M)
-        d(:) = coeff*exp(-b*(sum(vec(:,:)**2,dim=2)))
+        b     = basis_inf(ii) % expo(jj)
+        coeff = basis_inf(ii) % Ncoe(jj,M)
+        d(:)  = coeff*exp(-b*(sum(vec(:,:)**2,dim=2)))
 
         ! calculate the grid value
         ! grid value
@@ -595,10 +583,10 @@ module functional
         call terminate('Fockxc_init: missing data for correlation functional')
       end if
     end if
-    write(60,'(A13,I5,A12,A)') &
+    write(60,'(A13,I3,A12,A)') &
     "  -- fx_id = ",fx_id,';func name: ',trim(xc_f03_func_info_get_name(x_info))
     if (fc_id /= -1) then
-    write(60,'(A13,I5,A12,A)') &
+    write(60,'(A13,I3,A12,A)') &
     "  -- fc_id = ",fc_id,';func name: ',trim(xc_f03_func_info_get_name(c_info))
     end if
   end subroutine Fockxc_init

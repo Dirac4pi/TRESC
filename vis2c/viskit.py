@@ -1,12 +1,11 @@
 '''
-python module in vis2c
-load data from files
+vis2c toolkit
 coding:UTF-8
-env:base
+env:vis2c
 '''
 
 import numpy as np
-import cclib
+import subprocess
 
 elements = {
     1: {"symbol": "H", "name": "Hydrogen", "mass": 1.008},
@@ -63,30 +62,76 @@ elements = {
 
 ang2bohr = 1.8897259886
 
-def load_xyz(title:str):
-  if not title.endswith('.xyz'):
-    title = title + '.xyz'
+#-------------------------------------------------------------------------------
+def isfloat(string:str) -> bool:
+  '''
+  determine whether the sting is a float or not
+  --
+  string: input string\n
+  return: true/false
+  '''
+  try:
+    float(string)
+  except:
+    return False
+  else:
+    return True
+
+#-------------------------------------------------------------------------------
+def iscood(line:str) -> bool:
+  '''
+  determine whether the sting is a coordinate or not
+  --
+  line: input string\n
+  return: true/false
+  '''
+  s = line.split()
+  if len(s) != 4:
+    return False
+  elif s[0][0] == '!':
+    return False
+  elif not s[0][0].isalpha():
+    return False
+  elif isfloat(s[1]) and isfloat(s[2]) and isfloat(s[3]):
+    return True
+  else:
+    return False
+
+#-------------------------------------------------------------------------------
+def load_geometry_molden(title:str):
   try:
     open(title,'r')
   except FileNotFoundError:
-    raise RuntimeError(title+' file not found')
+    raise RuntimeError(title+' not found')
   with open(title,'r') as f:
-    ncenter = f.readline()
-    atoms = np.zeros(int(ncenter), dtype=[('index','i4'), \
+    ncenter = 0
+    for line in f:
+      ncenter += 1
+      if '[Atoms]' in line:
+        ncenter = 0
+      if '[GTO]' in line:
+        break
+    ncenter -= 1
+  print(ncenter)
+  with open(title,'r') as f:
+    atoms = np.zeros(ncenter, dtype=[('index','i4'), \
     ('charge','f8'), ('x','f8'), ('y','f8'), ('z','f8')])
-    for i in range(int(ncenter)):
-      line = f.readline()
-      if line.startswith('!') or line == '\n':
-        line = f.readline()
-      parts = line.strip().split()
-      element = parts[0]
-      atoms[i]['x'], atoms[i]['y'], atoms[i]['z'] = \
-        ang2bohr * np.array(parts[1:4], dtype=float)
-      for atomic_number, data in elements.items():
-        if data["symbol"] == element:
-          atoms[i]['index'] = atomic_number
-  return atoms
+    start = False
+    for line in f:
+      if start:
+        parts = line.strip().split()
+        print(i)
+        atoms[i]['index'] = parts[2]
+        atoms[i]['x'],atoms[i]['y'],atoms[i]['z'] = \
+          np.array(parts[3:6],dtype=float)
+        i += 1
+        if i == ncenter:
+          return atoms
+      if '[Atoms]' in line:
+        start = True
+        i = 0
 
+#-------------------------------------------------------------------------------
 def load_cube(cube_address:str, imo:int=0):
   '''
   load data from Gaussian cube format file.
@@ -95,7 +140,6 @@ def load_cube(cube_address:str, imo:int=0):
   imo: serial number of the orbital to be loaded\n
   return: atomic info, cube info, number of orbitals
   '''
-  
   try:
     f = open(cube_address, 'r')
   except FileNotFoundError:
@@ -114,44 +158,37 @@ def load_cube(cube_address:str, imo:int=0):
         continue
       else:
         break
-        
     # read grid information
     n1, v1x, v1y, v1z = map(float, f.readline().split())
     n2, v2x, v2y, v2z = map(float, f.readline().split())
     n3, v3x, v3y, v3z = map(float, f.readline().split())
-    
     # determine if it contains MOs
     nmo = 0
     if ncenter < 0:
       nmo = 1
       ncenter = abs(ncenter)  # reduce to positive
-    
     # allocate memory
     atoms = np.zeros(int(ncenter), dtype=[('index','i4'), \
       ('charge','f8'), ('x','f8'), ('y','f8'), ('z','f8')])
     cubmat = np.zeros((int(n1),int(n2),int(n3)), dtype=[('value','f8'), \
       ('x','f8'), ('y','f8'), ('z','f8')])
-
     # read atomic information
     for i in range(int(ncenter)):
       atoms[i]['index'], atoms[i]['charge'], atoms[i]['x'], \
         atoms[i]['y'], atoms[i]['z'] = map(float, f.readline().split())
-
     if nmo == 1:  # read the number of MOs if exist
       nmo = int(f.readline().split()[0])
       if nmo < imo:
-        raise RuntimeError('bad call read_cube: nmo < imo, file is '+\
-                            cube_address)
+        raise RuntimeError('read_cube: nmo < imo in '+cube_address)
       elif imo <= 0:
-        raise RuntimeError('bad call read_cube: nmo > 0 but imo <= 0, file is '\
-          +cube_address)
+        raise RuntimeError('read_cube: nmo > 0 but imo <= 0 in '+cube_address)
       # read grid data
       for i in range(int(n1)):
         for j in range(int(n2)):
           iline = 1
           line = f.readline().split()
           for k in range(imo, int(n3*nmo)+1, nmo):
-            if k // 6 >= iline:
+            if k//6 >= iline:
               line = f.readline().split()
               iline += 1
             if imo == nmo:
@@ -161,8 +198,7 @@ def load_cube(cube_address:str, imo:int=0):
               cubmat[i,j,k//nmo]['value'] = float(line[k%6-1])
     else:   # read real-space function
       if imo != 0:
-        Warning('no orbital in cube file but imo != 0, file is '\
-          +cube_address)
+        Warning('no orbital in cube file but imo != 0, file is '+cube_address)
       # read grid data
       for i in range(int(n1)):
         for j in range(int(n2)):
@@ -174,22 +210,17 @@ def load_cube(cube_address:str, imo:int=0):
               iline += 1
             cubmat[i,j,k-1]['value'] = float(line[k%6-1])
             #line[-1] is same as line[5]
-    
     # assign coordinate information to each grid point
     for i in range(int(n1)):
       for j in range(int(n2)):
         for k in range(int(n3)):
-          cubmat[i, j, k]['x'] = orgx + (i) * v1x + \
-            (j) * v2x + (k) * v3x
-          cubmat[i, j, k]['y'] = orgy + (i) * v1y + \
-            (j) * v2y + (k) * v3y
-          cubmat[i, j, k]['z'] = orgz + (i) * v1z + \
-            (j) * v2z + (k) * v3z
-          
+          cubmat[i, j, k]['x'] = orgx + (i)*v1x + (j)*v2x + (k)*v3x
+          cubmat[i, j, k]['y'] = orgy + (i)*v1y + (j)*v2y + (k)*v3y
+          cubmat[i, j, k]['z'] = orgz + (i)*v1z + (j)*v2z + (k)*v3z
   return atoms, cubmat, nmo
 
+#-------------------------------------------------------------------------------
 def load_binary(title:str):
-
   """
   load data from binary file
   --
@@ -198,89 +229,30 @@ def load_binary(title:str):
   title: title of binary file\n
   return: Contents of the binary file\n
   """
-
   try:
     f = open(title, 'rb')
   except FileNotFoundError:
     raise RuntimeError("can't find binary file "+title)
   else:
     f.close()
-
   dat = np.fromfile(title, dtype=np.float64, offset=8)
   return dat
 
-def load_mo_from_fchk(fchk_path: str, spin: str, mo_index: int):
+#-------------------------------------------------------------------------------
+def call_executable(command: list):
   """
-  load MO coefficients of open-shell system form .fchk file
+  call executable command-line programs and handling errors
   --
-  fchk_path: .fchk file path\n
-  spin: alpha or beta\n
-  mo_index: index of molecular orbital\n
-  return: array of MO coefficients(np.ndarray)
+  command: command list(such as ["./program", "arg1", "arg2"])
+  return: standard output
   """
-  if spin != 'alpha' and spin != 'beta':
-    raise RuntimeError('parameter spin error')
-  if mo_index <= 0:
-    raise RuntimeError('parameter mo_index error')
-  data = cclib.io.ccread(fchk_path)
-  
-  # check for open shell system
-  if not hasattr(data, 'mocoeffs') or len(data.mocoeffs) < 2:
-    raise ValueError("non-open-shell system or lack of Beta orbit data")
-  
-  # get Alpha/Beta MO coefficients
-  if spin.lower() == "alpha":
-    mo_coeffs = data.mocoeffs[0]
-  elif spin.lower() == "beta":
-    mo_coeffs = data.mocoeffs[1]
-  else:
-    raise ValueError("spin parameter should be 'alpha' or 'beta'")
-  
-  mo_coeff = mo_coeffs[mo_index]
-  
-  return mo_coeff
-
-def load_mo_from_molden(molden_path: str, spin: str, mo_index: int):
-  """
-  load MO coefficients of open-shell system form .molden file
-  --
-  molden_path: .molden file path\n
-  spin: alpha or beta\n
-  mo_index: index of molecular orbital\n
-  return: array of MO coefficients(np.ndarray)
-  """
-  spin = spin.lower()
-  if spin != 'alpha' and spin != 'beta':
-    raise RuntimeError('parameter spin error')
-  if int(mo_index) <= 0:
-    raise RuntimeError('parameter mo_index error')
-  with open(molden_path, 'r') as f:
-    lines = f.readlines()
-  
-  in_mo_section = False
-  mo_coeffs = []
-  current_spin = None
-  is_spin = False
-  current_index = 0
-  
-  for line in lines:
-    line = line.strip()
-    if line.strip() == "[MO]":
-      in_mo_section = True
-      continue
-    if not in_mo_section:
-      continue
-    if line.strip().startswith("Spin="):
-      if current_index == int(mo_index):
-        break
-      current_spin = line.split("=")[1].strip().lower()
-      if current_spin == spin:
-        is_spin = True
-        current_index += 1
-      else:
-        is_spin = False
-    elif is_spin and line.split()[0].isdigit():
-      if current_index == int(mo_index):
-        mo_coeffs.append(float(line.split()[1]))
-  
-  return mo_coeffs
+  if not command:
+    raise RuntimeError("No command reserved")
+  try:
+    result = subprocess.run(command, check=True, text=True)
+  except subprocess.CalledProcessError as e:
+    raise RuntimeError(f"Process failed with return code {e.returncode}") from e
+  except FileNotFoundError as e:
+    raise RuntimeError(f"Can't find {command[0]}") from e
+  except Exception as e:
+    raise RuntimeError(f"Error: {str(e)}") from e

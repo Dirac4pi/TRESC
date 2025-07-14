@@ -1,5 +1,4 @@
 '''
-python module in vis2c
 plot 3D objects
 coding:UTF-8
 env:vis2c
@@ -11,10 +10,13 @@ from json import load as jsload
 import qcelemental as qcel
 qcel.CovalentRadii("ALVAREZ2008")
 from mayavi import mlab
+from tvtk.api import tvtk
+from scipy.ndimage import gaussian_filter
 
 dtol = 0.01 # tolerance of delaunay
 maxpoints = 3e4 # max grid points
 
+#-------------------------------------------------------------------------------
 def sync_camera(fig1, fig2, sync_coe:float) -> None:
   """
   Synchronise camera parameters from fig1.scene to fig2.scene.
@@ -26,6 +28,7 @@ def sync_camera(fig1, fig2, sync_coe:float) -> None:
   fig2.scene.camera.view_up = fig1.scene.camera.view_up
   fig2.scene.render()
 
+#-------------------------------------------------------------------------------
 def cmplx_orb_plot_cub(\
     title:str, atoms, amplitude, phase, x, y, z, isovalue:float)->float:
   '''
@@ -76,14 +79,13 @@ def cmplx_orb_plot_cub(\
   atomy = atoms['y']
   atomz = atoms['z']
   atoms_plot(atom_list, atomx, atomy, atomz)
-  
-  # -------------<plot phase>-------------
+  #-------------<plot phase>-------------
   fig2 = mlab.figure(figure=f'{title}(phase), isovalue={isovalue}', \
     size=(400,400), fgcolor=(0,0,0), bgcolor=(1,1,1))
   mlab.clf(fig2)
   # isosurface of amplitude
   # amplitude of MO are not linear combine of amplitude of AO
-  src = mlab.pipeline.scalar_field(amplitude)
+  src = mlab.pipeline.scalar_field(x,y,z,amplitude)
   # colour mapping of phase
   # use arctan2 to describe complex plane completly
   src.image_data.point_data.add_array(phase.T.ravel())
@@ -103,7 +105,6 @@ def cmplx_orb_plot_cub(\
   fig1.scene.show_axes = True
   mlab.view(figure=fig2)
   fig2.scene.show_axes = True
-  
   # ---------<synchronise camera>---------
   sync_coe = (fig2.scene.camera.position - fig2.scene.camera.focal_point) \
     / (fig1.scene.camera.position - fig1.scene.camera.focal_point)
@@ -111,6 +112,7 @@ def cmplx_orb_plot_cub(\
     sync_camera(fig1, fig2, sync_coe))
   return isovalue
 
+#-------------------------------------------------------------------------------
 def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
                        phase, x, y, z, isovalue:float)->float:
   '''
@@ -142,17 +144,16 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
     amplitude = amplitude[indices]
     phase = phase[indices]
     print(f"data points sample from {n_points} to {sample_size}")
-
   # -------------<plot amplitude with atoms>-------------
   fig1 = mlab.figure(figure=f'{title}(amplitude)', size=(400,400), \
     fgcolor=(0,0,0), bgcolor=(1,1,1))
   mlab.clf(fig1)
   # amplitude of MO not amplitude of linear combine of AO
   # dynamic adjustment of thresholds
-  if isovalue > amplitude.max():
-    isovalue = 0.5 * amplitude.max()
-    print(f"Adjust isovalue to {isovalue} (50% of max)")
-  elif isovalue < amplitude.min():
+  if isovalue > 0.5*amplitude.max():
+    isovalue = 0.5 * (amplitude.max() + amplitude.min())
+    print(f"Adjust isovalue to {isovalue} (mid-range)")
+  elif isovalue < 2*amplitude.min():
     isovalue = 0.5 * (amplitude.max() + amplitude.min())
     print(f"Adjust isovalue to {isovalue} (mid-range)")
   points = mlab.pipeline.scalar_scatter(x, y, z, amplitude)
@@ -173,25 +174,20 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   atomz = atoms['z']
   mlab.figure(fig1)
   atoms_plot(atom_list, atomx, atomy, atomz)
-  
   # -------------<plot phase>-------------
   fig2 = mlab.figure(figure=f'{title}(phase), isovalue={isovalue}', 
     size=(400,400), fgcolor=(0,0,0), bgcolor=(1,1,1))
   mlab.clf(fig2)
-
   # create an unstructured point cloud source with amplitude as primary scalar.
   src = mlab.pipeline.scalar_scatter(x, y, z, amplitude)
-
   # add phase to point cloud
   src.mlab_source.dataset.point_data.add_array(phase.ravel())
   src.mlab_source.dataset.point_data.get_array(1).name = 'phase'
   src.update()
-
   # build pipeline: triangulation -> isosurface extraction
   delaunay = mlab.pipeline.delaunay3d(src)
   contour = mlab.pipeline.contour(delaunay)
   contour.filter.contours = [isovalue]
-
   # color mapping to phase
   contour_phase = mlab.pipeline.set_active_attribute(contour, \
                                                      point_scalars='phase')
@@ -202,10 +198,8 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   else:
     surf = mlab.pipeline.surface(contour_phase, colormap='hsv', opacity=0.5)
     surf.module_manager.scalar_lut_manager.data_range = [-np.pi, np.pi]
-
   mlab.colorbar(title='Phase', orientation='vertical')
   mlab.axes()
-  
   # ---------<synchronise camera>---------
   sync_coe = (fig2.scene.camera.position - fig2.scene.camera.focal_point) \
     / (fig1.scene.camera.position - fig1.scene.camera.focal_point)
@@ -213,9 +207,10 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
     sync_camera(fig1, fig2, sync_coe))
   return isovalue
 
-def real_orb_plot_mog(title:str, atoms, val, x, y, z, isovalue:float)->float:
+#-------------------------------------------------------------------------------
+def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   '''
-  plot value of scalar complex unstructured grid.
+  plot value of scalar complex structured grid.
   --
   title: title of figure\n
   atoms: atom information\n
@@ -226,44 +221,22 @@ def real_orb_plot_mog(title:str, atoms, val, x, y, z, isovalue:float)->float:
   isovalue: isovalue of val\n
   Return: final isovalue
   '''
-  print('Unstructured data need to be Delaunay triangulated before extracting')
-  print('isosurface, the time consumed increases significantly...')
-  print('...please be patient...')
   if isovalue <= 0.0:
     raise RuntimeError('isovalue should be positive')
-  n_points = len(x)
-  if n_points > maxpoints:  # downsampling triggered at over 100,000 points
-    sample_size = int(maxpoints)
-    indices = np.random.choice(n_points, sample_size, replace=False)
-    x = x[indices]
-    y = y[indices]
-    z = z[indices]
-    val = val[indices]
-    print(f"data points sample from {n_points} to {sample_size}")
+  # -------------<plot orb>-------------
   fig1 = mlab.figure(figure=f'{title}', size=(400,400), \
     fgcolor=(0,0,0), bgcolor=(1,1,1))
   mlab.clf(fig1)
-  # dynamic adjustment of thresholds
-  if isovalue > val.max():
-    isovalue = 0.5 * val.max()
-    print(f"Adjust isovalue to {isovalue} (50% of max)")
-  elif isovalue < val.min():
-    isovalue = 0.5 * (val.max() + val.min())
+  # amplitude of MO not amplitude of linear combine of AO
+  val_smoothed = gaussian_filter(val, sigma=1)
+  if isovalue > 0.5*np.abs(val_smoothed).max():
+    isovalue = 0.5 * (np.abs(val_smoothed).max() + np.abs(val_smoothed).min())
     print(f"Adjust isovalue to {isovalue} (mid-range)")
-  points = mlab.pipeline.scalar_scatter(x, y, z, val)
-  delaunay = mlab.pipeline.delaunay3d(points)
-  delaunay.filter.tolerance = dtol
-  contour = mlab.pipeline.contour(delaunay)
-  # -------------<plot positive and negative part>-------------
-  try:
-    contour.filter.contours = [isovalue, -isovalue]
-    surface = mlab.pipeline.surface(contour, figure=fig1, vmax=isovalue, \
-                                    vmin=-isovalue, opacity=0.2, \
-                                    colormap='RdYlBu')
-    #surface.actor.property.line_width = 0.02
-    #surface.actor.property.edge_visibility = True
-  except Exception as e:
-    raise RuntimeError(f'Positive part plot error: {e}')
+  elif isovalue < 2*np.abs(val_smoothed).min():
+    isovalue = 0.5 * (np.abs(val_smoothed).max() + np.abs(val_smoothed).min())
+    print(f"Adjust isovalue to {isovalue} (mid-range)")
+  mlab.contour3d(x, y, z, val, contours=[isovalue], colormap='winter')
+  mlab.contour3d(x, y, z, val, contours=[-isovalue], colormap='autumn')
   # -------------<plot atoms>-------------
   atom_list = atoms['index']
   atomx = atoms['x']
@@ -271,8 +244,10 @@ def real_orb_plot_mog(title:str, atoms, val, x, y, z, isovalue:float)->float:
   atomz = atoms['z']
   mlab.figure(fig1)
   atoms_plot(atom_list, atomx, atomy, atomz)
+  fig1.scene.show_axes = True
   return isovalue
 
+#-------------------------------------------------------------------------------
 def hex2rgb(hexcolor:str) -> tuple[int,int,int]:
   '''
   colour format conversion from Hex to RGB.
@@ -284,6 +259,7 @@ def hex2rgb(hexcolor:str) -> tuple[int,int,int]:
   rgb = ((hexcolor >> 16) & 0xff, (hexcolor >> 8) & 0xff, hexcolor & 0xff)
   return rgb
 
+#-------------------------------------------------------------------------------
 def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
   '''
   plot spherical model of atoms in current figure.

@@ -1,6 +1,6 @@
 !> @file SCF.f90
 !!
-!! @brief single-configuration self-consistent field calculation
+!! @brief single-configuration self-consistent-field procedure
 !!
 !! @syntax Fortran 2008 free format
 !!
@@ -18,27 +18,18 @@ module SCF
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   !DIR$ ATTRIBUTES ALIGN:align_size :: AO2MO, AO2MOalpha, AO2MObeta
   !DIR$ ATTRIBUTES ALIGN:align_size :: rho_m, rotation, AOsupp, Fock
-  complex(dp),allocatable :: AO2MO(:,:)
-  real(dp),allocatable    :: Gaualpha(:)    ! Gaussian alpha orbital coefficient
-  real(dp),allocatable    :: AO2MOalpha(:,:)! Gaussian alpha orbital coefficient
-  real(dp),allocatable    :: Gaubeta(:)     ! Gaussian beta orbital coefficient
-  real(dp),allocatable    :: AO2MObeta(:,:) ! Gaussian beta orbital coefficient
+  complex(dp),allocatable :: AO2MO(:,:)     ! MO coeff
+  real(dp),allocatable    :: m_AO2MO_a(:,:) ! alpha MO coeff read form molden
+  real(dp),allocatable    :: t_AO2MO_a(:,:) ! transfered alpha MO coeff
+  real(dp),allocatable    :: m_AO2MO_b(:,:) ! beta MO coeff read form molden
+  real(dp),allocatable    :: t_AO2MO_b(:,:) ! transfered beta MO coeff
   complex(dp),allocatable :: rho_m(:,:)     ! density matrix, complex Hermitian
   complex(dp),allocatable :: rotation(:,:)  ! rotate one orbital with another
   real(dp)                :: RMSDP, maxDP
   real(dp),allocatable    :: AOsupp(:,:)
-  integer                 :: evl_count_f    ! number of eigenvalues in Fock diag
   complex(dp),allocatable :: Fock(:,:)      ! Fock matrix
-  integer,allocatable     :: isupp_ev_f(:)
-  integer                 :: fliwork
-  integer                 :: flwork
-  integer                 :: lrwork
-  complex(dp),allocatable :: fwork(:)       ! work of Fock for zheevr input
-  real(dp),allocatable    :: rwork(:)       ! rwork of Fock for zheevr input
-  integer,allocatable     :: fiwork(:)      ! iwork of Fock for zheevr input
-  integer                 :: finfo          ! info of calling lapack functions
   
-  logical                 :: ini_rou =.true.! initial density matrix loaded
+  logical                 :: ini_rho =.true.! initial density matrix loaded
   
   !--------------<one electron Fock>--------------
   !DIR$ ATTRIBUTES ALIGN:align_size :: Fock1, oper1, oper2, oper3
@@ -109,10 +100,6 @@ module SCF
   complex(dp),allocatable :: rho_history(:,:,:)! coeff of subsp iteration
   complex(dp),allocatable :: Rsd(:,:,:)        ! residuals of rho_m
   complex(dp),allocatable :: DIISmat(:,:)      ! A
-  complex(dp),allocatable :: DIIuork(:)
-  integer                 :: lDIIuork
-  integer,allocatable     :: ipiv(:)
-  integer                 :: DIIsinfo
   real(dp)                :: damp_coe          ! damp coeff of direct/DIIS SCF
   real(dp)                :: dE_pre
   logical                 :: forward = .true.
@@ -120,7 +107,7 @@ module SCF
   contains
 
 !------------------------------------------------------------
-!> HF/KS-SCF procedure for DKH0/DKH2 Hamiltonian
+!> HF/KS-SCF procedure for NR/DKH2 Hamiltonian
   subroutine DKH_SCF()
     implicit none
     character(len = 40) :: keyword
@@ -148,19 +135,18 @@ module SCF
     if (fx_id /= -1) call Fockxc_init()
     write(60,'(A)') '  complete!'
     write(60,'(A)') '  SCF settings:'
-    write(60,'(A,I4)') '  -- maxiter =',maxiter
-    write(60,'(A,E10.3)') '  -- conv_tol = ',conver_tol
-    write(60,'(A,F6.3)') '  -- damp =',damp
-    write(60,'(A,E10.3)') '  -- cutdamp = ',cutdamp
-    write(60,'(A,I4)') '  -- nodiis =',nodiis
-    write(60,'(A,I3)') '  -- subsp =',subsp
-    write(60,'(A,F6.3)') '  -- diisdamp =',diisdamp
-    write(60,'(A,E10.3)') '  -- cutdiis = ',cutdiis
+    write(60,'(A,I3.3)')  '  -- maxiter   = ',maxiter
+    write(60,'(A,E10.3)') '  -- conv_tol  =',conver_tol
+    write(60,'(A,F6.3)')  '  -- damp      =',damp
+    write(60,'(A,E10.3)') '  -- cutdamp   =',cutdamp
+    write(60,'(A,I3.3)')  '  -- nodiis    = ',nodiis
+    write(60,'(A,I3.3)')  '  -- subsp     = ',subsp
+    write(60,'(A,F6.3)')  '  -- diisdamp  =',diisdamp
+    write(60,'(A,E10.3)') '  -- cutdiis   =',cutdiis
     write(60,'(A)') '  ----------<SCF>----------'
     allocate(Fock(2*fbdm,2*fbdm))
     allocate(orbE(2*fbdm))
     allocate(oper6(2*fbdm,2*fbdm))
-    allocate(isupp_ev_f(4*fbdm))
     allocate(oper3(2*fbdm,2*fbdm))
     allocate(oper4(2*fbdm,2*fbdm))
     
@@ -168,7 +154,6 @@ module SCF
     ! AO2MO(new) = ��(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
     allocate(Rsd(subsp,2*sbdm,2*sbdm))
     allocate(DIISmat(subsp+1,subsp+1))
-    allocate(ipiv(subsp+1))
     allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
     allocate(rho_pre(2*sbdm, 2*sbdm))
     allocate(rho_pre_pre(2*sbdm, 2*sbdm))
@@ -185,9 +170,9 @@ module SCF
           if (index(keyword,'threads') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I2)",iostat = ios) threads_new
-              if (threads_new /= threads) then
-                threads = threads_new
+              "(I2)",iostat = ios) new_threads
+              if (new_threads /= threads) then
+                threads = new_threads
                 write(60,'(A,I2)') '  number of threads change to ',threads
               end if
             end if
@@ -232,8 +217,8 @@ module SCF
         end do
         close(12)
       else
-        write(60,'(A)') '  read density matrix'
-        call assign_rou()
+        write(60,'(A)') '  load density matrix'
+        call assign_rho()
         write(60,'(A)') '  complete! stored in rho_m'
       end if
 
@@ -262,33 +247,8 @@ module SCF
       end if
 
       write(60,'(A)') '  diagonalization of Fock matrix'
-      allocate(fwork(1))
-      allocate(fiwork(1))
-      allocate(rwork(1))
-      call zheevr(&
-      'V','A','U',2*fbdm,Fock,2*fbdm,0.0_dp,0.0_dp,0,0,safmin,evl_count_f,orbE,&
-      oper3,2*fbdm,isupp_ev_f,fwork,-1,rwork,-1,fiwork,-1,finfo)
-      flwork = nint(real(fwork(1)))
-      fliwork = fiwork(1)
-      lrwork = nint(rwork(1))
-      deallocate(fwork)
-      deallocate(fiwork)
-      deallocate(rwork)
-      allocate(fwork(flwork))
-      allocate(fiwork(fliwork))
-      allocate(rwork(lrwork))
-      call zheevr(&
-      'V','A','U',2*fbdm,Fock,2*fbdm,0.0_dp,0.0_dp,0,0,safmin,evl_count_f,orbE,&
-      oper3,2*fbdm,isupp_ev_f,fwork,flwork,rwork,lrwork,fiwork,fliwork,finfo)
-      if (finfo < 0) call terminate(&
-      'Fock matrix diagonalization failure, illegal input of zheevr')
-      if (finfo > 0) call terminate(&
-      'Fock matrix diagonalization failure, internal error of zheevr')
-      if (evl_count_f < 2*fbdm) then
-        call terminate('number of MO less than 2*fbdm')
-      else
-        write(60,'(A,I5,A)') '  complete!',evl_count_f,' eigenvectors found'
-      end if
+      call diag(Fock, 2*fbdm, oper3, orbE)
+      write(60,'(A,I5,A)') '  complete!',2*fbdm,' eigenvectors found'
       ! frontier orbital energy
       write(60,'(A)') '  frontier orbital energy (A.U.)'
       call calc_S2HForb(electron_count)
@@ -299,17 +259,12 @@ module SCF
       '  -- LUMO ', electron_count+1, orbE(electron_count+1), ' <Sz> = ',Szorb
       write(60,'(A,F12.6)') &
       '  -- gap  ', orbE(electron_count+1) - orbE(electron_count)
-      deallocate(fwork)
-      deallocate(fiwork)
-      deallocate(rwork)
       ! energy components calculation
       write(60,'(A)') '  calculate energy components (A.U.)'
       ! HF Coulomb energy
       HFCol = 0.0_dp
-      call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      Fock2HFcol, 2*fbdm, c0, oper6, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('C', 'N', oper3, Fock2HFcol, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
         HFCol = HFCol + real(oper4(loop_j,loop_j))
       end do
@@ -317,10 +272,8 @@ module SCF
 
       ! HF exchange energy
       HFexc = 0.0_dp
-      call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      Fock2HFexc, 2*fbdm, c0, oper6, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('C', 'N', oper3, Fock2HFexc, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
         HFexc = HFexc + real(oper4(loop_j,loop_j))
       end do
@@ -332,10 +285,8 @@ module SCF
 
       ! core energy
       Ecore = 0.0_dp
-      call zgemm('C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      Fock1, 2*fbdm, c0, oper6, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('C', 'N', oper3, Fock1, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
         Ecore = Ecore + real(oper4(loop_j,loop_j))
       end do
@@ -343,10 +294,8 @@ module SCF
 
       ! kinetic energy
       T = 0.0_dp
-      call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      exi_T_j, 2*fbdm, c0, oper6, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('C', 'N', oper3, exi_T_j, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
         T = T + real(oper4(loop_j,loop_j))
       end do
@@ -354,10 +303,8 @@ module SCF
 
       ! electron-nuclear attraction energy
       V = 0.0_dp
-      call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      exi_V_j, 2*fbdm, c0, oper6, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-      oper3, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('C', 'N', oper3, exi_V_j, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
         V = V + real(oper4(loop_j,loop_j))
       end do
@@ -365,20 +312,16 @@ module SCF
 
       if (DKH_order == 2) then
         ESOC = 0.0_dp
-        call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-        exSOC, 2*fbdm, c0, oper6, 2*fbdm)
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-        oper3, 2*fbdm, c0, oper4, 2*fbdm)
+        call matmul('C', 'N', oper3, exSOC, oper6)
+        call matmul('N', 'N', oper6, oper3, oper4)
         do loop_j = 1, electron_count
           ESOC = ESOC + real(oper4(loop_j,loop_j))
         end do
         write(60,'(A,F12.6)') '  -- spin-orbital coupling energy         ', ESOC
         if (SRTP_type) then
           ESR = 0.0_dp
-          call zgemm( 'C', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-          exSR, 2*fbdm, c0, oper6, 2*fbdm)
-          call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper6, 2*fbdm, &
-          oper3, 2*fbdm, c0, oper4, 2*fbdm)
+          call matmul('C', 'N', oper3, exSR, oper6)
+          call matmul('N', 'N', oper6, oper3, oper4)
           do loop_j = 1, electron_count
             ESR = ESR + real(oper4(loop_j,loop_j))
           end do
@@ -406,8 +349,7 @@ module SCF
       end if
       write(60,'(A,F12.6)') '  -- -<V>/<T>                             ', Virial
       ! de-orthogonalization
-      call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, &
-      oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
+      call matmul('N', 'N', exXm, oper3, AO2MO)
       write(60,'(A)') '  AO2MO dump to .ao2mo file'
       call dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
       ! convergence check
@@ -426,7 +368,7 @@ module SCF
         end if
       end if
       write(60,'(A)') '  construct density matrix'
-      call assign_rou()
+      call assign_rho()
       write(60,'(A)') '  complete! stored in rho_m'
       write(60,'(A)') '  DIIS information'
       ! generate next rho_m by DIIS method
@@ -540,28 +482,11 @@ module SCF
           DIISmat(subsp+1, loop_j) = c1
           DIISmat(loop_j, subsp+1) = c1
         end do
-        ! solveg residual equation
+        ! solve residual equation
         ! dgesv and dspsv will cause V_integral_2e conflict for unknown reason
         ! since DIISmat (and its inverse) is real symmetric, plus the column 
         ! vector is simple, use the inverse of DIISmat to solve directly
-        call zgetrf(subsp+1, subsp+1, DIISmat, subsp+1, ipiv, DIISinfo)
-        if (DIISinfo < 0) then
-          call terminate('DIIS solution failure, illegal input of dgetrf')
-        else if (DIISinfo > 0) then
-          call terminate('DIIS solution failure, internal error of dgetrf')
-        end if
-        allocate(DIIuork(1))
-        call zgetri(subsp+1, DIISmat, subsp+1, ipiv, DIIuork, -1, DIISinfo)
-        lDIIuork = nint(real(DIIuork(1)))
-        deallocate(DIIuork)
-        allocate(DIIuork(lDIIuork))
-        call zgetri(subsp+1,DIISmat,subsp+1,ipiv,DIIuork,lDIIuork,DIISinfo)
-        deallocate(DIIuork)
-        if (DIISinfo < 0) then
-          call terminate('DIIS solution failure, illegal input of dgetri')
-        else if (DIISinfo > 0) then
-          call terminate('DIIS solution failure, internal error of dgetri')
-        end if
+        call inverse(DIISmat, subsp+1)
         ! generate new rho_m
         rho_m = c0
         do loop_j = 1, subsp
@@ -589,10 +514,10 @@ module SCF
       forward = .true.
     end do
     if (abs(molE - molE_pre) < conver_tol .and. loop_i < maxiter) then
-      if (DKH_order == 0) write(60,'(A)') '  DKH0 SCF succeed!'
+      if (DKH_order == 0) write(60,'(A)') '  NR SCF succeed!'
       if (DKH_order == 2) write(60,'(A)') '  DKH2 SCF succeed!'
     else
-      if (DKH_order == 0) write(60,'(A)') '  DKH0 SCF failed!'
+      if (DKH_order == 0) write(60,'(A)') '  NR SCF failed!'
       if (DKH_order == 2) write(60,'(A)') '  DKH2 SCF failed!'
     end if
     if (d4) then
@@ -611,7 +536,7 @@ module SCF
     write(60,*)
     write(60,'(A)') &
     '  ============================================================='
-    write(60,'(A)') '                        mol INFO'
+    write(60,'(A)') '                           MOL INFO'
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A,F12.6)') &
@@ -643,10 +568,8 @@ module SCF
     write(60,'(A,F12.6)') &
     '  Virial ratio                                  ...',Virial
     if (DKH_order /= 0) then
-      write(60,*)
-      write(60,'(A)') '  Note: relativistic calculation causes the Virial ratio'
-      write(60,'(A)') '  to deviate (usually below) 2.0'
-      write(60,*)
+      write(60,'(A)') '  -- Note: relativistic calculation causes the'
+      write(60,'(A)') '  -- Virial ratio to deviate (usually below) 2.0'
     end if
     write(60,'(A,F12.6)') &
     '  total alpha electron                          ...',totalpha
@@ -657,12 +580,17 @@ module SCF
     ((totalpha-totbeta)/2.0)*((totalpha-totbeta)/2.0+1.0_dp)
     write(60,'(A,F12.6)') &
     '  <S**2> / hbar**2                              ...',S__2
+    if (fx_id /= 0) then
+      write(60,'(A)') &
+      '  -- Note: there is little theoretical justification'
+      write(60,'(A)') &
+      '  -- to calculate <S**2> in a DFT calculation.'
+    end if
     if (DKH_order == 2) then
-      write(60,*)
       write(60,'(A)') &
-      '  Note: <S**2> may be contaminated by electron correlation,'
+      '  -- Note: deviation of <S**2> from <Sz*(Sz+1)> is related'
       write(60,'(A)') &
-      '  discussion of SOC suggests <S**2> data of 1e orbitals.'
+      '  -- to the spin polarization (spin contamination).'
     end if
     write(60,'(A)') &
     '  ============================================================='
@@ -672,7 +600,7 @@ module SCF
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A)') &
-    '                      CANONICAL MO INFO'
+    '                       CANONICAL ORB INFO'
     write(60,'(A)') &
     '  ============================================================='
     do loop_i = 1, electron_count
@@ -681,8 +609,8 @@ module SCF
         write(60,'(A,I3.3,A,F12.6)') &
         '  HOMO-', electron_count-loop_i, &
         '   energy / Eh                       ... ', orbE(loop_i)
-        write(60,'(A,F12.6)') &
-        '             <S**2> / hbar**2                  ... ', S__2orb
+        write(60,'(A3,I3.3,A,F12.6)') &
+        '  #',loop_i,'       <S**2> / hbar**2                  ... ', S__2orb
         write(60,'(A,F12.6)') &
         '             <Sz> / hbar                       ... ', Szorb
         write(60,'(A)') &
@@ -714,8 +642,8 @@ module SCF
         call calc_S2HForb(loop_i)
         write(60,'(A,A,F12.6)') &
         '  HOMO    ', '   energy / Eh                       ... ', orbE(loop_i)
-        write(60,'(A,F12.6)') &
-        '             <S**2> / hbar**2                  ... ', S__2orb
+        write(60,'(A3,I3.3,A,F12.6)') &
+        '  #',loop_i,'       <S**2> / hbar**2                  ... ', S__2orb
         write(60,'(A,F12.6)') &
         '             <Sz> / hbar                       ... ', Szorb
         write(60,'(A)') &
@@ -750,8 +678,8 @@ module SCF
         call calc_S2HForb(loop_i)
         write(60,'(A,A,F12.6)') &
         '  LUMO    ', '   energy / Eh                       ... ', orbE(loop_i)
-        write(60,'(A,F12.6)') &
-        '             <S**2> / hbar**2                  ... ', S__2orb
+        write(60,'(A3,I3.3,A,F12.6)') &
+        '  #',loop_i,'       <S**2> / hbar**2                  ... ', S__2orb
         write(60,'(A,F12.6)') &
         '             <Sz> / hbar                       ... ', Szorb
         write(60,'(A)') &
@@ -784,8 +712,8 @@ module SCF
         write(60,'(A,I3.3,A,F12.6)') &
         '  LUMO+', loop_i-electron_count-1, &
         '   energy / Eh                       ... ', orbE(loop_i)
-        write(60,'(A,F12.6)') &
-        '             <S**2> / hbar**2                  ... ', S__2orb
+        write(60,'(A3,I3.3,A,F12.6)') &
+        '  #',loop_i,'       <S**2> / hbar**2                  ... ', S__2orb
         write(60,'(A,F12.6)') &
         '             <Sz> / hbar                       ... ', Szorb
         write(60,'(A)') &
@@ -819,7 +747,11 @@ module SCF
     '  ============================================================='
     write(60,*)
     if (molden) then
-      write(60,'(A)') '  dumping AO2MO to '//trim(address_job)//'.molden.input'
+      write(60,'(A)') '  dumping AO2MO to '//trim(address_job)//'.molden.d'
+      if (DKH_order == 0) then
+        write(60,'(A)') &
+        '  -- Note: for scalar MOs, only realpart will be generated.'
+      end if
       call dump_molden()
       write(60,'(A)') '  complete!'
     end if
@@ -832,7 +764,7 @@ module SCF
     logical,intent(in) :: kill   ! kill the process after SCF
     deallocate(exi_T_j, exi_V_j)
     deallocate(oper4, oper6)
-    deallocate(isupp_ev_f, Rsd, DIISmat, ipiv)
+    deallocate(Rsd, DIISmat)
     deallocate(rho_history, rho_pre, rho_pre_pre)
     deallocate(swint)
     deallocate(Fock1, Fock2HFexc, Fock2HFcol)
@@ -847,7 +779,7 @@ module SCF
       deallocate(AO2MO, rho_m, Fock, orbE, oper3)
     end if
     ndschwarz = .true.
-    ini_rou = .true.
+    ini_rho = .true.
     if (DKH_order == 2) then
       deallocate(exSOC, AO2p2, evl_p2)
       if (SRTP_type) deallocate(exSR)
@@ -861,132 +793,54 @@ module SCF
   
 !------------------------------------------------------------
 !> initial guess and generate density matix
-  subroutine assign_rou()
+  subroutine assign_rho()
     implicit none
-    integer :: ploop_i,ploop_j,ploop_k! loop variables for subroutine assign_rou
-    integer :: mat_dimension
-    integer :: Na, Nb, degenlow, degenhigh, load, unload ! degenerat region
-    real(dp) :: rdMO(5)
+    integer              :: ploop_i,ploop_j,ploop_k    ! loop variables
+    integer              :: Na, Nb
+    integer              :: degenlow, degenhigh, load, unload ! degenerat region
+    real(dp)             :: rdMO(5)
     character(len = 512) :: line_str
-    if (ini_rou) then
-      ini_rou = .false.
+    if (ini_rho) then
+      ini_rho = .false.
       allocate(rho_m(2*sbdm,2*sbdm))
       allocate(AO2MO(2*sbdm,2*fbdm))
       Nalpha = (electron_count-(spin_mult-1))/2 + (spin_mult-1)
       Nbeta = (electron_count-(spin_mult-1))/2
-      
-      ! read MO coefficient
-      if (guess_type == 'gaussian') then
-        allocate(Gaualpha(sbdm*sbdm))
-        allocate(Gaubeta(sbdm*sbdm))
-        allocate(AO2MOalpha(sbdm,sbdm))
-        allocate(AO2MObeta(sbdm,sbdm))
-        open(61, file = trim(address_job)//'.gaualpha', &
-        status = 'old', action = 'read', iostat = ios)
-        if (ios /= 0) then
-          ios = system('rwfdump '//trim(address_job)//'.chk '&
-          //trim(address_job)//'.gaualpha 524R')
-          if (ios == -1) &
-          call terminate('Cannot generate .gaualpha for initial density matrix')
-          open(61, file = trim(address_job)//'.gaualpha', status = 'old', &
-          action = 'read', iostat = ios)
-          if (ios /= 0) &
-          call terminate('Cannot open .gaualpha for initial density matrix')
-        end if
-        open(62, file = trim(address_job)//'.gaubeta', &
-        status = 'old', action = 'read', iostat = ios)
-        if (ios /= 0) then
-          ios = system('rwfdump '//trim(address_job)//'.chk '&
-          //trim(address_job)//'.gaubeta 526R')
-          if (ios == -1) &
-          call terminate('Cannot generate .gaubeta for initial density matrix')
-          open(62, file = trim(address_job)//'.gaubeta', status = 'old', &
-          action = 'read', iostat = ios)
-          if (ios /= 0) &
-          call terminate('Cannot open .gaubeta for initial density matrix')
-        end if
-        do
-          read(61,'(a512)') line_str
-          if (index(line_str,'Dump of file') /= 0) exit
-        end do
-        if (index(line_str(index(line_Str,'length')-4:&
-        index(line_Str,'length')-2),'524') == 0) &
-        call terminate('Gaussian alpha orbital coefficient should be RWF 524')
-        read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),&
-        '(I8)',iostat = ios) mat_dimension
-        if (ios /= 0) call terminate('Unmatched Gaualpha content')
-        if (mat_dimension /= sbdm*sbdm) &
-        call terminate('Gaussian alpha orbital dimension not match')
-        do ploop_i=1,sbdm*sbdm/5
-          read(61,*) rdMO
-          Gaualpha((ploop_i-1)*5 + 1) = rdMO(1)
-          Gaualpha((ploop_i-1)*5 + 2) = rdMO(2)
-          Gaualpha((ploop_i-1)*5 + 3) = rdMO(3)
-          Gaualpha((ploop_i-1)*5 + 4) = rdMO(4)
-          Gaualpha((ploop_i-1)*5 + 5) = rdMO(5)
-        end do
-        ploop_i = ploop_i - 5
-        if (mod(sbdm*sbdm,5) /= 0) then
-          if (mod(sbdm*sbdm,5) == 1) read(61,*) Gaualpha(ploop_i*5 + 1)
-          if (mod(sbdm*sbdm,5) == 2) read(61,*) Gaualpha(ploop_i*5 + 1),&
-          Gaualpha(ploop_i*5 + 2)
-          if (mod(sbdm*sbdm,5) == 3) read(61,*) Gaualpha(ploop_i*5 + 1),&
-          Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3)
-          if (mod(sbdm*sbdm,5) == 4) read(61,*) Gaualpha(ploop_i*5 + 1),&
-          Gaualpha(ploop_i*5 + 2),Gaualpha(ploop_i*5 + 3),Gaualpha(ploop_i*5+4)
-        end if
-        AO2MOalpha = transpose(reshape(Gaualpha,[sbdm,sbdm]))
-        close(61)
-        do
-          read(62,'(a512)') line_str
-          if (index(line_str,'Dump of file') /= 0) exit
-        end do
-        if (index(line_str(index(line_Str,'length')-4:&
-        index(line_Str,'length')-2),'526') == 0) &
-        call terminate('Gaussian beta orbital coefficient should be RWF 526')
-        read(line_str(index(line_Str,'(')-9:index(line_Str,'(')-2),&
-        '(I8)',iostat = ios) mat_dimension
-        if (ios /= 0) call terminate('Unmatched Gaubeta content')
-        if (mat_dimension /= sbdm*sbdm) &
-        call terminate('Gaussian beta orbital dimension not match')
-        do ploop_i=1,sbdm*sbdm/5
-          read(62,*) rdMO
-          Gaubeta((ploop_i-1)*5 + 1) = rdMO(1)
-          Gaubeta((ploop_i-1)*5 + 2) = rdMO(2)
-          Gaubeta((ploop_i-1)*5 + 3) = rdMO(3)
-          Gaubeta((ploop_i-1)*5 + 4) = rdMO(4)
-          Gaubeta((ploop_i-1)*5 + 5) = rdMO(5)
-        end do
-        ploop_i = ploop_i - 5
-        if (mod(sbdm*sbdm,5) /= 0) then
-          if (mod(sbdm*sbdm,5) == 1) read(62,*) Gaubeta(ploop_i*5 + 1)
-          if (mod(sbdm*sbdm,5) == 2) read(62,*) Gaubeta(ploop_i*5 + 1),&
-          Gaubeta(ploop_i*5 + 2)
-          if (mod(sbdm*sbdm,5) == 3) read(62,*) Gaubeta(ploop_i*5 + 1),&
-          Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3)
-          if (mod(sbdm*sbdm,5) == 4) read(62,*) Gaubeta(ploop_i*5 + 1),&
-          Gaubeta(ploop_i*5 + 2),Gaubeta(ploop_i*5 + 3),Gaubeta(ploop_i*5 + 4)
-        end if
-        AO2MObeta = transpose(reshape(Gaubeta,[sbdm,sbdm]))
-        close(62)
-        deallocate(Gaualpha)
-        deallocate(Gaubeta)
+      ! load MO coefficient
+      !-------------------------load from molden-------------------------
+      if (guess_type == 'molden') then
+        call load_gb_molden(.true.)
+        if (m_atom_count /= atom_count) call terminate(&
+        'n_atoms in .molden is not consistent with n_atoms in .xyz')
+        write(60,'(A)') &
+        '  -- basis and geometry were loaded'
+        write(60,'(A,I4,A,I4)') '  -- m_cbdm / m_sbdm: ',m_cbdm, ' /', m_sbdm
+        allocate(m_AO2MO_a(m_sbdm,m_sbdm))
+        allocate(m_AO2MO_b(m_sbdm,m_sbdm))
+        allocate(t_AO2MO_a(sbdm,m_sbdm))
+        allocate(t_AO2MO_b(sbdm,m_sbdm))
+        call load_MO_molden(m_AO2MO_a, m_AO2MO_b)
+        write(60,'(A)') '  -- MO coeffs were loaded'
+        call m_basis_proj(m_AO2MO_a, t_AO2MO_a)
+        call m_basis_proj(m_AO2MO_b, t_AO2MO_b)
+        write(60,'(A)') '  -- MO coeffs were projected to current basis'
         rho_m = c0
         do ploop_i = 1,sbdm
           do ploop_j = 1,sbdm
             do ploop_k = 1,Nalpha
-              rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) +&
-              AO2MOalpha(ploop_k,ploop_i)*AO2MOalpha(ploop_k,ploop_j)
+              rho_m(ploop_i,ploop_j) = &
+              rho_m(ploop_i,ploop_j) + &
+              t_AO2MO_a(ploop_i,ploop_k)*t_AO2MO_a(ploop_j,ploop_k)
             end do
             do ploop_k = 1,Nbeta
               rho_m(sbdm+ploop_i,sbdm+ploop_j) = &
-              rho_m(sbdm+ploop_i,sbdm+ploop_j) +&
-              AO2MObeta(ploop_k,ploop_i)*AO2MObeta(ploop_k,ploop_j)
+              rho_m(sbdm+ploop_i,sbdm+ploop_j) + &
+              t_AO2MO_b(ploop_i,ploop_k)*t_AO2MO_b(ploop_j,ploop_k)
             end do
           end do
         end do
-        deallocate(AO2MOalpha)
-        deallocate(AO2MObeta)
+        deallocate(m_AO2MO_a, m_AO2MO_b, t_AO2MO_a, t_AO2MO_b)
+      !-------------------------load from .ao2mo-------------------------
       else if (guess_type == 'read') then
         call load_matrix('ao2mo', AO2MO, ploop_i, ploop_j)
         if (ploop_i /= 2*sbdm .or. ploop_j /= 2*fbdm) call terminate(&
@@ -1091,8 +945,7 @@ module SCF
           end do
         end do
         deallocate(rotation)
-        call zgemm( 'N', 'N', 2*sbdm, 2*fbdm, 2*fbdm, c1, exXm, 2*sbdm, &
-        oper3, 2*fbdm, c0, AO2MO, 2*sbdm)
+        call matmul('N', 'N', exXm, oper3, AO2MO)
         rho_m = c0
         do ploop_i = 1, 2*sbdm
           do ploop_j = 1, 2*sbdm
@@ -1133,7 +986,7 @@ module SCF
       write(60,'(A,F9.5)') '  -- total alpha electron  ',totalpha
       write(60,'(A,F9.5)') '  -- total beta electron   ',totbeta
     end if
-  end subroutine assign_rou
+  end subroutine assign_rho
   
 !------------------------------------------------------------
 !> construct one electron Fock matrix
@@ -1180,14 +1033,10 @@ module SCF
       end forall
       !----------------------
       ! Ap V Ap
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, Ap, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      i_V_j, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      Ap, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', Ap, AO2p2, oper2)
+      call matmul('N', 'N', oper2, i_V_j, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, Ap, oper1)
       AVA(1:fbdm,1:fbdm) = AVA(1:fbdm,1:fbdm) + oper1 * c1
       AVA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       AVA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1 * c1
@@ -1196,64 +1045,46 @@ module SCF
       !----------------------
       ! ApRp pxVpx+pyVpy+pzVpz ApRp
       temp_pool = pxVpx+pyVpy+pzVpz
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVRA(1:fbdm,1:fbdm) = ARVRA(1:fbdm,1:fbdm) + oper1 * c1
       ARVRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       ARVRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1 * c1
       !----------------------
       ! ApRp pxVpy-pyVpx ApRp
       temp_pool = pxVpy-pyVpx
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVRA(1:fbdm,1:fbdm) = ARVRA(1:fbdm,1:fbdm) + oper1 * ci
       ARVRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       ARVRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - oper1 * ci
       !----------------------
       ! ApRp pzVpx-pxVpz ApRp
       temp_pool = pzVpx-pxVpz
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVRA(fbdm+1:2*fbdm,1:fbdm) = ARVRA(fbdm+1:2*fbdm,1:fbdm) - oper1 * c1
       ARVRA(1:fbdm,fbdm+1:2*fbdm) = ARVRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * c1
       !----------------------
       ! ApRp pyVpz-pzVpy ApRp
       temp_pool = pyVpz-pzVpy
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVRA(fbdm+1:2*fbdm,1:fbdm) = ARVRA(fbdm+1:2*fbdm,1:fbdm) + oper1 * ci
       ARVRA(1:fbdm,fbdm+1:2*fbdm) = ARVRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * ci
       !----------------------
       Fock1 = Fock1 + AVA
       if (SRTP_type) then
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, SRp, 2*fbdm, &
-        ARVRA, 2*fbdm, c0, oper3, 2*fbdm)
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-        SRp, 2*fbdm, c0, oper4, 2*fbdm)
+        call matmul('N', 'N', SRp, ARVRA, oper3)
+        call matmul('N', 'N', oper3, SRp, oper4)
         Fock1 = Fock1 + oper4
         exSOC = ARVRA
       else
@@ -1265,14 +1096,10 @@ module SCF
         !----------------------
         ! ApRp (px3Vpx+py3Vpy+pz3Vpz+pxVpx3+pyVpy3+pzVpz3) ApRp
         temp_pool = px3Vpx+py3Vpy+pz3Vpz+transpose(px3Vpx+py3Vpy+pz3Vpz)
-        call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        ApRp, fbdm, 0.0_dp, oper1, fbdm)
+        call matmul('N', 'T', ApRp, AO2p2, oper2)
+        call matmul('N', 'N', oper2, temp_pool, oper1)
+        call matmul('N', 'N', oper1, AO2p2, oper2)
+        call matmul('N', 'N', oper2, ApRp, oper1)
         Fock1(1:fbdm,1:fbdm) = Fock1(1:fbdm,1:fbdm) - oper1/(2.0_dp*c2) * c1
         Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
         Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - oper1/(2.0_dp*c2) * c1
@@ -1282,14 +1109,10 @@ module SCF
         !----------------------
         ! ApRp (px3Vpy-py3Vpx+pxVpy3-pyVpx3) ApRp
         temp_pool = px3Vpy-py3Vpx+transpose(py3Vpx-px3Vpy)
-        call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        ApRp, fbdm, 0.0_dp, oper1, fbdm)
+        call matmul('N', 'T', ApRp, AO2p2, oper2)
+        call matmul('N', 'N', oper2, temp_pool, oper1)
+        call matmul('N', 'N', oper1, AO2p2, oper2)
+        call matmul('N', 'N', oper2, ApRp, oper1)
         Fock1(1:fbdm,1:fbdm) = Fock1(1:fbdm,1:fbdm) - oper1/(2.0_dp*c2) * ci
         Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
         Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1/(2.0_dp*c2) * ci
@@ -1299,14 +1122,10 @@ module SCF
         !----------------------
         ! ApRp (pz3Vpx-px3Vpz+pzVpx3-pxVpz3) ApRp
         temp_pool = pz3Vpx-px3Vpz+transpose(px3Vpz-pz3Vpx)
-        call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        ApRp, fbdm, 0.0_dp, oper1, fbdm)
+        call matmul('N', 'T', ApRp, AO2p2, oper2)
+        call matmul('N', 'N', oper2, temp_pool, oper1)
+        call matmul('N', 'N', oper1, AO2p2, oper2)
+        call matmul('N', 'N', oper2, ApRp, oper1)
         Fock1(fbdm+1:2*fbdm,1:fbdm) = &
         Fock1(fbdm+1:2*fbdm,1:fbdm) + oper1/(2.0_dp*c2) * c1
         Fock1(1:fbdm,fbdm+1:2*fbdm) = &
@@ -1318,14 +1137,10 @@ module SCF
         !----------------------
         ! ApRp (py3Vpz-pz3Vpy+pyVpz3-pzVpy3) ApRp
         temp_pool = py3Vpz-pz3Vpy+transpose(pz3Vpy-py3Vpz)
-        call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-        AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-        call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-        ApRp, fbdm, 0.0_dp, oper1, fbdm)
+        call matmul('N', 'T', ApRp, AO2p2, oper2)
+        call matmul('N', 'N', oper2, temp_pool, oper1)
+        call matmul('N', 'N', oper1, AO2p2, oper2)
+        call matmul('N', 'N', oper2, ApRp, oper1)
         Fock1(fbdm+1:2*fbdm,1:fbdm) = &
         Fock1(fbdm+1:2*fbdm,1:fbdm) - oper1/(2.0_dp*c2) * ci
         Fock1(1:fbdm,fbdm+1:2*fbdm) = &
@@ -1339,128 +1154,72 @@ module SCF
       ! start building Fock1
       do floop_j = 1, fbdm
         do floop_i = 1, fbdm
-          Ve(floop_i,floop_j) = i_V_j(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pxVepx(floop_i,floop_j) = pxVpx(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pyVepy(floop_i,floop_j) = pyVpy(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pzVepz(floop_i,floop_j) = pzVpz(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pxVepy(floop_i,floop_j) = pxVpy(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pyVepx(floop_i,floop_j) = pyVpx(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pxVepz(floop_i,floop_j) = pxVpz(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pzVepx(floop_i,floop_j) = pzVpx(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pyVepz(floop_i,floop_j) = pyVpz(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
-        end do
-      end do
-      do floop_j = 1, fbdm
-        do floop_i = 1, fbdm
-          pzVepy(floop_i,floop_j) = pzVpy(floop_i,floop_j)/&
-          (c * (edc(floop_i) + edc(floop_j)))
+          Ve(floop_i,floop_j) = i_V_j(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pxVepx(floop_i,floop_j) = pxVpx(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pyVepy(floop_i,floop_j) = pyVpy(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pzVepz(floop_i,floop_j) = pzVpz(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pxVepy(floop_i,floop_j) = pxVpy(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pyVepx(floop_i,floop_j) = pyVpx(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pxVepz(floop_i,floop_j) = pxVpz(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pzVepx(floop_i,floop_j) = pzVpx(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pyVepz(floop_i,floop_j) = pyVpz(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
+          pzVepy(floop_i,floop_j) = pzVpy(floop_i,floop_j) / &
+          (c*(edc(floop_i) + edc(floop_j)))
         end do
       end do
       !----------------------
       ! Ap Ve Ap
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, Ap, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      Ve, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      Ap, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', Ap, AO2p2, oper2)
+      call matmul('N', 'N', oper2, Ve, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, Ap, oper1)
       AVeA(1:fbdm,1:fbdm) = oper1 * c1
       AVeA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = oper1 * c1
       !----------------------
       ! ApRp pxVepx+pyVepy+pzVepz ApRp
       temp_pool = pxVepx+pyVepy+pzVepz
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVeRA(1:fbdm,1:fbdm) = ARVeRA(1:fbdm,1:fbdm) + oper1 * c1
       ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1 * c1
       !----------------------
       ! ApRp pxVepy-pyVepx ApRp
       temp_pool = pxVepy-pyVepx
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVeRA(1:fbdm,1:fbdm) = ARVeRA(1:fbdm,1:fbdm) + oper1 * ci
       ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - oper1 * ci
       !----------------------
       ! ApRp pzVepx-pxVepz ApRp
       temp_pool = pzVepx-pxVepz
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVeRA(fbdm+1:2*fbdm,1:fbdm) = ARVeRA(fbdm+1:2*fbdm,1:fbdm) - oper1 * c1
       ARVeRA(1:fbdm,fbdm+1:2*fbdm) = ARVeRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * c1
       !----------------------
       ! ApRp pyVepz-pzVepy ApRp
       temp_pool = pyVepz-pzVepy
-      call dgemm( 'N', 'T', fbdm, fbdm, fbdm, 1.0_dp, ApRp, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      temp_pool, fbdm, 0.0_dp, oper1, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper1, fbdm, &
-      AO2p2, fbdm, 0.0_dp, oper2, fbdm)
-      call dgemm( 'N', 'N', fbdm, fbdm, fbdm, 1.0_dp, oper2, fbdm, &
-      ApRp, fbdm, 0.0_dp, oper1, fbdm)
+      call matmul('N', 'T', ApRp, AO2p2, oper2)
+      call matmul('N', 'N', oper2, temp_pool, oper1)
+      call matmul('N', 'N', oper1, AO2p2, oper2)
+      call matmul('N', 'N', oper2, ApRp, oper1)
       ARVeRA(fbdm+1:2*fbdm,1:fbdm) = ARVeRA(fbdm+1:2*fbdm,1:fbdm) + oper1 * ci
       ARVeRA(1:fbdm,fbdm+1:2*fbdm) = ARVeRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * ci
       !----------------------
@@ -1468,25 +1227,17 @@ module SCF
       forall (floop_i = 1:2*fbdm)
         SRp(floop_i, floop_i) = 0.5_dp * c1
       end forall
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, ARVeRA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      AVA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', ARVeRA, oper5, oper3)
+      call matmul('N', 'N', oper3, AVA, oper4)
       Fock1 = Fock1 - oper4
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, ARVRA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      AVeA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', ARVRA, oper5, oper3)
+      call matmul('N', 'N', oper3, AVeA, oper4)
       Fock1 = Fock1 - oper4
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, AVeA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      ARVRA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', AVeA, oper5, oper3)
+      call matmul('N', 'N', oper3, ARVRA, oper4)
       Fock1 = Fock1 - oper4
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, AVA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      ARVeRA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', AVA, oper5, oper3)
+      call matmul('N', 'N', oper3, ARVeRA, oper4)
       Fock1 = Fock1 - oper4
       !----------------------
       ! term of order c^-4, positive terms
@@ -1498,15 +1249,11 @@ module SCF
         oper5(fbdm+floop_i,fbdm+floop_i) = &
         0.5_dp * ((edc(floop_i)+c)**2/evl_p2(floop_i)) * c1
       end forall
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, ARVeRA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      ARVRA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', ARVeRA, oper5, oper3)
+      call matmul('N', 'N', oper3, ARVRA, oper4)
       Fock1 = Fock1 + oper4
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, ARVRA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      ARVeRA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', ARVRA, oper5, oper3)
+      call matmul('N', 'N', oper3, ARVeRA, oper4)
       Fock1 = Fock1 + oper4
       forall (floop_i = 1:fbdm) ! RI extract
         oper5(floop_i,floop_i) = &
@@ -1514,15 +1261,11 @@ module SCF
         oper5(fbdm+floop_i,fbdm+floop_i) = &
         0.5_dp * (evl_p2(floop_i)/(edc(floop_i)+c)**2) * c1
       end forall
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, AVeA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      AVA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', AVeA, oper5, oper3)
+      call matmul('N', 'N', oper3, AVA, oper4)
       Fock1 = Fock1 + oper4
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, AVA, 2*fbdm, &
-      oper5, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, oper3, 2*fbdm, &
-      AVeA, 2*fbdm, c0, oper4, 2*fbdm)
+      call matmul('N', 'N', AVA, oper5, oper3)
+      call matmul('N', 'N', oper3, AVeA, oper4)
       Fock1 = Fock1 + oper4
       !----------------------
       ! kinetic energy
@@ -1540,27 +1283,17 @@ module SCF
       ! transform from p^2 eigenbasis to orthogonal normalized AO basis
       exAO2p2(1:fbdm,1:fbdm) = AO2p2 * c1
       exAO2p2(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = AO2p2 * c1
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      exAO2p2, 2*fbdm, Fock1, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, Fock1, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      exAO2p2, 2*fbdm, exi_T_j, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, exi_T_j, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      exAO2p2, 2*fbdm, exi_V_j, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, exi_V_j, 2*fbdm)
-      call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      exAO2p2, 2*fbdm, exSOC, 2*fbdm, c0, oper3, 2*fbdm)
-      call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-      oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, exSOC, 2*fbdm)
+      call matmul('N', 'N', exAO2p2, Fock1, oper3)
+      call matmul('N', 'T', oper3, exAO2p2, Fock1)
+      call matmul('N', 'N', exAO2p2, exi_T_j, oper3)
+      call matmul('N', 'T', oper3, exAO2p2, exi_T_j)
+      call matmul('N', 'N', exAO2p2, exi_V_j, oper3)
+      call matmul('N', 'T', oper3, exAO2p2, exi_V_j)
+      call matmul('N', 'N', exAO2p2, exSOC, oper3)
+      call matmul('N', 'T', oper3, exAO2p2, exSOC)
       if (SRTP_type) then
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-        exAO2p2, 2*fbdm, exSR, 2*fbdm, c0, oper3, 2*fbdm)
-        call zgemm( 'N', 'T', 2*fbdm, 2*fbdm, 2*fbdm, c1, &
-        oper3, 2*fbdm, exAO2p2, 2*fbdm, c0, exSR, 2*fbdm)
+        call matmul('N', 'N', exAO2p2, exSR, oper3)
+        call matmul('N', 'T', oper3, exAO2p2, exSR)
       end if
       deallocate(Ve, pxVepx, pyVepy, pzVepz, pxVepy, pyVepx)
       deallocate(pxVepz, pzVepx, pyVepz, pzVepy, ARVeRA, AVeA)
@@ -1643,25 +1376,19 @@ module SCF
       allocate(swint(cbdm,cbdm))
       swint = 0.0_dp
       do ui = 1, cbdm
-        contri = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % contr
-        Li = basis_inf(ui) % L
-        Mi = basis_inf(ui) % M
-        expi(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % expo(1:contri)
-        coei(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % Ncoe(1:contri,Mi)
-        codi = mol(basis_inf(ui)%atom) % pos
+        contri = basis_inf(ui) % contr
+        Li     = basis_inf(ui) % L
+        Mi     = basis_inf(ui) % M
+        expi(1:contri) = basis_inf(ui) % expo(1:contri)
+        coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
+        codi = basis_inf(ui) % pos
         do uj = ui, cbdm
-          contrj = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % contr
-          Lj = basis_inf(uj) % L
-          Mj = basis_inf(uj) % M
-          expj(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % expo(1:contrj)
-          coej(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % Ncoe(1:contrj,Mj)
-          codj = mol(basis_inf(uj)%atom) % pos
+          contrj = basis_inf(uj) % contr
+          Lj     = basis_inf(uj) % L
+          Mj     = basis_inf(uj) % M
+          expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
+          coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
+          codj = basis_inf(uj) % pos
           if (Li >= Lj) then
             do um = 1, contri
               do un = 1, contrj
@@ -1703,12 +1430,10 @@ module SCF
     end if
     if (s_h) then
       allocate(supp1(2*sbdm,2*cbdm))
-      call zgemm( 'N', 'C', 2*sbdm, 2*cbdm, 2*sbdm, c1, rho_m, &
-      2*sbdm, exc2s, 2*cbdm, c0, supp1, 2*sbdm)
+      call matmul('N', 'C', rho_m, exc2s, supp1)
       deallocate(rho_m)
       allocate(rho_m(2*cbdm,2*cbdm))
-      call zgemm( 'N', 'N', 2*cbdm, 2*cbdm, 2*sbdm, c1, exc2s, &
-      2*cbdm, supp1, 2*sbdm, c0, rho_m, 2*cbdm)
+      call matmul('N', 'N', exc2s, supp1, rho_m)
       deallocate(supp1)
     end if
     allocate(supp1(2*cbdm,2*cbdm))
@@ -1728,51 +1453,39 @@ module SCF
     do i = cbdm, 1, -1
       do j = cbdm, 1, -1
         !----------------------------<ui>-------------------------------------
-        ui = i
-        contri = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % contr
-        Li = basis_inf(ui) % L
-        Mi = basis_inf(ui) % M
-        expi(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % expo(1:contri)
-        coei(1:contri) = atom_basis(mol(basis_inf(ui)%atom)%&
-        basis_number+basis_inf(ui)%shell-1) % Ncoe(1:contri,Mi)
-        codi = mol(basis_inf(ui)%atom) % pos
+        ui     = i
+        contri = basis_inf(ui) % contr
+        Li     = basis_inf(ui) % L
+        Mi     = basis_inf(ui) % M
+        expi(1:contri) = basis_inf(ui) % expo(1:contri)
+        coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
+        codi = basis_inf(ui) % pos
         !----------------------------<uk>-----------------------------------
-        uk = j
-        contrk = atom_basis(mol(basis_inf(uk)%atom)%&
-        basis_number+basis_inf(uk)%shell-1) % contr
-        Lk = basis_inf(uk) % L
-        Mk = basis_inf(uk) % M
-        expk(1:contrk) = atom_basis(mol(basis_inf(uk)%atom)%&
-        basis_number+basis_inf(uk)%shell-1) % expo(1:contrk)
-        coek(1:contrk) = atom_basis(mol(basis_inf(uk)%atom)%&
-        basis_number+basis_inf(uk)%shell-1) % Ncoe(1:contrk,Mk)
-        codk = mol(basis_inf(uk)%atom) % pos
+        uk     = j
+        contrk = basis_inf(uk) % contr
+        Lk     = basis_inf(uk) % L
+        Mk     = basis_inf(uk) % M
+        expk(1:contrk) = basis_inf(uk) % expo(1:contrk)
+        coek(1:contrk) = basis_inf(uk) % Ncoe(1:contrk,Mk)
+        codk = basis_inf(uk) % pos
         !----------------------------<uj>---------------------------------
         do uj = ui, 1, -1
-          contrj = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % contr
-          Lj = basis_inf(uj) % L
-          Mj = basis_inf(uj) % M
-          expj(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % expo(1:contrj)
-          coej(1:contrj) = atom_basis(mol(basis_inf(uj)%atom)%&
-          basis_number+basis_inf(uj)%shell-1) % Ncoe(1:contrj,Mj)
+          contrj = basis_inf(uj) % contr
+          Lj     = basis_inf(uj) % L
+          Mj     = basis_inf(uj) % M
+          expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
+          coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
           codj = mol(basis_inf(uj)%atom) % pos
           !----------------------------<ul>-------------------------------
           do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |<ij||kl>| <= dsqrt(<ij||ij>) * dsqrt(<kl||kl>)
             if (dsqrt(swint(ui,uj)*swint(uk,ul)) < schwarz_VT) cycle
-            contrl = atom_basis(mol(basis_inf(ul)%atom)%&
-            basis_number+basis_inf(ul)%shell-1) % contr
-            Ll = basis_inf(ul) % L
-            Ml = basis_inf(ul) % M
-            expl(1:contrl) = atom_basis(mol(basis_inf(ul)%atom)%&
-            basis_number+basis_inf(ul)%shell-1) % expo(1:contrl)
-            coel(1:contrl) = atom_basis(mol(basis_inf(ul)%atom)%&
-            basis_number+basis_inf(ul)%shell-1) % Ncoe(1:contrl,Ml)
-            codl = mol(basis_inf(ul)%atom) % pos
+            contrl = basis_inf(ul) % contr
+            Ll     = basis_inf(ul) % L
+            Ml     = basis_inf(ul) % M
+            expl(1:contrl) = basis_inf(ul) % expo(1:contrl)
+            coel(1:contrl) = basis_inf(ul) % Ncoe(1:contrl,Ml)
+            codl = basis_inf(ul) % pos
             int = 0.0_dp
             !===========================<ij||kl>===============================
             if (Li >= Lj .and. Lk >= Ll) then
@@ -2130,56 +1843,44 @@ module SCF
         if (s_h) then
           allocate(oper5(2*cbdm,2*sbdm))
           ! exchange
-          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-          Fock2KSexc, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          call matmul('N', 'N', Fock2KSexc, exc2s, oper5)
           deallocate(Fock2KSexc)
           allocate(Fock2KSexc(2*sbdm,2*sbdm))
-          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KSexc, 2*sbdm)
+          call matmul('C', 'N', exc2s, oper5, Fock2KSexc)
           ! correlation
-          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-          Fock2KScor, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          call matmul('N', 'N', Fock2KScor, exc2s, oper5)
           deallocate(Fock2KScor)
           allocate(Fock2KScor(2*sbdm,2*sbdm))
-          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KScor, 2*sbdm)
+          call matmul('C', 'N', exc2s, oper5, Fock2KScor)
           deallocate(oper5)
         end if
         allocate(oper5(2*fbdm,2*sbdm))
         ! exchange
-        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
-        exXm, 2*sbdm, Fock2KSexc, 2*sbdm, c0, oper5, 2*fbdm)
+        call matmul('C', 'N', exXm, Fock2KSexc, oper5)
         deallocate(Fock2KSexc)
         allocate(Fock2KSexc(2*fbdm, 2*fbdm))
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KSexc, 2*fbdm)
+        call matmul('N', 'N', oper5, exXm, Fock2KSexc)
         ! correlation
-        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
-        exXm, 2*sbdm, Fock2KScor, 2*sbdm, c0, oper5, 2*fbdm)
+        call matmul('C', 'N', exXm, Fock2KScor, oper5)
         deallocate(Fock2KScor)
         allocate(Fock2KScor(2*fbdm, 2*fbdm))
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KScor, 2*fbdm)
+        call matmul('N', 'N', oper5, exXm, Fock2KScor)
       else
         call basis2grid_Becke(rho_m=rho_m, ex=KSexc, Fockx=Fock2KSexc)
         if (s_h) then
           allocate(oper5(2*cbdm,2*sbdm))
           ! exchange-correlation
-          call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-          Fock2KSexc, 2*cbdm, exc2s, 2*cbdm, c0, oper5, 2*cbdm)
+          call matmul('N', 'N', Fock2KSexc, exc2s, oper5)
           deallocate(Fock2KSexc)
           allocate(Fock2KSexc(2*sbdm,2*sbdm))
-          call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-          exc2s, 2*cbdm, oper5, 2*cbdm, c0, Fock2KSexc, 2*sbdm)
+          call matmul('C', 'N', exc2s, oper5, Fock2KSexc)
         end if
         allocate(oper5(2*fbdm,2*sbdm))
         ! exchange-correlation
-        call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
-        exXm, 2*sbdm, Fock2KSexc, 2*sbdm, c0, oper5, 2*fbdm)
+        call matmul('C', 'N', exXm, Fock2KSexc, oper5)
         deallocate(Fock2KSexc)
         allocate(Fock2KSexc(2*fbdm, 2*fbdm))
-        call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-        oper5, 2*fbdm, exXm, 2*sbdm, c0, Fock2KSexc, 2*fbdm)
+        call matmul('N', 'N', oper5, exXm, Fock2KSexc)
       end if
     end if
 
@@ -2188,75 +1889,36 @@ module SCF
     if (s_h) then
       ! transform to spherical-harmonic basis
       allocate(supp2(2*cbdm,2*sbdm))
-      call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-      rho_m, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
+      call matmul('N', 'N', rho_m, exc2s, supp2)
       deallocate(rho_m)
       allocate(rho_m(2*sbdm,2*sbdm))
-      call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-      exc2s, 2*cbdm, supp2, 2*cbdm, c0, rho_m, 2*sbdm)
+      call matmul('C', 'N', exc2s, supp2, rho_m)
     
       ! Coulomb
-      call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-      supp1, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
+      call matmul('N', 'N', supp1, exc2s, supp2)
       deallocate(supp1)
       allocate(supp1(2*sbdm,2*sbdm))
-      call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-      exc2s, 2*cbdm, supp2, 2*cbdm, c0, supp1, 2*sbdm)
+      call matmul('C', 'N', exc2s, supp2, supp1)
       ! Exchange
-      call zgemm( 'N', 'N', 2*cbdm, 2*sbdm, 2*cbdm, c1, &
-      supp3, 2*cbdm, exc2s, 2*cbdm, c0, supp2, 2*cbdm)
+      call matmul('N', 'N', supp3, exc2s, supp2)
       deallocate(supp3)
       allocate(supp3(2*sbdm,2*sbdm))
-      call zgemm( 'C', 'N', 2*sbdm, 2*sbdm, 2*cbdm, c1, &
-      exc2s, 2*cbdm, supp2, 2*cbdm, c0, supp3, 2*sbdm)
+      call matmul('C', 'N', exc2s, supp2, supp3)
       deallocate(supp2)
     end if
     
     ! orth to Fock2
     allocate(supp2(2*fbdm,2*sbdm))
     ! Coulomb
-    call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
-    exXm, 2*sbdm, supp1, 2*sbdm, c0, supp2, 2*fbdm)
-    call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-    supp2, 2*fbdm, exXm, 2*sbdm, c0, Fock2HFcol, 2*fbdm)
+    call matmul('C', 'N', exXm, supp1, supp2)
+    call matmul('N', 'N', supp2, exXm, Fock2HFcol)
     ! Exchange
-    call zgemm( 'C', 'N', 2*fbdm, 2*sbdm, 2*sbdm, c1, &
-    exXm, 2*sbdm, supp3, 2*sbdm, c0, supp2, 2*fbdm)
-    call zgemm( 'N', 'N', 2*fbdm, 2*fbdm, 2*sbdm, c1, &
-    supp2, 2*fbdm, exXm, 2*sbdm, c0, Fock2HFexc, 2*fbdm)
+    call matmul('C', 'N', exXm, supp3, supp2)
+    call matmul('N', 'N', supp2, exXm, Fock2HFexc)
     deallocate(supp1)
     deallocate(supp2)
     deallocate(supp3)
   end subroutine Fock2e
-
-!------------------------------------------------------------
-!> transfer alternating zero matrix to block matrix
-  subroutine atnz2block(atnz, dm)
-    implicit none
-    integer, intent(in) :: dm
-    integer :: aloop_i, aloop_j
-    complex(dp) :: atnz(dm,dm), aoper(dm,dm)
-    if (dm <= 1 .or. mod(dm,2) /= 0) &
-    call terminate('atnz2block called incorrectly')
-    aoper = atnz
-    do aloop_i = 1, dm
-      do aloop_j = 1, dm
-        if (aloop_i <= dm/2) then
-          if (aloop_j <= dm/2) then
-            atnz(aloop_i,aloop_j) = aoper(2*aloop_i-1,2*aloop_j-1)
-          else
-            atnz(aloop_i,aloop_j) = aoper(2*aloop_i-1,2*(aloop_j-dm/2))
-          end if
-        else
-          if (aloop_j <= dm/2) then
-            atnz(aloop_i,aloop_j) = aoper(2*(aloop_i-dm/2)-1,2*aloop_j)
-          else
-            atnz(aloop_i,aloop_j) = aoper(2*(aloop_i-dm/2),2*(aloop_j-dm/2))
-          end if
-        end if
-      end do
-    end do
-  end subroutine atnz2block
   
 !------------------------------------------------------------
 !> calculate <S**2> based on oper3 generated by SCF
@@ -2343,28 +2005,126 @@ module SCF
     totbetaorb*(totbetaorb-1.0)/2.0 - real(suppa*suppb)
     Szorb = (totalphaorb-totbetaorb)/2.0_dp
   end subroutine calc_S2HForb
-  
+
 !-----------------------------------------------------------------------
-!> dump mol orbital information to .molden.input file
+!> project AO2MO coefficient from m_basis to basis
+!!
+!! cB = i_j_s^(-1) . m_i_j . cA . XT
+!!
+!! cA(m_sbdm, m_sbdm), cB(sbdm, m_sbdm) number of project MOs is m_sbdm
+  subroutine m_basis_proj(cA, cB)
+    implicit none
+    real(dp),intent(in)  :: cA(m_sbdm, m_sbdm)
+    real(dp),intent(out) :: cB(sbdm, m_sbdm)
+    integer              :: pjloop_i, pjloop_j, pjloop_k, pjloop_m
+    integer              :: contri, contrj
+    integer              :: Li, Lj
+    integer              :: Mi, Mj
+    real(dp)             :: expi(16), expj(16)
+    real(dp)             :: coei(16), coej(16)
+    real(dp)             :: codi(3), codj(3)
+    real(dp),allocatable :: spp(:,:), spp2(:,:)
+    real(dp)             :: X(m_sbdm,m_sbdm)
+    real(dp)             :: i_j_inv(sbdm,sbdm)
+    real(dp)             :: m_min_evl
+    real(dp)             :: itmat(sbdm, m_sbdm)
+    real(dp)             :: sum
+    if (.not. allocated(m_i_j)) then
+      ! assign m_i_j
+      allocate(m_i_j(cbdm,m_cbdm), source=0.0_dp)
+      do pjloop_i = 1, cbdm
+        contri = basis_inf(pjloop_i) % contr
+        Li     = basis_inf(pjloop_i) % L
+        Mi     = basis_inf(pjloop_i) % M
+        expi(1:contri) = basis_inf(pjloop_i) % expo(1:contri)
+        coei(1:contri) = basis_inf(pjloop_i) % Ncoe(1:contri,Mi)
+        codi = basis_inf(pjloop_i) % pos
+        do pjloop_j = 1, m_cbdm
+          contrj = m_basis_inf(pjloop_j) % contr
+          Lj     = m_basis_inf(pjloop_j) % L
+          Mj     = m_basis_inf(pjloop_j) % M
+          expj(1:contrj) = m_basis_inf(pjloop_j) % expo(1:contrj)
+          coej(1:contrj) = m_basis_inf(pjloop_j) % Ncoe(1:contrj,Mj)
+          codj = m_basis_inf(pjloop_j) % pos
+          do pjloop_k = 1, contri
+            do pjloop_m = 1, contrj
+              m_i_j(pjloop_i,pjloop_j) = m_i_j(pjloop_i,pjloop_j) + &
+              Gaussian_Product_Integral(coei(pjloop_k)*coej(pjloop_m),&
+              AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),& 
+              expi(pjloop_k),expj(pjloop_m),codi,codj)
+            end do
+          end do
+        end do
+      end do
+      call m_assign_cs(.false.)
+      call m_sphehar(m_i_j)
+    end if
+    i_j_inv = i_j_s
+    call inverse(i_j_inv, sbdm)
+    ! itmat = i_j_s^(-1) . m_i_j . cA, itmat is not orthogonal
+    allocate(spp(sbdm,m_sbdm))
+    call matmul('N', 'N', m_i_j, cA, spp)
+    call matmul('N', 'N', i_j_inv, spp, itmat)
+    deallocate(spp)
+    ! symmetric orthogonalisation
+    ! XT.cBT.i_j_s.cB.X = I
+    ! note that this X is not same as Xm which satisfy Xm.i_j_s.XmT = I
+    ! cB is not orthogonal so we have to make whole MO(cBT.i_j_s.cB)
+    ! orthogonal instead of just AO(i_j_s)
+    allocate(spp(m_sbdm, sbdm))
+    allocate(spp2(m_sbdm, m_sbdm))
+    call matmul('T', 'N', itmat, i_j_s, spp)
+    call matmul('N', 'N', spp, itmat, spp2)
+    call symm_orth(spp2, m_sbdm, X, m_min_evl)
+    ! unlikely to meet linear dependency, because MO satisfy Pauli exclusion
+    ! principle so will not repeat each other
+    call matmul('N', 'N', itmat, X, cB)
+  end subroutine m_basis_proj
+
+!-----------------------------------------------------------------------
+!> dump mol orbital information to .molden.d file
+! AO2MO is like:
+!                  |                  |
+!                  |                  |
+!                  |                  |
+!                  |                  |
+! a part1 real&img | a part2 real&img |
+!                  |                  |
+!                  |                  |
+!__________________|__________________|
+!                  |                  |
+!                  |                  |
+!                  |                  |
+!                  |                  |
+! b part1 real&img | b part1 real&img |
+!                  |                  |
+!                  |                  |
+!__________________|__________________|
   subroutine dump_molden()
     implicit none
-    integer :: channel, dmi, dmj, dmk
+    character(len=200)     :: dir
+    integer                :: channel
+    integer                :: dmi, dmj, dmk     ! loop variables
+    dir = trim(address_job)//'.molden.d'
+    call execute_command_line('mkdir -p '//trim(dir), wait=.true., exitstat=ios)
+    if (ios /= 0) call terminate(&
+    "dump to molden failed, molden.d can't be created")
     if (.not. allocated(AO2MO)) &
-    call terminate('dump mol orbital failed, AO2MO is empty')
+    call terminate('dump to molden failed, AO2MO is empty')
     
-    ! molden file contains the real part of mol orbital
-    open(newunit=channel, file=trim(address_job)//'-real.molden.input', &
-    status='replace', action='write', iostat=ios)
-    if (ios /= 0) call terminate('dump .molden.input failed')
+    ! molden file contains the real part1 of AO2MO
+    open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+    '-realpart1.molden.input', status='replace', action='write', iostat=ios)
+    if (ios /= 0) call terminate('creat .molden.input failed')
     write(channel, '(A)') '[Molden Format]'
     write(channel, '(A)') '[Title]'
     write(channel, '(A)') &
-    'The real part of molecular orbitals of job '//trim(address_job)
+    'generated by TRESC, real part1 of MOs of job '//trim(address_job)
     write(channel, *)
     ! mol geometry
     write(channel, '(A)') '[Atoms] AU'
     do dmi = 1, atom_count
-      write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
+      write(channel, '(A,I4,I4,F16.10,F16.10,F16.10)') &
       element_list(mol(dmi)%atom_number), dmi, &
       mol(dmi)%atom_number, mol(dmi)%pos(1), &
       mol(dmi)%pos(2), mol(dmi)%pos(3)
@@ -2373,30 +2133,25 @@ module SCF
     write(channel, '(A)') '[GTO]'
     do dmi = 1, atom_count
       write(channel, '(I3,I2)') dmi, 0
-      do dmj = 0, shell_in_element(mol(dmi) % atom_number)-1
-        if (atom_basis(mol(dmi)%basis_number+dmj)%&
-        L == 0) then
-          write(channel, '(A2,I2,A)') 's', &
+      do dmj = 0, shell_in_element(mol(dmi)%atom_number)-1
+        if (atom_basis(mol(dmi)%basis_number+dmj)%L == 0) then
+          write(channel, '(A2,I3,A)') 's', &
           atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-        L == 1) then
-          write(channel, '(A2,I2,A)') 'p', &
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 1) then
+          write(channel, '(A2,I3,A)') 'p', &
           atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-        L == 2) then
-          write(channel, '(A2,I2,A)') 'd', &
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 2) then
+          write(channel, '(A2,I3,A)') 'd', &
           atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-        L == 3) then
-          write(channel, '(A2,I2,A)') 'f', &
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 3) then
+          write(channel, '(A2,I3,A)') 'f', &
           atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-        else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-        L == 4) then
-          write(channel, '(A2,I2,A)') 'g', &
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 4) then
+          write(channel, '(A2,I3,A)') 'g', &
           atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
         end if
         do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
-          write(channel, '(F13.7,F13.7)') &
+          write(channel, '(F20.10,F20.10)') &
           atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
           atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
         end do
@@ -2415,26 +2170,111 @@ module SCF
     ! MO coefficient
     write(channel, '(A)') '[MO]'
     do dmi = 1, fbdm
-      write(channel, '(A4,E23.14)') 'Ene=', orbE(dmi)
-      write(channel, '(A)') 'Spin= Alpha'
+      write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+      write(channel, '(A)') ' Spin= Alpha'
       call calc_S2HForb(dmi)
       if (dmi <= electron_count) then
-        write(channel, '(A7,F12.6)') 'Occup=', 0.5 + Szorb
+        write(channel, '(A7,F12.6)') ' Occup=', 0.5+Szorb
       else
-        write(channel, '(A)') 'Occup= 0.00'
+        write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
         write(channel, '(I4,F20.12)') dmj, real(AO2MO(dmj, dmi))
       end do
     end do
     do dmi = 1, fbdm
-      write(channel, '(A4,E23.14)') 'Ene=', orbE(dmi)
-      write(channel, '(A)') 'Spin= Beta'
+      write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+      write(channel, '(A)') ' Spin= Beta'
       call calc_S2HForb(dmi)
       if (dmi <= electron_count) then
-        write(channel, '(A7,F12.6)') 'Occup=', 0.5 - Szorb
+        write(channel, '(A7,F12.6)') ' Occup=', 0.5-Szorb
       else
-        write(channel, '(A)') 'Occup= 0.00'
+        write(channel, '(A)') ' Occup=    0.000000'
+      end if
+      do dmj = 1, sbdm
+        write(channel, '(I4,F20.12)') dmj, real(AO2MO(sbdm+dmj, dmi))
+      end do
+    end do
+    close(channel)
+
+    ! molden file contains the real part2 of AO2MO
+    open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+    '-realpart2.molden.input', status='replace', action='write', iostat=ios)
+    if (ios /= 0) call terminate('creat .molden.input failed')
+    write(channel, '(A)') '[Molden Format]'
+    write(channel, '(A)') '[Title]'
+    write(channel, '(A)') &
+    'generated by TRESC, real part2 of MOs of job '//trim(address_job)
+    write(channel, *)
+    ! mol geometry
+    write(channel, '(A)') '[Atoms] AU'
+    do dmi = 1, atom_count
+      write(channel, '(A,I4,I4,F16.10,F16.10,F16.10)') &
+      element_list(mol(dmi)%atom_number), dmi, &
+      mol(dmi)%atom_number, mol(dmi)%pos(1), &
+      mol(dmi)%pos(2), mol(dmi)%pos(3)
+    end do
+    ! basis of each atom
+    write(channel, '(A)') '[GTO]'
+    do dmi = 1, atom_count
+      write(channel, '(I3,I2)') dmi, 0
+      do dmj = 0, shell_in_element(mol(dmi)%atom_number)-1
+        if (atom_basis(mol(dmi)%basis_number+dmj)%L == 0) then
+          write(channel, '(A2,I3,A)') 's', &
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 1) then
+          write(channel, '(A2,I3,A)') 'p', &
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 2) then
+          write(channel, '(A2,I3,A)') 'd', &
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 3) then
+          write(channel, '(A2,I3,A)') 'f', &
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 4) then
+          write(channel, '(A2,I3,A)') 'g', &
+          atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+        end if
+        do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
+          write(channel, '(F20.10,F20.10)') &
+          atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
+          atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
+        end do
+      end do
+      write(channel, *)
+    end do
+    if (s_h) then
+      write(channel, '(A)') '[5D]'
+      write(channel, '(A)') '[7F]'
+      write(channel, '(A)') '[9G]'
+    else
+      write(channel, '(A)') '[6D]'
+      write(channel, '(A)') '[10F]'
+      write(channel, '(A)') '[15G]'
+    end if
+    ! MO coefficient
+    write(channel, '(A)') '[MO]'
+    do dmi = fbdm+1, 2*fbdm
+      write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+      write(channel, '(A)') ' Spin= Alpha'
+      call calc_S2HForb(dmi)
+      if (dmi <= electron_count) then
+        write(channel, '(A7,F12.6)') ' Occup=', 0.5+Szorb
+      else
+        write(channel, '(A)') ' Occup=    0.000000'
+      end if
+      do dmj = 1, sbdm
+        write(channel, '(I4,F20.12)') dmj, real(AO2MO(dmj, dmi))
+      end do
+    end do
+    do dmi = fbdm+1, 2*fbdm
+      write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+      write(channel, '(A)') ' Spin= Beta'
+      call calc_S2HForb(dmi)
+      if (dmi <= electron_count) then
+        write(channel, '(A7,F12.6)') ' Occup=', 0.5-Szorb
+      else
+        write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
         write(channel, '(I4,F20.12)') dmj, real(AO2MO(sbdm+dmj, dmi))
@@ -2442,20 +2282,20 @@ module SCF
     end do
     close(channel)
     
-    if (DKH_order /= 0) then
-      ! molden file contains the maginary part of mol orbital
-      open(newunit=channel, file=trim(address_job)//'-img.molden.input', &
-      status='replace', action='write', iostat=ios)
-      if (ios /= 0) call terminate('dump .molden.input failed')
+    if (DKH_order == 2) then
+      ! molden file contains the imaginary part1 of AO2MO
+      open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+      '-imgpart1.molden.input', status='replace', action='write', iostat=ios)
+      if (ios /= 0) call terminate('creat .molden.input failed')
       write(channel, '(A)') '[Molden Format]'
       write(channel, '(A)') '[Title]'
       write(channel, '(A)') &
-      'The imaginary part of molecular orbitals of job '//trim(address_job)
+      'generated by TRESC, imaginary part1 of MOs of job '//trim(address_job)
       write(channel, *)
       ! mol geometry
       write(channel, '(A)') '[Atoms] AU'
       do dmi = 1, atom_count
-        write(channel, '(A,I3,I3,F13.7,F13.7,F13.7)') &
+        write(channel, '(A,I4,I4,F16.10,F16.10,F16.10)') &
         element_list(mol(dmi)%atom_number), dmi, &
         mol(dmi)%atom_number, mol(dmi)%pos(1), &
         mol(dmi)%pos(2), mol(dmi)%pos(3)
@@ -2464,30 +2304,25 @@ module SCF
       write(channel, '(A)') '[GTO]'
       do dmi = 1, atom_count
         write(channel, '(I3,I2)') dmi, 0
-        do dmj = 0, shell_in_element(mol(dmi) % atom_number)-1
-          if (atom_basis(mol(dmi)%basis_number+dmj)%&
-          L == 0) then
-            write(channel, '(A2,I2,A)') 's', &
+        do dmj = 0, shell_in_element(mol(dmi)%atom_number)-1
+          if (atom_basis(mol(dmi)%basis_number+dmj)%L == 0) then
+            write(channel, '(A2,I3,A)') 's', &
             atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-          L == 1) then
-            write(channel, '(A2,I2,A)') 'p', &
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 1) then
+            write(channel, '(A2,I3,A)') 'p', &
             atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-          L == 2) then
-            write(channel, '(A2,I2,A)') 'd', &
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 2) then
+            write(channel, '(A2,I3,A)') 'd', &
             atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-          L == 3) then
-            write(channel, '(A2,I2,A)') 'f', &
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 3) then
+            write(channel, '(A2,I3,A)') 'f', &
             atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
-          else if (atom_basis(mol(dmi)%basis_number+dmj)%&
-          L == 4) then
-            write(channel, '(A2,I2,A)') 'g', &
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 4) then
+            write(channel, '(A2,I3,A)') 'g', &
             atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
           end if
           do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
-            write(channel, '(F13.7,F13.7)') &
+            write(channel, '(F20.10,F20.10)') &
             atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
             atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
           end do
@@ -2506,26 +2341,111 @@ module SCF
       ! MO coefficient
       write(channel, '(A)') '[MO]'
       do dmi = 1, fbdm
-        write(channel, '(A4,E23.14)') 'Ene=', orbE(dmi)
-        write(channel, '(A)') 'Spin= Alpha'
+        write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+        write(channel, '(A)') ' Spin= Alpha'
         call calc_S2HForb(dmi)
         if (dmi <= electron_count) then
-          write(channel, '(A7,F12.6)') 'Occup=', 0.5 + Szorb
+          write(channel, '(A7,F12.6)') ' Occup=', 0.5+Szorb
         else
-          write(channel, '(A)') 'Occup= 0.000'
+          write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
           write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(dmj, dmi))
         end do
       end do
       do dmi = 1, fbdm
-        write(channel, '(A4,E23.14)') 'Ene=', orbE(dmi)
-        write(channel, '(A)') 'Spin= Beta'
+        write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+        write(channel, '(A)') ' Spin= Beta'
         call calc_S2HForb(dmi)
         if (dmi <= electron_count) then
-          write(channel, '(A7,F12.6)') 'Occup=', 0.5 - Szorb
+          write(channel, '(A7,F12.6)') ' Occup=', 0.5-Szorb
         else
-          write(channel, '(A)') 'Occup= 0.000'
+          write(channel, '(A)') ' Occup=    0.000000'
+        end if
+        do dmj = 1, sbdm
+          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(sbdm+dmj, dmi))
+        end do
+      end do
+      close(channel)
+
+      ! molden file contains the imaginary part2 of AO2MO
+      open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+      '-imgpart2.molden.input', status='replace', action='write', iostat=ios)
+      if (ios /= 0) call terminate('creat .molden.input failed')
+      write(channel, '(A)') '[Molden Format]'
+      write(channel, '(A)') '[Title]'
+      write(channel, '(A)') &
+      'generated by TRESC, imaginary part2 of MOs of job '//trim(address_job)
+      write(channel, *)
+      ! mol geometry
+      write(channel, '(A)') '[Atoms] AU'
+      do dmi = 1, atom_count
+        write(channel, '(A,I4,I4,F16.10,F16.10,F16.10)') &
+        element_list(mol(dmi)%atom_number), dmi, &
+        mol(dmi)%atom_number, mol(dmi)%pos(1), &
+        mol(dmi)%pos(2), mol(dmi)%pos(3)
+      end do
+      ! basis of each atom
+      write(channel, '(A)') '[GTO]'
+      do dmi = 1, atom_count
+        write(channel, '(I3,I2)') dmi, 0
+        do dmj = 0, shell_in_element(mol(dmi)%atom_number)-1
+          if (atom_basis(mol(dmi)%basis_number+dmj)%L == 0) then
+            write(channel, '(A2,I3,A)') 's', &
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 1) then
+            write(channel, '(A2,I3,A)') 'p', &
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 2) then
+            write(channel, '(A2,I3,A)') 'd', &
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 3) then
+            write(channel, '(A2,I3,A)') 'f', &
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          else if (atom_basis(mol(dmi)%basis_number+dmj)%L == 4) then
+            write(channel, '(A2,I3,A)') 'g', &
+            atom_basis(mol(dmi)%basis_number+dmj)%contr,' 1.0'
+          end if
+          do dmk = 1, atom_basis(mol(dmi)%basis_number+dmj)%contr
+            write(channel, '(F20.10,F20.10)') &
+            atom_basis(mol(dmi)%basis_number+dmj)%expo(dmk), &
+            atom_basis(mol(dmi)%basis_number+dmj)%coe(dmk)
+          end do
+        end do
+        write(channel, *)
+      end do
+      if (s_h) then
+        write(channel, '(A)') '[5D]'
+        write(channel, '(A)') '[7F]'
+        write(channel, '(A)') '[9G]'
+      else
+        write(channel, '(A)') '[6D]'
+        write(channel, '(A)') '[10F]'
+        write(channel, '(A)') '[15G]'
+      end if
+      ! MO coefficient
+      write(channel, '(A)') '[MO]'
+      do dmi = fbdm+1, 2*fbdm
+        write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+        write(channel, '(A)') ' Spin= Alpha'
+        call calc_S2HForb(dmi)
+        if (dmi <= electron_count) then
+          write(channel, '(A7,F12.6)') ' Occup=', 0.5+Szorb
+        else
+          write(channel, '(A)') ' Occup=    0.000000'
+        end if
+        do dmj = 1, sbdm
+          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(dmj, dmi))
+        end do
+      end do
+      do dmi = fbdm+1, 2*fbdm
+        write(channel, '(A5,E23.14)') ' Ene=', orbE(dmi)
+        write(channel, '(A)') ' Spin= Beta'
+        call calc_S2HForb(dmi)
+        if (dmi <= electron_count) then
+          write(channel, '(A7,F12.6)') ' Occup=', 0.5-Szorb
+        else
+          write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
           write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(sbdm+dmj, dmi))
