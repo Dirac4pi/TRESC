@@ -16,13 +16,10 @@ module Hamiltonian
   use OMP_LIB
 
 ! <AOi|AOj> related
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_j, i_j_s, m_i_j, Xm, exXm
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_j, i_j_s, m_i_j
   real(dp),allocatable    :: i_j(:,:)      ! <AOi|AOj>
   real(dp),allocatable    :: i_j_s(:,:)    ! <AOi|AOj> (sphe-har, reverse then)
   real(dp),allocatable    :: m_i_j(:,:)    ! <AOi|AOjm>
-  real(dp),allocatable    :: Xm(:,:)       ! orthogonal transform unitary matrix
-  real(dp)                :: min_evl       ! smallest eigenvalue of i_j
-  complex(dp),allocatable :: exXm(:,:)     ! extended Xm matrix
 
 ! <AOi|p^2|AOj> related
   !DIR$ ATTRIBUTES ALIGN:align_size :: i_p2_j, AO2p2, evl_p2, exi_T_j
@@ -105,7 +102,6 @@ module Hamiltonian
     write(60,'(A)') '  complete! stored in: NX_mic, NXint, NXint_'
     write(60,'(A)') '  ----------<1E INTEGRALS>----------'
     
-    
 !------------------<NONRELATIVISTIC HAMILTONIAN>------------------
     if (DKH_order == 0) then
       write(60,'(A)') &
@@ -114,50 +110,22 @@ module Hamiltonian
       ! 1e integral calculation 
       write(60,'(A)') '  one electron integral calculation'
       call assign_matrices_1e()
-      write(60,'(A)') &
-      '  complete! stored in:'
+      write(60,'(A)') '  complete! stored in:'
       write(60,'(A)') '  i_j, i_p2_j, i_V_j'
-      if (s_h) then
-        ! transform to spherical-harmonic basis
-        write(60,"(A)") '  perform spherical-harmonic basis transformation'
-        call assign_cs(.true.)
-        call sphehar(i_j)
-        if (guess_type == 'molden') then
-          allocate(i_j_s(sbdm,sbdm))
-          i_j_s = i_j
-        end if
-        call sphehar(i_V_j)
-        call sphehar(i_p2_j)
-        write(60,"(A)") &
-        '  complete! spherical-harmonic basis (5D,7F,9G) involved.'
+      ! cbdm -> sbdm -> fbdm
+      write(60,"(A)") '  perform basis transformation'
+      if (guess_type == 'molden') then
+        allocate(i_j_s(cbdm,cbdm))
+        i_j_s = i_j
       end if
-      ! symmetric orthogonalisation
-      write(60,'(A,E10.3)') &
-      '  symmetric orthogonalisation of 1e integrals, cutS = ', cutS
-      allocate(Xm(sbdm,sbdm))
-      call symm_orth(i_j, sbdm, Xm, min_evl)
-      if (min_evl < 0.0) &
-      call terminate('evl(i_j) less than zero, may due to code error')
-      if (min_evl < cutS) then
-        write(60,'(A,F9.6,A)') &
-        '  complete! smallest eigenvalue = ', min_evl, ', less than cutS'
-        write(60,'(A)') '  canonical orthogonalisation of 1e integrals'
-        deallocate(Xm)
-        call can_orth(i_j, sbdm, Xm, fbdm)
+      call assign_csf(i_j)
+      if (guess_type == 'molden') call csgo(i_j_s)
+      call cfgo(i_V_j)
+      call cfgo(i_p2_j)
+      if (fbdm == sbdm) then
+        write(60,"(A)") '  complete! by symm_orth.'
       else
-        fbdm = sbdm
-      end if
-      allocate(exXm(2*sbdm,2*fbdm),source=c0)
-      exXm(1:sbdm,1:fbdm) = Xm * c1
-      exXm(sbdm+1:2*sbdm,fbdm+1:2*fbdm) = Xm * c1
-      ! transpose(Xm)(Xm)=I
-      call detach(i_j)
-      call detach(i_p2_j)
-      call detach(i_V_j)
-      if (min_evl < cutS) then
-        write(60,'(A,I4)') '  complete! basis dimension reduce to ', fbdm
-      else
-        write(60,'(A,F9.6)') '  complete! smallest eigenvalue = ', min_evl
+        write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
       end if
       
 !------------------<DKH2 HAMILTONIAN>------------------
@@ -177,97 +145,45 @@ module Hamiltonian
       write(60,'(A)') '  complete! stored in:'
       write(60,'(A)') '  i_j, i_p2_j, i_V_j, i_pVp_j (9 matrices)'
       if (SRTP_type) write(60,'(A)') '  i_pppVp_j (9 matrices)'
-      if (s_h) then
-        ! transform to spherical-harmonic basis
-        write(60,"(A)") '  perform spherical-harmonic basis transformation'
-        call assign_cs(.true.)
-        call sphehar(i_j)
-        if (guess_type == 'molden') then
-          allocate(i_j_s(sbdm,sbdm))
-          i_j_s = i_j
-        end if
-        call sphehar(i_V_j)
-        call sphehar(i_p2_j)
-        call sphehar(pxVpx)
-        call sphehar(pyVpy)
-        call sphehar(pzVpz)
-        call sphehar(pxVpy)
-        call sphehar(pyVpx)
-        call sphehar(pxVpz)
-        call sphehar(pzVpx)
-        call sphehar(pyVpz)
-        call sphehar(pzVpy)
-        if (SRTP_type) then
-          call sphehar(px3Vpx)
-          call sphehar(py3Vpy)
-          call sphehar(pz3Vpz)
-          call sphehar(px3Vpy)
-          call sphehar(py3Vpx)
-          call sphehar(px3Vpz)
-          call sphehar(pz3Vpx)
-          call sphehar(py3Vpz)
-          call sphehar(pz3Vpy)
-        end if
-        write(60,"(A)") &
-        '  complete! spherical-harmonic basis (5D,7F,9G) involved.'
+      ! cbdm -> sbdm -> fbdm
+      write(60,"(A)") '  perform basis transformation'
+      if (guess_type == 'molden') then
+        allocate(i_j_s(cbdm,cbdm))
+        i_j_s = i_j
       end if
-      ! symmetric orthogonalisation
-      write(60,'(A)') '  symmetric orthogonalisation of 1e integrals'
-      allocate(Xm(sbdm, sbdm))
-      call symm_orth(i_j, sbdm, Xm, min_evl)
-      if (min_evl < 0.0) &
-      call terminate('evl(i_j) less than zero, may due to code error')
-      if (min_evl < cutS) then
-        if (min_evl > safmin) then
-          write(60,'(A,F9.6,A)') &
-          '  complete! smallest eigenvalue = ', min_evl, ', less than cutS'
-        end if
-        write(60,'(A)') '  canonical orthogonalisation of 1e integrals'
-        deallocate(Xm)
-        call can_orth(i_j, sbdm, Xm, fbdm)
-      else
-        fbdm = sbdm
-      end if
-      allocate(exXm(2*sbdm,2*fbdm),source=c0)
-      exXm(1:sbdm,1:fbdm) = Xm * c1
-      exXm(sbdm+1:2*sbdm,fbdm+1:2*fbdm) = Xm * c1
-      ! transpose(Xm)(Xm)=I
-      call detach(i_j)
-      call detach(i_p2_j)
-      call detach(i_V_j)
-      !-------------------------------------------
-      call detach(pxVpx)
-      call detach(pyVpy)
-      call detach(pzVpz)
-      call detach(pxVpy)
-      call detach(pyVpx)
-      call detach(pxVpz)
-      call detach(pzVpx)
-      call detach(pyVpz)
-      call detach(pzVpy)
+      call assign_csf(i_j)
+      if (guess_type == 'molden') call csgo(i_j_s)
+      call cfgo(i_V_j)
+      call cfgo(i_p2_j)
+      call cfgo(pxVpx)
+      call cfgo(pyVpy)
+      call cfgo(pzVpz)
+      call cfgo(pxVpy)
+      call cfgo(pyVpx)
+      call cfgo(pxVpz)
+      call cfgo(pzVpx)
+      call cfgo(pyVpz)
+      call cfgo(pzVpy)
       if (SRTP_type) then
-        call detach(px3Vpx)
-        call detach(py3Vpy)
-        call detach(pz3Vpz)
-        call detach(px3Vpy)
-        call detach(py3Vpx)
-        call detach(px3Vpz)
-        call detach(pz3Vpx)
-        call detach(py3Vpz)
-        call detach(pz3Vpy)
+        call cfgo(px3Vpx)
+        call cfgo(py3Vpy)
+        call cfgo(pz3Vpz)
+        call cfgo(px3Vpy)
+        call cfgo(py3Vpx)
+        call cfgo(px3Vpz)
+        call cfgo(pz3Vpx)
+        call cfgo(py3Vpz)
+        call cfgo(pz3Vpy)
       end if
-      if (min_evl < cutS) then
-        write(60,'(A,I4)') '  complete! basis dimension reduce to ', fbdm
+      if (fbdm == sbdm) then
+        write(60,"(A)") '  complete! by symm_orth.'
       else
-        write(60,'(A,F9.6)') '  complete! smallest eigenvalue = ', min_evl
+        write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
       end if
-      
-      
       ! <AOi|p^2|AOj> diagonalization
       write(60,'(A)') '  <AOi|p^2|AOj> diagonalization'
       allocate(AO2p2(fbdm,fbdm))
       allocate(evl_p2(fbdm))
-      
       call diag(i_p2_j, fbdm, AO2p2, evl_p2)
       do loop_i = 1, fbdm
         if (evl_p2(loop_i) < 0.0) &
@@ -1176,8 +1092,8 @@ module Hamiltonian
     fackl1 = fack + facl + 1
     !=============================================================
     ! Rys quadrature for low angular momentum Gaussian functions
-    if (int(nt/2.0) + 1 <= 5) then
-      nroots = int(nt/2.0) + 1
+    if (int(real(nt)/2.0) + 1 <= 5) then
+      nroots = int(real(nt)/2.0) + 1
       ! call rys_roots(libcint-like), GRysroots(GAMESS-like)
       call GRysroots(nroots, X, u, w)
       int = 0.0_dp
@@ -1271,7 +1187,6 @@ module Hamiltonian
           tayeps = 30
           xts = 4.0
       end select
-
       Gnm = 0.0_dp
       !---------------------------------------------------------------------
       ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
@@ -1448,203 +1363,11 @@ module Hamiltonian
       end if
     end do
     NXint = 0.0_dp
-    do ii = 1, 32
-      NXint(ii) = (-1.0_dp)**(ii+1)*(0.5_dp/factorial(ii))
-    end do
     NXint_ = 0.0_dp
     do ii = 1, 32
+      NXint(ii) = (-1.0_dp)**(ii+1)*(0.5_dp/factorial(ii))
       NXint_(ii) = (-1.0_dp)**(ii+1)*(1.0_dp/(real(2*ii-1)*factorial(ii-1)))
     end do
   end subroutine int_init
-  
-!-----------------------------------------------------------------------
-!> transfer matrix on Cartesian basis to matrix on spher-harmo basis
-  subroutine sphehar(m)
-    implicit none
-    real(dp),allocatable :: m(:,:) ! target matrix
-    real(dp),allocatable :: sphoper(:,:)
-    if (.not. allocated(c2s)) &
-    call terminate('call sphehar error, c2s not allocated')
-    if (.not. allocated(m)) &
-    call terminate('call sphehar error, matrix not allocated')
-    allocate(sphoper(cbdm,sbdm))
-    call matmul('N', 'N', m, c2s, sphoper)
-    deallocate(m)
-    allocate(m(sbdm,sbdm))
-    call matmul('T', 'N', c2s, sphoper, m)
-    deallocate(sphoper)
-  end subroutine sphehar
-
-!-----------------------------------------------------------------------
-!> transfer matrix on Cartesian basis to matrix on spher-harmo basis
-!!
-!! m(cbdm,m_cbdm) -> m(sbdm,m_sbdm)
-  subroutine m_sphehar(m)
-    implicit none
-    real(dp),allocatable :: m(:,:) ! target matrix
-    real(dp),allocatable :: sphoper(:,:)
-    if (.not. allocated(m_c2s)) &
-    call terminate('call m_sphehar error, m_c2s not allocated')
-    if (.not. allocated(c2s)) &
-    call terminate('call m_sphehar error, c2s not allocated')
-    if (.not. allocated(m)) &
-    call terminate('call m_sphehar error, matrix not allocated')
-    allocate(sphoper(cbdm,m_sbdm))
-    call matmul('N', 'N', m, m_c2s, sphoper)
-    deallocate(m)
-    allocate(m(sbdm,m_sbdm))
-    call matmul('T', 'N', c2s, sphoper, m)
-    deallocate(sphoper)
-  end subroutine m_sphehar
-  
-!-----------------------------------------------------------------------
-!> transfer matrix on spher-harmo basis to elimination linear dependence
-  subroutine detach(m)
-    implicit none
-    real(dp),allocatable :: m(:, :) ! target matrix
-    real(dp),allocatable :: detoper(:,:)
-    if (.not. allocated(Xm)) &
-    call terminate('call detach error, Xm not allocated')
-    if (.not. allocated(m)) &
-    call terminate('call detach error, matrix not allocated')
-    allocate(detoper(fbdm, sbdm))
-    call matmul('T', 'N', Xm, m, detoper)
-    deallocate(m)
-    allocate(m(fbdm, fbdm))
-    call matmul('N', 'N', detoper, Xm, m)
-    deallocate(detoper)
-  end subroutine detach
-
-!-----------------------------------------------------------------------
-!> fast factorial of given a
-  pure elemental real(dp) function factorial(a)
-    implicit none
-    integer,intent(in) :: a
-    integer :: na
-    select case (a)
-    case (0)
-      factorial = 1.0_dp
-    case (1)
-      factorial = 1.0_dp
-    case (2)
-      factorial = 2.0_dp
-    case (3)
-      factorial = 6.0_dp
-    case (4)
-      factorial = 24.0_dp
-    case (5)
-      factorial = 120.0_dp
-    case (6)
-      factorial = 720.0_dp
-    case (7)
-      factorial = 5054.0_dp
-    case (8)
-      factorial = 40320.0_dp
-    case (9)
-      factorial = 362880.0_dp
-    case (10)
-      factorial = 3628800.0_dp
-    case (11)
-      factorial = 39916800.0_dp
-    case (12)
-      factorial = 479001600.0_dp
-    case (13)
-      factorial = 6227020800.0_dp
-    case (14)
-      factorial = 87178291200.0_dp
-    case (15)
-      factorial = 1307674368000.0_dp
-    case (16)
-      factorial = 20922789888000.0_dp
-    end select
-    if (a <= 16) then
-      return
-    else
-      factorial = 20922789888000.0_dp
-      do na = 17, a
-        factorial = factorial * real(na)
-      end do
-    end if
-    return
-  end function factorial
-  
-!-----------------------------------------------------------------------
-!> fast bionomial coefficient of given N, M (C_N^M)
-!!
-!! M <= 9: return
-!!
-!! 9 < M <= 13: recursive
-!!
-!! M > 13: direct
-  pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
-    implicit none
-    integer,intent(in) :: N,M
-    integer :: bloop_i, numerator, denominator
-    if (M == 0 .or. N == 0 .or. M == N) then
-      bicoe = 1.0
-      return
-    else if (M == 1) then
-      bicoe = real(N,dp)
-      return
-    else if (2*M > N) then
-      bicoe = binomialcoe(N,N-M)
-      return
-    end if
-    select case (N)
-    case (4)
-      bicoe = 6.0_dp
-    case (5)
-      bicoe = 10.0_dp
-    case (6)
-      select case (M)
-      case (2)
-        bicoe = 15.0_dp
-      case (3)
-        bicoe = 20.0_dp
-      end select
-    case (7)
-      select case (M)
-      case (2)
-        bicoe = 21.0_dp
-      case (3)
-        bicoe = 35.0_dp
-      end select
-    case (8)
-      select case (M)
-      case (2)
-        bicoe = 28.0_dp
-      case (3)
-        bicoe = 56.0_dp
-      case (4)
-        bicoe = 70.0_dp
-      end select
-    case (9)
-      select case (M)
-      case (2)
-        bicoe = 36.0_dp
-      case (3)
-        bicoe = 84.0_dp
-      case (4)
-        bicoe = 126.0_dp
-      end select
-    end select
-    if (N <= 9) then
-      return
-    else if (N <= 13) then
-      bicoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
-      return
-    else
-      bicoe = 1.0
-      numerator = 1
-      bloop_i = N
-      do while(bloop_i > M)
-        numerator = numerator * bloop_i
-        bloop_i = bloop_i - 1
-      end do
-      denominator = factorial(N - M)
-      bicoe = real(numerator) / real(denominator)
-      return
-    end if
-  end function binomialcoe
   
 end module Hamiltonian

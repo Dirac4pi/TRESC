@@ -158,14 +158,22 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   -dsqrt(5.0_dp)/2.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp,                  &
   dsqrt(5.0_dp)/2.0_dp, 0.0_dp                                           /)! G-4
 
-  !DIR$ ATTRIBUTES ALIGN:align_size :: c2s
+  !DIR$ ATTRIBUTES ALIGN:align_size :: c2s, exc2s, m_c2s, m_exc2s
+  !DIR$ ATTRIBUTES ALIGN:align_size :: s2f, exs2f, c2f, exc2f
   real(dp),allocatable    :: c2s(:,:)  ! convert Cartesian to spher-harmo
-  !DIR$ ATTRIBUTES ALIGN:align_size :: exc2s
   complex(dp),allocatable :: exc2s(:,:)
-  !DIR$ ATTRIBUTES ALIGN:align_size :: m_c2s
-  real(dp),allocatable    :: m_c2s(:,:)  ! convert Cartesian to spher-harmo
-  !DIR$ ATTRIBUTES ALIGN:align_size :: m_exc2s
+  real(dp),allocatable    :: m_c2s(:,:)! convert Cartesian to spher-harmo
   complex(dp),allocatable :: m_exc2s(:,:)
+  real(dp),allocatable    :: s2f(:,:)  ! orthogonal transform unitary matrix
+  complex(dp),allocatable :: exs2f(:,:)
+  real(dp),allocatable    :: c2f(:,:)  ! total transformation matrix
+  complex(dp),allocatable :: exc2f(:,:)
+  real(dp),allocatable    :: c2soper(:,:)
+  complex(dp),allocatable :: exc2soper(:,:)
+  real(dp),allocatable    :: s2foper(:,:)
+  complex(dp),allocatable :: exs2foper(:,:)
+  real(dp),allocatable    :: c2foper(:,:)
+  complex(dp),allocatable :: exc2foper(:,:)
   
   integer    :: cbdm                   ! Cartesian basis dimension
   integer    :: m_cbdm                 ! Cartesian basis dimension (molden)
@@ -228,14 +236,27 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   real(dp)   :: totalphaorb, totbetaorb! total alpha, beta electron of orbital
   
   private :: get_basis_count, AON, load_1MO_molden, load_MOs_molden
+  private :: csgo_1c, csgo_2c, sfgo_1c, sfgo_2c, cfgo_1c, cfgo_2c
   public  :: load_b_gbs, load_g_xyz, load_gb_molden, read_keywords
-  public  :: input_check, input_print, assign_cs, m_assign_cs, dftd4
-  public  :: load_MO_molden
+  public  :: input_check, input_print, assign_csf, m_assign_cs, dftd4
+  public  :: load_MO_molden, csgo, sfgo, cfgo, m_csgo
 
   interface load_MO_molden
     module procedure load_1MO_molden
     module procedure load_MOs_molden
   end interface load_MO_molden
+  interface csgo
+    module procedure csgo_1c
+    module procedure csgo_2c
+  end interface csgo
+  interface sfgo
+    module procedure sfgo_1c
+    module procedure sfgo_2c
+  end interface sfgo
+  interface cfgo
+    module procedure cfgo_1c
+    module procedure cfgo_2c
+  end interface cfgo
 
   contains
   
@@ -270,20 +291,16 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       if (adjustl(basis_element_name(index(basis_element_name,'-')+1:&
       index(basis_element_name,'-')+2)) /= adjustl(element_list(loop_i))) then
         loop_i = loop_i + 1
-        if (loop_i >= element_count + 1) then
-          call terminate(&
-          'basis file: element not included in current program')
-        end if
+        if (loop_i >= element_count + 1) call terminate(&
+        'basis file: element not included in current program')
         cycle
       end if
       atom_basis(loop_j) % atom_number = loop_i
       do
         read(11,*,iostat = ios) basis_angular_name, &
         atom_basis(loop_j) % contr  ! scale factor defaults to 1.00
-        if (ios /= 0) then
-          call terminate(&
-          'read basis file failed, may caused by incorrect formatting')
-        end if 
+        if (ios /= 0) call terminate(&
+        'read basis file failed, may caused by incorrect formatting')
         if (basis_angular_name == 'S') then
           atom_basis(loop_j) % L = 0
         else if (basis_angular_name == 'P') then
@@ -301,10 +318,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           if (loop_k <= atom_basis(loop_j) % contr) then
             read(11,*,iostat = ios) atom_basis(loop_j) % &
             expo(loop_k), atom_basis(loop_j) % coe(loop_k)
-            if (ios /= 0) then
-              call terminate(&
-              'read basis file failed, try denote scientific notation with E')
-            end if 
+            if (ios /= 0) call terminate(&
+            'read basis file failed, try denote scientific notation with E')
             loop_k = loop_k + 1
             cycle
           end if
@@ -485,7 +500,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
     ! so convert them
     if (isorca) then
-      if (.not. allocated(m_c2s)) call m_assign_cs(.true.)
+      if (.not. allocated(m_c2s)) call m_assign_cs()
       ii = 1
       jj = 1
       do while(ii <= m_cbdm)
@@ -583,7 +598,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
     ! so convert them
     if (isorca) then
-      if (.not. allocated(m_c2s)) call m_assign_cs(.true.)
+      if (.not. allocated(m_c2s)) call m_assign_cs()
       ii = 1
       jj = 1
       do while(ii <= m_cbdm)
@@ -827,11 +842,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       mol(loop_i) % pos(3)
     end do
     write(60,"(A22,I4,A2,I4)") '  scalar/spinor cbdm: ', cbdm, ' /', 2*cbdm
-    if (s_h) then
-      write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
-    else
-      sbdm = cbdm
-    end if
+    write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
   end subroutine input_print
   
 !-----------------------------------------------------------------------
@@ -889,7 +900,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             else
               call terminate("charge setting should be written as 'charge=n'")
             end if
-            write(60,"(A,I2)") "  Charge set ",charge
+            write(60,"(A,I2)") "  charge set ",charge
           else if (index(keyword,'spin') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -900,10 +911,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               call terminate(&
               "spin multiplicity setting should be written as 'spin=n'")
             end if
-            write(60,"(A,I2)") "  Spin multiplicity set ",spin_mult
-          else if (index(keyword,'cartesian') == 1) then
-            s_h = .false.
-            write(60,'(A)') '  Cartesian basis will be used'
+            write(60,"(A,I2)") "  spin multiplicity set ",spin_mult
           else if (index(keyword,'basis') == 1) then
             if (index(keyword,'=') /= 0) then
               call getenv('TRESC',address_basis)
@@ -944,6 +952,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(I2)",iostat = ios) threads
               if (ios /= 0) call terminate(&
               "threads setting should be written as 'threads=n'")
+              write(60,'(A2,I3,A)') &
+              '  ',threads,' threads will be used'
             else
               call terminate("threads setting should be written as 'threads=n'")
             end if
@@ -973,7 +983,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               if (ios /= 0) call terminate(&
               "cutS should be written as 'cutS=n', no scientific notation")
               write(60,"(A,E10.3)") &
-              "  linear dependence will be checked, threshold = ", cutS
+              "  linear dependence threshold changed to ", cutS
             else
               call terminate(&
               "cutS should be written as 'cutS=n', no scientific notation")
@@ -1045,6 +1055,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(I3)",iostat = ios) maxiter
               if (ios /= 0) call terminate(&
               "maxiter setting should be written as 'maxiter=n'")
+              write(60,'(A,I4)') '  SCF max iteration changed to ',maxiter
             else
               call terminate("maxiter setting should be written as 'maxiter=n'")
             end if
@@ -1055,6 +1066,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               if (ios /= 0) call terminate(&
               "Schwarz screening setting should be written as 'schwarz=n',"//&
               " no scientific notation")
+              write(60,'(A,E10.3)') &
+              '  Schwarz screen threshold changed to ',schwarz_VT
             else
               call terminate(&
               "Schwarz screening setting should be written as 'schwarz=n',"//&
@@ -1067,6 +1080,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               if (ios /= 0) call terminate(&
               "Convergence tolerence setting should be written as "//&
               "'convertol=n', no scientific notation")
+              write(60,'(A,E10.3)') &
+              '  convergence tolerance changed to ',conver_tol
             else
               call terminate(&
               "Convergence tolerence setting should be written as "//&
@@ -1078,6 +1093,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(I3)",iostat = ios) nodiis
               if (ios /= 0) call terminate(&
               "Initial iterations with no DIIS should be written as 'nodiis=n'")
+              write(60,'(A,I3)') '  nodiis changed to ',nodiis
             else
               call terminate(&
               "Initial iterations with no DIIS should be written as 'nodiis=n'")
@@ -1088,6 +1104,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(I3)",iostat = ios) subsp
               if (ios /= 0) call terminate(&
               "Dimension of suboptimal subspace should be written as 'subsp=n'")
+              write(60,'(A,I3)') '  subsp changed to ',subsp
             else
               call terminate(&
               "Dimension of suboptimal subspace should be written as 'subsp=n'")
@@ -1098,6 +1115,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(F20.12)",iostat = ios) damp
               if (ios /= 0) call terminate(&
               "Mix parameter should be written as 'damp=n'")
+              write(60,'(A,E10.3)') '  damp changed to ',damp
             else
               call terminate("Mix parameter should be written as 'diisdamp=n'")
             end if
@@ -1107,6 +1125,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(F20.12)",iostat = ios) diisdamp
               if (ios /= 0) call terminate(&
               "DIIS mix parameter should be written as 'diisdamp=n'")
+              write(60,'(A,E10.3)') '  diisdamp changed to ',diisdamp
             else
               call terminate("Mix parameter should be written as 'diisdamp=n'")
             end if
@@ -1116,14 +1135,14 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(F20.12)",iostat = ios) prtlev
               if (ios /= 0) call terminate(&
               "Print level setting should be written as 'prtlev=n'")
+              write(60,'(A,E10.3)') '  print level changed to ',prtlev
             else
               call terminate(&
               "Print level setting should be written as 'prtlev=n'")
             end if
           else if (index(keyword,'molden') == 1) then
             molden = .true.
-            write(60,'(A)') &
-            '  canonical orbitals will be dumped to .molden.d'
+            write(60,'(A)') '  canonical orbitals will be dumped to .molden.d'
           else if (index(keyword,'cutdiis') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -1140,13 +1159,40 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               "(F20.12)",iostat = ios) cutdamp
               if (ios /= 0) call terminate(&
               "Cutting damp threshold should be written as 'cutdamp=n'")
+              write(60,'(A,E10.3)') '  cut damp threshold changed to ',cutdamp
             else
               call terminate&
               ("Cutting damp threshold should be written as 'cutdamp=n'")
             end if
-          else if (trim(keyword) == 'keepspin') then
-            keepspin = .true.
-            write(60,"(A)") "  Avoid spin multiplicity mutations"
+          else if (index(keyword,'cspin') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=')+1 : index(keyword,'=')+1),&
+              "(A1)",iostat = ios) cspin
+              if (ios /= 0) call terminate(&
+            "Constrained spin multiplicity mode should be written as 'cspin=*'")
+            else
+              call terminate(&
+            "Constrained spin multiplicity mode should be written as 'cspin=*'")
+            end if
+            write(60,"(A)")"  constrained spin multiplicity mode set to "//cspin
+            if (cspin == 'f' .or. cspin == 'd') then
+              write(60,*)
+              write(60,'(A)') "  WARNNING:"
+              write(60,'(A)') "  -- when cspin = f/d, the selective occupation"
+              write(60,'(A)') "  -- of the MOs will likely lead to a violation"
+              write(60,'(A)') "  -- of the Aufbau principle, further leading to"
+              write(60,'(A)') "  -- variational instability! Make sure to check"
+              write(60,'(A)') "  -- the orbital occupation during SCF to"
+              write(60,'(A)') "  -- determine if the convergence are reliable!"
+              write(60,*)
+              write(*,'(A)') "  WARNNING:"
+              write(*,'(A)') "  -- when cspin = f/d, the selective occupation"
+              write(*,'(A)') "  -- of the MOs will likely lead to a violation"
+              write(*,'(A)') "  -- of the Aufbau principle, further leading to"
+              write(*,'(A)') "  -- variational instability! Make sure to check"
+              write(*,'(A)') "  -- the orbital occupation during SCF to"
+              write(*,'(A)') "  -- determine if the convergence are reliable!"
+            end if
           else if (index(keyword,'emd4') == 1) then
             d4 = .true.
             if (index(keyword,'=') /= 0) then
@@ -1158,7 +1204,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               call terminate(&
               "dispersion correction should be written as 'emd4=func_name'")
             end if
-            write(60,"(A)") "  DFT-D4 dispersion correction will be considered"
+            write(60,"(A)") "  DFT-D4 empirical dispersion will be considered"
             write(60,"(A)") "  -- functional name: "//trim(funcemd4)
           else if (index(keyword,'guess') == 1) then
             if (index(keyword,'=') /= 0) then
@@ -1166,9 +1212,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               if (ios /= 0) call terminate(&
               "Initial guess setting should be written as 'guess=***'")
               if (guess_type == 'read') then
-                write(60,"(A)") "  initial guess read from .ao2mo file"
+                write(60,"(A)") "  initial guess load from .ao2mo file"
               else if (guess_type == 'molden') then
-                write(60,"(A)") "  initial guess read from .molden file"
+                write(60,"(A)") "  initial guess load from .molden file"
               end if
             else
               call terminate(&
@@ -1199,6 +1245,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             else
               call terminate("xid should be written as 'xid=n'")
             end if
+            write(60,'(A,I6)') '  exchange functional set to ', fx_id
           else if (index(keyword,'cid') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -1208,6 +1255,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             else
               call terminate("cid should be written as 'cid=n'")
             end if
+            write(60,'(A,I6)') '  correlation functional set to ', fc_id
           else if (index(keyword,'xhf') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -1218,6 +1266,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               call terminate(&
               "HF exchange component should be written as 'xhf=n'")
             end if
+            write(60,'(A,E10.3)') '  HF components set to ', x_HF
           else
             call terminate('unknown keyword detected in module Functional')
           end if
@@ -1274,6 +1323,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
         end if
       end if
     end if
+    if (cspin/='n' .and. cspin/='d' .and. cspin/='f') call terminate(&
+    'unrecognized constrained spin mode')
     if (DKH_order == 0 .and. SRTP_type) call terminate(&
     'SRTP is not suitable for non-relativistic calculation')
     if (DKH_order == 0 .and. STTP_type) call terminate(&
@@ -1317,128 +1368,262 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   end function AON
 
 !-----------------------------------------------------------------------
-!> assign matrix c2s and exc2s
-  subroutine assign_cs(is2c)
+!> assign matrix c2s, s2f and c2f
+  subroutine assign_csf(i_j)
     implicit none
-    logical,intent(in) :: is2c      ! true: allocate exc2s, false: not allocate
-    integer            :: csloop_i, csloop_j, csloop_k, csloop_l
+    real(dp),allocatable,optional  :: i_j(:,:)      ! overlap matrix
+    integer                        :: ii, jj, kk, ll
+    real(dp)                       :: min_evl       ! smallest eigenvalue of i_j
     
     if (allocated(c2s)) deallocate(c2s)
-    
     allocate(c2s(cbdm,sbdm))
     c2s = 0.0_dp
-    csloop_i = 1 ! row
-    csloop_k = 1 ! column
-    do while(csloop_i <= cbdm)
-      if (basis_inf(csloop_i) % L == 1) then ! S
-        c2s(csloop_i, csloop_k) = 1.0_dp
-        csloop_k = csloop_k + 1
-        csloop_i = csloop_i + 1
-      else if(basis_inf(csloop_i) % L == 2) then ! P
-        do csloop_j = 0, 2
-          c2s(csloop_i+csloop_j, csloop_k+csloop_j) = 1.0_dp
+    ii = 1 ! row
+    kk = 1 ! column
+    do while(ii <= cbdm)
+      if (basis_inf(ii) % L == 1) then ! S
+        c2s(ii, kk) = 1.0_dp
+        kk = kk + 1
+        ii = ii + 1
+      else if(basis_inf(ii) % L == 2) then ! P
+        do jj = 0, 2
+          c2s(ii+jj, kk+jj) = 1.0_dp
         end do
-        csloop_k = csloop_k + 3
-        csloop_i = csloop_i + 3
-      else if(basis_inf(csloop_i) % L == 3) then ! D
-        do csloop_j = 0, 5
-          do csloop_l = 0, 4
-            c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sd(1+csloop_j, 1+csloop_l)
+        kk = kk + 3
+        ii = ii + 3
+      else if(basis_inf(ii) % L == 3) then ! D
+        do jj = 0, 5
+          do ll = 0, 4
+            c2s(ii+jj, kk+ll) = &
+            c2sd(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 5
-        csloop_i = csloop_i + 6
-      else if(basis_inf(csloop_i) % L == 4) then ! F
-        do csloop_j = 0, 9
-          do csloop_l = 0, 6
-            c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sf(1+csloop_j, 1+csloop_l)
+        kk = kk + 5
+        ii = ii + 6
+      else if(basis_inf(ii) % L == 4) then ! F
+        do jj = 0, 9
+          do ll = 0, 6
+            c2s(ii+jj, kk+ll) = &
+            c2sf(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 7
-        csloop_i = csloop_i + 10
-      else if(basis_inf(csloop_i) % L == 5) then ! G
-        do csloop_j = 0, 14
-          do csloop_l = 0, 8
-            c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sg(1+csloop_j, 1+csloop_l)
+        kk = kk + 7
+        ii = ii + 10
+      else if(basis_inf(ii) % L == 5) then ! G
+        do jj = 0, 14
+          do ll = 0, 8
+            c2s(ii+jj, kk+ll) = &
+            c2sg(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 9
-        csloop_i = csloop_i + 15
+        kk = kk + 9
+        ii = ii + 15
       end if
     end do
+    allocate(c2soper(cbdm,sbdm))
+    if (allocated(exc2s)) deallocate(exc2s)
+    allocate(exc2s(2*cbdm,2*sbdm),source=c0)
+    exc2s(1:cbdm,1:sbdm) = c2s * c1
+    exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
+    allocate(exc2soper(2*cbdm,2*sbdm))
 
-    if (is2c) then
-      if (allocated(exc2s)) deallocate(exc2s)
-      allocate(exc2s(2*cbdm,2*sbdm),source=c0)
-      exc2s(1:cbdm,1:sbdm) = c2s * c1
-      exc2s(cbdm+1:2*cbdm,sbdm+1:2*sbdm) = c2s * c1
+    if (present(i_j)) then
+      call csgo_1c(i_j)
+      if (allocated(s2f)) deallocate(s2f)
+      allocate(s2f(sbdm,sbdm))
+      call symm_orth(i_j, sbdm, s2f, min_evl)
+      if (min_evl < 0.0) &
+      call terminate('evl(i_j) less than zero, may due to code error')
+      if (min_evl < cutS) then
+        deallocate(s2f)
+        call can_orth(i_j, sbdm, s2f, fbdm)
+      else
+        fbdm = sbdm
+      end if
+      allocate(s2foper(sbdm,fbdm))
+      call sfgo_1c(i_j)
+      if (allocated(c2f)) deallocate(c2f)
+      allocate(c2f(cbdm,fbdm))
+      call matmul('N', 'N', c2s, s2f, c2f)
+      allocate(c2foper(cbdm,fbdm))
+      ! assign exs2f, exc2f
+      if (allocated(exs2f)) deallocate(exs2f)
+      allocate(exs2f(2*sbdm,2*fbdm),source=c0)
+      exs2f(1:sbdm,1:fbdm) = s2f * c1
+      exs2f(sbdm+1:2*sbdm,fbdm+1:2*fbdm) = s2f * c1
+      allocate(exs2foper(2*sbdm,2*fbdm))
+      if (allocated(exc2f)) deallocate(exc2f)
+      allocate(exc2f(2*cbdm,2*fbdm),source=c0)
+      exc2f(1:cbdm,1:fbdm) = c2f * c1
+      exc2f(cbdm+1:2*cbdm,fbdm+1:2*fbdm) = c2f * c1
+      allocate(exc2foper(2*cbdm,2*fbdm))
     end if
-  end subroutine assign_cs
+  end subroutine assign_csf
 
 !-----------------------------------------------------------------------
 !> assign matrix m_c2s and m_exc2s
-  subroutine m_assign_cs(is2c)
+  subroutine m_assign_cs()
     implicit none
-    logical,intent(in) :: is2c    ! true: allocate m_exc2s, false: not allocate
-    integer            :: csloop_i, csloop_j, csloop_k, csloop_l
-    
+    integer            :: ii, jj, kk, ll
     if (allocated(m_c2s)) deallocate(m_c2s)
-    
     allocate(m_c2s(m_cbdm,m_sbdm))
     m_c2s = 0.0_dp
-    csloop_i = 1 ! row
-    csloop_k = 1 ! column
-    do while(csloop_i <= m_cbdm)
-      if (m_basis_inf(csloop_i) % L == 1) then ! S
-        m_c2s(csloop_i, csloop_k) = 1.0_dp
-        csloop_k = csloop_k + 1
-        csloop_i = csloop_i + 1
-      else if(m_basis_inf(csloop_i) % L == 2) then ! P
-        do csloop_j = 0, 2
-          m_c2s(csloop_i+csloop_j, csloop_k+csloop_j) = 1.0_dp
+    ii = 1 ! row
+    kk = 1 ! column
+    do while(ii <= m_cbdm)
+      if (m_basis_inf(ii) % L == 1) then ! S
+        m_c2s(ii, kk) = 1.0_dp
+        kk = kk + 1
+        ii = ii + 1
+      else if(m_basis_inf(ii) % L == 2) then ! P
+        do jj = 0, 2
+          m_c2s(ii+jj, kk+jj) = 1.0_dp
         end do
-        csloop_k = csloop_k + 3
-        csloop_i = csloop_i + 3
-      else if(m_basis_inf(csloop_i) % L == 3) then ! D
-        do csloop_j = 0, 5
-          do csloop_l = 0, 4
-            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sd(1+csloop_j, 1+csloop_l)
+        kk = kk + 3
+        ii = ii + 3
+      else if(m_basis_inf(ii) % L == 3) then ! D
+        do jj = 0, 5
+          do ll = 0, 4
+            m_c2s(ii+jj, kk+ll) = &
+            c2sd(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 5
-        csloop_i = csloop_i + 6
-      else if(m_basis_inf(csloop_i) % L == 4) then ! F
-        do csloop_j = 0, 9
-          do csloop_l = 0, 6
-            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sf(1+csloop_j, 1+csloop_l)
+        kk = kk + 5
+        ii = ii + 6
+      else if(m_basis_inf(ii) % L == 4) then ! F
+        do jj = 0, 9
+          do ll = 0, 6
+            m_c2s(ii+jj, kk+ll) = &
+            c2sf(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 7
-        csloop_i = csloop_i + 10
-      else if(m_basis_inf(csloop_i) % L == 5) then ! G
-        do csloop_j = 0, 14
-          do csloop_l = 0, 8
-            m_c2s(csloop_i+csloop_j, csloop_k+csloop_l) = &
-            c2sg(1+csloop_j, 1+csloop_l)
+        kk = kk + 7
+        ii = ii + 10
+      else if(m_basis_inf(ii) % L == 5) then ! G
+        do jj = 0, 14
+          do ll = 0, 8
+            m_c2s(ii+jj, kk+ll) = &
+            c2sg(1+jj, 1+ll)
           end do
         end do
-        csloop_k = csloop_k + 9
-        csloop_i = csloop_i + 15
+        kk = kk + 9
+        ii = ii + 15
       end if
     end do
-
-    if (is2c) then
-      if (allocated(m_exc2s)) deallocate(m_exc2s)
-      allocate(m_exc2s(2*m_cbdm,2*m_sbdm),source=c0)
-      m_exc2s(1:m_cbdm,1:m_sbdm) = m_c2s * c1
-      m_exc2s(m_cbdm+1:2*m_cbdm,m_sbdm+1:2*m_sbdm) = m_c2s * c1
-    end if
+    if (allocated(m_exc2s)) deallocate(m_exc2s)
+    allocate(m_exc2s(2*m_cbdm,2*m_sbdm),source=c0)
+    m_exc2s(1:m_cbdm,1:m_sbdm) = m_c2s * c1
+    m_exc2s(m_cbdm+1:2*m_cbdm,m_sbdm+1:2*m_sbdm) = m_c2s * c1
   end subroutine m_assign_cs
+
+!-----------------------------------------------------------------------
+!> transfer real scalar matrix on Cartesian basis to matrix on spher-harmo basis
+!!
+!! m(cbdm,cbdm) -> m(sbdm,sbdm)
+  subroutine csgo_1c(m)
+    implicit none
+    real(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(c2s)) call terminate('csgo_1c: c2s not allocated')
+    if (.not. allocated(m)) call terminate('csgo_1c: matrix not allocated')
+    call matmul('N', 'N', m, c2s, c2soper)
+    deallocate(m)
+    allocate(m(sbdm,sbdm))
+    call matmul('T', 'N', c2s, c2soper, m)
+  end subroutine csgo_1c
+
+!-----------------------------------------------------------------------
+!> transfer complex 2c matrix on Cartesian basis to matrix on spher-harmo basis
+!!
+!! m(2*cbdm,2*cbdm) -> m(2*sbdm,2*sbdm)
+  subroutine csgo_2c(m)
+    implicit none
+    complex(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(exc2s)) call terminate('csgo_2c: exc2s not allocated')
+    if (.not. allocated(m)) call terminate('csgo_2c: matrix not allocated')
+    call matmul('N', 'N', m, exc2s, exc2soper)
+    deallocate(m)
+    allocate(m(2*sbdm,2*sbdm))
+    call matmul('C', 'N', exc2s, exc2soper, m)
+  end subroutine csgo_2c
+
+!-----------------------------------------------------------------------
+!> transfer real scalar matrix on spher-harmo basis to matrix on final SCF basis
+!!
+!! m(sbdm,sbdm) -> m(fbdm,fbdm)
+  subroutine sfgo_1c(m)
+    implicit none
+    real(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(s2f)) call terminate('sfgo_1c: s2f not allocated')
+    if (.not. allocated(m)) call terminate('sfgo_1c: matrix not allocated')
+    call matmul('N', 'N', m, s2f, s2foper)
+    deallocate(m)
+    allocate(m(fbdm,fbdm))
+    call matmul('T', 'N', s2f, s2foper, m)
+  end subroutine sfgo_1c
+
+!-----------------------------------------------------------------------
+!> transfer complex 2c matrix on spher-harmo basis to matrix on final SCF basis
+!!
+!! m(2*sbdm,2*sbdm) -> m(2*fbdm,2*fbdm)
+  subroutine sfgo_2c(m)
+    implicit none
+    complex(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(exs2f)) call terminate('sfgo_2c: exs2f not allocated')
+    if (.not. allocated(m)) call terminate('sfgo_2c: matrix not allocated')
+    call matmul('N', 'N', m, exs2f, exs2foper)
+    deallocate(m)
+    allocate(m(2*fbdm,2*fbdm))
+    call matmul('C', 'N', exs2f, exs2foper, m)
+  end subroutine sfgo_2c
+
+!-----------------------------------------------------------------------
+!> transfer real scalar matrix on Cartesian basis to matrix on final SCF basis
+!!
+!! m(cbdm,cbdm) -> m(fbdm,fbdm)
+  subroutine cfgo_1c(m)
+    implicit none
+    real(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(c2f)) call terminate('cfgo_1c: c2f not allocated')
+    if (.not. allocated(m)) call terminate('cfgo_1c: matrix not allocated')
+    call matmul('N', 'N', m, c2f, c2foper)
+    deallocate(m)
+    allocate(m(fbdm,fbdm))
+    call matmul('T', 'N', c2f, c2foper, m)
+  end subroutine cfgo_1c
+
+!-----------------------------------------------------------------------
+!> transfer complex 2c matrix on Cartesian basis to matrix on final SCF basis
+!!
+!! m(2*cbdm,2*cbdm) -> m(2*fbdm,2*fbdm)
+  subroutine cfgo_2c(m)
+    implicit none
+    complex(dp),allocatable :: m(:,:) ! target matrix
+    if (.not. allocated(exc2f)) call terminate('cfgo_2c: exc2f not allocated')
+    if (.not. allocated(m)) call terminate('cfgo_2c: matrix not allocated')
+    call matmul('N', 'N', m, exc2f, exc2foper)
+    deallocate(m)
+    allocate(m(2*fbdm,2*fbdm))
+    call matmul('C', 'N', exc2f, exc2foper, m)
+  end subroutine cfgo_2c
+
+!-----------------------------------------------------------------------
+!> transfer matrix on Cartesian basis to matrix on spher-harmo basis
+!!
+!! m(cbdm,m_cbdm) -> m(sbdm,m_sbdm)
+  subroutine m_csgo(m)
+    implicit none
+    real(dp),allocatable :: m(:,:) ! target matrix
+    real(dp),allocatable :: sphoper(:,:)
+    if (.not. allocated(m_c2s)) call terminate('m_sphehar: m_c2s not allocated')
+    if (.not. allocated(c2s)) call terminate('m_sphehar: c2s not allocated')
+    if (.not. allocated(m)) call terminate('m_sphehar: matrix not allocated')
+    allocate(sphoper(cbdm,m_sbdm))
+    call matmul('N', 'N', m, m_c2s, sphoper)
+    deallocate(m)
+    allocate(m(sbdm,m_sbdm))
+    call matmul('T', 'N', c2s, sphoper, m)
+    deallocate(sphoper)
+  end subroutine m_csgo
 
 !-----------------------------------------------------------------------
 !> calculate D4 dispersion correction by DFT-D4

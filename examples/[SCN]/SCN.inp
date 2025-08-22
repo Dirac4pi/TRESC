@@ -1,0 +1,4 @@
+!uks nousesym pbe0 def2-svp nori strongscf noautostart miniprint nopop
+%maxcore 4000
+%pal nprocs 32 end
+* xyzfile 0 2 /home/lky/Code_TRESC/TRESC/tests/SCN/read_orca/SCN.xyz

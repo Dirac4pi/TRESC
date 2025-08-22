@@ -1,0 +1,4 @@
+!uks nousesym opt pbe0 d3 def2-svp nori strongscf noautostart miniprint nopop
+%maxcore 4000
+%pal nprocs 32 end
+* xyzfile 0 3 /home/lky/Code_TRESC/TRESC/tests/Ni0-C2H4-3/Ni0-C2H4.xyz

@@ -112,7 +112,6 @@ def load_geometry_molden(title:str):
       if '[GTO]' in line:
         break
     ncenter -= 1
-  print(ncenter)
   with open(title,'r') as f:
     atoms = np.zeros(ncenter, dtype=[('index','i4'), \
     ('charge','f8'), ('x','f8'), ('y','f8'), ('z','f8')])
@@ -120,7 +119,6 @@ def load_geometry_molden(title:str):
     for line in f:
       if start:
         parts = line.strip().split()
-        print(i)
         atoms[i]['index'] = parts[2]
         atoms[i]['x'],atoms[i]['y'],atoms[i]['z'] = \
           np.array(parts[3:6],dtype=float)

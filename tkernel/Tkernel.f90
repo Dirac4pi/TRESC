@@ -149,7 +149,7 @@ subroutine mo2cgrid(cube, kill_)
   mol = m_mol
   atom_count = m_atom_count
   allocate(arr(2*sbdm), arr2(2*cbdm), supparr(2*sbdm))
-  call assign_cs(.true.)
+  call assign_csf()
   call get_command_argument(3, cmd3, status=ios)
   read(cmd3,'(I)',iostat=ios) imo
   if (ios /= 0) call terminate('unable to recognize orbital index')
@@ -205,7 +205,7 @@ subroutine mo1cgrid(cube, kill_)
   mol = m_mol
   atom_count = m_atom_count
   allocate(arr(2*sbdm), arr2(2*cbdm))
-  call assign_cs(.true.)
+  call assign_csf()
   call get_command_argument(3, cmd3, status=ios)
   do loop_i = 1, len(cmd3)
     if (is_alpha(cmd3(loop_i:loop_i))) then

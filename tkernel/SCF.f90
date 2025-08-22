@@ -17,14 +17,14 @@ module SCF
   integer                 :: Nalpha, Nbeta  ! number of alpha and beta elctron
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   !DIR$ ATTRIBUTES ALIGN:align_size :: AO2MO, AO2MOalpha, AO2MObeta
-  !DIR$ ATTRIBUTES ALIGN:align_size :: rho_m, rotation, AOsupp, Fock
+  !DIR$ ATTRIBUTES ALIGN:align_size :: rho_m, AOsupp, Fock
   complex(dp),allocatable :: AO2MO(:,:)     ! MO coeff
+  integer,allocatable     :: occindex(:)    ! occupid orbital number of MO
   real(dp),allocatable    :: m_AO2MO_a(:,:) ! alpha MO coeff read form molden
   real(dp),allocatable    :: t_AO2MO_a(:,:) ! transfered alpha MO coeff
   real(dp),allocatable    :: m_AO2MO_b(:,:) ! beta MO coeff read form molden
   real(dp),allocatable    :: t_AO2MO_b(:,:) ! transfered beta MO coeff
   complex(dp),allocatable :: rho_m(:,:)     ! density matrix, complex Hermitian
-  complex(dp),allocatable :: rotation(:,:)  ! rotate one orbital with another
   real(dp)                :: RMSDP, maxDP
   real(dp),allocatable    :: AOsupp(:,:)
   complex(dp),allocatable :: Fock(:,:)      ! Fock matrix
@@ -90,6 +90,7 @@ module SCF
   real(dp)                :: ESOC           ! SOC energy
   real(dp)                :: ESR            ! SRTP energy
   real(dp)                :: emd4           ! dispersion energy calc by DFT-D4
+  real(dp)                :: scf_kappa      ! deviation parameter from TRS
 
   !DIR$ ATTRIBUTES ALIGN:align_size :: rho_pre, rho_pre_pre, rho_history, Rsd
   ! damping & DIIS(AX=B)
@@ -246,19 +247,32 @@ module SCF
         write(60,'(A)') '  complete! stored in Fock2HFcol, Fock2HFexc'
       end if
 
+      ! diagonalization of Fock matrix
       write(60,'(A)') '  diagonalization of Fock matrix'
       call diag(Fock, 2*fbdm, oper3, orbE)
       write(60,'(A,I5,A)') '  complete!',2*fbdm,' eigenvectors found'
+      ! de-orthogonalization
+      write(60,'(A)') '  generate and dump AO2MO to .ao2mo file'
+      call matmul('N', 'N', exs2f, oper3, AO2MO)
+      call dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
+      ! construct new density matrix
+      write(60,'(A)') '  construct new density matrix'
+      call assign_rho()
+      write(60,'(A)') '  complete! stored in rho_m'
+
+
       ! frontier orbital energy
       write(60,'(A)') '  frontier orbital energy (A.U.)'
-      call calc_S2HForb(electron_count)
+      call calc_S2HForb(occindex(electron_count))
       write(60,'(A,I3,F12.6,A,F6.3)') &
-      '  -- HOMO ', electron_count, orbE(electron_count), ' <Sz> = ',Szorb
-      call calc_S2HForb(electron_count+1)
+      '  -- HOMO ', occindex(electron_count), orbE(occindex(electron_count)), &
+      ' <Sz> = ',Szorb
+      call calc_S2HForb(occindex(electron_count)+1)
       write(60,'(A,I3,F12.6,A,F6.3)') &
-      '  -- LUMO ', electron_count+1, orbE(electron_count+1), ' <Sz> = ',Szorb
-      write(60,'(A,F12.6)') &
-      '  -- gap  ', orbE(electron_count+1) - orbE(electron_count)
+      '  -- LUMO ',occindex(electron_count)+1,orbE(occindex(electron_count)+1),&
+      ' <Sz> = ',Szorb
+      write(60,'(A,F12.6)') '  -- gap ',&
+      orbE(occindex(electron_count)+1)-orbE(occindex(electron_count))
       ! energy components calculation
       write(60,'(A)') '  calculate energy components (A.U.)'
       ! HF Coulomb energy
@@ -266,7 +280,7 @@ module SCF
       call matmul('C', 'N', oper3, Fock2HFcol, oper6)
       call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
-        HFCol = HFCol + real(oper4(loop_j,loop_j))
+        HFCol = HFCol + real(oper4(occindex(loop_j),occindex(loop_j)))
       end do
       write(60,'(A,F12.6)') '  -- HF Coulomb energy                    ', HFCol
 
@@ -275,7 +289,7 @@ module SCF
       call matmul('C', 'N', oper3, Fock2HFexc, oper6)
       call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
-        HFexc = HFexc + real(oper4(loop_j,loop_j))
+        HFexc = HFexc + real(oper4(occindex(loop_j),occindex(loop_j)))
       end do
       write(60,'(A,F12.6)') &
       '  -- HF exchange energy                   ', x_HF*HFexc
@@ -288,7 +302,7 @@ module SCF
       call matmul('C', 'N', oper3, Fock1, oper6)
       call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
-        Ecore = Ecore + real(oper4(loop_j,loop_j))
+        Ecore = Ecore + real(oper4(occindex(loop_j),occindex(loop_j)))
       end do
       write(60,'(A,F12.6)') '  -- core energy                          ', Ecore
 
@@ -297,7 +311,7 @@ module SCF
       call matmul('C', 'N', oper3, exi_T_j, oper6)
       call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
-        T = T + real(oper4(loop_j,loop_j))
+        T = T + real(oper4(occindex(loop_j),occindex(loop_j)))
       end do
       write(60,'(A,F12.6)') '  -- electron kinetic energy              ', T
 
@@ -306,7 +320,7 @@ module SCF
       call matmul('C', 'N', oper3, exi_V_j, oper6)
       call matmul('N', 'N', oper6, oper3, oper4)
       do loop_j = 1, electron_count
-        V = V + real(oper4(loop_j,loop_j))
+        V = V + real(oper4(occindex(loop_j),occindex(loop_j)))
       end do
       write(60,'(A,F12.6)') '  -- electron-nuclear attraction energy   ', V
 
@@ -315,7 +329,7 @@ module SCF
         call matmul('C', 'N', oper3, exSOC, oper6)
         call matmul('N', 'N', oper6, oper3, oper4)
         do loop_j = 1, electron_count
-          ESOC = ESOC + real(oper4(loop_j,loop_j))
+          ESOC = ESOC + real(oper4(occindex(loop_j),occindex(loop_j)))
         end do
         write(60,'(A,F12.6)') '  -- spin-orbital coupling energy         ', ESOC
         if (SRTP_type) then
@@ -323,7 +337,7 @@ module SCF
           call matmul('C', 'N', oper3, exSR, oper6)
           call matmul('N', 'N', oper6, oper3, oper4)
           do loop_j = 1, electron_count
-            ESR = ESR + real(oper4(loop_j,loop_j))
+            ESR = ESR + real(oper4(occindex(loop_j),occindex(loop_j)))
           end do
           write(60,'(A,F12.6)') &
           '  -- SRTP & radiative correction energy   ', ESR
@@ -348,10 +362,6 @@ module SCF
         end if
       end if
       write(60,'(A,F12.6)') '  -- -<V>/<T>                             ', Virial
-      ! de-orthogonalization
-      call matmul('N', 'N', exXm, oper3, AO2MO)
-      write(60,'(A)') '  AO2MO dump to .ao2mo file'
-      call dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
       ! convergence check
       if (loop_i == 1) then
         write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
@@ -367,9 +377,6 @@ module SCF
           write(60,'(A)') '  convergence tolerance not met'
         end if
       end if
-      write(60,'(A)') '  construct density matrix'
-      call assign_rho()
-      write(60,'(A)') '  complete! stored in rho_m'
       write(60,'(A)') '  DIIS information'
       ! generate next rho_m by DIIS method
       if (loop_i <= nodiis) then
@@ -513,7 +520,7 @@ module SCF
       end if
       forward = .true.
     end do
-    if (abs(molE - molE_pre) < conver_tol .and. loop_i < maxiter) then
+    if (abs(molE-molE_pre) < conver_tol .and. loop_i < maxiter) then
       if (DKH_order == 0) write(60,'(A)') '  NR SCF succeed!'
       if (DKH_order == 2) write(60,'(A)') '  DKH2 SCF succeed!'
     else
@@ -586,14 +593,18 @@ module SCF
       write(60,'(A)') &
       '  -- to calculate <S**2> in a DFT calculation.'
     end if
-    if (DKH_order == 2) then
-      write(60,'(A)') &
-      '  -- Note: deviation of <S**2> from <Sz*(Sz+1)> is related'
-      write(60,'(A)') &
-      '  -- to the spin polarization (spin contamination).'
-    end if
+    scf_kappa = Krammers()
+    write(60,'(A)') '  deviation parameters from time reversal symmetry (TRS)'
+    write(60,'(A,E12.5)') '  -- kappa     =', scf_kappa
+    write(60,'(A,E12.5)') '  -- ref kappa =', dsqrt(real(Nalpha-Nbeta,dp))
+    write(60,'(A,E12.5)') '  -- SOC kappa =', &
+    scf_kappa - dsqrt(real(Nalpha-Nbeta,dp))
     write(60,'(A)') &
     '  ============================================================='
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    if (DKH_order /= 0) call RGI()
     write(60,*)
     write(60,*)
     write(60,*)
@@ -770,13 +781,11 @@ module SCF
     deallocate(Fock1, Fock2HFexc, Fock2HFcol)
     if (allocated(Fock2KScor)) deallocate(Fock2KScor)
     if (allocated(Fock2KSexc)) deallocate(Fock2KSexc)
-    deallocate(i_j, i_p2_j, i_V_j, Xm, exXm)
-    if (s_h) then
-      deallocate(c2s, exc2s)
-    end if
+    deallocate(i_j, i_p2_j, i_V_j, c2s, exc2s, s2f, exs2f, c2f, exc2f)
+    if (allocated(m_c2s)) deallocate(m_c2s, m_exc2s)
     if (kill) then
       if (fx_id /= -1) call Fockxc_end()
-      deallocate(AO2MO, rho_m, Fock, orbE, oper3)
+      deallocate(AO2MO, rho_m, Fock, orbE, oper3, occindex)
     end if
     ndschwarz = .true.
     ini_rho = .true.
@@ -797,13 +806,13 @@ module SCF
     implicit none
     integer              :: ploop_i,ploop_j,ploop_k    ! loop variables
     integer              :: Na, Nb
-    integer              :: degenlow, degenhigh, load, unload ! degenerat region
+    integer              :: degenlow, degenhigh, load  ! degenerat region
     real(dp)             :: rdMO(5)
     character(len = 512) :: line_str
     if (ini_rho) then
-      ini_rho = .false.
       allocate(rho_m(2*sbdm,2*sbdm))
       allocate(AO2MO(2*sbdm,2*fbdm))
+      allocate(occindex(electron_count))
       Nalpha = (electron_count-(spin_mult-1))/2 + (spin_mult-1)
       Nbeta = (electron_count-(spin_mult-1))/2
       ! load MO coefficient
@@ -813,17 +822,17 @@ module SCF
         if (m_atom_count /= atom_count) call terminate(&
         'n_atoms in .molden is not consistent with n_atoms in .xyz')
         write(60,'(A)') &
-        '  -- basis and geometry were loaded'
+        '  -- basis and geometry in molden were loaded'
         write(60,'(A,I4,A,I4)') '  -- m_cbdm / m_sbdm: ',m_cbdm, ' /', m_sbdm
         allocate(m_AO2MO_a(m_sbdm,m_sbdm))
         allocate(m_AO2MO_b(m_sbdm,m_sbdm))
         allocate(t_AO2MO_a(sbdm,m_sbdm))
         allocate(t_AO2MO_b(sbdm,m_sbdm))
         call load_MO_molden(m_AO2MO_a, m_AO2MO_b)
-        write(60,'(A)') '  -- MO coeffs were loaded'
+        write(60,'(A)') '  -- MO coeffs in molden were loaded'
         call m_basis_proj(m_AO2MO_a, t_AO2MO_a)
         call m_basis_proj(m_AO2MO_b, t_AO2MO_b)
-        write(60,'(A)') '  -- MO coeffs were projected to current basis'
+        write(60,'(A)') '  -- MO coeffs were projected to job basis'
         rho_m = c0
         do ploop_i = 1,sbdm
           do ploop_j = 1,sbdm
@@ -856,7 +865,10 @@ module SCF
         end do
       end if
       rho_pre = rho_m
-    else
+    ! keep spin multiplicity if frontier MOs are degenerate
+    ! should keep oper3 and AO2MO unchanged, only change the occindex
+    else if (.not.ini_rho .and. (cspin=='n' .or. cspin=='d')) then
+      forall (ploop_i=1:electron_count) occindex(ploop_i) = ploop_i
       rho_m = c0
       do ploop_i = 1, 2*sbdm
         do ploop_j = 1, 2*sbdm
@@ -867,7 +879,7 @@ module SCF
         end do
       end do
       call calc_S2HF()
-      if (keepspin .and. abs((totalpha-totbeta) - &
+      if (cspin=='d' .and. abs((totalpha-totbeta) - &
       real(Nalpha-Nbeta,dp)) > 1.0.and. abs((totalpha-real(Nalpha,dp)) - &
       (real(Nbeta,dp)-totbeta)) < 0.1) then
         write(60,'(A)') &
@@ -888,7 +900,6 @@ module SCF
         end do
         write(60,'(A,I3,A,I3)') &
         '  -- -- degenerate space: ',degenlow,' - ',degenhigh
-        allocate(rotation(2*fbdm,degenhigh-degenlow+1))
         Na = 0
         Nb = 0
         do ploop_k = 1, degenlow-1
@@ -899,63 +910,69 @@ module SCF
             Nb = Nb + 1
           end if
         end do
+        write(60,'(A,I3,A3,I3)') &
+        '  -- -- alpha and beta in nondegenerate region: ', Na, ' / ', Nb
         load = degenlow
-        unload = degenhigh
         do ploop_k = degenlow, degenhigh
           call calc_S2HForb(ploop_k)
-          if (Szorb > 0.0) then
-            if (Na < Nalpha) then
-              do ploop_i = 1, 2*fbdm
-                rotation(ploop_i,load-degenlow+1) = oper3(ploop_i,ploop_k)
-              end do
-              write(60,'(A,I3,A,I3,A)') &
-              '  -- -- load ',ploop_k,' -> ',load,' (alpha)'
-              load = load + 1
-              Na = Na + 1
-            else
-              do ploop_i = 1, 2*fbdm
-                rotation(ploop_i,unload-degenlow+1) = oper3(ploop_i,ploop_k)
-              end do
-              write(60,'(A,I3,A,I3,A)') &
-              '  -- -- unload ',ploop_k,' -> ',unload,' (alpha)'
-              unload = unload - 1
-            end if                            
-          else
-              if (Nb < Nbeta) then
-              do ploop_i = 1, 2*fbdm
-                rotation(ploop_i,load-degenlow+1) = oper3(ploop_i,ploop_k)
-              end do
-              write(60,'(A,I3,A,I3,A)') &
-              '  -- -- load ',ploop_k,' -> ',load,' (beta)'
-              load = load + 1
-              Nb = Nb + 1
-            else
-              do ploop_i = 1, 2*fbdm
-                rotation(ploop_i,unload-degenlow+1) = oper3(ploop_i,ploop_k)
-              end do
-              write(60,'(A,I3,A,I3,A)') &
-              '  -- -- unload ',ploop_k,' -> ',unload,' (beta)'
-              unload = unload - 1
-            end if 
+          if (Szorb>0.0 .and. Na<Nalpha) then
+            write(60,'(A,I3,A,I3)') '  -- -- load alpha ',ploop_k,' on ',load
+            occindex(load) = ploop_k
+            load = load + 1
+            Na = Na + 1
+          else if(Szorb<0.0 .and. Nb<Nbeta) then
+            write(60,'(A,I3,A,I3)') '  -- -- load beta ',ploop_k,' on ',load
+            occindex(load) = ploop_k
+            load = load + 1
+            Nb = Nb + 1
           end if
+          if (load == electron_count + 1) exit
         end do
-        do ploop_k = degenlow, degenhigh
-          do ploop_i = 1, 2*fbdm
-            oper3(ploop_i,ploop_k) = rotation(ploop_i,ploop_k-degenlow+1)
-          end do
-        end do
-        deallocate(rotation)
-        call matmul('N', 'N', exXm, oper3, AO2MO)
+        if (load < electron_count + 1) call terminate(&
+        "cspin error, can't keep spin in degenerate space")
         rho_m = c0
         do ploop_i = 1, 2*sbdm
           do ploop_j = 1, 2*sbdm
             do ploop_k = 1, electron_count
               rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) + &
-              AO2MO(ploop_i,ploop_k)*conjg(AO2MO(ploop_j,ploop_k))
+              AO2MO(ploop_i,occindex(ploop_k)) * &
+              conjg(AO2MO(ploop_j,occindex(ploop_k)))
             end do
           end do
         end do
       end if
+    ! force keep spin multiplicity
+    ! Can't use constrained-DFT because the number of alpha and beta electrons
+    ! is not strictly integer.
+    else if(.not.ini_rho .and. cspin=='f') then
+      Na = 0
+      Nb = 0
+      load = 1
+      do ploop_k = 1, 2*fbdm
+        call calc_S2HForb(ploop_k)
+        if (Szorb > 0.0 .and. Na < Nalpha) then
+          occindex(load) = ploop_k
+          load = load + 1
+          Na = Na + 1
+        else if (Szorb < 0.0 .and. Nb < Nbeta) then
+          occindex(load) = ploop_k
+          load = load + 1
+          Nb = Nb + 1
+        end if
+        if (Na==Nalpha .and. Nb==Nbeta) exit
+      end do
+      rho_m = c0
+      do ploop_i = 1, 2*sbdm
+        do ploop_j = 1, 2*sbdm
+          do ploop_k = 1, electron_count
+            rho_m(ploop_i,ploop_j) = rho_m(ploop_i,ploop_j) + &
+            AO2MO(ploop_i,occindex(ploop_k)) * &
+            conjg(AO2MO(ploop_j,occindex(ploop_k)))
+          end do
+        end do
+      end do
+    end if
+    if (.not. ini_rho) then
       if (loop_i /= 1) then
         maxDP = (real(rho_m(1,1))-real(rho_pre(1,1)))**2 + &
         (aimag(rho_m(1,1))-aimag(rho_pre(1,1)))**2
@@ -985,6 +1002,8 @@ module SCF
       write(60,'(A,F9.5)') '  -- <S**2>                ',S__2
       write(60,'(A,F9.5)') '  -- total alpha electron  ',totalpha
       write(60,'(A,F9.5)') '  -- total beta electron   ',totbeta
+    else
+      ini_rho = .false.
     end if
   end subroutine assign_rho
   
@@ -1362,7 +1381,7 @@ module SCF
     !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic
     complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
-    complex(dp),allocatable :: supp1(:,:), supp2(:,:), supp3(:,:)
+    complex(dp) :: supp(2*sbdm,2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: Fock2_assigned
     integer :: Fock2_assigned(2,8)         ! avoid duplicate assignment of Fock2
     integer :: assigned
@@ -1371,8 +1390,6 @@ module SCF
     if (ndschwarz) then
       ndschwarz = .false.
       write(60,'(a)') '  -- Schwarz screening of <ij||kl>'
-      allocate(Fock2HFcol(2*fbdm,2*fbdm))
-      allocate(Fock2HFexc(2*fbdm,2*fbdm))
       allocate(swint(cbdm,cbdm))
       swint = 0.0_dp
       do ui = 1, cbdm
@@ -1428,18 +1445,15 @@ module SCF
       write(60,'(A,E10.2,A)') &
       '  -- complete! cutoff:',schwarz_VT,'; stored in swint'
     end if
-    if (s_h) then
-      allocate(supp1(2*sbdm,2*cbdm))
-      call matmul('N', 'C', rho_m, exc2s, supp1)
-      deallocate(rho_m)
-      allocate(rho_m(2*cbdm,2*cbdm))
-      call matmul('N', 'N', exc2s, supp1, rho_m)
-      deallocate(supp1)
-    end if
-    allocate(supp1(2*cbdm,2*cbdm))
-    allocate(supp3(2*cbdm,2*cbdm))
-    supp1 = c0
-    supp3 = c0
+    ! transform rho_m to Cartesian basis
+    call matmul('N', 'C', rho_m, exc2s, supp)
+    deallocate(rho_m)
+    allocate(rho_m(2*cbdm,2*cbdm))
+    call matmul('N', 'N', exc2s, supp, rho_m)
+    if (allocated(Fock2HFcol)) deallocate(Fock2HFcol)
+    allocate(Fock2HFcol(2*cbdm,2*cbdm), source=c0)
+    if (allocated(Fock2HFexc)) deallocate(Fock2HFexc)
+    allocate(Fock2HFexc(2*cbdm,2*cbdm), source=c0)
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
     !$omp& ul,um,un,uo,up,int,contri,Li,Mi,contrj,Lj,Mj,contrk,Lk,Mk,contrl,Ll,&
@@ -1827,97 +1841,28 @@ module SCF
     !$omp end do
     !-------------<thread sync>-------------
     !$omp critical
-    supp1 = supp1 + HFcol_mic
-    supp3 = supp3 + HFexc_mic
+    Fock2HFcol = Fock2HFcol + HFcol_mic
+    Fock2HFexc = Fock2HFexc + HFexc_mic
     !$omp end critical
     !$omp end parallel
     ! assign Kohn-Sham matrices
     if (fx_id /= -1) then
       if (allocated(Fock2KSexc)) deallocate(Fock2KSexc)
       allocate(Fock2KSexc(2*cbdm, 2*cbdm))
-      if (allocated(oper5)) deallocate(oper5)
       if (fc_id /= -1) then
         if (allocated(Fock2KScor)) deallocate(Fock2KScor)
         allocate(Fock2KScor(2*cbdm, 2*cbdm))
         call basis2grid_Becke(rho_m, KSexc, KScor, Fock2KSexc, Fock2KScor)
-        if (s_h) then
-          allocate(oper5(2*cbdm,2*sbdm))
-          ! exchange
-          call matmul('N', 'N', Fock2KSexc, exc2s, oper5)
-          deallocate(Fock2KSexc)
-          allocate(Fock2KSexc(2*sbdm,2*sbdm))
-          call matmul('C', 'N', exc2s, oper5, Fock2KSexc)
-          ! correlation
-          call matmul('N', 'N', Fock2KScor, exc2s, oper5)
-          deallocate(Fock2KScor)
-          allocate(Fock2KScor(2*sbdm,2*sbdm))
-          call matmul('C', 'N', exc2s, oper5, Fock2KScor)
-          deallocate(oper5)
-        end if
-        allocate(oper5(2*fbdm,2*sbdm))
-        ! exchange
-        call matmul('C', 'N', exXm, Fock2KSexc, oper5)
-        deallocate(Fock2KSexc)
-        allocate(Fock2KSexc(2*fbdm, 2*fbdm))
-        call matmul('N', 'N', oper5, exXm, Fock2KSexc)
-        ! correlation
-        call matmul('C', 'N', exXm, Fock2KScor, oper5)
-        deallocate(Fock2KScor)
-        allocate(Fock2KScor(2*fbdm, 2*fbdm))
-        call matmul('N', 'N', oper5, exXm, Fock2KScor)
+        call cfgo(Fock2KSexc)
+        call cfgo(Fock2KScor)
       else
         call basis2grid_Becke(rho_m=rho_m, ex=KSexc, Fockx=Fock2KSexc)
-        if (s_h) then
-          allocate(oper5(2*cbdm,2*sbdm))
-          ! exchange-correlation
-          call matmul('N', 'N', Fock2KSexc, exc2s, oper5)
-          deallocate(Fock2KSexc)
-          allocate(Fock2KSexc(2*sbdm,2*sbdm))
-          call matmul('C', 'N', exc2s, oper5, Fock2KSexc)
-        end if
-        allocate(oper5(2*fbdm,2*sbdm))
-        ! exchange-correlation
-        call matmul('C', 'N', exXm, Fock2KSexc, oper5)
-        deallocate(Fock2KSexc)
-        allocate(Fock2KSexc(2*fbdm, 2*fbdm))
-        call matmul('N', 'N', oper5, exXm, Fock2KSexc)
+        call cfgo(Fock2KSexc)
       end if
     end if
-
-
-
-    if (s_h) then
-      ! transform to spherical-harmonic basis
-      allocate(supp2(2*cbdm,2*sbdm))
-      call matmul('N', 'N', rho_m, exc2s, supp2)
-      deallocate(rho_m)
-      allocate(rho_m(2*sbdm,2*sbdm))
-      call matmul('C', 'N', exc2s, supp2, rho_m)
-    
-      ! Coulomb
-      call matmul('N', 'N', supp1, exc2s, supp2)
-      deallocate(supp1)
-      allocate(supp1(2*sbdm,2*sbdm))
-      call matmul('C', 'N', exc2s, supp2, supp1)
-      ! Exchange
-      call matmul('N', 'N', supp3, exc2s, supp2)
-      deallocate(supp3)
-      allocate(supp3(2*sbdm,2*sbdm))
-      call matmul('C', 'N', exc2s, supp2, supp3)
-      deallocate(supp2)
-    end if
-    
-    ! orth to Fock2
-    allocate(supp2(2*fbdm,2*sbdm))
-    ! Coulomb
-    call matmul('C', 'N', exXm, supp1, supp2)
-    call matmul('N', 'N', supp2, exXm, Fock2HFcol)
-    ! Exchange
-    call matmul('C', 'N', exXm, supp3, supp2)
-    call matmul('N', 'N', supp2, exXm, Fock2HFexc)
-    deallocate(supp1)
-    deallocate(supp2)
-    deallocate(supp3)
+    call csgo(rho_m) ! transform rho_m to spherical-harmonic basis
+    call cfgo(Fock2HFcol)
+    call cfgo(Fock2HFexc)
   end subroutine Fock2e
   
 !------------------------------------------------------------
@@ -1928,8 +1873,8 @@ module SCF
 !! their original coefficients, then use UHF method to solve Lowdin <S**2>.
   subroutine calc_S2HF()
     implicit none
-    integer cloop_i, cloop_j, cloop_k   ! loop variables for calc_S2HF
-    complex(dp) :: alal, albe, beal, bebe  ! components of pair density matrix
+    integer     :: cloop_i, cloop_j, cloop_k ! loop variables for calc_S2HF
+    complex(dp) :: alal, albe, beal, bebe    ! components of pair density matrix
     complex(dp) :: suppa, suppb
     ! oper3 and i_j are orthogonally normalized
     totalpha = 0.0_dp
@@ -1937,39 +1882,41 @@ module SCF
     do cloop_i = 1, electron_count
       do cloop_k = 1, fbdm
         totalpha = totalpha + &
-        real(conjg(oper3(cloop_k,cloop_i))*oper3(cloop_k,cloop_i),dp)
+        real(conjg(oper3(cloop_k,occindex(cloop_i))) * &
+        oper3(cloop_k,occindex(cloop_i)),dp)
       end do
       do cloop_k = fbdm+1, 2*fbdm
         totbeta = totbeta + &
-        real(conjg(oper3(cloop_k,cloop_i))*oper3(cloop_k,cloop_i),dp)
+        real(conjg(oper3(cloop_k,occindex(cloop_i))) * &
+        oper3(cloop_k,occindex(cloop_i)),dp)
       end do
     end do
-    alal = totalpha * (totalpha - 1.0_dp)
-    bebe = totbeta * (totbeta - 1.0_dp)
+    alal = totalpha * (totalpha-1.0_dp)
+    bebe = totbeta * (totbeta-1.0_dp)
     albe = c0
+    beal = c0
     do cloop_i = 1, electron_count
       do cloop_j = 1, electron_count
         suppa = c0
         suppb = c0
         do cloop_k = 1, fbdm
           suppa = suppa + &
-          conjg(oper3(cloop_k,cloop_i))*oper3(fbdm+cloop_k,cloop_j)
+          conjg(oper3(cloop_k,occindex(cloop_i))) * &
+          oper3(fbdm+cloop_k,occindex(cloop_j))
           suppb = suppb + &
-          conjg(oper3(fbdm+cloop_k,cloop_j))*oper3(cloop_k,cloop_i)
+          conjg(oper3(fbdm+cloop_k,occindex(cloop_j))) * &
+          oper3(cloop_k,occindex(cloop_i))
         end do
         albe = albe + suppa*suppb
-      end do
-    end do
-    beal = c0
-    do cloop_i = 1, electron_count
-      do cloop_j = 1, electron_count
         suppa = c0
         suppb = c0
         do cloop_k = fbdm+1, 2*fbdm
           suppa = suppa + &
-          conjg(oper3(cloop_k,cloop_i))*oper3(cloop_k-fbdm,cloop_j)
+          conjg(oper3(cloop_k,occindex(cloop_i))) * &
+          oper3(cloop_k-fbdm,occindex(cloop_j))
           suppb = suppb + &
-          conjg(oper3(cloop_k-fbdm,cloop_j))*oper3(cloop_k,cloop_i)
+          conjg(oper3(cloop_k-fbdm,occindex(cloop_j))) * &
+          oper3(cloop_k,occindex(cloop_i))
         end do
         beal = beal + suppa*suppb
       end do
@@ -1983,8 +1930,8 @@ module SCF
   subroutine calc_S2HForb(orbnum)
     implicit none
     integer,intent(in) :: orbnum
-    integer :: zloop_i     !loop variables for calc_S2HForb
-    real(dp) :: suppa, suppb
+    integer            :: zloop_i     !loop variables for calc_S2HForb
+    real(dp)           :: suppa, suppb
     totalphaorb = 0.0_dp
     do zloop_i = 1, fbdm
       totalphaorb = totalphaorb + &
@@ -2006,10 +1953,532 @@ module SCF
     Szorb = (totalphaorb-totbetaorb)/2.0_dp
   end subroutine calc_S2HForb
 
+!------------------------------------------------------------
+!> spin projection via Rotation Group Integration -- 
+!! to get spin pure states form 2-componnet states
+!!
+!! projection operator: P^S_MK = (2S+1)/(8pi^2)*Int(D^S_MK*(omega)*R(omega))
+!!
+!! ref: Percus, J. K., and A. Rotenberg. J Math Phys, 3.5 (1962): 928-932.
+!!
+!! SU(2) rotation is based on z-y-z convention of Euler angles
+subroutine RGI()
+  use Lebedev
+  implicit none
+
+  ! SU(2) rotation matrix(z-y-z convention):
+  ! R(phi,theta,chi) = exp(-(i/2)*phi*sigma_z) * 
+  ! exp(-(i/2)*theta*sigma_y) * exp(-(i/2)*chi*sigma_z)
+
+  ! Wigner D-matrix
+  ! D^S_MK = exp(-i*phi*M)*d^S_MK*exp(-i*chi*K)
+
+  real(dp)                :: mcs2           ! mc: basical configuration
+  integer                 :: BCSmult        ! 1: singlet, 2: doublet ...
+  integer                 :: BCSz           ! 0: sz=0, 1: sz=1/2 ...
+  integer                 :: ii, jj, kk, mm ! loop variables
+  real(dp)                :: phi, theta, chi! Euler angles
+  real(dp)                :: wsmalld(6)     ! Wigner d-matrix
+  complex(dp)             :: wbigd(6)       ! Wigner D-matrix
+  complex(dp)             :: spinproj(6)    ! <psi|P^S_MK|psi>
+  complex(dp)             :: orb_i(2*fbdm,electron_count)
+  complex(dp)             :: orb_o(2*fbdm,electron_count)
+  complex(dp)        :: overlap(electron_count,electron_count)! <MO|R(omega)|MO>
+  complex(dp)             :: rotproj        ! <psi|R(omega)|psi>
+  real(dp)           :: codx(434),cody(434),codz(434) ! Cartesian Lebedev points
+  real(dp)                :: weight(434)    ! Lebedev weights
+  real(dp)           :: phis(434), thetas(434)! Spherical Lebedev points
+  integer                 :: n
+  real(dp)                :: R
+
+  write(60,'(A)') &
+  '  ============================================================='
+  write(60,'(A)') '                   Rotation Group Integration'
+  write(60,'(A)') &
+  '  ============================================================='
+  if (.not. allocated(oper3)) then
+    write(60,'(A)') '  RGI: oper3 not allocated, unable to perform'
+    return
+  end if
+  if (DKH_order == 0) then
+    write(60,'(A)') '  RGI: DKH_order = 0, unable to perform'
+    return
+  end if
+
+  ! designation of basical configuration, BCSmult and BCSz
+  if (mod(electron_count,2) == 0) then
+    do BCSmult = 0, 50, 2
+      mcs2 = real(BCSmult)/2.0*(real(BCSmult)/2.0+1.0)
+      if (S__2 < mcs2) exit
+    end do
+  else
+    do BCSmult = 1, 51, 2
+      mcs2 = real(BCSmult)/2.0*(real(BCSmult)/2.0+1.0)
+      if (S__2 < mcs2) exit
+    end do
+  end if
+  BCSmult = BCSmult - 1
+  if (mod(electron_count,2)/=0 .and. S__2 < 0.75) BCSmult = 2
+  BCSz = nint(totalpha) - nint(totbeta)
+  if (mod(BCSmult,2) == 0 .and. mod(BCSz,2) == 0) then
+    write(60,'(A)') '  RGI: BCSmult & BCSz are contradictory, unable to perform'
+    return
+  else if (mod(BCSmult,2) /= 0 .and. mod(BCSz,2) /= 0) then
+    write(60,'(A)') '  RGI: BCSmult & BCSz are contradictory, unable to perform'
+    return
+  end if
+  write(60,'(A,I2,A,I2,A)') '  basical S_mult =', bcsmult,', S_z =',bcsz,'/2'
+
+  ! Lebedev gird points
+  call LD0434(codx, cody, codz, weight, n)
+  weight = weight * 4.0_dp*pi ! sphere weight
+  do ii = 1, n
+    ! polar angle theta (0 ≤ theta ≤ pi)
+    thetas(ii) = acos(codz(ii))
+    ! azimuth angle phi (0 ≤ phi < 2pi)
+    R = hypot(codx(ii), cody(ii))
+    if (R > 1.0E-12_dp) then
+      ! not on the z-axis
+      phis(ii) = atan2(cody(ii), codx(ii))
+      if (phis(ii) < 0.0_dp) phis(ii) = phis(ii) + 2.0_dp*pi
+    else
+      ! on the z-axis（theta=0 or theta=pi），phi set to 0 to avoid NaN
+      phis(ii) = 0.0_dp
+    end if
+  end do
+
+  ! Consider configuration components satisfies abs(S_z^a - S_z^b) <= 1 and 
+  ! abs(S^a - S^b) <= 1. According to Wigner–Eckart theorem, the CG coefficients
+  ! (transition matrix elements) between states are not zero only if they
+  ! satisfies the 2 conditions. For more see RGI_Configurations
+  spinproj = c0
+  orb_i = oper3(:,1:electron_count)
+  ! To construct the pure states of S^2 and S_z, it is necessary to first obtain
+  ! the components with the same S_z from the projected 2-component state, and
+  ! then perform rotation projection. 
+  ! For components with the same S^2 but different S_z, converting them to the
+  ! same S_z using the Wigner D-matrix will cause mutual contamination between
+  ! sub-states.
+  ! Therefore, we need to set K = M for all possible M.
+  if (BCSmult == 1 .and. BCSz == 0) then ! basical configuration is closed shell
+    !---------------
+    ! S     M
+    ! 0     0
+    ! 2     2
+    !       0
+    !      -2
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (0,0)
+      wsmalld(1) = wigner_d(0, 0, 0, theta)
+      ! projection to (1,1)
+      wsmalld(2) = wigner_d(2, 2, 2, theta)
+      ! projection to (1,0)
+      wsmalld(3) = wigner_d(2, 0, 0, theta)
+      ! projection to (1,-1)
+      wsmalld(4) = wigner_d(2, -2, -2, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1)
+        wbigd(2) = wsmalld(2) * exp(ci*chi) * exp(ci*phi)
+        wbigd(3) = wsmalld(3)
+        wbigd(4) = wsmalld(4) * exp(-ci*chi) * exp(-ci*phi)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj(1:4) = spinproj(1:4) + &
+        weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd(1:4)*rotproj
+      end do
+    end do
+    spinproj(1) = spinproj(1) * (1.0_dp/(8.0_dp*pi**2))
+    spinproj(2:4) = spinproj(2:4) * (3.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |S^0| (basical configuration)                 ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |T^1|                                         ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |T^0|                                         ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |T^-1|                                        ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+  else if (BCSmult == 2 .and. BCSz == 1) then ! basical configuration is doublet
+    !---------------
+    ! 2S    2M
+    !  1     1
+    !       -1
+    !  3     3
+    !        1
+    !       -1
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (1/2,1/2)
+      wsmalld(1) = wigner_d(1, 1, 1, theta)
+      ! projection to (1/2,-1/2)
+      wsmalld(2) = wigner_d(1, -1, -1, theta)
+      ! projection to (3/2,3/2)
+      wsmalld(3) = wigner_d(3, 3, 3, theta)
+      ! projection to (3/2,1/2)
+      wsmalld(4) = wigner_d(3, 1, 1, theta)
+      ! projection to (3/2,-1/2)
+      wsmalld(5) = wigner_d(3, -1, -1, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1) * exp(0.5_dp*ci*chi) * exp(0.5_dp*ci*phi)
+        wbigd(2) = wsmalld(2) * exp(-0.5_dp*ci*chi) * exp(-0.5_dp*ci*phi)
+        wbigd(3) = wsmalld(3) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        wbigd(4) = wsmalld(4) * exp(0.5_dp*ci*chi) * exp(0.5_dp*ci*phi)
+        wbigd(5) = wsmalld(5) * exp(-0.5_dp*ci*chi) * exp(-0.5_dp*ci*phi)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj(1:5) = spinproj(1:5) + &
+        weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd(1:5)*rotproj
+      end do
+    end do
+    spinproj(1:2) = spinproj(1:2) * (2.0_dp/(8.0_dp*pi**2))
+    spinproj(3:5) = spinproj(3:5) * (4.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |D^1/2| (basical configuration)               ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |D^-1/2|                                      ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |4^3/2|                                       ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |4^1/2|                                       ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+    write(60,'(A,E12.5)') &
+    '  |4^-1/2|                                      ...', &
+    dsqrt(real(spinproj(5)*conjg(spinproj(5))))
+  else if (BCSmult == 3 .and. BCSz == 2) then ! basical configuration is triplet
+    !---------------
+    ! 2S    2M
+    !  0     0
+    !  2     2
+    !        0
+    !  4     4
+    !        2
+    !        0
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (0,0)
+      wsmalld(1) = wigner_d(0, 0, 0, theta)
+      ! projection to (1,1)
+      wsmalld(2) = wigner_d(2, 2, 2, theta)
+      ! projection to (1,0)
+      wsmalld(3) = wigner_d(2, 0, 0, theta)
+      ! projection to (2,2)
+      wsmalld(4) = wigner_d(4, 4, 4, theta)
+      ! projection to (2,1)
+      wsmalld(5) = wigner_d(4, 2, 2, theta)
+      ! projection to (2,0)
+      wsmalld(6) = wigner_d(4, 0, 0, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1)
+        wbigd(2) = wsmalld(2) * exp(ci*chi) * exp(ci*phi)
+        wbigd(3) = wsmalld(3)
+        wbigd(4) = wsmalld(4) * exp(2.0_dp*ci*chi) * exp(2.0_dp*ci*phi)
+        wbigd(5) = wsmalld(5) * exp(ci*chi) * exp(ci*phi)
+        wbigd(6) = wsmalld(6)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj = spinproj + weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd*rotproj
+      end do
+    end do
+    spinproj(1) = spinproj(1) * (1.0_dp/(8.0_dp*pi**2))
+    spinproj(2:3) = spinproj(2:3) * (3.0_dp/(8.0_dp*pi**2))
+    spinproj(4:6) = spinproj(4:6) * (5.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |S^0|                                         ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |T^1|  (basical configuration)                ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |T^0|                                         ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |5^2|                                         ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+    write(60,'(A,E12.5)') &
+    '  |5^1|                                         ...', &
+    dsqrt(real(spinproj(5)*conjg(spinproj(5))))
+    write(60,'(A,E12.5)') &
+    '  |5^0|                                         ...', &
+    dsqrt(real(spinproj(6)*conjg(spinproj(6))))
+  else if (BCSmult == 4 .and. BCSz == 3) then ! basical configuration is quartet
+    !---------------
+    ! 2S    2M
+    !  1     1
+    !  3     3
+    !        1
+    !  5     5
+    !        3
+    !        1
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (1/2,1/2)
+      wsmalld(1) = wigner_d(1, 1, 1, theta)
+      ! projection to (3/2,3/2)
+      wsmalld(2) = wigner_d(3, 3, 3, theta)
+      ! projection to (3/2,1/2)
+      wsmalld(3) = wigner_d(3, 1, 1, theta)
+      ! projection to (5/2,5/2)
+      wsmalld(4) = wigner_d(5, 5, 5, theta)
+      ! projection to (5/2,3/2)
+      wsmalld(5) = wigner_d(5, 3, 3, theta)
+      ! projection to (5/2,1/2)
+      wsmalld(6) = wigner_d(5, 1, 1, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1) * exp(0.5_dp*ci*chi) * exp(0.5_dp*ci*phi)
+        wbigd(2) = wsmalld(2) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        wbigd(3) = wsmalld(3) * exp(0.5_dp*ci*chi) * exp(0.5_dp*ci*phi)
+        wbigd(4) = wsmalld(4) * exp(2.5_dp*ci*chi) * exp(2.5_dp*ci*phi)
+        wbigd(5) = wsmalld(5) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        wbigd(6) = wsmalld(6) * exp(0.5_dp*ci*chi) * exp(0.5_dp*ci*phi)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj = spinproj + weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd*rotproj
+      end do
+    end do
+    spinproj(1) = spinproj(1) * (2.0_dp/(8.0_dp*pi**2))
+    spinproj(2:3) = spinproj(2:3) * (4.0_dp/(8.0_dp*pi**2))
+    spinproj(4:6) = spinproj(4:6) * (6.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |D^1/2|                                       ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |4^3/2|  (basical configuration)              ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |4^1/2|                                       ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |6^5/2|                                       ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+    write(60,'(A,E12.5)') &
+    '  |6^3/2|                                       ...', &
+    dsqrt(real(spinproj(5)*conjg(spinproj(5))))
+    write(60,'(A,E12.5)') &
+    '  |6^1/2|                                       ...', &
+    dsqrt(real(spinproj(6)*conjg(spinproj(6))))
+  else if (BCSmult == 5 .and. BCSz == 4) then ! basical configuration is quintet
+    !---------------
+    ! 2S    2M
+    !  2     2
+    !  4     4
+    !        2
+    !  6     6
+    !        4
+    !        2
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (1,1)
+      wsmalld(1) = wigner_d(2, 2, 2, theta)
+      ! projection to (2,2)
+      wsmalld(2) = wigner_d(4, 4, 4, theta)
+      ! projection to (2,1)
+      wsmalld(3) = wigner_d(4, 2, 2, theta)
+      ! projection to (3,3)
+      wsmalld(4) = wigner_d(6, 6, 6, theta)
+      ! projection to (3,2)
+      wsmalld(5) = wigner_d(6, 4, 4, theta)
+      ! projection to (3,1)
+      wsmalld(6) = wigner_d(6, 2, 2, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1) * exp(ci*chi) * exp(ci*phi)
+        wbigd(2) = wsmalld(2) * exp(2.0_dp*ci*chi) * exp(2.0_dp*ci*phi)
+        wbigd(3) = wsmalld(3) * exp(ci*chi) * exp(ci*phi)
+        wbigd(4) = wsmalld(4) * exp(3.0_dp*ci*chi) * exp(3.0_dp*ci*phi)
+        wbigd(5) = wsmalld(5) * exp(2.0_dp*ci*chi) * exp(2.0_dp*ci*phi)
+        wbigd(6) = wsmalld(6) * exp(ci*chi) * exp(ci*phi)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj = spinproj + weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd*rotproj
+      end do
+    end do
+    spinproj(1) = spinproj(1) * (3.0_dp/(8.0_dp*pi**2))
+    spinproj(2:3) = spinproj(2:3) * (5.0_dp/(8.0_dp*pi**2))
+    spinproj(4:6) = spinproj(4:6) * (7.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |T^1|                                         ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |5^2|  (basical configuration)                ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |5^1|                                         ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |7^3|                                         ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+    write(60,'(A,E12.5)') &
+    '  |7^2|                                         ...', &
+    dsqrt(real(spinproj(5)*conjg(spinproj(5))))
+    write(60,'(A,E12.5)') &
+    '  |7^1|                                         ...', &
+    dsqrt(real(spinproj(6)*conjg(spinproj(6))))
+  else if (BCSmult == 6 .and. BCSz == 5) then ! basical configuration is sextet
+    !---------------
+    ! 2S    2M
+    !  3     3
+    !  5     5
+    !        3
+    !  7     7
+    !        5
+    !        3
+    !---------------
+    do ii = 1, n
+      phi = phis(ii)
+      theta = thetas(ii)
+      wsmalld = 0.0_dp
+      ! projection to (3/2,3/2)
+      wsmalld(1) = wigner_d(3, 3, 3, theta)
+      ! projection to (5/2,5/2)
+      wsmalld(2) = wigner_d(5, 5, 5, theta)
+      ! projection to (5/2,3/2)
+      wsmalld(3) = wigner_d(5, 3, 3, theta)
+      ! projection to (7/2,7/2)
+      wsmalld(4) = wigner_d(7, 7, 7, theta)
+      ! projection to (7/2,5/2)
+      wsmalld(5) = wigner_d(7, 5, 5, theta)
+      ! projection to (7/2,3/2)
+      wsmalld(6) = wigner_d(7, 3, 3, theta)
+      ! 100 chi points are verified to provide sufficient integration accuracy
+      do jj = 0, 99
+        wbigd = c0
+        chi = 2.0_dp*pi*real(jj,dp)/(100.0_dp)
+        wbigd(1) = wsmalld(1) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        wbigd(2) = wsmalld(2) * exp(2.5_dp*ci*chi) * exp(2.5_dp*ci*phi)
+        wbigd(3) = wsmalld(3) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        wbigd(4) = wsmalld(4) * exp(3.5_dp*ci*chi) * exp(3.5_dp*ci*phi)
+        wbigd(5) = wsmalld(5) * exp(2.5_dp*ci*chi) * exp(2.5_dp*ci*phi)
+        wbigd(6) = wsmalld(6) * exp(1.5_dp*ci*chi) * exp(1.5_dp*ci*phi)
+        call orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+        call matmul('C', 'N', orb_i, orb_o, overlap)
+        ! <psi|R(omega)|psi> = det(<MO|R(omega)|MO>) = det(overlap)
+        rotproj = det(overlap)
+        spinproj = spinproj + weight(ii)*2.0_dp*pi/(100.0_dp)*wbigd*rotproj
+      end do
+    end do
+    spinproj(1) = spinproj(1) * (4.0_dp/(8.0_dp*pi**2))
+    spinproj(2:3) = spinproj(2:3) * (6.0_dp/(8.0_dp*pi**2))
+    spinproj(4:6) = spinproj(4:6) * (8.0_dp/(8.0_dp*pi**2))
+    write(60,'(A,E12.5)') &
+    '  |4^3/2|                                       ...', &
+    dsqrt(real(spinproj(1)*conjg(spinproj(1))))
+    write(60,'(A,E12.5)') &
+    '  |6^5/2|  (basical configuration)              ...', &
+    dsqrt(real(spinproj(2)*conjg(spinproj(2))))
+    write(60,'(A,E12.5)') &
+    '  |6^3/2|                                       ...', &
+    dsqrt(real(spinproj(3)*conjg(spinproj(3))))
+    write(60,'(A,E12.5)') &
+    '  |8^7/2|                                       ...', &
+    dsqrt(real(spinproj(4)*conjg(spinproj(4))))
+    write(60,'(A,E12.5)') &
+    '  |8^5/2|                                       ...', &
+    dsqrt(real(spinproj(5)*conjg(spinproj(5))))
+    write(60,'(A,E12.5)') &
+    '  |8^3/2|                                       ...', &
+    dsqrt(real(spinproj(6)*conjg(spinproj(6))))
+  else if (BCSmult > BCSz+1) then  ! spin polarization open-shell
+    write(60,'(A)') &
+    '  RGI: basical configuration is spin polarization, in this'
+    write(60,'(A)') &
+    '       case, decompose single-determinant into spin pure'
+    write(60,'(A)') &
+    '       states is meaningless.'
+    return
+  else
+    write(60,'(A)') '  RGI: BCSmult < BCSz+1, unable to perform'
+    return
+  end if
+  write(60,'(A)') &
+  '  ============================================================='
+end subroutine RGI
+
+!-----------------------------------------------------------------------
+!> calculate molecule deviations from time-reversal symmetry
+!!
+!! (Krammers degeneration)
+!!
+!! kappa = norm(k2.conjg(k2)+I)
+!!
+!! k2 = <MO_i|-i*sigma_y|MO_j>
+real(dp) function Krammers() result(kappa)
+  implicit none
+  integer           :: ii, jj          ! loop variables
+  complex(dp)       :: ci_j(fbdm, fbdm)
+  complex(dp)       :: k1(fbdm, electron_count)
+  complex(dp)       :: k1TR(fbdm, electron_count)
+  complex(dp)       :: supp(electron_count, electron_count)
+  complex(dp)       :: k2(electron_count, electron_count)
+  complex(dp)       :: conjgk2(electron_count, electron_count)
+  complex(dp)       :: k2k2pI(electron_count, electron_count)
+  kappa = 0.0_dp
+  ci_j = i_j * c1
+  k1 = oper3(1:fbdm,1:electron_count)
+  k1TR = -conjg(oper3(fbdm+1:2*fbdm,1:electron_count))
+  call matmul('C', 'N', k1, k1TR, supp)
+  k2 = supp
+
+  k1 = oper3(fbdm+1:2*fbdm,1:electron_count)
+  k1TR = conjg(oper3(1:fbdm,1:electron_count))
+  call matmul('C', 'N', k1, k1TR, supp)
+  k2 = k2 + supp
+
+  conjgk2 = conjg(k2)
+  call matmul('N', 'N', k2, conjgk2, k2k2pI)
+
+  forall(ii=1:electron_count) k2k2pI(ii,ii) = k2k2pI(ii,ii) + c1
+  kappa = norm(k2k2pI)
+end function Krammers
 !-----------------------------------------------------------------------
 !> project AO2MO coefficient from m_basis to basis
 !!
-!! cB = i_j_s^(-1) . m_i_j . cA . XT
+!! cB = i_j_s^(-1) . m_i_j . cA . m_s2fT
 !!
 !! cA(m_sbdm, m_sbdm), cB(sbdm, m_sbdm) number of project MOs is m_sbdm
   subroutine m_basis_proj(cA, cB)
@@ -2024,7 +2493,7 @@ module SCF
     real(dp)             :: coei(16), coej(16)
     real(dp)             :: codi(3), codj(3)
     real(dp),allocatable :: spp(:,:), spp2(:,:)
-    real(dp)             :: X(m_sbdm,m_sbdm)
+    real(dp)             :: m_s2f(m_sbdm,m_sbdm)
     real(dp)             :: i_j_inv(sbdm,sbdm)
     real(dp)             :: m_min_evl
     real(dp)             :: itmat(sbdm, m_sbdm)
@@ -2056,8 +2525,8 @@ module SCF
           end do
         end do
       end do
-      call m_assign_cs(.false.)
-      call m_sphehar(m_i_j)
+      call m_assign_cs()
+      call m_csgo(m_i_j)
     end if
     i_j_inv = i_j_s
     call inverse(i_j_inv, sbdm)
@@ -2067,18 +2536,18 @@ module SCF
     call matmul('N', 'N', i_j_inv, spp, itmat)
     deallocate(spp)
     ! symmetric orthogonalisation
-    ! XT.cBT.i_j_s.cB.X = I
-    ! note that this X is not same as Xm which satisfy Xm.i_j_s.XmT = I
+    ! m_s2fT.cBT.i_j_s.cB.m_s2f = I
+    ! note that this m_s2f is not same as s2f which satisfy s2f.i_j_s.s2fT = I
     ! cB is not orthogonal so we have to make whole MO(cBT.i_j_s.cB)
     ! orthogonal instead of just AO(i_j_s)
     allocate(spp(m_sbdm, sbdm))
     allocate(spp2(m_sbdm, m_sbdm))
     call matmul('T', 'N', itmat, i_j_s, spp)
     call matmul('N', 'N', spp, itmat, spp2)
-    call symm_orth(spp2, m_sbdm, X, m_min_evl)
+    call symm_orth(spp2, m_sbdm, m_s2f, m_min_evl)
     ! unlikely to meet linear dependency, because MO satisfy Pauli exclusion
     ! principle so will not repeat each other
-    call matmul('N', 'N', itmat, X, cB)
+    call matmul('N', 'N', itmat, m_s2f, cB)
   end subroutine m_basis_proj
 
 !-----------------------------------------------------------------------
@@ -2158,15 +2627,9 @@ module SCF
       end do
       write(channel, *)
     end do
-    if (s_h) then
-      write(channel, '(A)') '[5D]'
-      write(channel, '(A)') '[7F]'
-      write(channel, '(A)') '[9G]'
-    else
-      write(channel, '(A)') '[6D]'
-      write(channel, '(A)') '[10F]'
-      write(channel, '(A)') '[15G]'
-    end if
+    write(channel, '(A)') '[5D]'
+    write(channel, '(A)') '[7F]'
+    write(channel, '(A)') '[9G]'
     ! MO coefficient
     write(channel, '(A)') '[MO]'
     do dmi = 1, fbdm
@@ -2243,15 +2706,9 @@ module SCF
       end do
       write(channel, *)
     end do
-    if (s_h) then
-      write(channel, '(A)') '[5D]'
-      write(channel, '(A)') '[7F]'
-      write(channel, '(A)') '[9G]'
-    else
-      write(channel, '(A)') '[6D]'
-      write(channel, '(A)') '[10F]'
-      write(channel, '(A)') '[15G]'
-    end if
+    write(channel, '(A)') '[5D]'
+    write(channel, '(A)') '[7F]'
+    write(channel, '(A)') '[9G]'
     ! MO coefficient
     write(channel, '(A)') '[MO]'
     do dmi = fbdm+1, 2*fbdm
@@ -2329,15 +2786,9 @@ module SCF
         end do
         write(channel, *)
       end do
-      if (s_h) then
-        write(channel, '(A)') '[5D]'
-        write(channel, '(A)') '[7F]'
-        write(channel, '(A)') '[9G]'
-      else
-        write(channel, '(A)') '[6D]'
-        write(channel, '(A)') '[10F]'
-        write(channel, '(A)') '[15G]'
-      end if
+      write(channel, '(A)') '[5D]'
+      write(channel, '(A)') '[7F]'
+      write(channel, '(A)') '[9G]'
       ! MO coefficient
       write(channel, '(A)') '[MO]'
       do dmi = 1, fbdm
@@ -2414,15 +2865,9 @@ module SCF
         end do
         write(channel, *)
       end do
-      if (s_h) then
-        write(channel, '(A)') '[5D]'
-        write(channel, '(A)') '[7F]'
-        write(channel, '(A)') '[9G]'
-      else
-        write(channel, '(A)') '[6D]'
-        write(channel, '(A)') '[10F]'
-        write(channel, '(A)') '[15G]'
-      end if
+      write(channel, '(A)') '[5D]'
+      write(channel, '(A)') '[7F]'
+      write(channel, '(A)') '[9G]'
       ! MO coefficient
       write(channel, '(A)') '[MO]'
       do dmi = fbdm+1, 2*fbdm

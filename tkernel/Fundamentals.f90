@@ -8,9 +8,6 @@
 !!
 !! @author dirac4pi
 
-
-!! 去掉s_h，只支持spherical-harmonic基组，把Xm跟c2s组合成f2s减少矩阵操作
-!! 进一步提升单双电子积分精度，尤其是高角动量部分，提升Taylor级数跟截断阈值
 module Fundamentals
   use IFPORT
   use LAPACK95
@@ -73,7 +70,6 @@ module Fundamentals
   integer         :: charge      = 0      ! charge of the system
   integer         :: spin_mult   = 675    ! spin multiplicity of the system
   integer         :: electron_count       ! number of electrons of the system
-  logical         :: s_h         = .true. ! Cartesian / spher-harmo basis
   !---------------------<module SCF>---------------------
   real(dp)        :: schwarz_VT  = 1E-9   ! Schwarz screening cutoff
   integer         :: maxiter     = 128    ! upper limit of convergence loops
@@ -89,7 +85,8 @@ module Fundamentals
   real(dp)        :: cutdiis_new
   real(dp)        :: cutdamp     = 0.01   ! cut damp when threshold is reached
   real(dp)        :: cutdamp_new
-  logical         :: keepspin    = .false.! avoid spin mutations
+  character       :: cspin       = 'n'    ! constrained spin multiplicity mode
+                                          ! n: normal  d: degenerate  f: force
   logical         :: d4          = .false.! use DFT-D4 dispersion correction
   character(len=8):: guess_type  = 'molden'  ! initial guess for SCF
   logical         :: molden      = .false.! save MOs to .molden file
@@ -103,14 +100,6 @@ module Fundamentals
   integer         :: fc_id       = -1     ! correlation functional ID(default HF
   real(dp)        :: x_HF        = 1.0_dp ! HF(exact exchange) componnet
   character(len=20) :: funcemd4  = 'hf'   ! functional name in emd4
-
-
-  private :: dump_matrix_real, dump_matrix_cmplx, load_matrix_real
-  private :: load_matrix_cmplx, real_symm_inverse, cmplx_inverse
-  private :: real_symm_diag, cmplx_diag, real_matmul, cmplx_matmul
-  private :: real_matvec, cmplx_matvec
-  public  :: dump_matrix, load_matrix, generate_output, terminate, matmul
-  public  :: lowercase, is_alpha, diag, inverse, can_orth, symm_orth, atnz2block
 
   interface dump_matrix
     module procedure dump_matrix_cmplx
@@ -138,6 +127,25 @@ module Fundamentals
     module procedure real_matvec
     module procedure cmplx_matvec
   end interface matmul
+
+  interface norm
+    module procedure real_fbnorm
+    module procedure cmplx_fbnorm
+  end interface norm
+
+  interface det
+    module procedure real_det
+    module procedure cmplx_det
+  end interface det
+
+  private :: dump_matrix_real, dump_matrix_cmplx, load_matrix_real
+  private :: load_matrix_cmplx, real_symm_inverse, cmplx_inverse
+  private :: real_symm_diag, cmplx_diag, real_matmul, cmplx_matmul
+  private :: real_matvec, cmplx_matvec, real_fbnorm, cmplx_fbnorm
+  private :: real_det, cmplx_det
+  public  :: dump_matrix, load_matrix, generate_output, terminate, matmul, norm
+  public  :: lowercase, is_alpha, diag, inverse, can_orth, symm_orth, atnz2block
+  public  :: wigner_d, binomialcoe, factorial, det
 
   contains
   
@@ -539,9 +547,9 @@ module Fundamentals
   end subroutine cmplx_inverse
 
 !-----------------------------------------------------------------------
-! symmetric orthogonalisation of given real symmetric matrix
-! X mat XT = I
-  
+!> symmetric orthogonalisation of given real symmetric matrix
+!!
+!! X mat XT = I
   subroutine symm_orth(mat, dm, X, min_evl)
     implicit none
     integer,intent(in)   :: dm
@@ -797,4 +805,353 @@ module Fundamentals
     matb, ldb, c0, matc, dima(1))
   end subroutine cmplx_matmul
 
+!------------------------------------------------------------
+!> Frobenius norm of a real matrix
+  real(dp) function real_fbnorm(mat) result(fbnorm)
+    implicit none
+    real(dp),intent(in)          :: mat(:,:)
+    integer                      :: ii, jj
+    integer                      :: dm(2)
+    fbnorm = 0.0_dp
+    dm = shape(mat)
+    do ii = 1, dm(1)
+      do jj = 1, dm(2)
+        fbnorm = fbnorm + mat(ii,jj)**2
+      end do
+    end do
+    fbnorm = dsqrt(fbnorm)
+  end function real_fbnorm
+
+!------------------------------------------------------------
+!> Frobenius norm of a complex matrix
+  real(dp) function cmplx_fbnorm(mat) result(fbnorm)
+    implicit none
+    complex(dp),intent(in)       :: mat(:,:)
+    integer                      :: ii, jj
+    integer                      :: dm(2)
+    fbnorm = 0.0_dp
+    dm = shape(mat)
+    do ii = 1, dm(1)
+      do jj = 1, dm(2)
+        fbnorm = fbnorm + real(mat(ii,jj)*conjg(mat(ii,jj)),dp)
+      end do
+    end do
+    fbnorm = dsqrt(fbnorm)
+  end function cmplx_fbnorm
+
+!------------------------------------------------------------
+!> calculate determinant of a real matrix
+  real(dp) function real_det(mat) result(val)
+    implicit none
+    real(dp), intent(in)    :: mat(:,:)
+    real(dp), allocatable   :: LU(:,:)
+    integer, allocatable    :: ipiv(:)
+    integer                 :: n, i
+    real(dp)                :: sign
+    
+    n = size(mat, 1)
+    if (size(mat, 2) /= n) call terminate("real_det: mat must be square")
+    allocate(LU(n, n), ipiv(n))
+    LU = mat ! have to copy because dgetrf will replace mat
+    ! det(A)=det(P^−1LU)=det(P^−1)det(L)det(U)
+    !                   =(−1)^k*U_11*U_22*...*U_nn
+    call dgetrf(n, n, LU, n, ipiv, info)  ! LU factorization
+    if (info > 0) then      ! mat is singular matrix
+      val = 0.0_dp
+    else if (info < 0) then ! invalid argument
+      call terminate("real_det: invalid argument in dgetrf")
+    else
+      val = 1.0_dp
+      sign = 1.0_dp
+      do i = 1, n
+        val = val * LU(i, i)
+        if (ipiv(i) /= i) sign = -sign
+      end do
+      val = sign * val
+    end if
+  end function real_det
+
+!------------------------------------------------------------
+!> calculate determinant of a matrix matrix
+  complex(dp) function cmplx_det(mat) result(val)
+    implicit none
+    complex(dp), intent(in)    :: mat(:,:)
+    complex(dp), allocatable   :: LU(:,:)
+    integer, allocatable       :: ipiv(:)
+    integer                    :: n, i
+    real(dp)                   :: sign
+    
+    n = size(mat, 1)
+    if (size(mat, 2) /= n) call terminate("cmplx_det: mat must be square")
+    allocate(LU(n, n), ipiv(n))
+    LU = mat ! have to copy because zgetrf will replace mat
+    ! det(A)=det(P^−1LU)=det(P^−1)det(L)det(U)
+    !                   =(−1)^k*U_11*U_22*...*U_nn
+    call zgetrf(n, n, LU, n, ipiv, info)  ! LU factorization
+    if (info > 0) then      ! mat is singular matrix
+      val = c0
+    else if (info < 0) then ! invalid argument
+      call terminate("cmplx_det: invalid argument in zgetrf")
+    else
+      val = c1
+      sign = 1.0_dp
+      do i = 1, n
+        val = val * LU(i, i)
+        if (ipiv(i) /= i) sign = -sign
+      end do
+      val = sign * val
+    end if
+  end function cmplx_det
+
+!------------------------------------------------------------
+!> calculate (reduced) Wigner d-matrix d^S_MK(theta) for specific quantum number
+!!
+!! |S,M> = exp(-i*phi*M)*d^S_MK*exp(-i*chi*K) |S,K>
+!!
+!! S,M,K and specific angle theta based on z-y-z convention of Euler angles.
+!!
+!! !!Note: the input S,M,K is actually 2S,2M,2K respectively
+  pure recursive real(dp) function wigner_d(S, M, K, theta) result(smalld)
+    implicit none
+    integer,intent(in)  ::  S          ! spin quantum number S/2
+    integer,intent(in)  ::  M          ! spin magnetic quantum number M/2
+    integer,intent(in)  ::  K          ! spin magnetic quantum number K/2
+    real(dp),intent(in) ::  theta      ! input angle
+    integer             ::  SpM        ! S+M
+    integer             ::  SmM        ! S-M
+    integer             ::  SpK        ! S+K
+    integer             ::  SmK        ! S-K
+    integer             ::  MmK        ! M-K
+    integer             ::  vs, vsmin, vsmax
+    real(dp)            ::  coe, vsd
+
+    if (S < abs(M) .or. S < abs(K)) then
+      smalld = 0.0_dp
+      return
+    end if
+    ! general formula
+    if (S > 4) then
+      SpM = nint(0.5_dp*(real(S,dp)+real(M,dp)))
+      SmM = nint(0.5_dp*(real(S,dp)-real(M,dp)))
+      SpK = nint(0.5_dp*(real(S,dp)+real(K,dp)))
+      SmK = nint(0.5_dp*(real(S,dp)-real(K,dp)))
+      MmK = nint(0.5_dp*(real(M,dp)-real(K,dp)))
+      coe = dsqrt(factorial(SpM)*factorial(SmM)*factorial(SpK)*factorial(SmK))
+      vsmax = min(SpK, SmM)
+      vsmin = max(0, -MmK)
+      smalld = 0.0_dp
+      do vs = vsmin, vsmax
+        vsd = (-1.0_dp)**(MmK+vs) * dcos(0.5_dp*theta)**(SpK+SmM-2*vs) * &
+        dsin(0.5_dp*theta)**(MmK+2*vs)
+        vsd = vsd / &
+        (factorial(SpK-vs)*factorial(vs)*factorial(MmK+vs)*factorial(SmM-vs))
+        smalld = smalld + vsd
+      end do
+      smalld = smalld * coe
+      return
+    end if
+    ! d^S_MK = (-1)^(K-M)*d^S_KM = d^S_-K-M
+    if (.not.(M >= 0 .and. M >= abs(K))) then
+      if (M >= 0) then
+        if (K > 0) then        ! K > M >= 0
+          smalld = (-1.0_dp)**((K-M)/2)*wigner_d(S, K, M, theta)
+        else if (K < 0) then   ! M >= 0 > K  (e.g. M=1, K=-2)
+          smalld = wigner_d(S, -K, -M, theta)
+        end if
+      else if (M < 0) then
+        if (K > 0) then        ! K > 0 > M
+          smalld = (-1.0_dp)**((K-M)/2)*wigner_d(S, K, M, theta)
+        else if (K <= 0) then  ! M < 0  k <= 0
+          smalld = wigner_d(S, -K, -M, theta)
+        end if
+      end if
+      return
+    end if
+    select case(S)
+      case(0) ! S = 0
+        smalld = 1.0_dp                           ! M = K = 0
+      case(1) ! S = 1/2
+        if (M == 1 .and. K == 1) then             ! M = 1/2, K = 1/2
+          smalld = dcos(0.5_dp*theta)
+        else if (M == 1 .and. K == -1) then       ! M = 1/2, K = -1/2
+          smalld = -dsin(0.5_dp*theta)
+        end if
+      case(2) ! S = 1
+        if (M == 2 .and. K == 2) then             ! M = 1, K = 1
+          smalld = 0.5_dp*(1.0_dp+dcos(theta))
+        else if (M == 2 .and. K == 0) then        ! M = 1, K = 0
+          smalld = -dsin(theta)/dsqrt(2.0_dp)
+        else if (M == 2 .and. K == -2) then       ! M = 1, K = -1
+          smalld = 0.5_dp*(1.0_dp-dcos(theta))
+        else if (M == 0 .and. K == 0) then        ! M = 0, K = 0
+          smalld = dcos(theta)
+        end if
+      case(3) ! S = 3/2
+        if (M == 3 .and. K == 3) then             ! M = 3/2, K = 3/2
+          smalld = 0.5_dp*(1.0_dp+dcos(theta))*dcos(0.5_dp*theta)
+        else if (M == 3 .and. K == 1) then        ! M = 3/2, K = 1/2
+          smalld = -0.5_dp*dsqrt(3.0_dp)*(1.0_dp+dcos(theta))*dsin(0.5_dp*theta)
+        else if (M == 3 .and. K == -1) then       ! M = 3/2, K = -1/2
+          smalld = 0.5_dp*dsqrt(3.0_dp)*(1.0_dp-dcos(theta))*dcos(0.5_dp*theta)
+        else if (M == 3 .and. K == -3) then       ! M = 3/2, K = -3/2
+          smalld = -0.5_dp*(1.0_dp-dcos(theta))*dsin(0.5_dp*theta)
+        else if (M == 1 .and. K == 1) then        ! M = 1/2, K = 1/2
+          smalld = 0.5_dp*(3.0_dp*dcos(theta)-1.0_dp)*dcos(0.5_dp*theta)
+        else if (M == 1 .and. K == -1) then       ! M = 1/2, K = -1/2
+          smalld = -0.5_dp*(3.0_dp*dcos(theta)+1.0_dp)*dsin(0.5_dp*theta)
+        end if
+      case(4) ! S = 2
+        if (M == 4 .and. K == 4) then             ! M = 2, K = 2
+          smalld = 0.25_dp*(1.0_dp+dcos(theta))**2
+        else if (M == 4 .and. K == 2) then        ! M = 2, K = 1
+          smalld = -0.5_dp*dsin(theta)*(1.0_dp+dcos(theta))
+        else if (M == 4 .and. K == 0) then        ! M = 2, K = 0
+          smalld = dsqrt(0.375_dp)*dsin(theta)**2
+        else if (M == 4 .and. K == -2) then       ! M = 2, K = -1
+          smalld = -0.5_dp*dsin(theta)*(1.0_dp-dcos(theta))
+        else if (M == 4 .and. K == -4) then       ! M = 2, K = -2
+          smalld = 0.25_dp*(1.0_dp-dcos(theta))**2
+        else if (M == 2 .and. K == 2) then        ! M = 1, K = 1
+          smalld = 0.5_dp*(2.0_dp*dcos(theta)**2+dcos(theta)-1.0_dp)
+        else if (M == 2 .and. K == 0) then        ! M = 1, K = 0
+          smalld = -dsqrt(0.375_dp)*dsin(2.0_dp*theta)
+        else if (M == 2 .and. K == -2) then       ! M = 1, K = -1
+          smalld = 0.5_dp*(-2.0_dp*dcos(theta)**2+dcos(theta)+1.0_dp)
+        else if (M == 0 .and. K == 0) then        ! M = 0, K = 0
+          smalld = 0.5_dp*(3.0_dp*dcos(theta)**2-1.0_dp)
+        end if
+    end select
+  end function wigner_d
+
+!-----------------------------------------------------------------------
+!> fast factorial of given a
+  pure elemental real(dp) function factorial(a)
+    implicit none
+    integer,intent(in) :: a
+    integer :: na
+    select case (a)
+    case (0)
+      factorial = 1.0_dp
+    case (1)
+      factorial = 1.0_dp
+    case (2)
+      factorial = 2.0_dp
+    case (3)
+      factorial = 6.0_dp
+    case (4)
+      factorial = 24.0_dp
+    case (5)
+      factorial = 120.0_dp
+    case (6)
+      factorial = 720.0_dp
+    case (7)
+      factorial = 5054.0_dp
+    case (8)
+      factorial = 40320.0_dp
+    case (9)
+      factorial = 362880.0_dp
+    case (10)
+      factorial = 3628800.0_dp
+    case (11)
+      factorial = 39916800.0_dp
+    case (12)
+      factorial = 479001600.0_dp
+    case (13)
+      factorial = 6227020800.0_dp
+    case (14)
+      factorial = 87178291200.0_dp
+    case (15)
+      factorial = 1307674368000.0_dp
+    case (16)
+      factorial = 20922789888000.0_dp
+    end select
+    if (a <= 16) then
+      return
+    else
+      factorial = 20922789888000.0_dp
+      do na = 17, a
+        factorial = factorial * real(na)
+      end do
+    end if
+    return
+  end function factorial
+  
+!-----------------------------------------------------------------------
+!> fast bionomial coefficient of given N, M (C_N^M)
+!!
+!! M <= 9: return
+!!
+!! 9 < M <= 13: recursive
+!!
+!! M > 13: direct
+  pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
+    implicit none
+    integer,intent(in) :: N,M
+    integer :: bloop_i, numerator, denominator
+    if (M == 0 .or. N == 0 .or. M == N) then
+      bicoe = 1.0
+      return
+    else if (M == 1) then
+      bicoe = real(N,dp)
+      return
+    else if (2*M > N) then
+      bicoe = binomialcoe(N,N-M)
+      return
+    end if
+    select case (N)
+    case (4)
+      bicoe = 6.0_dp
+    case (5)
+      bicoe = 10.0_dp
+    case (6)
+      select case (M)
+      case (2)
+        bicoe = 15.0_dp
+      case (3)
+        bicoe = 20.0_dp
+      end select
+    case (7)
+      select case (M)
+      case (2)
+        bicoe = 21.0_dp
+      case (3)
+        bicoe = 35.0_dp
+      end select
+    case (8)
+      select case (M)
+      case (2)
+        bicoe = 28.0_dp
+      case (3)
+        bicoe = 56.0_dp
+      case (4)
+        bicoe = 70.0_dp
+      end select
+    case (9)
+      select case (M)
+      case (2)
+        bicoe = 36.0_dp
+      case (3)
+        bicoe = 84.0_dp
+      case (4)
+        bicoe = 126.0_dp
+      end select
+    end select
+    if (N <= 9) then
+      return
+    else if (N <= 13) then
+      bicoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
+      return
+    else
+      bicoe = 1.0
+      numerator = 1
+      bloop_i = N
+      do while(bloop_i > M)
+        numerator = numerator * bloop_i
+        bloop_i = bloop_i - 1
+      end do
+      denominator = factorial(N - M)
+      bicoe = real(numerator) / real(denominator)
+      return
+    end if
+  end function binomialcoe
 end module Fundamentals

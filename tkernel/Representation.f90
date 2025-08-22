@@ -134,7 +134,7 @@ module Representation
       if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
       beta2 should be in range [0,1)")
       gamma = (1.0_dp-beta2)**(-0.5_dp)
-      call mol_frametrafo()
+      call mol_Lorentztrafo()
       if (beta2 > 1E-6) then
       write(*,*)
       write(*,*) "------------------------------------------------------------"
@@ -153,7 +153,7 @@ module Representation
       !$omp do schedule(static)
       do i = 1, nr(ii)
         if (is2c) then
-          call grid_frametrafo_mo(&
+          call grid_Lorentztrafo_mo(&
           arr,nl(ii),pos3(1:nl(ii),:,i),trafopos3(1:nl(ii),:,i),&
           datsa((i-1)*nl(ii)+1:i*nl(ii)),datsb((i-1)*nl(ii)+1:i*nl(ii)))
         else
@@ -421,7 +421,7 @@ module Representation
     implicit none
     integer(8),intent(in) :: count, nr, nl
     integer               :: ii, jj
-    integer               :: nl2
+    integer               :: nl2   ! nl2 = nl
     !DIR$ ATTRIBUTES ALIGN:align_size :: wr, R
     real(dp)              :: wr(nr), R(nr)
     real(dp),intent(out)  :: pos3w1(434,4,100) ! x, y, z, weight
@@ -554,7 +554,7 @@ module Representation
 
 !------------------------------------------------------------
 !> assign molecule in frame of motion (trafomol)
-  subroutine mol_frametrafo()
+  subroutine mol_Lorentztrafo()
     implicit none
     integer :: ii, jj, kk
     real(dp) :: trafocoe, dot
@@ -566,7 +566,7 @@ module Representation
       dot = trafocoe*sum(beta(:)*mol(ii)%pos(:))
       trafomol(ii)%pos(:) = mol(ii)%pos(:) + dot*beta(:)
     end do
-  end subroutine mol_frametrafo
+  end subroutine mol_Lorentztrafo
 
 !------------------------------------------------------------
 !> reference frame transformation of a (basis repre) vector
@@ -575,7 +575,7 @@ module Representation
 !!
 !! “simultaneous” in motion frame: x_rest = L(x_motion)|t_motion=0,
 !! in this case, x' = x_rest; x = x_motion
-  pure subroutine grid_frametrafo_mo(arr, n, points, trafopoints, datsa, datsb)
+  pure subroutine grid_Lorentztrafo_mo(arr, n, points, trafopoints, datsa, datsb)
     implicit none
     complex(dp),intent(in)  :: arr(:)
     integer(8),intent(in)   :: n
@@ -624,7 +624,7 @@ module Representation
       datsb  = datsb + val * arr(kk+cbdm)
     end do
 
-    ! Imitative transformation of s, causes s_z to away from +-1/2,
+    ! Imitative transformation of s, causes s_z to away from +/- 1/2,
     ! also means mixing of alpha and beta components
     ! s' = (1-gamma/(gamma+1)*beta(3)**2)/(1-beta(3)**2)**0.5 * s
     spincoe = (1.0_dp+codcoe*beta(3)**2) * (1.0_dp-beta(3)**2)**(-0.5_dp)
@@ -637,6 +637,47 @@ module Representation
       datsa(ii) = datsa(ii) * a2/(datsa(ii)*conjg(datsa(ii)))
       datsb(ii) = datsb(ii) * b2/(datsb(ii)*conjg(datsb(ii)))
     end do
-  end subroutine grid_frametrafo_mo
+  end subroutine grid_Lorentztrafo_mo
+
+!------------------------------------------------------------
+!> perform SU(2) Euler transformation on input (spin part of) orbital(s)
+!!
+!! Euler angle: phi [0,2pi), theta [0,pi], chi [0,2pi)
+!!
+!! based on z-y-z convention: 
+!! exp(-(i/2)*phi*sigma_z) * exp(-(i/2)*theta*sigma_y) * exp(-(i/2)*chi*sigma_z)
+  pure subroutine orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+    implicit none
+    complex(dp),intent(in)                :: orb_i(:,:) ! input orbitals
+    complex(dp),intent(out)               :: orb_o(:,:) ! output orbitals
+    real(dp),intent(in)                   :: phi        ! 1st Euler angle
+    real(dp),intent(in)                   :: theta      ! 2nd Euler angle
+    real(dp),intent(in)                   :: chi        ! 3rd Euler angle
+    integer                               :: dm(2)
+    integer                               :: ii, jj     ! loop variables
+    complex(dp)                           :: SU2rot(2,2)! SU(2) rotation matirx
+    dm = shape(orb_i)
+    orb_o = c0
+    ! S_phi_theta_chi = 
+    !  _                                                                  _
+    ! |                                                                    |
+    ! | exp(-i/2*(phi+chi))cos(theta/2),  -exp(-i/2*(phi-chi))sin(theta/2) |
+    ! | exp(i/2*(phi-chi))sin(theta/2) ,   exp(i/2*(phi+chi))cos(theta/2)  |
+    ! |_                                                                  _|
+    SU2rot(1,1) = exp(-0.5_dp*ci*(phi+chi))*dcos(0.5_dp*theta)
+    SU2rot(1,2) = -exp(-0.5_dp*ci*(phi-chi))*dsin(0.5_dp*theta)
+    SU2rot(2,1) = exp(0.5_dp*ci*(phi-chi))*dsin(0.5_dp*theta)
+    SU2rot(2,2) = exp(0.5_dp*ci*(phi+chi))*dcos(0.5_dp*theta)
+    do ii = 1, dm(2)
+      do jj = 1, dm(1)/2
+        ! alpha component after rotation
+        orb_o(jj,ii) = SU2rot(1,1)*orb_i(jj,ii) + &
+        SU2rot(1,2)*orb_i(dm(1)/2+jj,ii)
+        ! beta componnet after rotation
+        orb_o(dm(1)/2+jj,ii) = SU2rot(2,1)*orb_i(jj,ii) + &
+        SU2rot(2,2)*orb_i(dm(1)/2+jj,ii)
+      end do
+    end do
+  end subroutine orb_SU2trafo
 
 end module Representation

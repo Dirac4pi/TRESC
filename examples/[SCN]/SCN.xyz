@@ -1,8 +1,9 @@
 3
 
- S                 -9.11657200   -3.34482800    0.00000000
- C                -10.76826600   -3.34482800    0.00000000
- N                -11.92520400   -3.34482800    0.00000000
+S         -9.11657       -3.34483        0.00000
+C        -10.76827       -3.34483        0.00000
+N        -11.92520       -3.34483        0.00000
+
 
 %Atoms
 spin=2
@@ -16,14 +17,16 @@ threads=8
 endHamiltonian
 
 %SCF
+damp=0.6
+nodiis=8
+diisdamp=0.2
 molden
-nodiis=128
-damp=0.7
-emd4=pbe0
 endSCF
 
 %functional
-xid=321
-cid=322
+xid=101
+cid=130
 xhf=0.25
 endfunctional
+
+
