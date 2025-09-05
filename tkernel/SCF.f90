@@ -490,7 +490,7 @@ module SCF
           DIISmat(loop_j, subsp+1) = c1
         end do
         ! solve residual equation
-        ! dgesv and dspsv will cause V_integral_2e conflict for unknown reason
+        ! dgesv and dspsv will cause Integral_V_2e conflict for unknown reason
         ! since DIISmat (and its inverse) is real symmetric, plus the column 
         ! vector is simple, use the inverse of DIISmat to solve directly
         call inverse(DIISmat, subsp+1)
@@ -1412,7 +1412,7 @@ module SCF
                 do uo = 1, contri
                   do up = 1, contrj
                     swint_mic=coei(um)*coej(un)*coei(uo)*coej(up)*&
-                    V_integral_2e(&
+                    Integral_V_2e(&
                     AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj), &
                     AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj), &
                     expi(um),expj(un),expi(uo),expj(up),&
@@ -1428,7 +1428,7 @@ module SCF
                 do uo = 1, contri
                   do up = 1, contrj
                     swint_mic=coei(um)*coej(un)*coei(uo)*coej(up)*&
-                    V_integral_2e(&
+                    Integral_V_2e(&
                     AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi), &
                     AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi), &
                     expj(un),expi(um),expj(up),expi(uo),&
@@ -1509,7 +1509,7 @@ module SCF
                     do up = 1, contrl
                       int = int + coei(um) * &
                       coej(un) * coek(uo) * &
-                      coel(up) * V_integral_2e(&
+                      coel(up) * Integral_V_2e(&
                       AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj),&
                       AO_fac(:,Lk,Mk), AO_fac(:,Ll,Ml),&
                       expi(um),expj(un),&
@@ -1526,7 +1526,7 @@ module SCF
                     do up = 1, contrl
                       int = int + coei(um) * &
                       coej(un) * coek(uo) * &
-                      coel(up) * V_integral_2e(&
+                      coel(up) * Integral_V_2e(&
                       AO_fac(:,Li,Mi), AO_fac(:,Lj,Mj),&
                       AO_fac(:,Ll,Ml), AO_fac(:,Lk,Mk),&
                       expi(um),expj(un),&
@@ -1543,7 +1543,7 @@ module SCF
                     do up = 1, contrl
                       int = int + coei(um) * &
                       coej(un) * coek(uo) * &
-                      coel(up) * V_integral_2e(&
+                      coel(up) * Integral_V_2e(&
                       AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi),&
                       AO_fac(:,Lk,Mk), AO_fac(:,Ll,Ml),&
                       expj(un),expi(um),&
@@ -1560,7 +1560,7 @@ module SCF
                     do up = 1, contrl
                       int = int + coei(um) *&
                       coej(un) * coek(uo) * &
-                      coel(up) * V_integral_2e(&
+                      coel(up) * Integral_V_2e(&
                       AO_fac(:,Lj,Mj), AO_fac(:,Li,Mi),&
                       AO_fac(:,Ll,Ml), AO_fac(:,Lk,Mk),&
                       expj(un),expi(um),&
@@ -2518,7 +2518,7 @@ end function Krammers
           do pjloop_k = 1, contri
             do pjloop_m = 1, contrj
               m_i_j(pjloop_i,pjloop_j) = m_i_j(pjloop_i,pjloop_j) + &
-              Gaussian_Product_Integral(coei(pjloop_k)*coej(pjloop_m),&
+              Integral_S_1e(coei(pjloop_k)*coej(pjloop_m),&
               AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),& 
               expi(pjloop_k),expj(pjloop_m),codi,codj)
             end do

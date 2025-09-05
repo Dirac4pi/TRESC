@@ -65,12 +65,9 @@ module Hamiltonian
   complex(dp),allocatable :: exSR(:,:)     ! extended SR matrix
   ! <AOi|pxVpy3|AOj> = Trans(<AOi|py3Vpx|AOj>)
 
-! V_integral_1e and V_integral_2e related
-  !DIR$ ATTRIBUTES ALIGN:align_size :: NX_mic, NXint, NXint_
-  real(dp)                :: NX_mic(32,43)
-  real(dp)                :: NXint(32)
-  real(dp)                :: NXint_(32)
-
+! interation Taylor expansion coefficients for Integral_V_1e and Integral_V_2e
+  !DIR$ ATTRIBUTES ALIGN:align_size :: intTaycoe
+  real(dp)                :: intTaycoe(64,43)
 
   contains
 
@@ -97,9 +94,9 @@ module Hamiltonian
         write(60,'(A)') '  KMP_AFFINITY = '//trim(ch30)
       end if
     end if
-    write(60,'(A)') '  integration initialize'
-    call int_init()
-    write(60,'(A)') '  complete! stored in: NX_mic, NXint, NXint_'
+    write(60,'(A)') '  Integral_V initialize'
+    call Integral_V_init()
+    write(60,'(A)') '  complete! stored in: intTaycoe'
     write(60,'(A)') '  ----------<1E INTEGRALS>----------'
     
 !------------------<NONRELATIVISTIC HAMILTONIAN>------------------
@@ -408,7 +405,7 @@ module Hamiltonian
         do loop_k = 1, contri
           do loop_m = 1, contrj
             tl%i_j(loop_i,loop_j) = tl%i_j(loop_i,loop_j) + &
-            Gaussian_Product_Integral(coei(loop_k)*coej(loop_m),&
+            Integral_S_1e(coei(loop_k)*coej(loop_m),&
             AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),expi(loop_k),expj(loop_m),codi,codj)
           end do
         end do
@@ -509,7 +506,7 @@ module Hamiltonian
       do pploop_i = 1, contri
         do pploop_l = 1, numj
           do pploop_j = 1, contrj
-            val = val + Gaussian_Product_Integral(    &
+            val = val + Integral_S_1e(                &
             coei((pploop_k-1)*contri+pploop_i)*       &
             coej((pploop_l-1)*contrj+pploop_j),       &
             faci(:,pploop_k),                         &
@@ -556,7 +553,7 @@ module Hamiltonian
       bcodj(:) = codj(:) - codpot(:)
       do bloop_i = 1, contri
         do bloop_j = 1, contrj
-          val = val + V_Integral_1e(        &
+          val = val + Integral_V_1e(        &
           Z_pot,                            &
           coei(bloop_i),                    &
           coej(bloop_j),                    &
@@ -623,7 +620,7 @@ module Hamiltonian
         do sloop_i = 1, contri
           do sloop_l = 1, numj
             do sloop_j = 1, contrj
-              val = val + V_Integral_1e(                &
+              val = val + Integral_V_1e(                &
               Z_pot,                                    &
               coei((sloop_k-1)*contri+sloop_i),         &
               coej((sloop_l-1)*contrj+sloop_j),         &
@@ -672,7 +669,7 @@ module Hamiltonian
     real(dp)            :: tcoei(8*contri)
     ! xyz factor.i^th orbital after 3 derivative actions
     integer             :: tfaci(3,8)      ! di**max, di**max-2 ... di**0
-    integer             :: numi, numj      ! number of calls to  V_integral_1e
+    integer             :: numi, numj      ! number of calls to  Integral_V_1e
     integer :: tloop_i,tloop_j,tloop_k,tloop_l,tloop_pot ! loop variables
 
     if (nj == 0) then
@@ -750,7 +747,7 @@ module Hamiltonian
         do tloop_i = 1, contri
           do tloop_l = 1, numj
             do tloop_j = 1, contrj
-              val = val + V_Integral_1e(                             &
+              val = val + Integral_V_1e(                             &
               Z_pot,                                                 &
               tcoei((tloop_k-1)*contri+tloop_i),                     &
               coej((tloop_l-1)*contrj+tloop_j),                      &
@@ -772,7 +769,7 @@ module Hamiltonian
   
 !-----------------------------------------------------------------------
 !> full space integration of product of 2 Gaussian functions in Cartesian
-  real(dp) pure function Gaussian_Product_Integral(&
+  real(dp) pure function Integral_S_1e(&
   coe,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
     real(dp),intent(in) :: coe           ! coefficient before Gaussian product
@@ -821,13 +818,13 @@ module Hamiltonian
     end do
     val = pcoe * integral(1) * integral(2) * integral(3)
     return
-  end function Gaussian_Product_Integral
+  end function Integral_S_1e
   
 !-----------------------------------------------------------------------
 !> integration of electron-nuclear attraction potential in Cartesian coordinate:
 !!
 !! inategral transformation: (x-xi)^m*(x-xj)^n*expo(-b*x^2)*expo(x^2*t^2)dxdt
-  real(dp) pure function V_Integral_1e(&
+  real(dp) pure function Integral_V_1e(&
   Z,coei,coej,faci,facj,expi,expj,codi,codj,rn) result(val)
     implicit none
     real(dp),intent(in) :: Z                  ! atomic number of potential atom
@@ -842,8 +839,8 @@ module Hamiltonian
     real(dp)            :: coe                ! coefficient of product shell
     real(dp),intent(in) :: codi(3)            ! coordination of i
     real(dp),intent(in) :: codj(3)            ! coordination of j
-    ! finite nuclear potential will not be considered if rn = 0.
-    real(dp),intent(in) :: rn
+    real(dp),intent(in) :: rn                 ! nuclear radius in Bohr
+    real(dp)            :: invrn, GNC         ! Gauss finite nuclear correction
     real(dp)            :: cod(3)
     real(dp)            :: R2
     ! t-containing coefficients, t2pb_xyz(1) = coeff.(t^2+b)^(1/2).x integration
@@ -882,7 +879,6 @@ module Hamiltonian
         tayeps = 30
         xts = 4.0
     end select
-    
     !--------------------------
     ! Gaussian shell production
     coe = -Z * coei * coej
@@ -892,7 +888,10 @@ module Hamiltonian
     cod(:) = (codi(:)*expi+codj(:)*expj) * invexpo
     R2 = sum(cod(:)**2)
     br2 = expo*R2
-    expbr2 = exp(-br2)
+    ! Gauss finite nuclear correction
+    invrn = 1.0_dp / rn
+    GNC = invrn / dsqrt(invrn*invrn+expo)
+    expbr2 = exp(-br2*GNC*GNC)
     ! use binomial expansion for easy storage of t-containing coefficients.
     !--------------------------
     ! integral of x,y,z, generate coefficient exp(-b*((cod(1))^2*t^2)/(t^2+b))
@@ -918,7 +917,7 @@ module Hamiltonian
               mic = 0.0_dp
               do vloop_mic_ = 0, vloop_mic
                 mic(vloop_mic_+2) = mic(vloop_mic_+2) + &
-                0.5_dp * real(vloop_mic-1) * mic__(vloop_mic_+1) + &
+                0.5_dp * real(vloop_mic-1,dp) * mic__(vloop_mic_+1) + &
                 cod(vloop_k) * expo * mic_(vloop_mic_+1)
               end do
             end if
@@ -949,13 +948,14 @@ module Hamiltonian
     val = 0.0_dp
     max1 = sum(faci) + sum(facj) + 4
     if (abs(br2) < 1E-13) then
-      ! k = vloop_i, t2pb(vloop_i + 3) = coe
+      ! k = vloop_i, t2pb(vloop_i+2) = coe
       do vloop_i = 0, max1
         int = 0.0_dp
         do vloop_j = 0, vloop_i
           tmp = (-1.0_dp)**(vloop_j)*binomialcoe(vloop_i,vloop_j)
           do vloop_k = 0, vloop_i
-            int_mic = 1.0_dp / (real(2*vloop_i-vloop_j-vloop_k) + 1.0_dp)
+            int_mic = GNC**(2*vloop_i-vloop_j-vloop_k+1) / &
+            (real(2*vloop_i-vloop_j-vloop_k,dp) + 1.0_dp)
             int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
           end do
         end do
@@ -963,7 +963,8 @@ module Hamiltonian
         expo**(-vloop_i-1) * t2pb(vloop_i+2) * int
       end do
     else if (abs(br2) <= xts) then
-      ! k = vloop_i, t2pb(vloop_i + 3) = coe
+      ! k = vloop_i, t2pb(vloop_i+2) = coe
+      prec = GNC*GNC*br2
       do vloop_i = 0, max1
         int = 0.0_dp
         do vloop_j = 0, vloop_i
@@ -972,17 +973,20 @@ module Hamiltonian
             int_mic = 0.0_dp
             if (2*vloop_i-vloop_j-vloop_k == 0) then
               do vloop_o = 1, tayeps
-                int_mic = int_mic + br2**(vloop_o-1)*NXint_(vloop_o)
+                int_mic = int_mic + prec**(vloop_o-1)*intTaycoe(vloop_o,1)
               end do
+              int_mic = int_mic * GNC
             else if (2*vloop_i-vloop_j-vloop_k == 1) then
               do vloop_o = 1, tayeps
-                int_mic = int_mic + br2**(vloop_o-1)*NXint(vloop_o)
+                int_mic = int_mic + prec**(vloop_o-1)*intTaycoe(vloop_o,2)
               end do
+              int_mic = int_mic * GNC**2
             else
               do vloop_o = 1, tayeps
-                int_mic = int_mic + br2**(vloop_o-1)*(NXint(vloop_o) + &
-                0.5_dp*NX_mic(vloop_o,2*vloop_i-vloop_j-vloop_k-1))
+                int_mic = int_mic + prec**(vloop_o-1)*&
+                intTaycoe(vloop_o,2*vloop_i-vloop_j-vloop_k+1)
               end do
+              int_mic = int_mic * GNC**(2*vloop_i-vloop_j-vloop_k+1)
             end if
             int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
           end do
@@ -991,15 +995,15 @@ module Hamiltonian
         expo**(-vloop_i-1) * t2pb(vloop_i+2) * int
       end do
     else
-      !k = vloop_i, t2pb(vloop_i + 3) = coe
+      !k = vloop_i, t2pb(vloop_i+2) = coe
       invbr2 = 0.5_dp / br2
-      prec = 0.5_dp * dsqrt(pi/br2) * erf(dsqrt(br2))
+      prec = 0.5_dp * dsqrt(pi/br2) * erf(dsqrt(br2)*GNC)
       do vloop_i = 0, max1
         int = 0.0_dp
         do vloop_j = 0, vloop_i
           tmp = (-1.0_dp)**(vloop_j) * binomialcoe(vloop_i,vloop_j)
           do vloop_k = 0, vloop_i
-            do vloop_mic = 0, 2*vloop_i - vloop_j - vloop_k
+            do vloop_mic = 0, 2*vloop_i-vloop_j-vloop_k
               if (vloop_mic == 0) then
                 int_mic = prec
               else if(vloop_mic == 1) then
@@ -1008,7 +1012,8 @@ module Hamiltonian
               else
                 int_mic__ = int_mic_
                 int_mic_ = int_mic
-                int_mic = (-expbr2 + real(vloop_mic - 1) * int_mic__) * invbr2
+                int_mic = (real(vloop_mic-1,dp)*int_mic__ - &
+                GNC**(vloop_mic-1)*expbr2) * invbr2
               end if
             end do
             int = int + tmp * binomialcoe(vloop_i,vloop_k) * int_mic
@@ -1019,16 +1024,9 @@ module Hamiltonian
       end do
     end if
     val = val / rpi
-    if (finitenuc) then
-      ! Finite nuclear model correction, spherical electric charge
-      val = val - &
-      2.0_dp/3.0_dp * pi * rn * rn * expbr2 * (-codi(1))**(faci(1)) * &
-      (-codi(2))**(faci(2)) * (-codi(3))**(faci(3)) * (-codj(1))**(facj(1)) * &
-      (-codj(2))**(facj(2)) * (-codj(3))**(facj(3))
-    end if
     val = val * coe
     return
-  end function V_Integral_1e
+  end function Integral_V_1e
   
 !-----------------------------------------------------------------------
 !> integration of two electron repulsion potential in Cartesian coordinate
@@ -1036,7 +1034,7 @@ module Hamiltonian
 !! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
 !! xA  xB
 !! Li > Lj, Lk > Ll
-  pure real(dp) function V_Integral_2e(&
+  pure real(dp) function Integral_V_2e(&
   faci,facj,fack,facl,ai,aj,ak,al,codi,codj,codk,codl) result(int)
     implicit none
     integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
@@ -1300,16 +1298,15 @@ module Hamiltonian
           int_mic = 0.0_dp
           if (2*rloop_i-2 == 0) then
             do rloop_k = 1, tayeps
-              int_mic = int_mic + X**(rloop_k-1)*NXint_(rloop_k)
+              int_mic = int_mic + X**(rloop_k-1)*intTaycoe(rloop_k,1)
             end do
           else if (2*rloop_i-2 == 1) then
             do rloop_k = 1, tayeps
-              int_mic = int_mic + X**(rloop_k-1)*NXint(rloop_k)
+              int_mic = int_mic + X**(rloop_k-1)*intTaycoe(rloop_k,2)
             end do
           else
             do rloop_k = 1, tayeps
-              int_mic = int_mic + X**(rloop_k-1)*(NXint(rloop_k) + &
-              0.5_dp*NX_mic(rloop_k,2*rloop_i-3))
+              int_mic = int_mic + X**(rloop_k-1)*intTaycoe(rloop_k,2*rloop_i-1)
             end do
           end if
           int = int + PL(rloop_i) * int_mic
@@ -1337,37 +1334,38 @@ module Hamiltonian
       end if
     end if
     return
-  end function V_Integral_2e
+  end function Integral_V_2e
 
 !------------------------------------------------------------
-!> initialising V_integral_1e and V_integral_2e
-  subroutine int_init()
+!> initialising Integral_V_1e and Integral_V_2e
+  subroutine Integral_V_init()
     implicit none
-    integer :: ii, jj
-    NX_mic = 0.0_dp
+    integer             :: ii, jj
+    real(dp)            :: expTaycoe(64)
+    real(dp)            :: erfTaycoe(64)
+    expTaycoe = 0.0_dp     ! Taylor expansion coefficients for exp(-x)
+    erfTaycoe = 0.0_dp     ! Taylor expansion coefficients for I_0, also erf(x)
+    do jj = 1, 64
+      expTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/factorial(jj-1))
+      erfTaycoe(jj) = (-1.0_dp)**(jj+1)*(1.0_dp/(real(2*jj-1)*factorial(jj-1)))
+    end do
+    intTaycoe = 0.0_dp
     do ii = 0, 42
-      if (ii == 0) then ! dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
-        do jj = 1, 32
-          NX_mic(jj,ii+1)=(-1.0_dp)**jj*(1.0_dp/(real(2*jj+1)*factorial(jj)))
+      if (ii == 0) then     ! Taycoes for I_0, GNC^1*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 64
+          intTaycoe(jj,1) = erfTaycoe(jj)
         end do
-      else if(ii == 1) then ! (1.0_dp - exp(-X)) / (2.0_dp * X)
-        do jj = 1, 32
-          NX_mic(jj,ii+1)=(-1.0_dp)**jj*(1.0_dp/(factorial(jj+1)))
+      else if(ii == 1) then ! Taycoes for I_1, GNC^2*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 63
+          intTaycoe(jj,2) = -0.5_dp*expTaycoe(jj+1)
         end do
-      else ! (-exp(-X)+real(ii-1)*int_mic__) / (2.0_dp*X)
-        do jj = 1, 31
-          NX_mic(jj,ii+1)=((-1.0_dp)**jj*(0.5_dp/(factorial(jj+1))) + &
-          0.5_dp*(NX_mic(jj+1,ii-1)))*real(ii+1)
+      else                  ! Taycoes for I_n, GNC^(n+1)*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 64-int(real(ii)/2.0)-mod(ii,2)
+          intTaycoe(jj,ii+1) = 0.5_dp*(real(ii-1,dp)*intTaycoe(jj+1,ii-1) - &
+                                       expTaycoe(jj+1))
         end do
-        NX_mic(32,ii+1)=((0.5_dp/(factorial(33))))*real(ii+1)
       end if
     end do
-    NXint = 0.0_dp
-    NXint_ = 0.0_dp
-    do ii = 1, 32
-      NXint(ii) = (-1.0_dp)**(ii+1)*(0.5_dp/factorial(ii))
-      NXint_(ii) = (-1.0_dp)**(ii+1)*(1.0_dp/(real(2*ii-1)*factorial(ii-1)))
-    end do
-  end subroutine int_init
+  end subroutine Integral_V_init
   
 end module Hamiltonian

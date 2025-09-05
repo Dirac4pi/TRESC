@@ -64,7 +64,6 @@ module Fundamentals
   integer         :: DKH_order   = 2      ! 0: nonrelativistic; 1: fpFW; 2: DKH2
   logical(kind=4) :: SRTP_type   = .false.! Second Relativized Thomas Precession
   logical(kind=4) :: STTP_type   = .false.! Spin Tensor Thomas Precession
-  logical         :: finitenuc   = .false.
   real(dp)        :: cutS        = 1E-5   ! threshold of evl(i_j)
   !--------------------<module Atoms>--------------------
   integer         :: charge      = 0      ! charge of the system

@@ -973,9 +973,6 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           else if (trim(keyword) == 'sttp') then
             STTP_type = .true.
             write(60,"(A)") "  spin Tensor Thomas Precession will be considered"
-          else if (trim(keyword) == 'finitenuc') then
-            finitenuc = .true.
-            write(60,"(A)") "  finite nuclear effect will be considered"
           else if (index(keyword,'cuts') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
