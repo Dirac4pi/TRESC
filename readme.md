@@ -64,8 +64,8 @@ launch python and use `cub2c` function to generate 2 Gaussian cube format files
 selected orbital) and then visualise the selected orbital based on grid data
 automatically. The visualisation are as follows:<br>
 <p align="center">
-  <img src="examples/[Ni-C2H4]_3et_DKH-def2-SVP_pVp2e/HOMO-5.png"
-  alt="examples/[Ni-C2H4]_3et_DKH-def2-SVP_pVp2e/HOMO-5.png" width="500">
+  <img src="docs/HOMO-5_of_triplet_Ni-C2H4.png"
+  alt="docs/HOMO-5_of_triplet_Ni-C2H4.png" width="500">
   <br>
   <em>HOMO-5 of triplet [Ni-C2H4]</em>
 </p>
