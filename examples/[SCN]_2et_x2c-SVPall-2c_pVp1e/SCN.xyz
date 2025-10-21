@@ -1,0 +1,31 @@
+3
+
+S         -9.11657       -3.34483        0.00000
+C        -10.76827       -3.34483        0.00000
+N        -11.92520       -3.34483        0.00000
+
+
+%Atoms
+spin=2
+basis=x2c-svpall-2c
+endAtoms
+
+%Hamiltonian
+pVp1e
+threads=32
+endHamiltonian
+
+%SCF
+damp=0.6
+nodiis=8
+diisdamp=0.2
+molden
+endSCF
+
+%functional
+xid=101
+cid=130
+xhf=0.25
+endfunctional
+
+

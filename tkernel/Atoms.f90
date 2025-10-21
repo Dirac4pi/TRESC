@@ -164,8 +164,10 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   complex(dp),allocatable :: exc2s(:,:)
   real(dp),allocatable    :: m_c2s(:,:)! convert Cartesian to spher-harmo
   complex(dp),allocatable :: m_exc2s(:,:)
-  real(dp),allocatable    :: s2f(:,:)  ! orthogonal transform unitary matrix
+  real(dp),allocatable    :: s2f(:,:)  ! orthogonal transform matrix
   complex(dp),allocatable :: exs2f(:,:)
+  real(dp),allocatable    :: f2s(:,:)  ! reverse orthogonal transform matrix
+  complex(dp),allocatable :: exf2s(:,:)
   real(dp),allocatable    :: c2f(:,:)  ! total transformation matrix
   complex(dp),allocatable :: exc2f(:,:)
   real(dp),allocatable    :: c2soper(:,:)
@@ -238,7 +240,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   private :: get_basis_count, AON, load_1MO_molden, load_MOs_molden
   private :: csgo_1c, csgo_2c, sfgo_1c, sfgo_2c, cfgo_1c, cfgo_2c
   public  :: load_b_gbs, load_g_xyz, load_gb_molden, read_keywords
-  public  :: input_check, input_print, assign_csf, m_assign_cs, dftd4
+  public  :: input_check, input_print, Assign_csf, m_Assign_cs
   public  :: load_MO_molden, csgo, sfgo, cfgo, m_csgo
 
   interface load_MO_molden
@@ -270,6 +272,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     implicit none
     character(len=3) :: basis_element_name
     character(len=1) :: basis_angular_name
+    integer          :: ai, aj, ak, am        ! loop variables load_b_gbs
     if(index(address_basis,'.gbs') == 0) call terminate(&
     'input basis set file is not .gbs file')
     inquire(file=address_basis, exist=exists, name=address_basis)
@@ -284,54 +287,54 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       read(11,*) basis_element_name
       if (index(basis_element_name,'!')==0 .and. basis_element_name/='') exit
     end do
-    loop_i = 1
-    loop_j = 1
-    loop_m = 0
+    ai = 1
+    aj = 1
+    am = 0
     do
       if (adjustl(basis_element_name(index(basis_element_name,'-')+1:&
-      index(basis_element_name,'-')+2)) /= adjustl(element_list(loop_i))) then
-        loop_i = loop_i + 1
-        if (loop_i >= element_count + 1) call terminate(&
+      index(basis_element_name,'-')+2)) /= adjustl(element_list(ai))) then
+        ai = ai + 1
+        if (ai >= element_count + 1) call terminate(&
         'basis file: element not included in current program')
         cycle
       end if
-      atom_basis(loop_j) % atom_number = loop_i
+      atom_basis(aj) % atom_number = ai
       do
         read(11,*,iostat = ios) basis_angular_name, &
-        atom_basis(loop_j) % contr  ! scale factor defaults to 1.00
+        atom_basis(aj) % contr  ! scale factor defaults to 1.00
         if (ios /= 0) call terminate(&
         'read basis file failed, may caused by incorrect formatting')
         if (basis_angular_name == 'S') then
-          atom_basis(loop_j) % L = 0
+          atom_basis(aj) % L = 0
         else if (basis_angular_name == 'P') then
-          atom_basis(loop_j) % L = 1
+          atom_basis(aj) % L = 1
         else if (basis_angular_name == 'D') then
-          atom_basis(loop_j) % L = 2
+          atom_basis(aj) % L = 2
         else if (basis_angular_name == 'F') then
-          atom_basis(loop_j) % L = 3
+          atom_basis(aj) % L = 3
         else if (basis_angular_name == 'G') then
-          atom_basis(loop_j) % L = 4
+          atom_basis(aj) % L = 4
         end if
-        atom_basis(loop_j) % atom_number = loop_i
-        loop_k = 1
+        atom_basis(aj) % atom_number = ai
+        ak = 1
         do
-          if (loop_k <= atom_basis(loop_j) % contr) then
-            read(11,*,iostat = ios) atom_basis(loop_j) % &
-            expo(loop_k), atom_basis(loop_j) % coe(loop_k)
+          if (ak <= atom_basis(aj) % contr) then
+            read(11,*,iostat = ios) atom_basis(aj) % &
+            expo(ak), atom_basis(aj) % coe(ak)
             if (ios /= 0) call terminate(&
             'read basis file failed, try denote scientific notation with E')
-            loop_k = loop_k + 1
+            ak = ak + 1
             cycle
           end if
-          loop_j = loop_j + 1
+          aj = aj + 1
           exit
         end do
-        loop_m = loop_m + 1
-        if (loop_m == shell_in_element(loop_i)) exit
+        am = am + 1
+        if (am == shell_in_element(ai)) exit
       end do
       read(11,*)  ! skip the separator between elements
-      loop_m = 0
-      loop_i = 1
+      am = 0
+      ai = 1
       read(11,*,iostat = ios) basis_element_name
       if (ios < 0) exit
       if (ios > 0) call terminate('Error encountered while reading .gbs file.')
@@ -355,7 +358,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     integer            :: contr                ! contr of atom, shell
     real(dp)           :: expo(16)             ! expo of |AO>
     real(dp)           :: coe(16)              ! coe of |AO>
-    integer            :: mdloop_i, mdloop_j , mdloop_k, mdloop_l
+    integer            :: ai, aj , ak, al      ! loop variables load_gb_molden
     ! load geometry
     open(14, file=address_molden, status="old", action="read", iostat=ios)
     if (ios /= 0) call terminate('molden file '&
@@ -364,17 +367,17 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       read(14,*) line
       if (index(line,'[Atoms]')/=0) exit
     end do
-    mdloop_i = 1
+    ai = 1
     do
       read(14,*,iostat=ios) e, a, b, f1, f2, f3
       if (ios /= 0) exit
-      m_mol(mdloop_i)%atom_number = b
-      m_mol(mdloop_i)%pos(1) = f1
-      m_mol(mdloop_i)%pos(2) = f2
-      m_mol(mdloop_i)%pos(3) = f3
-      mdloop_i = mdloop_i + 1
+      m_mol(ai)%atom_number = b
+      m_mol(ai)%pos(1) = f1
+      m_mol(ai)%pos(2) = f2
+      m_mol(ai)%pos(3) = f3
+      ai = ai + 1
     end do
-    m_atom_count = mdloop_i - 1
+    m_atom_count = ai - 1
     close(14)
     ! load basis
     open(14, file=address_molden, status="old", action="read", iostat=ios)
@@ -382,8 +385,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       read(14,*) line
       if (index(line,'[GTO]') /= 0) exit
     end do
-    mdloop_i = 1
-    mdloop_j = 1
+    ai = 1
+    aj = 1
     read(14,*) line
     m_cbdm = 0
     m_sbdm = 0
@@ -403,46 +406,46 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
         case('g')
           b = 5
         case default
-          mdloop_j = mdloop_j + 1
+          aj = aj + 1
           cycle
       end select
       m_cbdm = m_cbdm + b*(b+1)/2
       m_sbdm = m_sbdm + 2*b-1
-      do mdloop_l = 1, a
+      do al = 1, a
         read(14,*) f1, f2
-        m_basis_inf(mdloop_i:mdloop_i+b*(b+1)/2-1)%expo(mdloop_l) = f1
-        m_basis_inf(mdloop_i:mdloop_i+b*(b+1)/2-1)%coe(mdloop_l)  = f2
+        m_basis_inf(ai:ai+b*(b+1)/2-1)%expo(al) = f1
+        m_basis_inf(ai:ai+b*(b+1)/2-1)%coe(al)  = f2
       end do
-      do mdloop_k = 1, b*(b+1)/2
-        m_basis_inf(mdloop_i)%L     = b
-        m_basis_inf(mdloop_i)%M     = mdloop_k
-        m_basis_inf(mdloop_i)%contr = a
-        m_basis_inf(mdloop_i)%atom  = mdloop_j
+      do ak = 1, b*(b+1)/2
+        m_basis_inf(ai)%L     = b
+        m_basis_inf(ai)%M     = ak
+        m_basis_inf(ai)%contr = a
+        m_basis_inf(ai)%atom  = aj
         !!!!!! this is very important !!!!!!
         ! mol: the wave-function is projected to the current molecule (geometry)
         ! m_mol: keep the original wave-function
         if (tomol) then
-          m_basis_inf(mdloop_i)%pos = mol(mdloop_j)%pos
+          m_basis_inf(ai)%pos = mol(aj)%pos
         else
-          m_basis_inf(mdloop_i)%pos = m_mol(mdloop_j)%pos
+          m_basis_inf(ai)%pos = m_mol(aj)%pos
         end if
-        mdloop_i = mdloop_i + 1
+        ai = ai + 1
       end do
     end do
     close(14)
     ! normalization coefficient is taken into contr coefficient
-    do mdloop_i = 1, m_cbdm
-      contr = m_basis_inf(mdloop_i) % contr
-      expo(1:contr) = m_basis_inf(mdloop_i) % expo(1:contr)
-      coe(1:contr)  = m_basis_inf(mdloop_i) % coe(1:contr)
-      b = m_basis_inf(mdloop_i) % L
-      do mdloop_j = 1, contr
-        do mdloop_k = 1, (b+1)*b/2
-          ix = AO_fac(1,b,mdloop_k)
-          iy = AO_fac(2,b,mdloop_k)
-          iz = AO_fac(3,b,mdloop_k)
-          m_basis_inf(mdloop_i)%Ncoe(mdloop_j,mdloop_k) = coe(mdloop_j) * &
-          AON(expo(mdloop_j),ix,iy,iz)
+    do ai = 1, m_cbdm
+      contr = m_basis_inf(ai) % contr
+      expo(1:contr) = m_basis_inf(ai) % expo(1:contr)
+      coe(1:contr)  = m_basis_inf(ai) % coe(1:contr)
+      b = m_basis_inf(ai) % L
+      do aj = 1, contr
+        do ak = 1, (b+1)*b/2
+          ix = AO_fac(1,b,ak)
+          iy = AO_fac(2,b,ak)
+          iz = AO_fac(3,b,ak)
+          m_basis_inf(ai)%Ncoe(aj,ak) = coe(aj) * &
+          AON(expo(aj),ix,iy,iz)
         end do
       end do
     end do
@@ -500,7 +503,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
     ! so convert them
     if (isorca) then
-      if (.not. allocated(m_c2s)) call m_assign_cs()
+      if (.not. allocated(m_c2s)) call m_Assign_cs()
       ii = 1
       jj = 1
       do while(ii <= m_cbdm)
@@ -598,7 +601,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     ! some of high angular momentum ORCA MOs are normalized to -1 rather than 1
     ! so convert them
     if (isorca) then
-      if (.not. allocated(m_c2s)) call m_assign_cs()
+      if (.not. allocated(m_c2s)) call m_Assign_cs()
       ii = 1
       jj = 1
       do while(ii <= m_cbdm)
@@ -628,8 +631,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   subroutine get_basis_count()
     implicit none
     character(len = 200) :: line
-    loop_i = 0
-    loop_j = 0
+    integer              :: ai, aj, ak, al ! loop variables get_basis_count
+    ai = 0
+    aj = 0
     open(13,file = address_basis,status = "old",action = "read")
     do
       read(13,'(A200)') line
@@ -642,32 +646,32 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       index(line,'P') /= 0 .or. index(line,'D') /= 0 &
       .or. index(line,'F') /= 0 .or. index(line,'G') /= 0) then
         if (index(line,'1.00') /= 0 .or. index(line,'1.0') /= 0) then
-          loop_i = loop_i + 1
+          ai = ai + 1
           read(13,'(A200)',iostat = ios) line
           cycle
         end if
       end if
       if (index(line,'0') /= 0 .and. index(line,'.') == 0) then
-        do loop_l = 1, element_count
+        do al = 1, element_count
           if (adjustl(line(index(line,'-')+1:&
-          index(line,'-')+2)) == adjustl(element_list(loop_l))) then
-            loop_k = loop_l
+          index(line,'-')+2)) == adjustl(element_list(al))) then
+            ak = al
             exit
           end if
         end do
-        if (loop_l == element_count+1) then
+        if (al == element_count+1) then
           call terminate(&
           'basis file: element not included in current program')
         end if
       end if
       if (index(line,'***') /= 0) then
-        shell_in_element(loop_k) = loop_i - loop_j
-        loop_j = loop_i
+        shell_in_element(ak) = ai - aj
+        aj = ai
       end if  
       read(13,'(A200)',iostat = ios) line
     end do
     close(13)
-    basis_count = loop_i
+    basis_count = ai
   end subroutine get_basis_count
 
 !-----------------------------------------------------------------------
@@ -688,6 +692,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     integer            :: L                    ! angular quantum number of |AO>
     integer            :: M                    ! magnetic quantum number of |AO>
     integer            :: ix,iy,iz
+    integer            :: ai, aj, ak           ! loop variables load_g_xyz
     if(index(address_molecule,'.xyz') == 0) call terminate(&
     'input geometry file is not .xyz file')
     inquire(file=address_molecule, exist=exists)
@@ -707,27 +712,27 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       end if
     end do
     read(12,*)
-    do loop_j = 1, atom_count, 1
-      read(12,*,iostat=ios) mol_element_name, mol(loop_j)%pos(1:3)
-      mol(loop_j)%pos(1:3) = mol(loop_j)%pos(1:3) / Ang2Bohr
+    do aj = 1, atom_count, 1
+      read(12,*,iostat=ios) mol_element_name, mol(aj)%pos(1:3)
+      mol(aj)%pos(1:3) = mol(aj)%pos(1:3) / Ang2Bohr
       if (ios /= 0) call terminate(&
       'read geometry file failed, may caused by the absence of atom')
-      loop_i = 1
-      do while(adjustl(mol_element_name) /= adjustl(element_list(loop_i)))
-        loop_i = loop_i + 1
-        if (loop_i > element_count) call terminate(&
+      ai = 1
+      do while(adjustl(mol_element_name) /= adjustl(element_list(ai)))
+        ai = ai + 1
+        if (ai > element_count) call terminate(&
         'geometry file: element not contained in current program')
       end do
-      loop_k = 1
-      do while(atom_basis(loop_k) % atom_number /= loop_i)
-        loop_k = loop_k + 1
-        if (loop_k >= basis_count) call terminate(&
+      ak = 1
+      do while(atom_basis(ak) % atom_number /= ai)
+        ak = ak + 1
+        if (ak >= basis_count) call terminate(&
         'there are elements in geometry file not contained in basis set file')
       end do
-      mol(loop_j) % basis_number = loop_k
-      mol(loop_j) % atom_number = loop_i
-      mol(loop_j) % rad = 0.836 * &
-      real(element_massnumber(loop_i))**(1.0_dp/3.0_dp) + 0.57
+      mol(aj) % basis_number = ak
+      mol(aj) % atom_number = ai
+      mol(aj) % rad = 0.836 * &
+      real(element_massnumber(ai))**(1.0_dp/3.0_dp) + 0.57
     end do
     read(12,*,iostat=ios) mol_element_name, &
     mol(atom_count+1)%pos(1:3)
@@ -739,53 +744,53 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     ! get the dimension of Cartesian basis
     cbdm = 0
     sbdm = 0
-    do loop_i = 1, atom_count
-      do loop_j = 1, shell_in_element(mol(loop_i) % atom_number)
+    do ai = 1, atom_count
+      do aj = 1, shell_in_element(mol(ai) % atom_number)
         cbdm = cbdm + &
-        (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L+2) * &
-        (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L+1) / 2
-        sbdm = sbdm + 2 * (atom_basis(mol(loop_i)%basis_number+loop_j-1)%L) + 1
+        (atom_basis(mol(ai)%basis_number+aj-1)%L+2) * &
+        (atom_basis(mol(ai)%basis_number+aj-1)%L+1) / 2
+        sbdm = sbdm + 2 * (atom_basis(mol(ai)%basis_number+aj-1)%L) + 1
       end do
     end do
     ! generate basis_inf
-    loop_i = 1
+    ai = 1
     atom = 1
     shell = 1
     shell_start = 1
-    do while(loop_i <= cbdm)
+    do while(ai <= cbdm)
       if (shell > shell_in_element(mol(atom) % atom_number)) then
         shell = 1
         atom = atom + 1
       end if
       L = atom_basis(mol(atom)%basis_number+shell-1)%L + 1
-      M = loop_i - shell_start + 1
-      basis_inf(loop_i)%atom  = atom
-      basis_inf(loop_i)%shell = shell
-      basis_inf(loop_i)%L     = L
-      basis_inf(loop_i)%M     = M
-      basis_inf(loop_i)%pos   = mol(atom)%pos
-      basis_inf(loop_i)%contr = atom_basis(mol(atom)%basis_number+shell-1)%contr
-      basis_inf(loop_i)%expo  = atom_basis(mol(atom)%basis_number+shell-1)%expo
-      basis_inf(loop_i)%coe   = atom_basis(mol(atom)%basis_number+shell-1)%coe
-      loop_i = loop_i + 1
-      if (loop_i-shell_start >= (L+1)*L/2) then
+      M = ai - shell_start + 1
+      basis_inf(ai)%atom  = atom
+      basis_inf(ai)%shell = shell
+      basis_inf(ai)%L     = L
+      basis_inf(ai)%M     = M
+      basis_inf(ai)%pos   = mol(atom)%pos
+      basis_inf(ai)%contr = atom_basis(mol(atom)%basis_number+shell-1)%contr
+      basis_inf(ai)%expo  = atom_basis(mol(atom)%basis_number+shell-1)%expo
+      basis_inf(ai)%coe   = atom_basis(mol(atom)%basis_number+shell-1)%coe
+      ai = ai + 1
+      if (ai-shell_start >= (L+1)*L/2) then
         shell = shell + 1
-        shell_start = loop_i
+        shell_start = ai
       end if
     end do
     ! normalization coefficient is taken into contr coefficient
-    do loop_i = 1, cbdm
-      contr = basis_inf(loop_i) % contr
-      expo(1:contr) = basis_inf(loop_i) % expo(1:contr)
-      coe(1:contr)  = basis_inf(loop_i) % coe(1:contr)
-      L = basis_inf(loop_i) % L
-      do loop_j = 1, contr
-        do loop_k = 1, (L+1)*L/2
-          ix = AO_fac(1,L,loop_k)
-          iy = AO_fac(2,L,loop_k)
-          iz = AO_fac(3,L,loop_k)
-          basis_inf(loop_i)%Ncoe(loop_j,loop_k) = coe(loop_j) * &
-          AON(expo(loop_j),ix,iy,iz)
+    do ai = 1, cbdm
+      contr = basis_inf(ai) % contr
+      expo(1:contr) = basis_inf(ai) % expo(1:contr)
+      coe(1:contr)  = basis_inf(ai) % coe(1:contr)
+      L = basis_inf(ai) % L
+      do aj = 1, contr
+        do ak = 1, (L+1)*L/2
+          ix = AO_fac(1,L,ak)
+          iy = AO_fac(2,L,ak)
+          iz = AO_fac(3,L,ak)
+          basis_inf(ai)%Ncoe(aj,ak) = coe(aj) * &
+          AON(expo(aj),ix,iy,iz)
         end do
       end do
     end do
@@ -795,35 +800,36 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
 !> print basis set information, geometry information and calculation settings
   subroutine input_print()
     implicit none
+    integer :: ai, aj, ak, am  ! loop variables input_print
     write(60,"(A)") 'Module Atoms:'
     write(60,"(A)") '  input basis set file path: '
     write(60,"(A)") '  '//trim(address_basis)
     write(60,"(A)") '  ----------<BASIS>----------'
-    loop_i = 1
-    do while(loop_i <= basis_count)  ! print only basis of atoms in mol
-      do loop_j = 1, atom_count
-        if (mol(loop_j) % basis_number == loop_i) exit
+    ai = 1
+    do while(ai <= basis_count)  ! print only basis of atoms in mol
+      do aj = 1, atom_count
+        if (mol(aj) % basis_number == ai) exit
       end do
-      if (loop_j == atom_count + 1) then
-        loop_i = loop_i + 1
+      if (aj == atom_count + 1) then
+        ai = ai + 1
         cycle
       end if
       write(60,"(A10,A2,A)") &
-      '  element ',element_list(atom_basis(loop_i) % atom_number),':'
-      loop_k = 0
-      do while(loop_k <= shell_in_element(mol(loop_j) % atom_number) - 1)
+      '  element ',element_list(atom_basis(ai) % atom_number),':'
+      ak = 0
+      do while(ak <= shell_in_element(mol(aj) % atom_number) - 1)
         write(60,"(A15,I1,A1)") '  -- shell l = ',&
-        atom_basis(loop_i + loop_k) % L,':'
-        loop_m = 1
-        do while(loop_m <= atom_basis(loop_i + loop_k) % contr)
+        atom_basis(ai + ak) % L,':'
+        am = 1
+        do while(am <= atom_basis(ai + ak) % contr)
           write(60,"(A7,E12.5E2,A6,F9.5)") &
-          '  exp: ',atom_basis(loop_i + loop_k) % &
-          expo(loop_m), ', coe:',atom_basis(loop_i + loop_k) % coe(loop_m)
-          loop_m = loop_m + 1
+          '  exp: ',atom_basis(ai + ak) % &
+          expo(am), ', coe:',atom_basis(ai + ak) % coe(am)
+          am = am + 1
         end do
-        loop_k = loop_k + 1
+        ak = ak + 1
       end do
-      loop_i = loop_i + 1
+      ai = ai + 1
       write(60,*)
     end do
     write(60,*)
@@ -834,12 +840,12 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       write(60,"(A)") '  '//trim(address_molecule)
     end if
     write(60,"(A)") '  ----------<GEOMETRY>----------'
-    do loop_i = 1, atom_count
+    do ai = 1, atom_count
       write(60,"(A2, A2, A3, F9.5, A3, F9.5, A3, F9.5)") &
-      '  ',element_list(mol(loop_i) % atom_number), '   ',&
-      mol(loop_i) % pos(1), '   ', &
-      mol(loop_i) % pos(2), '   ', &
-      mol(loop_i) % pos(3)
+      '  ',element_list(mol(ai) % atom_number), '   ',&
+      mol(ai) % pos(1), '   ', &
+      mol(ai) % pos(2), '   ', &
+      mol(ai) % pos(3)
     end do
     write(60,"(A22,I4,A2,I4)") '  scalar/spinor cbdm: ', cbdm, ' /', 2*cbdm
     write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
@@ -849,6 +855,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
 !> read keywords from .xyz file
   subroutine read_keywords()
     implicit none
+    integer             :: aj
     character(len = 40) :: module_name, keyword
     character(len = 2)  :: title_note
     write(60,"(A)") "  ----------<KEYWORDS>----------"
@@ -860,10 +867,10 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       read(12,*) title_note
     end do
     read(12,*)
-    loop_j = 1
-    do while (loop_j <= atom_count)
+    aj = 1
+    do while (aj <= atom_count)
       read(12,*)
-      loop_j = loop_j + 1
+      aj = aj + 1
     end do
     entire: do
       read(12,*,iostat = ios) module_name
@@ -957,22 +964,21 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             else
               call terminate("threads setting should be written as 'threads=n'")
             end if
-          else if (trim(keyword) == 'nr') then
-            DKH_order = 0
-            write(60,"(A)") "  nonrelativistic Hamiltonian will be considered"
-          else if (trim(keyword) == 'fpfw') then
-            DKH_order = 1
-            write(60,"(A)") "  fpFW Hamiltonian will be considered"
-          else if (trim(keyword) == 'dkh2') then
-            DKH_order = 2
-            write(60,"(A)") "  DKH2 Hamiltonian will be considered"
-          else if (trim(keyword) == 'srtp') then
-            SRTP_type = .true.
+          else if (trim(keyword) == 'pvp1e') then
+            pVp1e = .true.
+            write(60,"(A)") "  one-electron pVp potential will be considered"
+          else if (trim(keyword) == 'pvp2e') then
+            pVp2e = .true.
+            write(60,"(A)") "  two-electron pVp potential will be considered"
+          else if (trim(keyword) == 'pvp') then
+            pVp1e = .true.
+            pVp2e = .true.
+            write(60,"(A)") "  one-electron pVp potential will be considered"
+            write(60,"(A)") "  two-electron pVp potential will be considered"
+          else if (trim(keyword) == 'pppvp') then
+            pppVp = .true.
             write(60,"(A)") &
             "  Second Relativized Thomas Precession will be considered"
-          else if (trim(keyword) == 'sttp') then
-            STTP_type = .true.
-            write(60,"(A)") "  spin Tensor Thomas Precession will be considered"
           else if (index(keyword,'cuts') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
@@ -1208,7 +1214,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               guess_type = keyword(index(keyword,'=') + 1 : len(trim(keyword)))
               if (ios /= 0) call terminate(&
               "Initial guess setting should be written as 'guess=***'")
-              if (guess_type == 'read') then
+              if (guess_type == 'ao2mo') then
                 write(60,"(A)") "  initial guess load from .ao2mo file"
               else if (guess_type == 'molden') then
                 write(60,"(A)") "  initial guess load from .molden file"
@@ -1322,12 +1328,10 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     end if
     if (cspin/='n' .and. cspin/='d' .and. cspin/='f') call terminate(&
     'unrecognized constrained spin mode')
-    if (DKH_order == 0 .and. SRTP_type) call terminate(&
-    'SRTP is not suitable for non-relativistic calculation')
-    if (DKH_order == 0 .and. STTP_type) call terminate(&
-    'STTP is not suitable for non-relativistic calculation')
-    if (SRTP_type .and. STTP_type) call terminate(&
-    'cannot set both SRTP and STTP.')
+    if (.not. pVp1e .and. pppVp) call terminate(&
+    'pppVp must be used in conjunction with pVp1e')
+    if (.not. pVp1e .and. pVp2e) call terminate(&
+    'pVp2e must be used in conjunction with pVp1e')
     if (subsp <= 1) call terminate('subsp two small')
     if (nodiis - subsp < 2) call terminate('nodiis should be set larger')
     if (damp > 0.91 .or. damp < 0.0) call terminate(&
@@ -1365,8 +1369,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   end function AON
 
 !-----------------------------------------------------------------------
-!> assign matrix c2s, s2f and c2f
-  subroutine assign_csf(i_j)
+!> Assign matrix c2s, s2f and c2f
+  subroutine Assign_csf(i_j)
     implicit none
     real(dp),allocatable,optional  :: i_j(:,:)      ! overlap matrix
     integer                        :: ii, jj, kk, ll
@@ -1427,7 +1431,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     if (present(i_j)) then
       call csgo_1c(i_j)
       if (allocated(s2f)) deallocate(s2f)
-      allocate(s2f(sbdm,sbdm))
+      allocate(s2f(sbdm,sbdm))  ! be careful s2f and exs2f are not unitary
       call symm_orth(i_j, sbdm, s2f, min_evl)
       if (min_evl < 0.0) &
       call terminate('evl(i_j) less than zero, may due to code error')
@@ -1443,7 +1447,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       allocate(c2f(cbdm,fbdm))
       call matmul('N', 'N', c2s, s2f, c2f)
       allocate(c2foper(cbdm,fbdm))
-      ! assign exs2f, exc2f
+      ! Assign exs2f, exc2f
       if (allocated(exs2f)) deallocate(exs2f)
       allocate(exs2f(2*sbdm,2*fbdm),source=c0)
       exs2f(1:sbdm,1:fbdm) = s2f * c1
@@ -1455,11 +1459,11 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       exc2f(cbdm+1:2*cbdm,fbdm+1:2*fbdm) = c2f * c1
       allocate(exc2foper(2*cbdm,2*fbdm))
     end if
-  end subroutine assign_csf
+  end subroutine Assign_csf
 
 !-----------------------------------------------------------------------
-!> assign matrix m_c2s and m_exc2s
-  subroutine m_assign_cs()
+!> Assign matrix m_c2s and m_exc2s
+  subroutine m_Assign_cs()
     implicit none
     integer            :: ii, jj, kk, ll
     if (allocated(m_c2s)) deallocate(m_c2s)
@@ -1511,7 +1515,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     allocate(m_exc2s(2*m_cbdm,2*m_sbdm),source=c0)
     m_exc2s(1:m_cbdm,1:m_sbdm) = m_c2s * c1
     m_exc2s(m_cbdm+1:2*m_cbdm,m_sbdm+1:2*m_sbdm) = m_c2s * c1
-  end subroutine m_assign_cs
+  end subroutine m_Assign_cs
 
 !-----------------------------------------------------------------------
 !> transfer real scalar matrix on Cartesian basis to matrix on spher-harmo basis
@@ -1621,58 +1625,5 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     call matmul('T', 'N', c2s, sphoper, m)
     deallocate(sphoper)
   end subroutine m_csgo
-
-!-----------------------------------------------------------------------
-!> calculate D4 dispersion correction by DFT-D4
-  function dftd4() result(emd4)
-    implicit none
-    character(len=1)  :: ch1
-    character(len=10) :: ch10
-    character(len=30) :: ch30
-    real(dp)          :: emd4
-    write(ch1,"(I1)") charge
-    write(60,'(A)') '  calling DFT-D4 for dispersion correction'
-    ! take .xyz file as input file of DFT-D4
-    ios = system('dftd4 '//trim(address_molecule)//' -f '//trim(funcemd4)//&
-    ' -c '//ch1//' --noedisp --json '//trim(address_job)//'.emd4 -s -s')
-    if (ios == -1) then
-      write(60,'(A)') &
-      '  DFT-D4 failed with error calling, dispersion energy set zero'
-      emd4 = 0.0
-      return
-    end if
-    open(20,file=trim(address_job)//'.emd4',&
-    status='old',action='read',iostat=ios)
-    if (ios /= 0) then
-      write(60,'(A)') &
-      '  DFT-D4 failed with empty result, dispersion energy set zero'
-      emd4 = 0.0
-      return
-    else
-      read(20,*) ! read '{'
-      do
-        read(20, *, iostat = ios) ch10, ch1, ch30  ! ch1 for ':'
-        if (ios /= 0) then
-          write(60,'(A)') &
-          '  no energy print in json, dispersion energy set zero'
-          emd4 = 0.0
-          close(20)
-          return
-        else if (index(ch10, 'energy') /= 0) then
-          read(ch30, '(E30.20)') emd4
-          if (emd4 > 0.0) then
-            write(60,'(A)') &
-            '  get non-negative d4 correction, dispersion energy set zero'
-            emd4 = 0.0
-          else
-            write(60,'(A,F10.5,A)') &
-            '  complete! dispersion energy is ',emd4,' Eh'
-          end if
-          close(20)
-          return
-        end if
-      end do
-    end if
-  end function dftd4
   
 end module Atoms

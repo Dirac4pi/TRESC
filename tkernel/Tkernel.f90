@@ -10,7 +10,7 @@
 program Tkernel
   use Fundamentals
   implicit none
-  integer            :: trloop_i, trloop_j, trloop_k
+  integer            :: tri, trj, trk
   integer            :: cmd_count, stat1
   character(len=200) :: cmd1
   cmd_count = command_argument_count()
@@ -34,7 +34,7 @@ program Tkernel
     else
       call terminate('unknown argument '//trim(cmd1))
     end if
-    !do trloop_i = 1, 10
+    !do tri = 1, 10
     !  do batch calculation, plot with batch_plot.py
     !end do
 !------------------------------------------------------------------------------
@@ -101,23 +101,10 @@ subroutine sconf_calc(kill_)
   call input_check()
   call input_print()
   ! SCF process
-  if (DKH_order == 0 .or. DKH_order == 2) then
-    call DKH_Hamiltonian()
-    call DKH_SCF()
-    call outprint()
-    call glob_init(kill_)
-  else if (DKH_order == 1) then
-    write(60,*)
-    write(60,'(A)') 'Module Hamiltonian:'
-    write(60,'(A)') '  The SRTP effect requires at least a second-order DKH'
-    write(60,'(A)') '  Hamiltonian to be accurately described, since the lead'
-    write(60,'(A)') '  term of SRTP effect expanded at c=0 is in order c^-4.'
-    write(60,'(A)') '  Only DKH2+ Hamiltonian guarantees the completeness of'
-    write(60,'(A)') '  the expansion term at order c^-4.'
-    call terminate('fpFW Hamiltonian is not supported')
-  else
-    call terminate('DKH_order is set incorrectly')
-  end if
+  call DKH_Hamiltonian()
+  call DKH_SCF()
+  call info_print()
+  call glob_init(kill_)
 end subroutine sconf_calc
 
 !-----------------------------------------------------------------------
@@ -128,7 +115,6 @@ subroutine mo2cgrid(cube, kill_)
   implicit none
   logical,intent(in)      :: cube
   logical,intent(in)      :: kill_
-  integer                 :: channel, count
   complex(dp),allocatable :: arr(:)
   complex(dp),allocatable :: arr2(:)
   real(dp),allocatable    :: supparr(:)
@@ -186,11 +172,11 @@ subroutine mo1cgrid(cube, kill_)
   logical,intent(in)      :: cube
   logical,intent(in)      :: kill_
   integer                 :: spin
-  integer                 :: channel, count
   real(dp),allocatable    :: arr(:)
   complex(dp),allocatable :: arr2(:)
   character(len=60)       :: cmd2, cmd3, fimo
   integer                 :: imo
+  integer                 :: ii
   call get_command_argument(2, cmd2, status=ios)
   if (ios > 0) then
     call terminate('2nd argument retrieval fails')
@@ -207,11 +193,11 @@ subroutine mo1cgrid(cube, kill_)
   allocate(arr(2*sbdm), arr2(2*cbdm))
   call assign_csf()
   call get_command_argument(3, cmd3, status=ios)
-  do loop_i = 1, len(cmd3)
-    if (is_alpha(cmd3(loop_i:loop_i))) then
-      if (cmd3(loop_i:loop_i)=='A' .or. cmd3(loop_i:loop_i)=='a') then
+  do ii = 1, len(cmd3)
+    if (is_alpha(cmd3(ii:ii))) then
+      if (cmd3(ii:ii)=='A' .or. cmd3(ii:ii)=='a') then
         spin = 1
-      else if(cmd3(loop_i:loop_i)=='B' .or. cmd3(loop_i:loop_i)=='b') then
+      else if(cmd3(ii:ii)=='B' .or. cmd3(ii:ii)=='b') then
         spin = 2
       else
         call terminate('unable to recognize spin')
@@ -219,8 +205,8 @@ subroutine mo1cgrid(cube, kill_)
       exit
     end if
   end do
-  if (loop_i == len(cmd3)) call terminate('no spin info in orbital index')
-  fimo = cmd3(:loop_i-1)//cmd3(loop_i+1:)
+  if (ii == len(cmd3)) call terminate('no spin info in orbital index')
+  fimo = cmd3(:ii-1)//cmd3(ii+1:)
   read(fimo,'(I)',iostat=ios) imo
   if (ios /= 0) call terminate('unable to recognize orbital index')
   if (spin == 1) then      ! alpha

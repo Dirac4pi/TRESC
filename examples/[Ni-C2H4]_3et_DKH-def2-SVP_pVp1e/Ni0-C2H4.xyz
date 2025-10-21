@@ -1,0 +1,39 @@
+7
+Coordinates from ORCA-job /scratch/orcascr/Ni0-C2H4/Ni0-C2H4 E -1586.261968458744
+Ni          0.98108383108531      3.58916201015523     -0.25947192636430
+C           2.47148305745432      2.53643795612330      0.67347052198724
+C           2.67052116329674      2.51792398295982     -0.69464670231932
+H           3.01501792728592      3.23809351054676      1.31611367352935
+H           2.00277576542000      1.69148082167348      1.19029687100637
+H           2.36609390406343      1.65698717636274     -1.30040474577652
+H           3.37822515139424      3.20339314217866     -1.17437945206281
+  
+%Atoms
+spin=3
+basis=dkh-def2-svp
+endAtoms
+
+%Hamiltonian
+pvp1e
+threads=32
+endHamiltonian
+
+%SCF
+cspin=f
+guess=molden
+cutdiis=0.0001
+convertol=0.000001
+damp=0.7
+nodiis=8
+diisdamp=0.1
+molden
+emd4=pbe0
+endSCF
+
+%functional
+xid=101
+cid=130
+xhf=0.25
+endfunctional
+
+

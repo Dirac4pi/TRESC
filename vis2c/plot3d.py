@@ -14,7 +14,7 @@ from tvtk.api import tvtk
 from scipy.ndimage import gaussian_filter
 
 dtol = 0.01 # tolerance of delaunay
-maxpoints = 3e4 # max grid points
+maxpoints = 1e5 # max grid points
 
 #-------------------------------------------------------------------------------
 def sync_camera(fig1, fig2, sync_coe:float) -> None:

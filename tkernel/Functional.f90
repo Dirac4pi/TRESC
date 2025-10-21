@@ -569,7 +569,6 @@ module functional
   subroutine Fockxc_init()
     implicit none
     integer :: ii, vmajor, vminor, vmicro
-    character :: x_name, c_name
     ! Print out the version  
     call xc_f03_version(vmajor, vminor, vmicro)
     write(60,'("  -- Libxc version: ",I1,".",I1,".",I1)') vmajor, vminor, vmicro

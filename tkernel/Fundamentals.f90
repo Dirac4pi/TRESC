@@ -15,8 +15,6 @@ module Fundamentals
 !-----------------------------------------------------------------------
 ! definitions for programming
   
-  integer             :: loop_i, loop_j, loop_k     ! universal loop variables
-  integer             :: loop_m, loop_n, loop_l
   integer             :: ios                        ! universal operating status
   integer             :: pid                        ! process ID
   integer,parameter   :: dp = selected_real_kind(12)! double precesion
@@ -61,9 +59,9 @@ module Fundamentals
 ! calculation settings (with default)
   
   !-----------------<module Hamiltonian>-----------------
-  integer         :: DKH_order   = 2      ! 0: nonrelativistic; 1: fpFW; 2: DKH2
-  logical(kind=4) :: SRTP_type   = .false.! Second Relativized Thomas Precession
-  logical(kind=4) :: STTP_type   = .false.! Spin Tensor Thomas Precession
+  logical(kind=4) :: pVp1e       = .false.! one-electron pVp potetial (spinor)
+  logical(kind=4) :: pVp2e       = .false.! two-electron pVp potetial (spinor)
+  logical(kind=4) :: pppVp       = .false.! Second Relativized Thomas Precession
   real(dp)        :: cutS        = 1E-5   ! threshold of evl(i_j)
   !--------------------<module Atoms>--------------------
   integer         :: charge      = 0      ! charge of the system
@@ -398,13 +396,13 @@ module Fundamentals
     integer,allocatable  :: iwork(:)    ! iwork for input of dsyevr
     real(dp)             :: mat_u(dm,dm)! upper triangular part
     real(dp),allocatable :: work(:)     ! work for input of dsyevr
-    integer              :: dialoop_i, dialoop_j
+    integer              :: fi, fj      ! loop variables for real_symm_diag
     allocate(work(1))
     allocate(iwork(1))
     mat_u = 0.0_dp
-    do dialoop_i = 1, dm
-      do dialoop_j = dialoop_i, dm
-        mat_u(dialoop_i,dialoop_j) = mat(dialoop_i,dialoop_j)
+    do fi = 1, dm
+      do fj = fi, dm
+        mat_u(fi,fj) = mat(fi,fj)
       end do
     end do
     call dsyevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
@@ -444,7 +442,6 @@ module Fundamentals
     complex(dp),allocatable :: work(:)     ! work for input of zheevr
     real(dp),allocatable    :: rwork(:)    ! rwork for input of zheevr
     integer,allocatable     :: iwork(:)    ! iwork for input of zheevr
-    integer                 :: dialoop_i, dialoop_j
     allocate(work(1))
     allocate(rwork(1))
     allocate(iwork(1))
@@ -483,11 +480,11 @@ module Fundamentals
     real(dp),allocatable    :: work(:)
     integer                 :: lwork
     integer                 :: ipiv(dm)
-    integer                 :: invloop_i, invloop_j
+    integer                 :: fi, fj
     mat_u = 0.0_dp
-    do invloop_i = 1, dm
-      do invloop_j = invloop_i, dm
-        mat_u(invloop_i,invloop_j) = mat(invloop_i,invloop_j)
+    do fi = 1, dm
+      do fj = fi, dm
+        mat_u(fi,fj) = mat(fi,fj)
       end do
     end do
     allocate(work(1))
@@ -509,9 +506,9 @@ module Fundamentals
       call terminate('real_symm_inverse: dsytri error: internel error')
     end if
     mat = mat_u
-    do invloop_i = 1, dm
-      do invloop_j = invloop_i, dm
-        mat(invloop_j,invloop_i) = mat_u(invloop_i,invloop_j)
+    do fi = 1, dm
+      do fj = fi, dm
+        mat(fj,fi) = mat_u(fi,fj)
       end do
     end do
   end subroutine real_symm_inverse
@@ -559,21 +556,21 @@ module Fundamentals
     real(dp)             :: supU(dm,dm)
     real(dp)             :: evl(dm)
     real(dp)             :: mat_u(dm,dm)
-    integer              :: symloop_i
+    integer              :: fi
     call real_symm_diag(mat, dm, U, evl)
     min_evl = evl(1)
     mat_u = 0.0_dp
-    do symloop_i = 1, dm
-      if (evl(symloop_i) < 0.0) call terminate(&
+    do fi = 1, dm
+      if (evl(fi) < 0.0) call terminate(&
       'symm_orth: eigenvalue less than zero, may due to code error')
-      if (abs(evl(symloop_i)) < safmin) then
+      if (abs(evl(fi)) < safmin) then
         write(60,'(A)') &
         '  --matrix is not invertible (not full rank), call can_orth directly'
         min_evl = 0.0_dp
         return
       end if
-      if (min_evl > evl(symloop_i)) min_evl = evl(symloop_i)
-      mat_u(symloop_i,symloop_i) = 1.0_dp / dsqrt(evl(symloop_i))
+      if (min_evl > evl(fi)) min_evl = evl(fi)
+      mat_u(fi,fi) = 1.0_dp / dsqrt(evl(fi))
     end do
     call real_matmul('N', 'N', U, mat_u, supU)
     call real_matmul('N', 'T', supU, U, X)
@@ -592,24 +589,24 @@ module Fundamentals
     real(dp)                         :: U(dm,dm)
     real(dp)                         :: evl(dm)
     integer                          :: supU(dm)
-    integer                          :: canloop_i, canloop_j, canloop_k
+    integer                          :: fi, fj, fk
     call real_symm_diag(mat, dm, U, evl)
     supU = 0
     dm2 = dm
-    do canloop_i = 1, dm
-      if (evl(canloop_i) < cutS) then
-        supU(canloop_i) = 1
+    do fi = 1, dm
+      if (evl(fi) < cutS) then
+        supU(fi) = 1
         dm2 = dm2 - 1
       end if
     end do
     allocate(X(dm,dm2))
-    canloop_k = 1
-    do canloop_i = 1, dm
-      if (supU(canloop_i) == 1) cycle
-      do canloop_j = 1, dm
-        X(canloop_j,canloop_k) = U(canloop_j,canloop_i) / dsqrt(evl(canloop_i))
+    fk = 1
+    do fi = 1, dm
+      if (supU(fi) == 1) cycle
+      do fj = 1, dm
+        X(fj,fk) = U(fj,fi) / dsqrt(evl(fi))
       end do
-      canloop_k = canloop_k + 1
+      fk = fk + 1
     end do
   end subroutine can_orth
 
@@ -618,24 +615,24 @@ module Fundamentals
   subroutine atnz2block(atnz, dm)
     implicit none
     integer, intent(in) :: dm
-    integer             :: aloop_i, aloop_j
+    integer             :: fi, fj
     complex(dp)         :: atnz(dm,dm), aoper(dm,dm)
     if (dm <= 1 .or. mod(dm,2) /= 0) &
     call terminate('atnz2block called incorrectly')
     aoper = atnz
-    do aloop_i = 1, dm
-      do aloop_j = 1, dm
-        if (aloop_i <= dm/2) then
-          if (aloop_j <= dm/2) then
-            atnz(aloop_i,aloop_j) = aoper(2*aloop_i-1,2*aloop_j-1)
+    do fi = 1, dm
+      do fj = 1, dm
+        if (fi <= dm/2) then
+          if (fj <= dm/2) then
+            atnz(fi,fj) = aoper(2*fi-1,2*fj-1)
           else
-            atnz(aloop_i,aloop_j) = aoper(2*aloop_i-1,2*(aloop_j-dm/2))
+            atnz(fi,fj) = aoper(2*fi-1,2*(fj-dm/2))
           end if
         else
-          if (aloop_j <= dm/2) then
-            atnz(aloop_i,aloop_j) = aoper(2*(aloop_i-dm/2)-1,2*aloop_j)
+          if (fj <= dm/2) then
+            atnz(fi,fj) = aoper(2*(fi-dm/2)-1,2*fj)
           else
-            atnz(aloop_i,aloop_j) = aoper(2*(aloop_i-dm/2),2*(aloop_j-dm/2))
+            atnz(fi,fj) = aoper(2*(fi-dm/2),2*(fj-dm/2))
           end if
         end if
       end do
@@ -644,6 +641,8 @@ module Fundamentals
 
 !------------------------------------------------------------
 !> real matrix and matrix multiplicity
+!!
+!! makesure: dima(2) = dimb(1)  dimc(1) = dima(1)  dimc(2) = dimb(2)
   subroutine real_matmul(transa, transb, mata, matb, matc)
     implicit none
     character(len=1),intent(in) :: transa
@@ -657,25 +656,17 @@ module Fundamentals
     integer                     :: lda, ldb, swt
     dima = shape(mata)
     lda = dima(1)
-    if (transa == 'N' .or. transa == 'n') then
-      ! do nothing
-    else if (transa == 'T' .or. transa == 't') then
+    if (transa == 'T' .or. transa == 't') then
       swt = dima(1)
       dima(1) = dima(2)
       dima(2) = swt
-    else
-      call terminate("real_matmul: transa should be 'N' or 'T'")
     end if
     dimb = shape(matb)
     ldb = dimb(1)
-    if (transb == 'N' .or. transb == 'n') then
-      ! do nothing
-    else if (transb == 'T' .or. transb == 't') then
+    if (transb == 'T' .or. transb == 't') then
       swt = dimb(1)
       dimb(1) = dimb(2)
       dimb(2) = swt
-    else
-      call terminate("real_matmul: transb should be 'N' or 'T'")
     end if
     if (dima(2) /= dimb(1)) call terminate('real_matmul: dima(2) /= dimb(1)')
     dimc = shape(matc)
@@ -755,6 +746,8 @@ module Fundamentals
 
 !------------------------------------------------------------
 !> complex matrix and matrix multiplicity
+!!
+!! makesure: dima(2) = dimb(1)  dimc(1) = dima(1)  dimc(2) = dimb(2)
   subroutine cmplx_matmul(transa, transb, mata, matb, matc)
     implicit none
     character(len=1),intent(in) :: transa
@@ -768,9 +761,7 @@ module Fundamentals
     integer                     :: lda, ldb, swt
     dima = shape(mata)
     lda = dima(1)
-    if (transa == 'N' .or. transa == 'n') then
-      ! do nothing
-    else if (transa == 'T' .or. transa == 't') then
+    if (transa == 'T' .or. transa == 't') then
       swt = dima(1)
       dima(1) = dima(2)
       dima(2) = swt
@@ -778,14 +769,10 @@ module Fundamentals
       swt = dima(1)
       dima(1) = dima(2)
       dima(2) = swt
-    else
-      call terminate("cmplx_matmul: transa should be 'N' or 'T' or 'C'")
     end if
     dimb = shape(matb)
     ldb = dimb(1)
-    if (transb == 'N' .or. transb == 'n') then
-      ! do nothing
-    else if (transb == 'T' .or. transb == 't') then
+    if (transb == 'T' .or. transb == 't') then
       swt = dimb(1)
       dimb(1) = dimb(2)
       dimb(2) = swt
@@ -793,8 +780,6 @@ module Fundamentals
       swt = dimb(1)
       dimb(1) = dimb(2)
       dimb(2) = swt
-    else
-      call terminate("cmplx_matmul: transb should be 'N' or 'T' or 'C'")
     end if
     if (dima(2) /= dimb(1)) call terminate('cmplx_matmul: dima(2) /= dimb(1)')
     dimc = shape(matc)
@@ -1086,7 +1071,7 @@ module Fundamentals
   pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
     implicit none
     integer,intent(in) :: N,M
-    integer :: bloop_i, numerator, denominator
+    integer :: fi, numerator, denominator
     if (M == 0 .or. N == 0 .or. M == N) then
       bicoe = 1.0
       return
@@ -1143,10 +1128,10 @@ module Fundamentals
     else
       bicoe = 1.0
       numerator = 1
-      bloop_i = N
-      do while(bloop_i > M)
-        numerator = numerator * bloop_i
-        bloop_i = bloop_i - 1
+      fi = N
+      do while(fi > M)
+        numerator = numerator * fi
+        fi = fi - 1
       end do
       denominator = factorial(N - M)
       bicoe = real(numerator) / real(denominator)

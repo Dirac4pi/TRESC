@@ -26,7 +26,6 @@ module Representation
     character(len=*),intent(in) :: title      ! title of .mog file
     integer(8)                  :: i, ii, jj, kk, ll  ! loop varables
     integer(8)                  :: nl(atom_count), nr(atom_count), cnr, cnl
-    integer                     :: xloop_k, xloop_l
     integer                     :: Archannel, Aichannel, Brchannel, Bichannel
     integer                     :: xchannel, ychannel ,zchannel
     integer                     :: r          ! record position

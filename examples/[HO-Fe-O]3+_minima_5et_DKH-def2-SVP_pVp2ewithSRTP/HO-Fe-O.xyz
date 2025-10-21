@@ -1,0 +1,35 @@
+4
+Coordinates from ORCA-job /scratch/orcascr/HO-Fe-O/HO-Fe-O E -1412.386137749648
+Fe         -1.02840135149669      3.00760692968975      1.36638703890850
+O           1.21359737042302     -0.82745364795331     -5.74000518168645
+O          -1.63687832415031      4.01851499771820      3.30032855186552
+H           1.37780393157769     -1.74284748890184     -6.20619503470666
+  
+%Atoms
+spin=5
+charge=3
+basis=dkh-def2-svp
+endAtoms
+
+%Hamiltonian
+dkh2
+srtp
+threads=32
+endHamiltonian
+
+%SCF
+cspin=f
+guess=ao2mo
+damp=0.9
+cutdiis=0.0001
+convertol=0.000001
+diisdamp=0.2
+emd4=pbe0
+molden
+endSCF
+
+%functional
+xid=321
+cid=322
+xhf=0.25
+endfunctional
