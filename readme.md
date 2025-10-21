@@ -189,7 +189,8 @@ computation of integrals like $$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, it has
 a small effect on results but will significantly increases the one-electron
 integral cost.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;SRTP is currently has no evidence support, if you're
-interested, try keyword `SRTP` when performing DKH2 calculation.<br>
+interested, try keyword `pppVp` in module Hamiltonian when performing DKH2
+calculation.<br>
 
 ## Analyses for spinor states
 
