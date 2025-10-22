@@ -144,7 +144,7 @@ $$
 \end{array} \right)
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;which $$s_i$$ represent spin components and $$\beta _i$$
+&nbsp;&nbsp;&nbsp;&nbsp;where $$s_i$$ represent spin components and $$\beta _i$$
 represent velocity components, $$\gamma$$ represent Lorentz factor and<br>
 
 $$
@@ -163,7 +163,7 @@ H_{\mathrm{SRTP}}=\frac{1}{2}\vec{s}_{\gamma}\cdot
 \left( \dot{\vec{\beta}}\times \vec{\beta} \right)
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;which<br>
+&nbsp;&nbsp;&nbsp;&nbsp;where<br>
 
 $$
 s_{\gamma ,i}=\frac{1}{\sqrt{1-\beta _i^{2}}}s_i
@@ -180,8 +180,8 @@ $$
 \end{matrix} \right)
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;This formular leads to the modified electron spinor wave
-function through DKH transformation.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;This formular leads to the modified electron spinor
+wavefunction through DKH transformation.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;In addition, SRTP effect is of order $$c^{-4}$$, one
 have to consider other terms of order $$\geqslant c^{-4}$$ before it, including
 radiation effect. Moreover, the lowest order of SRTP still requires the
@@ -196,49 +196,40 @@ calculation.<br>
 
 ### Decomposition to spin-pure states
 
-&nbsp;&nbsp;&nbsp;&nbsp;Spin-pure states can be obtained from spinor states by
+&nbsp;&nbsp;&nbsp;&nbsp;A given spinor state $$|\psi \rangle$$ can be decomposed
+into series of spin-pure states $$|S,M\rangle=P_{MM}^{S}|\varPsi \rangle$$ by
 rotation group integration:
 
 $$
-\langle \varPsi |P_{MM}^{S}|\varPsi \rangle =\frac{2S+1}{8\pi ^2}
+\langle \varPsi |S,M\rangle =\frac{2S+1}{8\pi ^2}
 \int{\mathrm{d}\varOmega}D_{MM}^{S*}\left( \varOmega \right) \langle \varPsi |
 R\left( \varOmega \right) |\varPsi \rangle
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;Where $$|\psi \rangle$$ is the spinor state of the
-system, $$D_{MM}^{S}$$ is the Wigner D-matrix, and $$R$$ is the SU(2) rotation
-matrix. After finish 2c-SCF, will search $$|S,M\rangle$$ based on Wigner-Eckart
-theorem and calculate their contributions to the spinor state.
+&nbsp;&nbsp;&nbsp;&nbsp;Where $$D_{MM}^{S}$$ is the Wigner D-matrix and $$R$$ is
+the SU(2) rotation matrix. TRESC calculates the contribution of several
+spin-pure states to the spinor state of the system, any possible spin-pure state
+is given by the Wigner-Eckart theorem.
 
-<p align="center">
-  <img src="docs/Spin-pure_states_contributions.png"
-  alt="docs/Spin-pure_states_contributions.png" width="500">
-  <br>
-  <em>Spin-pure states contributions</em>
-</p>
+### Measure of Time-Reversal Symmetry(TRS) breaking
 
-### A measure of Time-Reversal Symmetry(TRS) breaking
-
-&nbsp;&nbsp;&nbsp;&nbsp;After finish 2c-SCF, the $$\kappa$$ parameter is
-calculated by:
+&nbsp;&nbsp;&nbsp;&nbsp;TRESC calculates the $$\kappa$$ parameter by:
 
 $$
 \kappa =\left\| MM^*+I_N \right\|
 $$
-
-&nbsp;&nbsp;&nbsp;&nbsp;Where N is the number of electrons, M is an N*N matrix,
-calculated by:
-
 $$
 M_{ij}=\langle \phi _i|-i\sigma_y|\phi _j\rangle
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;Where $$|\phi _i\rangle$$ denotes the i-th occupied
-orbital. The deviation of $$\kappa$$ from 0 reflects the deviation of the system
-from TRS. For scalar single-configuration wave function, the reference value of
-kappa is $$\sqrt{N_{\alpha}-N_{\beta}}$$; deviation from this value in 2c-SCF
-calculation reflects the deviation of the system from TRS caused by
-SOC, which is closely related to the zero-field split of the system.
+&nbsp;&nbsp;&nbsp;&nbsp;where $$N$$ is the number of electrons,
+$$|\phi _i\rangle$$ denotes the i-th occupied orbital.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The deviation of $$\kappa$$ from 0 reflects the
+degree of TRS breaking of the system. For scalar single-configuration
+wavefunction, the reference $$\kappa$$ is $$\sqrt{N_{\alpha}-N_{\beta}}$$;
+deviation from this value in 2c-SCF calculation reflects the degree of TRS
+breaking caused by SOC, which is closely related to the zero-field split of the
+system.
 
 # Build
 
