@@ -217,12 +217,12 @@ is given by the Wigner-Eckart theorem.
 
 $$
 \begin{aligned}
-\kappa &=\left\| MM^*+I_N \right\|\\
+\kappa&=\left\| MM^*+I_N \right\|\\
 M_{ij}&=\langle \phi _i|-i\sigma_y|\phi _j\rangle
 \end{aligned}
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;where $$N$$ is the number of
+&nbsp;&nbsp;&nbsp;&nbsp;where N is the number of
 electrons, $$|\phi _i\rangle$$ denotes the i-th occupied orbital.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The deviation of $$\kappa$$ from 0 reflects the degree
 of TRS breaking of the system. For scalar single-configuration wavefunction, the
