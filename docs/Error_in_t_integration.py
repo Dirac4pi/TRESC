@@ -6,9 +6,9 @@ env:base
 import math
 import copy
 
-choice=2 # 1: direct integration; 2: Taylor expansion of integration at X=0
-X=2.3353 # The smaller the value, the greater the error
-it=30 # The number of iterations is positively related to angular momentum. 
+choice=1 # 1: direct integration; 2: Taylor expansion of integration at X=0
+X=1.0 # The smaller the value, the greater the error
+it=20 # The number of iterations is positively related to angular momentum. 
 # The more iterations, the greater the error.
 d=20 # Taylor expansion series at X = 0
 a=[0]*it
@@ -67,30 +67,34 @@ else:
     
 """
 To obtain sufficient accuracy within 50 rounds of iterations, 
-the truncation X is set to 4 and the number of 
-Taylor expansion series is set to 30!
+the truncation X is set to 5.0 and the number of 
+Taylor expansion series is set to 45!
 
 To obtain sufficient accuracy within 40 rounds of iterations, 
-the truncation X is set to 3 and the number of 
-Taylor expansion series is set to 25!
+the truncation X is set to 4.0 and the number of 
+Taylor expansion series is set to 35!
 
 To obtain sufficient accuracy within 30 rounds of iterations, 
-the truncation X is set to 1 and the number of 
-Taylor expansion series is set to 20!
+the truncation X is set to 3.0 and the number of 
+Taylor expansion series is set to 30!
 
 To obtain sufficient accuracy within 25 rounds of iterations, 
-the truncation X is set to 1 and the number of 
-Taylor expansion series is set to 15!
+the truncation X is set to 2.0 and the number of 
+Taylor expansion series is set to 25!
+
+To obtain sufficient accuracy within 20 rounds of iterations, 
+the truncation X is set to 1.0 and the number of 
+Taylor expansion series is set to 20!
 
 To obtain sufficient accuracy within 15 rounds of iterations, 
-the truncation X is set to 0.1 and the number of 
-Taylor expansion series is set to 8!
+the truncation X is set to 0.5 and the number of 
+Taylor expansion series is set to 15!
 
 To obtain sufficient accuracy within 10 rounds of iterations, 
-the truncation X is set to 0.01 and the number of 
-Taylor expansion series is set to 5!
+the truncation X is set to 0.2 and the number of 
+Taylor expansion series is set to 12!
 
 To obtain sufficient accuracy within 5 rounds of iterations, 
-the truncation X is set to 0.001 and the number of 
-Taylor expansion series is set to 2!
+the truncation X is set to 0.01 and the number of 
+Taylor expansion series is set to 5!
 """

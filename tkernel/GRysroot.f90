@@ -1,4 +1,4 @@
-!> @file Fundamentals.f90
+!> @file GRysroot.f90
 !!
 !! @brief Rys quadrature roots and weights
 !!

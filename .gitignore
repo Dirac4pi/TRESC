@@ -1,6 +1,5 @@
 modules/
 build/
-tests/
 vis2c/__pycache__/
 .vscode/
 docs/Derivation_of_modified_DKH_Hamiltonian_and_2-component_electron_correlation/

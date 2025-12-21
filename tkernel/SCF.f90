@@ -13,17 +13,15 @@ module SCF
   use Fundamentals
   use Representation
   
-  ! density matrices and mol orbital coefficients
-  integer                 :: Nalpha, Nbeta  ! number of alpha and beta elctron
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   !DIR$ ATTRIBUTES ALIGN:align_size :: AO2MO, AO2MOalpha, AO2MObeta
   !DIR$ ATTRIBUTES ALIGN:align_size :: rho_m, AOsupp, Fock
   complex(dp),allocatable :: AO2MO(:,:)     ! MO coeff
-  integer,allocatable     :: occindex(:)    ! occupid orbital number of MO
-  real(dp),allocatable    :: m_AO2MO_a(:,:) ! alpha MO coeff read form molden
-  real(dp),allocatable    :: t_AO2MO_a(:,:) ! transfered alpha MO coeff
-  real(dp),allocatable    :: m_AO2MO_b(:,:) ! beta MO coeff read form molden
-  real(dp),allocatable    :: t_AO2MO_b(:,:) ! transfered beta MO coeff
+  integer,allocatable     :: occindex(:)    ! occupied orbital number of MO
+  real(dp),allocatable    :: M_AO2MO_a(:,:) ! alpha MO coeff read form MOLDEN
+  real(dp),allocatable    :: T_AO2MO_a(:,:) ! transfered alpha MO coeff
+  real(dp),allocatable    :: M_AO2MO_b(:,:) ! beta MO coeff read form MOLDEN
+  real(dp),allocatable    :: T_AO2MO_b(:,:) ! transfered beta MO coeff
   complex(dp),allocatable :: rho_m(:,:)     ! density matrix, complex Hermitian
   real(dp)                :: RMSDP, maxDP
   real(dp),allocatable    :: AOsupp(:,:)
@@ -32,14 +30,14 @@ module SCF
   
   logical                 :: ini_rho =.true.! initial density matrix loaded
   
-  !--------------<one electron Fock>--------------
+  !--------------<one-electron Fock>--------------
   !DIR$ ATTRIBUTES ALIGN:align_size :: Fock1, oper1, oper2, oper3
   !DIR$ ATTRIBUTES ALIGN:align_size :: oper4, oper5, oper6, Ve
   !DIR$ ATTRIBUTES ALIGN:align_size :: pxVepx, pyVepy, pzVepz, pxVepy
   !DIR$ ATTRIBUTES ALIGN:align_size :: pyVepx, pxVepz, pzVepx, pyVepz
   !DIR$ ATTRIBUTES ALIGN:align_size :: pzVepy, Ap, ApRp, SRp, ARVRA
   !DIR$ ATTRIBUTES ALIGN:align_size :: ARVeRA, AVA, AVeA, exAO2p2
-  complex(dp),allocatable :: Fock1(:,:)     ! one electron Fock matrix
+  complex(dp),allocatable :: Fock1(:,:)     ! one-electron Fock matrix
   real(dp),allocatable    :: oper1(:,:)     ! operator matrix
   real(dp),allocatable    :: oper2(:,:)     ! operator matrix
   complex(dp),allocatable :: oper3(:,:)     ! operator matrix
@@ -65,7 +63,7 @@ module SCF
   complex(dp),allocatable :: AVeA(:,:)      ! Ap(V/(E+E'))Ap
   complex(dp),allocatable :: exAO2p2(:,:)   ! extended AO2p2 matrix
   
-  !--------------<two electron Fock>--------------
+  !--------------<two-electron Fock>--------------
   !DIR$ ATTRIBUTES ALIGN:align_size :: mHFcol, mHFexc, mKSexc, mKScor,mpVpcol_11
   !DIR$ ATTRIBUTES ALIGN:align_size :: mpVpexc_11, mpVpcol_22, mpVpexc_22
   !DIR$ ATTRIBUTES ALIGN:align_size :: iijj_V, iijj_pxVpx,iijj_pyVpy, iijj_pzVpz
@@ -96,7 +94,8 @@ module SCF
   real(dp)                :: HFexc          ! Hartree-Fock exchange energy
   real(dp)                :: KSexc          ! Kohn-Shanm exchange energy
   real(dp)                :: KScor          ! Kohn-Shanm correlation energy
-  real(dp)                :: Ecore          ! one selectron (core) energy
+  real(dp)                :: Ecore          ! one-electron (core) energy
+  real(dp)                :: E2e            ! two-electron energy
   real(dp)                :: T              ! kinetic energy
   real(dp)                :: V              ! electron-nuclear attraction energy
   real(dp)                :: EpVp           ! 1e pVp-related energy
@@ -106,29 +105,26 @@ module SCF
   real(dp)                :: emd4           ! dispersion energy calc by DFT-D4
   real(dp)                :: scf_kappa      ! deviation parameter from TRS
 
-  !DIR$ ATTRIBUTES ALIGN:align_size :: rho_pre, rho_pre_pre, rho_history, Rsd
+  !DIR$ ATTRIBUTES ALIGN:align_size :: rho_pre, rho_history, Rsd
   ! damping & DIIS(AX=B)
   ! privious rho_m of current iteration
   complex(dp),allocatable :: rho_pre(:,:)
-  ! privious rho_m of privious iteration
-  complex(dp),allocatable :: rho_pre_pre(:,:)
   complex(dp),allocatable :: rho_history(:,:,:)! coeff of subsp iteration
   complex(dp),allocatable :: Rsd(:,:,:)        ! residuals of rho_m
   complex(dp),allocatable :: DIISmat(:,:)      ! A
   real(dp)                :: damp_coe          ! damp coeff of direct/DIIS SCF
-  real(dp)                :: dE_pre
-  logical                 :: forward = .true.
   
   contains
 
 !------------------------------------------------------------
-!> HF/KS-SCF procedure for NR/DKH2 Hamiltonian
-  subroutine DKH_SCF()
+!> HF/KS-SCF procedure for 2e scalar V interaction
+!!
+!! call-up condition: pVp1e = .False. pVp2e = .False.
+  subroutine SCF_V2e()
     implicit none
-    integer             :: ii, jj, kk, ll, mm   ! loop variable DKH_SCF
-    character(len = 40) :: keyword
+    integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_V2e
     write(60,'(A)') 'Module SCF:'
-    write(60,'(A)') '  construct one electron Fock matrix'
+    write(60,'(A)') '  construct one-electron Fock matrix'
     call Assign_Fock_1e()
     write(60,'(A)') '  complete! stored in Fock1'
     write(60,'(A)') '  calculate nuclear repulsion energy'
@@ -146,14 +142,23 @@ module SCF
     'nuclear repulsive energy anomaly, may due to overlap atomic coordinates')
     write(60,'(A,F12.7,A)') &
     '  complete! nuclear repulsive energy = ', nucE, ' Eh'
-    if (.not. pVp2e) then
-      call Assign_Schwarz_V2e()
-    else
-      call Assign_Schwarz_pVp2e()
-    end if
-    write(60,'(A)') '  initialize the functional'
+    call Assign_Schwarz_V2e()
+    write(60,'(A)') '  initialize Libxc'
     if (fx_id /= -1) call Fockxc_init()
     write(60,'(A)') '  complete!'
+    allocate(Fock(2*fbdm,2*fbdm))
+    allocate(orbE(2*fbdm))
+    allocate(oper6(2*fbdm,2*fbdm))
+    allocate(oper3(2*fbdm,2*fbdm))
+    allocate(oper4(2*fbdm,2*fbdm))
+    ! ----------<DIIS>----------
+    ! rho_m(new) = sigma(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
+    allocate(Rsd(subsp,2*sbdm,2*sbdm))
+    allocate(DIISmat(subsp+1,subsp+1))
+    allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
+    allocate(rho_pre(2*sbdm, 2*sbdm))
+    ! ----------<DIIS>----------
+    write(60,'(A)') '  ----------<SCF>----------'
     write(60,'(A)') '  SCF settings:'
     write(60,'(A,I3.3)')  '  -- maxiter   = ', maxiter
     write(60,'(A,E10.3)') '  -- conv_tol  =',  conver_tol
@@ -163,133 +168,35 @@ module SCF
     write(60,'(A,I3.3)')  '  -- subsp     = ', subsp
     write(60,'(A,F6.3)')  '  -- diisdamp  =',  diisdamp
     write(60,'(A,E10.3)') '  -- cutdiis   =',  cutdiis
-    write(60,'(A)') '  ----------<SCF>----------'
-    allocate(Fock(2*fbdm,2*fbdm))
-    allocate(orbE(2*fbdm))
-    allocate(oper6(2*fbdm,2*fbdm))
-    allocate(oper3(2*fbdm,2*fbdm))
-    allocate(oper4(2*fbdm,2*fbdm))
-    
-    ! DIIS
-    ! AO2MO(new) = ��(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
-    allocate(Rsd(subsp,2*sbdm,2*sbdm))
-    allocate(DIISmat(subsp+1,subsp+1))
-    allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
-    allocate(rho_pre(2*sbdm, 2*sbdm))
-    allocate(rho_pre_pre(2*sbdm, 2*sbdm))
     do iter = 1, maxiter
-      if (iter /= 1) then
-        write(60,*)
-        write(60,*)
-        write(60,'(A,I3)') '  SCF iter ',iter
-        open(12, file=address_molecule, status="old", action="read")
-        do
-          read(12,*,iostat = ios) keyword
-          if (ios /= 0) exit
-          call lowercase(keyword)
-          if (index(keyword,'threads') == 1) then
-            if (index(keyword,'=') /= 0) then
-              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(I2)",iostat = ios) new_threads
-              if (new_threads /= threads) then
-                threads = new_threads
-                write(60,'(A,I2)') '  number of threads change to ',threads
-              end if
-            end if
-          else if (index(keyword,'damp') == 1) then
-            if (index(keyword,'=') /= 0) then
-              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F20.12)",iostat = ios) damp_new
-              if (damp_new /= damp) then
-                damp = damp_new
-                write(60,'(A,F20.12)') '  dynamical damp change to ',damp
-              end if
-            end if
-          else if (index(keyword,'diisdamp') == 1) then
-            if (index(keyword,'=') /= 0) then
-              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F20.12)",iostat = ios) diisdamp_new
-              if (diisdamp_new /= diisdamp) then
-                diisdamp = diisdamp_new
-                write(60,'(A,F20.12)') &
-                '  dynamical damp in DIIS change to ',diisdamp
-              end if
-            end if
-          else if (index(keyword,'cutdiis') == 1) then
-            if (index(keyword,'=') /= 0) then
-              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F20.12)",iostat = ios) cutdiis_new
-              if (cutdiis_new /= cutdiis) then
-                cutdiis = cutdiis_new
-                write(60,'(A,F20.12)') '  DIIS threshold change to ',cutdiis
-              end if
-            end if
-          else if (index(keyword,'cutdamp') == 1) then
-            if (index(keyword,'=') /= 0) then
-              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F20.12)",iostat = ios) cutdamp_new
-              if (cutdamp_new /= cutdamp) then
-                cutdamp = cutdamp_new
-                write(60,'(A,F20.12)') '  damp threshold change to ',cutdamp
-              end if
-            end if
-          end if
-        end do
-        close(12)
-      else
+      write(60,*)
+      write(60,*)
+      write(60,'(A,I3)') '  SCF iter ',iter
+      if (iter == 1) then
         write(60,'(A)') '  load density matrix'
         call Assign_rho()
         write(60,'(A)') '  complete! stored in rho_m'
       end if
-
       ! construct 2e Fock matrices
-      if (.not. pVp1e) then
-        write(60,'(A)') '  construct scalar 2e Fock matrices'
-        call Assign_Fock_V2e()
-        write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
-      else if (pVp1e .and. .not. pVp2e) then
-        write(60,'(A)') '  construct relativistic scalar 2e Fock matrices'
-        call Assign_Fock_AVA2e()
-        write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
-      else if (pVp1e .and. pVp2e) then
-        write(60,'(A)') '  construct relativistic spinor 2e Fock matrices'
-        call Assign_Fock_ARVRA2e()
-        write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
-        write(60,'(A)') '  mpVpcol_11, mpVpexc_11, mpVpcol_22, mpVpexc_22'
-      end if
-
+      write(60,'(A)') '  construct scalar 2e Fock matrices'
+      call Assign_Fock_V2e()
+      write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
       if (fx_id /= -1) then
         if (fc_id /= -1) then
           write(60,'(A)') '  mKSexc, mKScor'
-          if (.not. pVp2e) then
-            Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
-          else
-            Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + &
-            mKScor + mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
-          end if
+          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
         else
           x_HF = 0.0_dp
           KScor = 0.0_dp
           write(60,'(A)') '  mKSexc'
-          if (.not. pVp2e) then
-            Fock = Fock1 + mHFcol + mKSexc
-          else
-            Fock = Fock1 + mHFcol + mKSexc + &
-            mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
-          end if
+          Fock = Fock1 + mHFcol + mKSexc
         end if
       else    ! pure Hartree-Fock
         x_HF = 1.0_dp
         KScor = 0.0_dp
         KSexc = 0.0_dp
-        if (.not. pVp2e) then
-          Fock = Fock1 + mHFcol + mHFexc
-        else
-          Fock = Fock1 + mHFcol + mHFexc + &
-          mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
-        end if
+        Fock = Fock1 + mHFcol + mHFexc
       end if
-
       ! diagonalization of Fock matrix
       write(60,'(A)') '  diagonalization of Fock matrix'
       call diag(Fock, 2*fbdm, oper3, orbE)
@@ -297,147 +204,25 @@ module SCF
       ! de-orthogonalization
       write(60,'(A)') '  generate and dump AO2MO to .ao2mo file'
       call matmul('N', 'N', exs2f, oper3, AO2MO)
-      call dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
+      call Dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
       ! construct new density matrix
       write(60,'(A)') '  construct new density matrix'
       call Assign_rho()
       write(60,'(A)') '  complete! stored in rho_m'
 
-
-      ! frontier orbital energy
-      write(60,'(A)') '  frontier orbital energy (A.U.)'
-      call Calc_S2HForb(occindex(electron_count))
-      write(60,'(A,I3,F12.6,A,F6.3)') &
-      '  -- HOMO ', occindex(electron_count), orbE(occindex(electron_count)), &
-      ' <Sz> = ',Szorb
-      call Calc_S2HForb(occindex(electron_count)+1)
-      write(60,'(A,I3,F12.6,A,F6.3)') &
-      '  -- LUMO ',occindex(electron_count)+1,orbE(occindex(electron_count)+1),&
-      ' <Sz> = ',Szorb
-      write(60,'(A,F12.6)') '  -- gap ',&
-      orbE(occindex(electron_count)+1)-orbE(occindex(electron_count))
-      ! energy components calculation
-      write(60,'(A)') '  calculate energy components (A.U.)'
-      ! HF Coulomb energy
-      HFCol = 0.0_dp
-      call matmul('C', 'N', oper3, mHFcol, oper6)
-      call matmul('N', 'N', oper6, oper3, oper4)
-      do jj = 1, electron_count
-        HFCol = HFCol + real(oper4(occindex(jj),occindex(jj)))
-      end do
-      write(60,'(A,F12.6)') '  -- HF Coulomb energy                    ', HFCol
-
-      ! HF exchange energy
-      HFexc = 0.0_dp
-      call matmul('C', 'N', oper3, mHFexc, oper6)
-      call matmul('N', 'N', oper6, oper3, oper4)
-      do jj = 1, electron_count
-        HFexc = HFexc + real(oper4(occindex(jj),occindex(jj)))
-      end do
-      write(60,'(A,F12.6)') &
-      '  -- HF exchange energy                   ', x_HF*HFexc
-      write(60,'(A,F12.6)') &
-      '  -- KS exchange energy                   ', (1-x_HF)*KSexc
-      write(60,'(A,F12.6)') '  -- KS correlation energy                ', KScor
-
-      ! core energy
-      Ecore = 0.0_dp
-      call matmul('C', 'N', oper3, Fock1, oper6)
-      call matmul('N', 'N', oper6, oper3, oper4)
-      do jj = 1, electron_count
-        Ecore = Ecore + real(oper4(occindex(jj),occindex(jj)))
-      end do
-      write(60,'(A,F12.6)') '  -- core energy                          ', Ecore
-
-      ! kinetic energy
-      T = 0.0_dp
-      call matmul('C', 'N', oper3, exi_T_j, oper6)
-      call matmul('N', 'N', oper6, oper3, oper4)
-      do jj = 1, electron_count
-        T = T + real(oper4(occindex(jj),occindex(jj)))
-      end do
-      write(60,'(A,F12.6)') '  -- electron kinetic energy              ', T
-
-      ! electron-nuclear attraction energy
-      V = 0.0_dp
-      call matmul('C', 'N', oper3, exi_V_j, oper6)
-      call matmul('N', 'N', oper6, oper3, oper4)
-      do jj = 1, electron_count
-        V = V + real(oper4(occindex(jj),occindex(jj)))
-      end do
-      write(60,'(A,F12.6)') '  -- electron-nuclear attraction energy   ', V
-
-      if (pVp1e) then
-        EpVp = 0.0_dp
-        call matmul('C', 'N', oper3, expVp, oper6)
-        call matmul('N', 'N', oper6, oper3, oper4)
-        do jj = 1, electron_count
-          EpVp = EpVp + real(oper4(occindex(jj),occindex(jj)))
-        end do
-        write(60,'(A,F12.6)') '  -- 1e pVp-related energy                ', EpVp
-        if (pVp2e) then
-          EpVpcol = 0.0_dp
-          call matmul('C', 'N', oper3, mpVpcol_11+mpVpcol_22, oper6)
-          call matmul('N', 'N', oper6, oper3, oper4)
-          do jj = 1, electron_count
-            EpVpcol = EpVpcol + real(oper4(occindex(jj),occindex(jj)))
-          end do
-          write(60,'(A,F12.6)') &
-          '  -- 2e pVp-related Coulomb energy        ', EpVpcol
-          EpVpexc = 0.0_dp
-          call matmul('C', 'N', oper3, mpVpexc_11+mpVpexc_22, oper6)
-          call matmul('N', 'N', oper6, oper3, oper4)
-          do jj = 1, electron_count
-            EpVpexc = EpVpexc + real(oper4(occindex(jj),occindex(jj)))
-          end do
-          write(60,'(A,F12.6)') &
-          '  -- 2e pVp-related Exchange energy       ', EpVpexc
-        end if
-        if (pppVp) then
-          ESR = 0.0_dp
-          call matmul('C', 'N', oper3, exSR, oper6)
-          call matmul('N', 'N', oper6, oper3, oper4)
-          do jj = 1, electron_count
-            ESR = ESR + real(oper4(occindex(jj),occindex(jj)))
-          end do
-          write(60,'(A,F12.6)') &
-          '  -- SRTP & radiative correction energy   ', ESR
-        end if
-      end if
-
-      ! electronic energy
-      if (iter /= 1) molE_pre = molE
-      if (.not. pVp2e) then
-        molE = nucE + Ecore + 0.5_dp*(HFCol+x_HF*HFexc) + &
-        (1.0_dp-x_HF)*KSexc + KScor
-      else
-        molE = nucE + Ecore + 0.5_dp*(HFCol+x_HF*HFexc) + &
-        (1.0_dp-x_HF)*KSexc + KScor + 0.5_dp*(EpVpcol+EpVpexc)
-      end if
-      
-      ! Virial ratio
-      if (.not. pVp1e) then
-        Virial = -(nucE+V+0.5_dp*(HFCol+x_HF*HFexc)+&
-        (1.0_dp-x_HF)*KSexc +KScor)/T
-      else
-        if (pppVp) then
-          Virial = -(nucE+Ecore-T-EpVp-ESR+0.5_dp*(HFCol+x_HF*HFexc)+&
-          (1.0_dp-x_HF)*KSexc +KScor)/T
-        else
-          Virial = -(nucE+Ecore-T-EpVp+0.5_dp*(HFCol+x_HF*HFexc)+&
-          (1.0_dp-x_HF)*KSexc +KScor)/T
-        end if
-      end if
-      write(60,'(A,F12.6)') '  -- -<V>/<T>                             ', Virial
+      call SCFprint()
       ! convergence check
       if (iter == 1) then
         write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
       else
         write(60,'(A,F12.6,A,E10.3)') '  SCF energy (A.U.) = ',molE,&
-        '; delta E = ',molE - molE_pre
-        if (abs(molE - molE_pre) < conver_tol .and. abs(RMSDP) < 5*conver_tol &
-        .and. forward .and. (damp_coe < 0.01 .or. &
-        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE - molE_pre))))) then
+        '; delta E = ', molE-molE_pre
+        if (abs(molE-molE_pre) < conver_tol   .and. &
+        (abs(RMSDP) < 0.5*abs(molE-molE_pre)  .or.  &
+        ! orbital degeneracy induces density matrix oscillations
+        abs(RMSDP) > 10.0*abs(molE-molE_pre)) .and. &
+        (damp_coe < 0.01                      .or.  &
+        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE-molE_pre))))) then
           write(60,'(A)') '  convergence tolerance met, SCF done!'
           exit
         else
@@ -445,147 +230,8 @@ module SCF
         end if
       end if
       write(60,'(A)') '  DIIS information'
-      ! generate next rho_m by DIIS method
-      if (iter <= nodiis) then
-        
-        !--------------<damping>-----------------
-        if (iter <= nodiis - subsp) then
-          if (iter > 2 .and. abs(molE - molE_pre) >= 1.5*abs(dE_pre)) then
-            damp_coe = damp_coe + (1.0_dp-damp_coe)*0.5_dp
-            if (damp_coe < 0.91) then
-              rho_m = (1.0_dp - damp_coe) * rho_pre + damp_coe * rho_pre_pre
-              write(60,'(A)') '  -- fallback '
-              forward = .false.
-              cycle
-            end if
-          end if
-        end if
-        if (abs(molE - molE_pre) >= cutdamp) then
-          damp_coe = damp
-          rho_m = (1.0 - damp_coe) * rho_m + damp_coe * rho_pre
-          write(60,'(A,F6.3)') '  -- damped ', damp_coe
-        else if (abs(molE - molE_pre) >= cutdamp/100.0) then
-          damp_coe = 0.5_dp*damp*log10(abs(molE - molE_pre)) + &
-          damp*(1.0_dp-0.5_dp*log10(cutdamp))
-          rho_m = (1.0 - damp_coe) * rho_m + damp_coe * rho_pre
-          write(60,'(A,F6.3)') '  -- damped ', damp_coe
-        else
-          damp_coe = 0.0_dp
-          write(60,'(A)') '  -- undamped '
-        end if
-        dE_pre = molE - molE_pre
-        !--------------<damping>-----------------
-
-        if (iter <= nodiis - subsp) then
-          write(60,'(A)') '  -- no DIIS acceleration'
-        else
-          ! update Rsd
-          do jj = 1, 2*sbdm
-            do kk = 1, 2*sbdm
-              Rsd(iter-(nodiis-subsp), jj, kk) = &
-              rho_m(jj, kk) - rho_pre(jj, kk)
-            end do
-          end do
-          ! update rho_history
-          do jj = 1, 2*sbdm
-            do kk = 1, 2*sbdm
-              rho_history(iter-(nodiis-subsp), jj, kk) = &
-              rho_m(jj, kk)
-            end do
-          end do
-          write(60,'(A,I2,A,I2)') &
-          '  -- DIIS subspace filling ',iter-(nodiis-subsp),'/',subsp
-        end if
-      else
-
-        !--------------<DIIS damping>-----------------
-        if (abs(molE - molE_pre) >= cutdiis) then
-          damp_coe = diisdamp
-          write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
-        else if (abs(molE - molE_pre) >= cutdiis/100.0) then
-          damp_coe = 0.5_dp*diisdamp*log10(abs(molE - molE_pre)) + &
-          diisdamp*(1.0_dp-0.5_dp*log10(cutdiis))
-          write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
-        else
-          damp_coe = 0.0_dp
-          write(60,'(A)') '  -- DIIS undamped'
-        end if
-        !--------------<DIIS damping>-----------------
-
-        ! update Rsd
-        do jj = 2, subsp
-          do kk = 1, 2*sbdm
-            do ll = 1, 2*sbdm
-              Rsd(jj - 1, kk, ll) = Rsd(jj, kk, ll)
-            end do
-          end do
-        end do
-        do jj = 1, 2*sbdm
-          do kk = 1, 2*sbdm
-            Rsd(subsp, jj, kk) = rho_m(jj, kk) - &
-            rho_pre(jj, kk)
-          end do
-        end do
-        ! update rho_history
-        do jj = 2, subsp
-          do kk = 1, 2*sbdm
-            do ll = 1, 2*sbdm
-              rho_history(jj - 1, kk, ll) = &
-              rho_history(jj, kk, ll)
-            end do
-          end do
-        end do
-        do jj = 1, 2*sbdm
-          do kk = 1, 2*sbdm
-            rho_history(subsp, jj, kk) = rho_m(jj, kk)
-          end do
-        end do
-        ! construct DIISmat
-        DIISmat = c0
-        do jj = 1, subsp
-          do kk = 1, subsp
-            do ll = 1, 2*sbdm
-              do mm = 1, 2*sbdm
-                DIISmat(jj, kk) = DIISmat(jj, kk) + &
-                conjg(Rsd(jj, ll, mm))*Rsd(kk, ll, mm)
-              end do
-            end do
-          end do
-        end do
-        do jj = 1, subsp
-          DIISmat(subsp+1, jj) = c1
-          DIISmat(jj, subsp+1) = c1
-        end do
-        ! solve residual equation
-        ! dgesv and dspsv will cause Integral_V_2e conflict for unknown reason
-        ! since DIISmat (and its inverse) is real symmetric, plus the column 
-        ! vector is simple, use the inverse of DIISmat to solve directly
-        call inverse(DIISmat, subsp+1)
-        ! generate new rho_m
-        rho_m = c0
-        do jj = 1, subsp
-          do kk = 1, 2*sbdm
-            do ll = 1, 2*sbdm
-              rho_m(kk,ll) = rho_m(kk,ll) + &
-              DIISmat(jj,subsp+1) * (rho_history(jj,kk,ll) + &
-              damp_coe*Rsd(jj,kk,ll))
-            end do
-          end do
-        end do
-        write(60,'(A,F10.6,A,F10.6)') &
-        '  -- predicted residual', -real(DIISmat(subsp+1,subsp+1)), &
-        ',',-aimag(DIISmat(subsp+1,subsp+1))
-        do jj = 1, subsp
-          write(60,'(A,I2,F10.6,A,F10.6)') &
-          '  -- subsp coe',jj, real(DIISmat(jj,subsp+1)), &
-          ',', aimag(DIISmat(jj,subsp+1))
-        end do
-      end if
-      if (forward) then
-        if (iter > 1) rho_pre_pre = rho_pre
-        rho_pre = rho_m
-      end if
-      forward = .true.
+      call DIIS()
+      rho_pre = rho_m
     end do
     if (abs(molE-molE_pre) < conver_tol .and. iter < maxiter) then
       write(60,'(A)') '  SCF succeed!'
@@ -596,14 +242,657 @@ module SCF
       emd4 = DFTD4()
       molE = molE + emd4
     end if
-  end subroutine DKH_SCF
+  end subroutine SCF_V2e
 
-  !------------------------------------------------------------
-  !> print final wave function information
-  subroutine info_print()
+!------------------------------------------------------------
+!> HF/KS-SCF procedure for 2e scalar AVA interaction
+!!
+!! call-up condition: pVp1e = .True. pVp2e = .False.
+  subroutine SCF_AVA2e()
+    implicit none
+    integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_AVA2e
+    write(60,'(A)') 'Module SCF:'
+    write(60,'(A)') '  construct one-electron Fock matrix'
+    call Assign_Fock_1e()
+    write(60,'(A)') '  complete! stored in Fock1'
+    write(60,'(A)') '  calculate nuclear repulsion energy'
+    nucE = 0.0_dp
+    do ii = 1, atom_count
+      do jj = ii + 1, atom_count
+        nucE = nucE + (real(mol(ii) % atom_number) * &
+        real(mol(jj) % atom_number)) / dsqrt(&
+        (mol(ii) % pos(1) - mol(jj) % pos(1))**2 + &
+        (mol(ii) % pos(2) - mol(jj) % pos(2))**2 + &
+        (mol(ii) % pos(3) - mol(jj) % pos(3))**2)
+      end do
+    end do
+    if (nucE >= 1E12) call terminate(&
+    'nuclear repulsive energy anomaly, may due to overlap atomic coordinates')
+    write(60,'(A,F12.7,A)') &
+    '  complete! nuclear repulsive energy = ', nucE, ' Eh'
+    call Assign_Schwarz_V2e()
+    write(60,'(A)') '  initialize Libxc'
+    if (fx_id /= -1) call Fockxc_init()
+    write(60,'(A)') '  complete!'
+    allocate(Fock(2*fbdm,2*fbdm))
+    allocate(orbE(2*fbdm))
+    allocate(oper6(2*fbdm,2*fbdm))
+    allocate(oper3(2*fbdm,2*fbdm))
+    allocate(oper4(2*fbdm,2*fbdm))
+    ! ----------<DIIS>----------
+    ! rho_m(new) = sigma(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
+    allocate(Rsd(subsp,2*sbdm,2*sbdm))
+    allocate(DIISmat(subsp+1,subsp+1))
+    allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
+    allocate(rho_pre(2*sbdm, 2*sbdm))
+    ! ----------<DIIS>----------
+    write(60,'(A)') '  ----------<SCF>----------'
+    write(60,'(A)') '  SCF settings:'
+    write(60,'(A,I3.3)')  '  -- maxiter   = ', maxiter
+    write(60,'(A,E10.3)') '  -- conv_tol  =',  conver_tol
+    write(60,'(A,F6.3)')  '  -- damp      =',  damp
+    write(60,'(A,E10.3)') '  -- cutdamp   =',  cutdamp
+    write(60,'(A,I3.3)')  '  -- nodiis    = ', nodiis
+    write(60,'(A,I3.3)')  '  -- subsp     = ', subsp
+    write(60,'(A,F6.3)')  '  -- diisdamp  =',  diisdamp
+    write(60,'(A,E10.3)') '  -- cutdiis   =',  cutdiis
+    do iter = 1, maxiter
+      write(60,*)
+      write(60,*)
+      write(60,'(A,I3)') '  SCF iter ',iter
+      if (iter == 1) then
+        write(60,'(A)') '  load density matrix'
+        call Assign_rho()
+        write(60,'(A)') '  complete! stored in rho_m'
+      end if
+      ! construct 2e Fock matrices
+      write(60,'(A)') '  construct relativistic scalar 2e Fock matrices'
+      call Assign_Fock_AVA2e()
+      write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      if (fx_id /= -1) then
+        if (fc_id /= -1) then
+          write(60,'(A)') '  mKSexc, mKScor'
+          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
+        else
+          x_HF = 0.0_dp
+          KScor = 0.0_dp
+          write(60,'(A)') '  mKSexc'
+          Fock = Fock1 + mHFcol + mKSexc
+        end if
+      else    ! pure Hartree-Fock
+        x_HF = 1.0_dp
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        Fock = Fock1 + mHFcol + mHFexc
+      end if
+
+      ! diagonalization of Fock matrix
+      write(60,'(A)') '  diagonalization of Fock matrix'
+      call diag(Fock, 2*fbdm, oper3, orbE)
+      write(60,'(A,I5,A)') '  complete!',2*fbdm,' eigenvectors found'
+      ! de-orthogonalization
+      write(60,'(A)') '  generate and dump AO2MO to .ao2mo file'
+      call matmul('N', 'N', exs2f, oper3, AO2MO)
+      call Dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
+      ! construct new density matrix
+      write(60,'(A)') '  construct new density matrix'
+      call Assign_rho()
+      write(60,'(A)') '  complete! stored in rho_m'
+      call SCFprint()
+      ! convergence check
+      if (iter == 1) then
+        write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
+      else
+        write(60,'(A,F12.6,A,E10.3)') '  SCF energy (A.U.) = ',molE,&
+        '; delta E = ', molE-molE_pre
+        if (abs(molE-molE_pre) < conver_tol   .and. &
+        (abs(RMSDP) < 0.5*abs(molE-molE_pre)  .or.  &
+        ! orbital degeneracy induces density matrix oscillations
+        abs(RMSDP) > 10.0*abs(molE-molE_pre)) .and. &
+        (damp_coe < 0.01                      .or.  &
+        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE-molE_pre))))) then
+          write(60,'(A)') '  convergence tolerance met, SCF done!'
+          exit
+        else
+          write(60,'(A)') '  convergence tolerance not met'
+        end if
+      end if
+      write(60,'(A)') '  DIIS information'
+      call DIIS()
+      rho_pre = rho_m
+    end do
+    if (abs(molE-molE_pre) < conver_tol .and. iter < maxiter) then
+      write(60,'(A)') '  SCF succeed!'
+    else
+      write(60,'(A)') '  SCF failed!'
+    end if
+    if (d4) then
+      emd4 = DFTD4()
+      molE = molE + emd4
+    end if
+  end subroutine SCF_AVA2e
+
+!------------------------------------------------------------
+!> HF/KS-SCF procedure for 2e spinor AVA and ARVRA interaction
+!!
+!! call-up condition: pVp1e = .True. pVp2e = .True.
+  subroutine SCF_ARVRA2e()
+    implicit none
+    integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_ARVRA2e
+    write(60,'(A)') 'Module SCF:'
+    write(60,'(A)') '  construct one-electron Fock matrix'
+    call Assign_Fock_1e()
+    write(60,'(A)') '  complete! stored in Fock1'
+    write(60,'(A)') '  calculate nuclear repulsion energy'
+    nucE = 0.0_dp
+    do ii = 1, atom_count
+      do jj = ii + 1, atom_count
+        nucE = nucE + (real(mol(ii) % atom_number) * &
+        real(mol(jj) % atom_number)) / dsqrt(&
+        (mol(ii) % pos(1) - mol(jj) % pos(1))**2 + &
+        (mol(ii) % pos(2) - mol(jj) % pos(2))**2 + &
+        (mol(ii) % pos(3) - mol(jj) % pos(3))**2)
+      end do
+    end do
+    if (nucE >= 1E12) call terminate(&
+    'nuclear repulsive energy anomaly, may due to overlap atomic coordinates')
+    write(60,'(A,F12.7,A)') &
+    '  complete! nuclear repulsive energy = ', nucE, ' Eh'
+    call Assign_Schwarz_pVp2e()
+    write(60,'(A)') '  initialize Libxc'
+    if (fx_id /= -1) call Fockxc_init()
+    write(60,'(A)') '  complete!'
+    allocate(Fock(2*fbdm,2*fbdm))
+    allocate(orbE(2*fbdm))
+    allocate(oper6(2*fbdm,2*fbdm))
+    allocate(oper3(2*fbdm,2*fbdm))
+    allocate(oper4(2*fbdm,2*fbdm))
+    ! ----------<DIIS>----------
+    ! rho_m(new) = sigma(i,subsp) DIIScoe(i)*(rho_history(i)+diisdamp*Rsd(i))
+    allocate(Rsd(subsp,2*sbdm,2*sbdm))
+    allocate(DIISmat(subsp+1,subsp+1))
+    allocate(rho_history(subsp, 2*sbdm, 2*sbdm))
+    allocate(rho_pre(2*sbdm, 2*sbdm))
+    ! ----------<DIIS>----------
+    write(60,'(A)') '  ===============<SCF>==============='
+    pVp2e = .False.
+    damp_ = damp
+    diisdamp_ = diisdamp
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,'(A)') '        !!!!!!<SCALAR CONVERGENCE STAGE>!!!!!!'
+    write(60,'(A)') '        !!SCF settings:                     !!'
+    write(60,'(A,I3.3,A)')  '        !!-- maxiter   = ', maxiter, &
+    '                !!'
+    write(60,'(A,E10.3,A)') '        !!-- conv_tol  =',  conver_tol, &
+    '          !!'
+    write(60,'(A,F6.3,A)')  '        !!-- damp      =',  damp, &
+    '              !!'
+    write(60,'(A,E10.3,A)') '        !!-- cutdamp   =',  cutdamp, &
+    '          !!'
+    write(60,'(A,I3.3,A)')  '        !!-- nodiis    = ', nodiis, &
+    '                !!'
+    write(60,'(A,I3.3,A)')  '        !!-- subsp     = ', subsp, &
+    '                !!'
+    write(60,'(A,F6.3,A)')  '        !!-- diisdamp  =',  diisdamp, &
+    '              !!'
+    write(60,'(A,E10.3,A)') '        !!-- cutdiis   =',  cutdiis, &
+    '          !!'
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    do iter = 1, maxiter
+      write(60,*)
+      write(60,*)
+      write(60,'(A,I3)') '  scalar SCF iter ',iter
+      if (iter == 1) then
+        write(60,'(A)') '  load density matrix'
+        call Assign_rho()
+        write(60,'(A)') '  complete! stored in rho_m'
+      end if
+      ! construct 2e Fock matrices
+      write(60,'(A)') '  construct relativistic scalar 2e Fock matrices'
+      call Assign_Fock_AVA2e()
+      write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      if (fx_id /= -1) then
+        if (fc_id /= -1) then
+          write(60,'(A)') '  mKSexc, mKScor'
+          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
+        else
+          x_HF = 0.0_dp
+          KScor = 0.0_dp
+          write(60,'(A)') '  mKSexc'
+          Fock = Fock1 + mHFcol + mKSexc
+        end if
+      else    ! pure Hartree-Fock
+        x_HF = 1.0_dp
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        Fock = Fock1 + mHFcol + mHFexc
+      end if
+      ! diagonalization of Fock matrix
+      write(60,'(A)') '  diagonalization of Fock matrix'
+      call diag(Fock, 2*fbdm, oper3, orbE)
+      write(60,'(A,I5,A)') '  complete!',2*fbdm,' eigenvectors found'
+      ! de-orthogonalization
+      write(60,'(A)') '  generate and dump AO2MO to .ao2mo file'
+      call matmul('N', 'N', exs2f, oper3, AO2MO)
+      call Dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
+      ! construct new density matrix
+      write(60,'(A)') '  construct new density matrix'
+      call Assign_rho()
+      write(60,'(A)') '  complete! stored in rho_m'
+      call SCFprint()
+      ! convergence check
+      if (iter == 1) then
+        write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
+      else
+        write(60,'(A,F12.6,A,E10.3)') '  SCF energy (A.U.) = ',molE,&
+        '; delta E = ', molE-molE_pre
+        if (abs(molE-molE_pre) < conver_tol   .and. &
+        (abs(RMSDP) < 0.5*abs(molE-molE_pre)  .or.  &
+        ! orbital degeneracy induces density matrix oscillations
+        abs(RMSDP) > 10.0*abs(molE-molE_pre)) .and. &
+        (damp_coe < 0.01                      .or.  &
+        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE-molE_pre))))) then
+          write(60,'(A)') '  convergence tolerance met, SCF done!'
+          exit
+        else
+          write(60,'(A)') '  convergence tolerance not met'
+        end if
+      end if
+      write(60,'(A)') '  DIIS information'
+      call DIIS()
+      rho_pre = rho_m
+    end do
+    if (abs(molE-molE_pre) < conver_tol .and. iter+1 < maxiter) then
+      write(60,'(A)') '  SCF succeed!'
+    else
+      write(60,'(A)') '  SCF failed! Skip spinor convergence stage!'
+      return
+    end if
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,'(A)') '        !!!!!!<SPINOR CONVERGENCE STAGE>!!!!!!'
+    pVp2e = .True.
+    if (subsp <= 8) then
+      nodiis = subsp
+    else
+      nodiis = 5
+      subsp = 5
+    end if
+    write(60,'(A)') '        !!SCF settings:                     !!'
+    write(60,'(A,I3.3,A)')  '        !!-- maxiter  =            ', maxiter,   &
+    '      !!'
+    write(60,'(A,E10.3,A)') '        !!-- conv_tol =           ',  conver_tol,&
+    '!!'
+    write(60,'(A,F6.3,A)')  '        !!-- damp     = dynamic to',  damp,      &
+    '    !!'
+    write(60,'(A,E10.3,A)') '        !!-- cutdamp  =           ',  cutdamp,   &
+    '!!'
+    write(60,'(A,I3.3,A)')  '        !!-- nodiis   =            ', nodiis,    &
+    '      !!'
+    write(60,'(A,I3.3,A)')  '        !!-- subsp    =            ', subsp,     &
+    '      !!'
+    write(60,'(A,F6.3,A)')  '        !!-- diisdamp = dynamic to',  diisdamp,  &
+    '    !!'
+    write(60,'(A,E10.3,A)') '        !!-- cutdiis  =           ',  cutdiis,   &
+    '!!'
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    do iter = 1, maxiter
+      write(60,*)
+      write(60,*)
+      write(60,'(A,I3)') '  spinor SCF iter ', iter
+      if (iter == 1) then
+        write(60,'(A)') '  load density matrix from scalar convergence stage'
+        call Assign_rho()
+        write(60,'(A)') '  complete! stored in rho_m'
+      end if
+      ! construct 2e Fock matrices
+      write(60,'(A)') '  construct relativistic spinor 2e Fock matrices'
+      call Assign_Fock_ARVRA2e()
+      write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      write(60,'(A)') '  mpVpcol_11, mpVpexc_11, mpVpcol_22, mpVpexc_22'
+      ! assign Fock matrix
+      if (fx_id /= -1) then
+        if (fc_id /= -1) then
+          write(60,'(A)') '  mKSexc, mKScor'
+          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + &
+          mKScor + mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
+        else
+          x_HF = 0.0_dp
+          KScor = 0.0_dp
+          write(60,'(A)') '  mKSexc'
+          Fock = Fock1 + mHFcol + mKSexc + &
+          mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
+        end if
+      else    ! pure Hartree-Fock
+        x_HF = 1.0_dp
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        Fock = Fock1 + mHFcol + mHFexc + &
+        mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
+      end if
+      ! diagonalization of Fock matrix
+      write(60,'(A)') '  diagonalization of Fock matrix'
+      call diag(Fock, 2*fbdm, oper3, orbE)
+      write(60,'(A,I5,A)') '  complete!',2*fbdm,' eigenvectors found'
+      ! de-orthogonalization
+      write(60,'(A)') '  generate and dump AO2MO to .ao2mo file'
+      call matmul('N', 'N', exs2f, oper3, AO2MO)
+      call Dump_matrix('ao2mo', AO2MO, 2*sbdm, 2*fbdm)
+      ! construct new density matrix
+      write(60,'(A)') '  construct new density matrix'
+      call Assign_rho()
+      write(60,'(A)') '  complete! stored in rho_m'
+      call SCFprint()
+      ! convergence check
+      if (iter == 1) then
+        write(60,'(A,F12.6)') '  SCF energy (A.U.) = ',molE
+      else
+        write(60,'(A,F12.6,A,E10.3)') '  SCF energy (A.U.) = ',molE,&
+        '; delta E = ', molE-molE_pre
+        if (abs(molE-molE_pre) < conver_tol   .and. &
+        (abs(RMSDP) < 0.5*abs(molE-molE_pre)  .or.  &
+        ! orbital degeneracy induces density matrix oscillations
+        abs(RMSDP) > 10.0*abs(molE-molE_pre)) .and. &
+        (damp_coe < 0.01                      .or.  &
+        damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE-molE_pre))))) then
+          write(60,'(A)') '  convergence tolerance met, SCF done!'
+          exit
+        else
+          write(60,'(A)') '  convergence tolerance not met'
+        end if
+      end if
+      write(60,'(A)') '  DIIS information'
+      ! dynamic damping control
+      if (iter /= 1) then
+        if (abs(molE - molE_pre) > 1E-3) then
+          if (damp_ < 0.7) damp = 0.7_dp
+          if (diisdamp_ < 0.7) diisdamp = 0.7_dp
+        else if (abs(molE - molE_pre) > 1E-4) then
+          if (damp_ < 0.5) damp = 0.5_dp
+          if (diisdamp_ < 0.5) diisdamp = 0.5_dp
+        else if (abs(molE - molE_pre) > 1E-5) then
+          if (damp_ < 0.3) damp = 0.3_dp
+          if (diisdamp_ < 0.3) diisdamp = 0.3_dp
+        else
+          damp = damp_
+          diisdamp = diisdamp_
+        end if
+      else
+        if (damp_ < 0.7) damp = 0.7_dp
+        if (diisdamp_ < 0.7) diisdamp = 0.7_dp
+      end if
+      call DIIS()
+      rho_pre = rho_m
+    end do
+    if (abs(molE-molE_pre) < conver_tol .and. iter < maxiter) then
+      write(60,'(A)') '  SCF succeed!'
+    else
+      write(60,'(A)') '  SCF failed!'
+    end if
+    if (d4) then
+      emd4 = DFTD4()
+      molE = molE + emd4
+    end if
+  end subroutine SCF_ARVRA2e
+
+!------------------------------------------------------------
+!> generate next rho_m by DIIS method
+  subroutine DIIS()
+    implicit none
+    integer             :: jj, kk, ll, mm   ! loop variable DIIS
+    if (iter <= nodiis) then
+      !--------------<damping>-----------------
+      if (abs(molE - molE_pre) >= cutdamp) then
+        damp_coe = damp
+        rho_m = (1.0_dp-damp_coe) * rho_m + damp_coe * rho_pre
+        write(60,'(A,F6.3)') '  -- damped ', damp_coe
+      else if (abs(molE - molE_pre) >= 0.01*cutdamp) then
+        damp_coe = max(0.5_dp*damp*log10(abs(molE-molE_pre)) + &
+        damp*(1.0_dp-0.5_dp*log10(cutdamp)), damp_coe-0.05_dp)
+        rho_m = (1.0_dp-damp_coe) * rho_m + damp_coe * rho_pre
+        write(60,'(A,F6.3)') '  -- damped ', damp_coe
+      else
+        damp_coe = 0.0_dp
+        write(60,'(A)') '  -- undamped '
+      end if
+      !--------------<damping>-----------------
+      if (iter <= nodiis - subsp) then
+        write(60,'(A)') '  -- no DIIS acceleration'
+      else
+        ! update Rsd
+        do jj = 1, 2*sbdm
+          do kk = 1, 2*sbdm
+            Rsd(iter-(nodiis-subsp), jj, kk) = rho_m(jj, kk) - rho_pre(jj, kk)
+          end do
+        end do
+        ! update rho_history
+        do jj = 1, 2*sbdm
+          do kk = 1, 2*sbdm
+            rho_history(iter-(nodiis-subsp), jj, kk) = rho_m(jj, kk)
+          end do
+        end do
+        write(60,'(A,I2,A,I2)') &
+        '  -- DIIS subspace filling ',iter-(nodiis-subsp),'/',subsp
+      end if
+    else
+      !--------------<DIIS damping>-----------------
+      if (abs(molE - molE_pre) >= cutdiis) then
+        damp_coe = diisdamp
+        write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
+      else if (abs(molE - molE_pre) >= cutdiis/100.0) then
+        damp_coe = max(0.5_dp*diisdamp*log10(abs(molE-molE_pre)) + &
+        diisdamp*(1.0_dp-0.5_dp*log10(cutdiis)), damp_coe-0.05_dp)
+        write(60,'(A,F6.3)') '  -- DIIS damped ', damp_coe
+      else
+        damp_coe = 0.0_dp
+        write(60,'(A)') '  -- DIIS undamped'
+      end if
+      !--------------<DIIS damping>-----------------
+      ! update Rsd
+      do jj = 2, subsp
+        do kk = 1, 2*sbdm
+          do ll = 1, 2*sbdm
+            Rsd(jj-1, kk, ll) = Rsd(jj, kk, ll)
+          end do
+        end do
+      end do
+      do jj = 1, 2*sbdm
+        do kk = 1, 2*sbdm
+          Rsd(subsp, jj, kk) = rho_m(jj, kk) - rho_pre(jj, kk)
+        end do
+      end do
+      ! update rho_history
+      do jj = 2, subsp
+        do kk = 1, 2*sbdm
+          do ll = 1, 2*sbdm
+            rho_history(jj-1, kk, ll) = rho_history(jj, kk, ll)
+          end do
+        end do
+      end do
+      do jj = 1, 2*sbdm
+        do kk = 1, 2*sbdm
+          rho_history(subsp, jj, kk) = rho_m(jj, kk)
+        end do
+      end do
+      ! construct DIISmat
+      DIISmat = c0
+      do jj = 1, subsp
+        do kk = 1, subsp
+          do ll = 1, 2*sbdm
+            do mm = 1, 2*sbdm
+              DIISmat(jj, kk) = DIISmat(jj, kk) + &
+              conjg(Rsd(jj, ll, mm))*Rsd(kk, ll, mm)
+            end do
+          end do
+        end do
+      end do
+      do jj = 1, subsp
+        DIISmat(subsp+1, jj) = c1
+        DIISmat(jj, subsp+1) = c1
+      end do
+      ! solve residual equation
+      ! dgesv and dspsv will cause Integral_V_2e conflict for unknown reason
+      ! since DIISmat (and its inverse) is real symmetric, plus the column 
+      ! vector is simple, use the inverse of DIISmat to solve directly
+      call inverse(DIISmat, subsp+1)
+      ! generate new rho_m
+      rho_m = c0
+      do jj = 1, subsp
+        do kk = 1, 2*sbdm
+          do ll = 1, 2*sbdm
+            rho_m(kk,ll) = rho_m(kk,ll) + DIISmat(jj,subsp+1) * &
+            (rho_history(jj,kk,ll)+damp_coe*Rsd(jj,kk,ll))
+          end do
+        end do
+      end do
+      write(60,'(A,E10.3,A,E10.3,A)') '  -- predicted residual (', &
+      -real(DIISmat(subsp+1,subsp+1)), ',', -aimag(DIISmat(subsp+1,subsp+1)),')'
+      do jj = 1, subsp
+        write(60,'(A,I2,A,E10.3,A,E10.3,A)') '  -- subsp coeff', jj,'      (', &
+        real(DIISmat(jj,subsp+1)), ',', aimag(DIISmat(jj,subsp+1)), ')'
+      end do
+    end if
+  end subroutine DIIS
+
+!------------------------------------------------------------
+!> print wave-function information during SCF process
+!!
+!! will calculate molE and molE_pre
+  subroutine SCFprint()
+    implicit none
+    integer             :: jj   ! loop variable for SCFprint
+    ! frontier orbital energy
+    write(60,'(A)') '  frontier orbital energy (A.U.)'
+    call Calc_S2HForb(occindex(electron_count))
+    write(60,'(A,I3,F12.6,A,F6.3)') &
+    '  -- HOMO ', occindex(electron_count), orbE(occindex(electron_count)), &
+    ' <Sz> = ',Szorb
+    call Calc_S2HForb(occindex(electron_count)+1)
+    write(60,'(A,I3,F12.6,A,F6.3)') &
+    '  -- LUMO ',occindex(electron_count)+1,orbE(occindex(electron_count)+1),&
+    ' <Sz> = ',Szorb
+    write(60,'(A,F12.6)') '  -- gap ',&
+    orbE(occindex(electron_count)+1)-orbE(occindex(electron_count))
+    ! energy components calculation
+    write(60,'(A)') '  calculate energy components (A.U.)'
+    Ecore = 0.0_dp
+    T = 0.0_dp
+    V = 0.0_dp
+    EpVp = 0.0_dp
+    ESR = 0.0_dp
+    call matmul('C', 'N', oper3, Fock1, oper6)
+    call matmul('N', 'N', oper6, oper3, oper4)
+    do jj = 1, electron_count
+      Ecore = Ecore + real(oper4(occindex(jj),occindex(jj)))
+    end do
+    ! kinetic energy
+    call matmul('C', 'N', oper3, exi_T_j, oper6)
+    call matmul('N', 'N', oper6, oper3, oper4)
+    do jj = 1, electron_count
+      T = T + real(oper4(occindex(jj),occindex(jj)))
+    end do
+    ! electron-nuclear attraction energy
+    call matmul('C', 'N', oper3, AVA, oper6)
+    call matmul('N', 'N', oper6, oper3, oper4)
+    do jj = 1, electron_count
+      V = V + real(oper4(occindex(jj),occindex(jj)))
+    end do
+    if (pVp1e) then
+      call matmul('C', 'N', oper3, expVp, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
+      do jj = 1, electron_count
+        EpVp = EpVp + real(oper4(occindex(jj),occindex(jj)))
+      end do
+      if (pppVp) then
+        call matmul('C', 'N', oper3, exSR, oper6)
+        call matmul('N', 'N', oper6, oper3, oper4)
+        do jj = 1, electron_count
+          ESR = ESR + real(oper4(occindex(jj),occindex(jj)))
+        end do
+      end if
+    end if
+    write(60,'(A,F12.6)') '  -- One-electron (core) energy           ', Ecore
+    write(60,'(A,F12.6)') '  -- -- Kinetic                           ', T
+    write(60,'(A,F12.6)') '  -- -- Electron-nuclear attraction       ', V
+    write(60,'(A,F12.6)') '  -- -- pVp-related                       ', EpVp
+    write(60,'(A,F12.6)') '  -- -- pppVp-related                     ', ESR
+    E2e = 0.0_dp
+    HFCol = 0.0_dp
+    HFexc = 0.0_dp
+    EpVpcol = 0.0_dp
+    EpVpexc = 0.0_dp
+    ! HF Coulomb energy
+    call matmul('C', 'N', oper3, mHFcol, oper6)
+    call matmul('N', 'N', oper6, oper3, oper4)
+    do jj = 1, electron_count
+      HFCol = HFCol + real(oper4(occindex(jj),occindex(jj)))
+    end do
+    ! HF exchange energy
+    call matmul('C', 'N', oper3, mHFexc, oper6)
+    call matmul('N', 'N', oper6, oper3, oper4)
+    do jj = 1, electron_count
+      HFexc = HFexc + real(oper4(occindex(jj),occindex(jj)))
+    end do
+    if (pVp2e) then
+      call matmul('C', 'N', oper3, mpVpcol_11+mpVpcol_22, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
+      do jj = 1, electron_count
+        EpVpcol = EpVpcol + real(oper4(occindex(jj),occindex(jj)))
+      end do
+      call matmul('C', 'N', oper3, mpVpexc_11+mpVpexc_22, oper6)
+      call matmul('N', 'N', oper6, oper3, oper4)
+      do jj = 1, electron_count
+        EpVpexc = EpVpexc + real(oper4(occindex(jj),occindex(jj)))
+      end do
+    end if
+    E2e = 0.5_dp*(HFCol+x_HF*HFexc+EpVpcol+EpVpexc)
+    write(60,'(A,F12.6)') &
+    '  -- Two-electron energy                  ', E2e
+    write(60,'(A,F12.6)') &
+    '  -- -- Coulomb                           ', 0.5_dp*HFCol
+    write(60,'(A,F12.6)') &
+    '  -- -- HF Exchange                       ', 0.5_dp*x_HF*HFexc
+    write(60,'(A,F12.6)') &
+    '  -- -- pVp-related Coulomb               ', 0.5_dp*EpVpcol
+    write(60,'(A,F12.6)') &
+    '  -- -- pVp-related Exchange              ', 0.5_dp*EpVpexc
+    write(60,'(A,F12.6)') &
+    '  -- KS Exchange                          ', (1-x_HF)*KSexc
+    write(60,'(A,F12.6)') &
+    '  -- KS Correlation                       ', KScor
+
+    ! electronic energy
+    if (iter /= 1) molE_pre = molE
+    molE = nucE + Ecore + E2e + (1.0_dp-x_HF)*KSexc + KScor
+
+    ! (non-relativistic) Virial ratio
+    Virial = -(nucE+Ecore-T-EpVp-ESR+0.5_dp*(HFCol+x_HF*HFexc)+&
+    (1.0_dp-x_HF)*KSexc+KScor) / T
+    write(60,'(A,F12.6)') &
+    '  -- -<V>/<T>                             ', Virial
+  end subroutine SCFprint
+
+!------------------------------------------------------------
+!> print wave-function information after SCF process
+  subroutine Outputprint()
     implicit none
     integer :: iatom, ishell
-    integer :: ii, jj              ! loop variable info_print
+    integer :: ii, jj              ! loop variable Outputprint
     close(80)
     write(60,*)
     write(60,*)
@@ -613,37 +902,35 @@ module SCF
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A,F12.6)') &
-    '  total electronic energy / Eh                  ...',molE
+    '  Total electronic energy / Eh                  ...',molE
     write(60,'(A,F12.6)') &
-    '  nuclear repulsive energy / Eh                 ...',nucE
+    '  Nuclear repulsive energy / Eh                 ...',nucE
     write(60,'(A,F12.6)') &
-    '  HF Coulomb energy / Eh                        ...',HFCol
+    '  One-electron energy / Eh                      ...',Ecore
     write(60,'(A,F12.6)') &
-    '  HF exchange energy / Eh                       ...',x_HF*HFexc
+    '  -- Kinetic energy / Eh                        ...',T
     write(60,'(A,F12.6)') &
-    '  KS exchange energy / Eh                       ...',(1.0_dp-x_HF)*KSexc
+    '  -- Electron-nuclear attraction energy / Eh    ...',V
     write(60,'(A,F12.6)') &
-    '  KS correlation energy / Eh                    ...',KScor
+    '  -- pVp-related energy / Eh                    ...',EpVp
     write(60,'(A,F12.6)') &
-    '  core energy / Eh                              ...',Ecore
+    '  -- pppVp-related energy / Eh                  ...',ESR
     write(60,'(A,F12.6)') &
-    '  electron kinetic energy / Eh                  ...',T
+    '  Two-electron energy / Eh                      ...',E2e
     write(60,'(A,F12.6)') &
-    '  electron-nuclear attraction energy / Eh       ...',V
-    if (pVp1e) then
-      write(60,'(A,F12.6)') &
-      '  one-electron pVp-related energy / Eh          ...',EpVp
-      if (pVp2e) then
-        write(60,'(A,F12.6)') &
-        '  two-electron pVp-related Coulomb energy / Eh  ...',EpVpcol
-        write(60,'(A,F12.6)') &
-        '  two-electron pVp-related Exchange energy / Eh ...',EpVpexc
-      end if
-      if (pppVp) write(60,'(A,F12.6)') &
-      '  SRTP & radiative correction energy / Eh       ...',ESR
-    end if
+    '  -- HF Coulomb energy / Eh                     ...',0.5_dp*HFCol
+    write(60,'(A,F12.6)') &
+    '  -- HF Exchange energy / Eh                    ...',0.5_dp*x_HF*HFexc
+    write(60,'(A,F12.6)') &
+    '  -- pVp-related Coulomb energy / Eh            ...',0.5_dp*EpVpcol
+    write(60,'(A,F12.6)') &
+    '  -- pVp-related Exchange energy / Eh           ...',0.5_dp*EpVpexc
+    write(60,'(A,F12.6)') &
+    '  KS Exchange energy / Eh                       ...',(1.0_dp-x_HF)*KSexc
+    write(60,'(A,F12.6)') &
+    '  KS Correlation energy / Eh                    ...',KScor
     if (d4) write(60,'(A,F12.6)') &
-    '  dispersion energy (DFT-D4) / Eh               ...',emd4
+    '  Dispersion energy (DFT-D4) / Eh               ...',emd4
     write(60,'(A,F12.6)') &
     '  Virial ratio                                  ...',Virial
     if (pVp1e) then
@@ -651,22 +938,20 @@ module SCF
       write(60,'(A)') '  -- Virial ratio to deviate (usually below) 2.0'
     end if
     write(60,'(A,F12.6)') &
-    '  total alpha electron                          ...',totalpha
+    '  Total Alpha electron                          ...',totalpha
     write(60,'(A,F12.6)') &
-    '  total beta electron                           ...',totbeta
+    '  Total Beta electron                           ...',totbeta
     write(60,'(A,F12.6)') &
     '  <Sz*(Sz+1)> / hbar**2                         ...',&
     ((totalpha-totbeta)/2.0)*((totalpha-totbeta)/2.0+1.0_dp)
     write(60,'(A,F12.6)') &
     '  <S**2> / hbar**2                              ...',S__2
     if (fx_id /= 0) then
-      write(60,'(A)') &
-      '  -- Note: there is little theoretical justification'
-      write(60,'(A)') &
-      '  -- to calculate <S**2> in a DFT calculation.'
+      write(60,'(A)') '  -- Note: there is little theoretical justification'
+      write(60,'(A)') '  -- to calculate <S**2> in a DFT calculation.'
     end if
     scf_kappa = Krammers()
-    write(60,'(A)') '  deviation parameters from time reversal symmetry (TRS)'
+    write(60,'(A)') '  Time Reversal Symmetry (TRS) deviation parameter'
     write(60,'(A,E12.5)') '  -- kappa     =', scf_kappa
     write(60,'(A,E12.5)') '  -- ref kappa =', dsqrt(real(Nalpha-Nbeta,dp))
     write(60,'(A,E12.5)') '  -- SOC kappa =', &
@@ -701,23 +986,21 @@ module SCF
         iatom = 1
         ishell = 1
         do jj = 1, sbdm
-          if (basis_inf(jj)%atom /= iatom) then
+          if (sbdata(jj)%atom /= iatom) then
             ishell = 1
             iatom = iatom + 1
           end if
           if (abs(AO2MO(jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   A #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(jj,&
-            ii)), ',', aimag(AO2MO(jj,ii)), ')'
+            '             --   A #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(jj,ii)), ',', aimag(AO2MO(jj,ii)), ')'
           end if
           if (abs(AO2MO(sbdm+jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   B #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(sbdm+jj,&
-            ii)), ',', aimag(AO2MO(sbdm+jj,ii)), ')'
+            '             --   B #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(sbdm+jj,ii)),',',aimag(AO2MO(sbdm+jj,ii)), ')'
           end if
           ishell = ishell + 1
         end do
@@ -734,23 +1017,21 @@ module SCF
         iatom = 1
         ishell = 1
         do jj = 1, sbdm
-          if (basis_inf(jj)%atom /= iatom) then
+          if (sbdata(jj)%atom /= iatom) then
             ishell = 1
             iatom = iatom + 1
           end if
           if (abs(AO2MO(jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   A #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(jj,&
-            ii)), ',', aimag(AO2MO(jj,ii)), ')'
+            '             --   A #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(jj,ii)), ',', aimag(AO2MO(jj,ii)), ')'
           end if
           if (abs(AO2MO(sbdm+jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   B #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(sbdm+jj,&
-            ii)), ',', aimag(AO2MO(sbdm+jj,ii)), ')'
+            '             --   B #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(sbdm+jj,ii)),',',aimag(AO2MO(sbdm+jj,ii)), ')'
           end if
           ishell = ishell + 1
         end do
@@ -770,23 +1051,21 @@ module SCF
         iatom = 1
         ishell = 1
         do jj = 1, sbdm
-          if (basis_inf(jj)%atom /= iatom) then
+          if (sbdata(jj)%atom /= iatom) then
             ishell = 1
             iatom = iatom + 1
           end if
           if (abs(AO2MO(jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   A #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(jj,&
-            ii)), ',', aimag(AO2MO(jj,ii)), ')'
+            '             --   A #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(jj,ii)), ',', aimag(AO2MO(jj,ii)), ')'
           end if
           if (abs(AO2MO(sbdm+jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   B #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(sbdm+jj,&
-            ii)), ',', aimag(AO2MO(sbdm+jj,ii)), ')'
+            '             --   B #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(sbdm+jj,ii)),',',aimag(AO2MO(sbdm+jj,ii)), ')'
           end if
           ishell = ishell + 1
         end do
@@ -804,23 +1083,21 @@ module SCF
         iatom = 1
         ishell = 1
         do jj = 1, sbdm
-          if (basis_inf(jj)%atom /= iatom) then
+          if (sbdata(jj)%atom /= iatom) then
             ishell = 1
             iatom = iatom + 1
           end if
           if (abs(AO2MO(jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   A #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(jj,&
-            ii)), ',', aimag(AO2MO(jj,ii)), ')'
+            '             --   A #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(jj,ii)), ',', aimag(AO2MO(jj,ii)), ')'
           end if
           if (abs(AO2MO(sbdm+jj,ii)) >= prtlev) then
             write(60,'(A,I2.2,A,I1,A,A2,A,I2.2,A,F9.6,A1,F9.6,A1)') &
-            '             --   B #',ishell,' L=',basis_inf(jj)%L-1,'     ',&
-            element_list(mol(basis_inf(jj)%atom)%atom_number),' #',&
-            basis_inf(jj)%atom,'    (', real(AO2MO(sbdm+jj,&
-            ii)), ',', aimag(AO2MO(sbdm+jj,ii)), ')'
+            '             --   B #',ishell,' L=',sbdata(jj)%L-1,'     ',&
+            element_list(mol(sbdata(jj)%atom)%atom_number),' #',sbdata(jj)%atom&
+            , '    (', real(AO2MO(sbdm+jj,ii)),',',aimag(AO2MO(sbdm+jj,ii)), ')'
           end if
           ishell = ishell + 1
         end do
@@ -835,20 +1112,21 @@ module SCF
         write(60,'(A)') &
         '  -- Note: for scalar MOs, only realpart will be generated.'
       end if
-      call dump_molden()
+      call Dump_MOLDEN()
       write(60,'(A)') '  complete!'
     end if
     write(60,'(A)') 'exit module SCF'
-  end subroutine info_print
-  !------------------------------------------------------------
-  !> initialization of global variables
-  subroutine glob_init(kill)
+  end subroutine Outputprint
+
+!------------------------------------------------------------
+!> initialization of global variables
+  subroutine Globinit(kill)
     implicit none
     logical,intent(in) :: kill   ! kill the process after SCF
     deallocate(exi_T_j, exi_V_j)
     deallocate(oper4, oper6)
     deallocate(Rsd, DIISmat)
-    deallocate(rho_history, rho_pre, rho_pre_pre)
+    deallocate(rho_history, rho_pre)
     deallocate(iijj_V)
     if (pVp2e) then
       deallocate(iijj_pxVpx, iijj_pyVpy, iijj_pzVpz)
@@ -860,75 +1138,90 @@ module SCF
     end if
     if (allocated(mKScor)) deallocate(mKScor)
     if (allocated(mKSexc)) deallocate(mKSexc)
-    deallocate(i_j, i_p2_j, i_V_j, c2s, exc2s, s2f, exs2f, c2f, exc2f)
-    if (allocated(m_c2s)) deallocate(m_c2s, m_exc2s)
+    deallocate(i_j, i_p2_j, i_V_j, c2s, exc2s)
+    deallocate(s2f, exs2f, f2s, exf2s, c2f, exc2f)
+    deallocate(c2soper, exc2soper, s2coper, exs2coper, f2soper, exf2soper)
+    deallocate(s2foper, exs2foper, c2foper, exc2foper)
+    if (allocated(M_c2s)) deallocate(M_c2s, M_exc2s)
     if (kill) then
       if (fx_id /= -1) call Fockxc_end()
       deallocate(AO2MO, rho_m, Fock, orbE, oper3, occindex)
     end if
     ini_rho = .true.
+    deallocate(AVA)
     if (pVp1e) then
-      deallocate(expVp, AO2p2, evl_p2, Ap, ApRp, SRp, ARVRA, AVA, exAO2p2)
+      deallocate(expVp, AO2p2, evl_p2, Ap, ApRp, SRp, ARVRA, exAO2p2)
       if (pppVp) deallocate(exSR)
     end if
+    deallocate(cbdata)
+    deallocate(sbdata)
+    if (allocated(M_cbdata)) deallocate(M_cbdata)
     if (kill) then
       call terminate('normal')
     else
       call terminate('keep')
     end if
-  end subroutine glob_init
+  end subroutine Globinit
   
 !------------------------------------------------------------
 !> initial guess and generate density matix
   subroutine Assign_rho()
     implicit none
-    integer              :: ii,jj,kk    ! loop variables for Assign_rho
+    integer              :: ii, jj, kk    ! loop variables for Assign_rho
     integer              :: Na, Nb
     integer              :: degenlow, degenhigh, load  ! degenerat region
+    real(dp)             :: maxval
+    integer              :: imax
     if (ini_rho) then
-      allocate(rho_m(2*sbdm,2*sbdm))
-      allocate(occindex(electron_count))
-      Nalpha = (electron_count-(spin_mult-1))/2 + (spin_mult-1)
-      Nbeta = (electron_count-(spin_mult-1))/2
+      if (.not. allocated(rho_m)) allocate(rho_m(2*sbdm,2*sbdm), source=c0)
+      if (.not. allocated(occindex)) allocate(occindex(electron_count))
       ! load MO coefficient
-      !-------------------------load from molden-------------------------
+      !-------------------------load from MOLDEN-------------------------
       if (guess_type == 'molden') then
-        allocate(AO2MO(2*sbdm,2*fbdm))
-        call load_gb_molden(.true.)
-        if (m_atom_count /= atom_count) call terminate(&
-        'n_atoms in .molden is not consistent with n_atoms in .xyz')
-        write(60,'(A)') &
-        '  -- basis and geometry in molden were loaded'
-        write(60,'(A,I4,A,I4)') '  -- m_cbdm / m_sbdm: ',m_cbdm, ' /', m_sbdm
-        allocate(m_AO2MO_a(m_sbdm,m_sbdm))
-        allocate(m_AO2MO_b(m_sbdm,m_sbdm))
-        allocate(t_AO2MO_a(sbdm,m_sbdm))
-        allocate(t_AO2MO_b(sbdm,m_sbdm))
-        call load_MO_molden(m_AO2MO_a, m_AO2MO_b)
-        write(60,'(A)') '  -- MO coeffs in molden were loaded'
-        call m_basis_proj(m_AO2MO_a, t_AO2MO_a)
-        call m_basis_proj(m_AO2MO_b, t_AO2MO_b)
+        if (.not. allocated(AO2MO)) allocate(AO2MO(2*sbdm,2*fbdm))
+        call load_geombasis_MOLDEN(.true.)
+        if (M_atom_count /= atom_count) call terminate(&
+        'n_atoms in MOLDEN is not consistent with n_atoms in .xyz')
+        if (isorca) then
+          ! The GTF coefficients in the ORCA MOLDEN file are
+          ! already normalized at the GTO level
+          do ii = 1, M_cbdm
+            M_cbdata(ii)%Ncoe = M_cbdata(ii)%coe
+          end do
+        else
+          call Calc_Ncoe(M_cbdata, M_cbdm)
+        end if
+        write(60,'(A)') '  -- basis and geometry in MOLDEN were loaded'
+        write(60,'(A,I4,A,I4)') '  -- M_cbdm / M_sbdm: ',M_cbdm, ' /', M_sbdm
+        allocate(M_AO2MO_a(M_sbdm,M_sbdm))
+        allocate(M_AO2MO_b(M_sbdm,M_sbdm))
+        allocate(T_AO2MO_a(sbdm,M_sbdm))
+        allocate(T_AO2MO_b(sbdm,M_sbdm))
+        call load_MO_MOLDEN(M_AO2MO_a, M_AO2MO_b)
+        write(60,'(A)') '  -- MO coeffs in MOLDEN were loaded'
+        call M_basis_proj(M_AO2MO_a, T_AO2MO_a)
+        call M_basis_proj(M_AO2MO_b, T_AO2MO_b)
         write(60,'(A)') '  -- MO coeffs were projected to job basis'
-        rho_m = c0
+
         do ii = 1,sbdm
           do jj = 1,sbdm
             do kk = 1,Nalpha
               rho_m(ii,jj) = rho_m(ii,jj) + &
-              t_AO2MO_a(ii,kk)*t_AO2MO_a(jj,kk)
+              T_AO2MO_a(ii,kk)*T_AO2MO_a(jj,kk)
             end do
             do kk = 1,Nbeta
               rho_m(sbdm+ii,sbdm+jj) = rho_m(sbdm+ii,sbdm+jj) + &
-              t_AO2MO_b(ii,kk)*t_AO2MO_b(jj,kk)
+              T_AO2MO_b(ii,kk)*T_AO2MO_b(jj,kk)
             end do
           end do
         end do
-        deallocate(m_AO2MO_a, m_AO2MO_b, t_AO2MO_a, t_AO2MO_b)
+        deallocate(M_AO2MO_a, M_AO2MO_b, T_AO2MO_a, T_AO2MO_b)
       !-------------------------load from .ao2mo-------------------------
       else if (guess_type == 'ao2mo') then
+        if (allocated(AO2MO)) deallocate(AO2MO)
         call load_matrix('ao2mo', AO2MO, ii, jj)
         if (ii /= 2*sbdm .or. jj /= 2*fbdm) call terminate(&
         'basis dimension in .ao2mo file mismatch with current job')
-        rho_m = c0
         do ii = 1, 2*sbdm
           do jj = 1, 2*sbdm
             do kk = 1, electron_count
@@ -942,7 +1235,8 @@ module SCF
     ! should keep oper3 and AO2MO unchanged, only change the occindex
     else if (.not.ini_rho .and. (cspin=='n' .or. cspin=='d')) then
       forall (ii=1:electron_count) occindex(ii) = ii
-      rho_m = c0
+      if (allocated(rho_m)) deallocate(rho_m)
+      allocate(rho_m(2*sbdm,2*sbdm), source=c0)
       do ii = 1, 2*sbdm
         do jj = 1, 2*sbdm
           do kk = 1, electron_count
@@ -951,9 +1245,9 @@ module SCF
         end do
       end do
       call Calc_S2HF()
-      if (cspin=='d' .and. abs((totalpha-totbeta) - &
-      real(Nalpha-Nbeta,dp)) > 1.0.and. abs((totalpha-real(Nalpha,dp)) - &
-      (real(Nbeta,dp)-totbeta)) < 0.1) then
+      if (cspin=='d' &
+      .and. abs((totalpha-totbeta) - real(Nalpha-Nbeta,dp)) > 1.0 &
+      .and. abs((totalpha-real(Nalpha,dp))-(real(Nbeta,dp)-totbeta)) < 0.1) then
         write(60,'(A)') &
         '  -- order of degenerate frontier alpha/beta orbitals changed'
         do ii = electron_count-1, 1, -1
@@ -987,7 +1281,7 @@ module SCF
         load = degenlow
         do kk = degenlow, degenhigh
           call Calc_S2HForb(kk)
-          if (Szorb>0.0 .and. Na<Nalpha) then
+          if (Szorb > 0.0 .and. Na < Nalpha) then
             write(60,'(A,I3,A,I3)') '  -- -- load alpha ',kk,' on ',load
             occindex(load) = kk
             load = load + 1
@@ -1030,9 +1324,10 @@ module SCF
           load = load + 1
           Nb = Nb + 1
         end if
-        if (Na==Nalpha .and. Nb==Nbeta) exit
+        if (Na == Nalpha .and. Nb == Nbeta) exit
       end do
-      rho_m = c0
+      if (allocated(rho_m)) deallocate(rho_m)
+      allocate(rho_m(2*sbdm,2*sbdm), source=c0)
       do ii = 1, 2*sbdm
         do jj = 1, 2*sbdm
           do kk = 1, electron_count
@@ -1052,8 +1347,7 @@ module SCF
             if ((real(rho_m(ii,jj))-&
             real(rho_pre(ii,jj)))**2 + (aimag(rho_m(ii,jj))&
             -aimag(rho_pre(ii,jj)))**2 > maxDP) then
-              maxDP = (real(rho_m(ii,jj))-&
-              real(rho_pre(ii,jj)))**2 + &
+              maxDP = (real(rho_m(ii,jj))-real(rho_pre(ii,jj)))**2 + &
               (aimag(rho_m(ii,jj))-aimag(rho_pre(ii,jj)))**2
             end if
             RMSDP = RMSDP + &
@@ -1544,6 +1838,7 @@ module SCF
     complex(dp) :: itm(fbdm)
     real(dp)    :: edc(fbdm)            ! (p2+c2)^0.5
     real(dp)    :: coe                  ! coefficient for pVp-related terms
+    real(dp)    :: i_V_j_p2(fbdm, fbdm) ! i_V_j in p^2 eigenbasis
     allocate(Fock1(2*fbdm,2*fbdm), exi_T_j(2*fbdm,2*fbdm), &
     exi_V_j(2*fbdm,2*fbdm), source = c0)
     if (.not. pVp1e) then
@@ -1553,6 +1848,8 @@ module SCF
       exi_T_j(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = 0.5_dp*i_p2_j
       exi_V_j(1:fbdm,1:fbdm) = i_V_j
       exi_V_j(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = i_V_j
+      allocate(AVA(2*fbdm,2*fbdm), source = c0)
+      AVA = exi_V_j
     else
       if (.not. pVp2e) then
         write(60,'(A)') '  -- only 1e pVp enabled, we typically approximate'
@@ -1588,15 +1885,15 @@ module SCF
       end forall
       !----------------------
       ! Ap V Ap
-      call matmul('N', 'T', Ap, AO2p2, oper2)
-      call matmul('N', 'N', oper2, i_V_j, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
+      exi_V_j(1:fbdm,1:fbdm) = i_V_j
+      exi_V_j(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = i_V_j
+      call matmul('T', 'N', AO2p2, i_V_j, oper2)
+      call matmul('N', 'N', oper2, AO2p2, i_V_j_p2)
+      call matmul('N', 'N', Ap, i_V_j_p2, oper2)
       call matmul('N', 'N', oper2, Ap, oper1)
       AVA(1:fbdm,1:fbdm) = AVA(1:fbdm,1:fbdm) + oper1 * c1
       AVA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
       AVA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1 * c1
-      exi_V_j(1:fbdm,1:fbdm) = i_V_j
-      exi_V_j(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = i_V_j
       !----------------------
       ! ApRp pxVpx+pyVpy+pzVpz ApRp
       temp_pool = pxVpx+pyVpy+pzVpz
@@ -1641,7 +1938,7 @@ module SCF
         call matmul('N', 'N', SRp, ARVRA, oper3)
         call matmul('N', 'N', oper3, SRp, oper4)
         Fock1 = Fock1 + coe*oper4
-        expVp = coe*ARVRA
+        expVp = coe*oper4
       else
         Fock1 = Fock1 + coe*ARVRA
         expVp = coe*ARVRA
@@ -1713,7 +2010,7 @@ module SCF
       ! start building Fock1
       do jj = 1, fbdm
         do ii = 1, fbdm
-          Ve(ii,jj) = i_V_j(ii,jj) / (c*(edc(ii) + edc(jj)))
+          Ve(ii,jj) = i_V_j_p2(ii,jj) / (c*(edc(ii) + edc(jj)))
           pxVepx(ii,jj) = pxVpx(ii,jj) / (c*(edc(ii) + edc(jj)))
           pyVepy(ii,jj) = pyVpy(ii,jj) / (c*(edc(ii) + edc(jj)))
           pzVepz(ii,jj) = pzVpz(ii,jj) / (c*(edc(ii) + edc(jj)))
@@ -1774,7 +2071,7 @@ module SCF
       !----------------------
       ! term of order c^-4, negative terms, no RI insertion
       forall (ii = 1:2*fbdm)
-        SRp(ii, ii) = 0.5_dp * c1
+        oper5(ii, ii) = 0.5_dp * c1
       end forall
       call matmul('N', 'N', ARVeRA, oper5, oper3)
       call matmul('N', 'N', oper3, AVA, oper4)
@@ -1832,10 +2129,10 @@ module SCF
       call matmul('N', 'T', oper3, exAO2p2, Fock1)
       call matmul('N', 'N', exAO2p2, exi_T_j, oper3)
       call matmul('N', 'T', oper3, exAO2p2, exi_T_j)
-      call matmul('N', 'N', exAO2p2, exi_V_j, oper3)
-      call matmul('N', 'T', oper3, exAO2p2, exi_V_j)
       call matmul('N', 'N', exAO2p2, expVp, oper3)
       call matmul('N', 'T', oper3, exAO2p2, expVp)
+      call matmul('N', 'N', exAO2p2, AVA, oper3)
+      call matmul('N', 'T', oper3, exAO2p2, AVA)
       if (pppVp) then
         call matmul('N', 'N', exAO2p2, exSR, oper3)
         call matmul('N', 'T', oper3, exAO2p2, exSR)
@@ -1883,19 +2180,19 @@ module SCF
     write(60,'(A)') '  -- calculate Schwarz matrix <ij|V|ij>'
     allocate(iijj_V(cbdm,cbdm), source=0.0_dp)
     do ui = 1, cbdm
-      contri = basis_inf(ui) % contr
-      Li     = basis_inf(ui) % L
-      Mi     = basis_inf(ui) % M
-      expi(1:contri) = basis_inf(ui) % expo(1:contri)
-      coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
-      codi = basis_inf(ui) % pos
+      contri = cbdata(ui) % contr
+      Li     = cbdata(ui) % L
+      Mi     = cbdata(ui) % M
+      expi(1:contri) = cbdata(ui) % expo(1:contri)
+      coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
+      codi = cbdata(ui) % pos
       do uj = ui, cbdm
-        contrj = basis_inf(uj) % contr
-        Lj     = basis_inf(uj) % L
-        Mj     = basis_inf(uj) % M
-        expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
-        coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
-        codj = basis_inf(uj) % pos
+        contrj = cbdata(uj) % contr
+        Lj     = cbdata(uj) % L
+        Mj     = cbdata(uj) % M
+        expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+        coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
+        codj = cbdata(uj) % pos
         !---------------------------------
         ! <ij|V|ij> = (ii|V|jj)
         iijj_V(ui,uj) = iijj_V(ui,uj) + Calc_V_2e(&
@@ -1923,7 +2220,7 @@ module SCF
 !! should be called before Assign_Fock_ARVRA2e
   subroutine Assign_Schwarz_pVp2e()
     implicit none
-    integer          :: ui, uj               ! loop variables for Assign_Schwarz_pVp2e
+    integer          :: ui, uj               ! loop var for Assign_Schwarz_pVp2e
     integer          :: um, un
     integer          :: uo, up
     integer          :: ii, ii2, numi
@@ -1976,12 +2273,12 @@ module SCF
     !$omp do schedule(dynamic, 5)
     do i = 1, cbdm
       ui = i
-      contri = basis_inf(ui) % contr
-      Li     = basis_inf(ui) % L
-      Mi     = basis_inf(ui) % M
-      expi(1:contri) = basis_inf(ui) % expo(1:contri)
-      coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
-      codi = basis_inf(ui) % pos
+      contri = cbdata(ui) % contr
+      Li     = cbdata(ui) % L
+      Mi     = cbdata(ui) % M
+      expi(1:contri) = cbdata(ui) % expo(1:contri)
+      coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
+      codi = cbdata(ui) % pos
       !---------------------------------------
       ! factor of x^m*d(exp)
       facdx_i(:,1) = AO_fac(:,Li,Mi)
@@ -2010,12 +2307,12 @@ module SCF
       coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
       do uj = 1, cbdm
         ! no need to differentiate |AOj>
-        contrj = basis_inf(uj) % contr
-        Lj     = basis_inf(uj) % L
-        Mj     = basis_inf(uj) % M
-        expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
-        coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
-        codj = basis_inf(uj) % pos
+        contrj = cbdata(uj) % contr
+        Lj     = cbdata(uj) % L
+        Mj     = cbdata(uj) % M
+        expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+        coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
+        codj = cbdata(uj) % pos
         !---------------------------------
         ! <ij|V|ij> = (ii|V|jj)
         tl%iijj_V(ui,uj) = Calc_V_2e(&
@@ -2144,10 +2441,7 @@ module SCF
     complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: supp(2*sbdm,2*cbdm)
     ! transform rho_m to Cartesian basis
-    call matmul('N', 'C', rho_m, exc2s, supp)
-    deallocate(rho_m)
-    allocate(rho_m(2*cbdm,2*cbdm))
-    call matmul('N', 'N', exc2s, supp, rho_m)
+    call scgo(rho_m)
     if (allocated(mHFcol)) deallocate(mHFcol)
     allocate(mHFcol(2*cbdm,2*cbdm), source=c0)
     if (allocated(mHFexc)) deallocate(mHFexc)
@@ -2166,38 +2460,38 @@ module SCF
       do j = cbdm, 1, -1
         !------------------------------<ui>---------------------------------
         ui     = i
-        contri = basis_inf(ui) % contr
-        Li     = basis_inf(ui) % L
-        Mi     = basis_inf(ui) % M
-        expi(1:contri) = basis_inf(ui) % expo(1:contri)
-        coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
-        codi = basis_inf(ui) % pos
+        contri = cbdata(ui) % contr
+        Li     = cbdata(ui) % L
+        Mi     = cbdata(ui) % M
+        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
+        codi = cbdata(ui) % pos
         !------------------------------<uk>---------------------------------
         uk     = j
-        contrk = basis_inf(uk) % contr
-        Lk     = basis_inf(uk) % L
-        Mk     = basis_inf(uk) % M
-        expk(1:contrk) = basis_inf(uk) % expo(1:contrk)
-        coek(1:contrk) = basis_inf(uk) % Ncoe(1:contrk,Mk)
-        codk = basis_inf(uk) % pos
+        contrk = cbdata(uk) % contr
+        Lk     = cbdata(uk) % L
+        Mk     = cbdata(uk) % M
+        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
+        codk = cbdata(uk) % pos
         !------------------------------<uj>---------------------------------
         do uj = ui, 1, -1
-          contrj = basis_inf(uj) % contr
-          Lj     = basis_inf(uj) % L
-          Mj     = basis_inf(uj) % M
-          expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
-          coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
-          codj = basis_inf(uj) % pos
+          contrj = cbdata(uj) % contr
+          Lj     = cbdata(uj) % L
+          Mj     = cbdata(uj) % M
+          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
+          codj = cbdata(uj) % pos
           !----------------------------<ul>---------------------------------
           do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |(ij|kl)| <= dsqrt( (ii|kk)*(jj|ll) )
             if (dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) < Schwarz_VT) cycle
-            contrl = basis_inf(ul) % contr
-            Ll     = basis_inf(ul) % L
-            Ml     = basis_inf(ul) % M
-            expl(1:contrl) = basis_inf(ul) % expo(1:contrl)
-            coel(1:contrl) = basis_inf(ul) % Ncoe(1:contrl,Ml)
-            codl = basis_inf(ul) % pos
+            contrl = cbdata(ul) % contr
+            Ll     = cbdata(ul) % L
+            Ml     = cbdata(ul) % M
+            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
+            codl = cbdata(ul) % pos
             !===========================(ij|kl)===============================
             intV = calc_V_2e(&
             contri,contrj,contrk,contrl,&
@@ -2236,12 +2530,11 @@ module SCF
         call cfgo(mKSexc)
       end if
     end if
-    call csgo(rho_m) ! transform rho_m to spherical-harmonic basis
     call cfgo(mHFcol)
     call cfgo(mHFexc)
   end subroutine Assign_Fock_V2e
   
-  !------------------------------------------------------------
+!------------------------------------------------------------
 !> construct DKH2 scalar 2-electron Fock matrices
 !!
 !! (mHFcol, mHFexc, mKSexc, mKScor)
@@ -2286,46 +2579,35 @@ module SCF
     real(dp)    :: codk(3)             ! coordinate of center of |AOk>
     real(dp)    :: codl(3)             ! coordinate of center of |AOl>
     !DIR$ ATTRIBUTES ALIGN:align_size :: Vcol_mic, Vexc_mic
-    !DIR$ ATTRIBUTES ALIGN:align_size :: suppfs, suppsf, suppff, suppsc, suppss
-    !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, suppAp
     complex(dp) :: Vcol_mic(2*cbdm,2*cbdm)     ! micro ApVAp Coulomb matrix
     complex(dp) :: Vexc_mic(2*cbdm,2*cbdm)     ! micro ApVAp Exchange matrix
-    complex(dp) :: suppfs(2*fbdm,2*sbdm)
-    complex(dp) :: suppsf(2*sbdm,2*fbdm)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, suppff
+    complex(dp),allocatable :: rho_Ap(:,:)     ! D' = D * Ap * Ap
     complex(dp) :: suppff(2*fbdm,2*fbdm)
-    complex(dp) :: suppsc(2*sbdm,2*cbdm)
-    complex(dp) :: suppss(2*sbdm,2*sbdm)
-    complex(dp) :: rho_Ap(2*cbdm,2*cbdm)       ! D' = D * Ap * Ap
-    complex(dp) :: suppAp(2*fbdm,2*fbdm)
-
-    ! transform rho_m to orthogonal AO basis with suppAp
-    call matmul('C', 'N', exs2f, rho_m, suppfs)
-    call matmul('N', 'N', suppfs, exs2f, suppAp)
-    ! transform rho_m to p^2 eigenbasis with suppAp
-    call matmul('T', 'N', exAO2p2, suppAp, suppff)
-    call matmul('N', 'N', suppff, exAO2p2, suppAp)
-    ! construct reduced density matrix with suppAp
+    allocate(rho_Ap(2*sbdm,2*sbdm))
+    rho_Ap = rho_m
+    ! transform rho_Ap to orthogonal AO basis
+    call sfgo(rho_Ap)
+    ! transform rho_Ap to p^2 eigenbasis
+    call matmul('T', 'N', exAO2p2, rho_Ap, suppff)
+    call matmul('N', 'N', suppff, exAO2p2, rho_Ap)
+    ! construct reduced density matrix
     do ui = 1, fbdm
       do uj = 1, fbdm
-        suppAp(ui,uj) = suppAp(ui,uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(fbdm+ui,uj) = suppAp(fbdm+ui,uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(ui,fbdm+uj) = suppAp(ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(fbdm+ui,fbdm+uj) = suppAp(fbdm+ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(ui,uj) = rho_Ap(ui,uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(fbdm+ui,uj) = rho_Ap(fbdm+ui,uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(ui,fbdm+uj) = rho_Ap(ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(fbdm+ui,fbdm+uj) = rho_Ap(fbdm+ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
       end do
     end do
-    ! transform rho_m to orthogonal AO basis with suppAp
-    call matmul('N', 'N', exAO2p2, suppAp, suppff)
-    call matmul('N', 'T', suppff, exAO2p2, suppAp)
-    ! transform rho_m to Cartesian basis with rho_Ap
-    call matmul('C', 'N', exf2s, suppAp, suppsf)
-    call matmul('N', 'N', suppsf, exf2s, suppss)
-    call matmul('N', 'C', suppss, exc2s, suppsc)
-    call matmul('N', 'N', exc2s, suppsc, rho_Ap)
+    ! transform rho_Ap to orthogonal AO basis
+    call matmul('N', 'N', exAO2p2, rho_Ap, suppff)
+    call matmul('N', 'T', suppff, exAO2p2, rho_Ap)
+    ! transform rho_Ap to Cartesian basis with rho_Ap
+    call fsgo(rho_Ap)
+    call scgo(rho_Ap)
     ! transform rho_m to Cartesian basis with rho_m
-    call matmul('N', 'C', rho_m, exc2s, suppsc)
-    deallocate(rho_m)
-    allocate(rho_m(2*cbdm,2*cbdm))
-    call matmul('N', 'N', exc2s, suppsc, rho_m)
+    call scgo(rho_m)
 
     ! initialize 2e Fock matrices
     if (allocated(mHFcol)) deallocate(mHFcol)
@@ -2347,38 +2629,38 @@ module SCF
       do j = cbdm, 1, -1
         !------------------------------<ui>---------------------------------
         ui     = i
-        contri = basis_inf(ui) % contr
-        Li     = basis_inf(ui) % L
-        Mi     = basis_inf(ui) % M
-        expi(1:contri) = basis_inf(ui) % expo(1:contri)
-        coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
-        codi = basis_inf(ui) % pos
+        contri = cbdata(ui) % contr
+        Li     = cbdata(ui) % L
+        Mi     = cbdata(ui) % M
+        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
+        codi = cbdata(ui) % pos
         !------------------------------<uk>---------------------------------
         uk     = j
-        contrk = basis_inf(uk) % contr
-        Lk     = basis_inf(uk) % L
-        Mk     = basis_inf(uk) % M
-        expk(1:contrk) = basis_inf(uk) % expo(1:contrk)
-        coek(1:contrk) = basis_inf(uk) % Ncoe(1:contrk,Mk)
-        codk = basis_inf(uk) % pos
+        contrk = cbdata(uk) % contr
+        Lk     = cbdata(uk) % L
+        Mk     = cbdata(uk) % M
+        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
+        codk = cbdata(uk) % pos
         !------------------------------<uj>---------------------------------
         do uj = ui, 1, -1
-          contrj = basis_inf(uj) % contr
-          Lj     = basis_inf(uj) % L
-          Mj     = basis_inf(uj) % M
-          expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
-          coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
-          codj = basis_inf(uj) % pos
+          contrj = cbdata(uj) % contr
+          Lj     = cbdata(uj) % L
+          Mj     = cbdata(uj) % M
+          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
+          codj = cbdata(uj) % pos
           !----------------------------<ul>---------------------------------
           do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |(ij|kl)| <= dsqrt( (ii|kk)*(jj|ll) )
             if (dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) < Schwarz_VT) cycle
-            contrl = basis_inf(ul) % contr
-            Ll     = basis_inf(ul) % L
-            Ml     = basis_inf(ul) % M
-            expl(1:contrl) = basis_inf(ul) % expo(1:contrl)
-            coel(1:contrl) = basis_inf(ul) % Ncoe(1:contrl,Ml)
-            codl = basis_inf(ul) % pos
+            contrl = cbdata(ul) % contr
+            Ll     = cbdata(ul) % L
+            Ml     = cbdata(ul) % M
+            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
+            codl = cbdata(ul) % pos
             !===========================(ij|kl)===============================
             intV = calc_V_2e(&
             contri,contrj,contrk,contrl,&
@@ -2419,7 +2701,6 @@ module SCF
         call cfgo(mKSexc)
       end if
     end if
-    call csgo(rho_m)
   end subroutine Assign_Fock_AVA2e
 !------------------------------------------------------------
 !> construct DKH2 spinor 2-electron Fock matrices
@@ -2495,64 +2776,51 @@ module SCF
     !DIR$ ATTRIBUTES ALIGN:align_size :: Vcol_mic, Vexc_mic
     !DIR$ ATTRIBUTES ALIGN:align_size :: R1VR1col_mic, R1VR1exc_mic
     !DIR$ ATTRIBUTES ALIGN:align_size :: R2VR2col_mic, R2VR2exc_mic
-    !DIR$ ATTRIBUTES ALIGN:align_size :: suppfs, suppsf, suppff, suppsc, suppss
-    !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, suppAp, rho_ApRp, suppApRp
+    !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, rho_ApRp, suppff
     complex(dp) :: Vcol_mic(2*cbdm,2*cbdm)     ! micro ApVAp Coulomb matrix
     complex(dp) :: Vexc_mic(2*cbdm,2*cbdm)     ! micro ApVAp Exchange matrix
     complex(dp) :: R1VR1col_mic(2*cbdm,2*cbdm) ! micro ApRiVRiAp Coulomb matrix
     complex(dp) :: R1VR1exc_mic(2*cbdm,2*cbdm) ! micro ApRiVRiAp Exchange matrix
     complex(dp) :: R2VR2col_mic(2*cbdm,2*cbdm) ! micro ApRjVRjAp Coulomb matrix
     complex(dp) :: R2VR2exc_mic(2*cbdm,2*cbdm) ! micro ApRjVRjAp Exchange matrix
-    complex(dp) :: suppfs(2*fbdm,2*sbdm)
-    complex(dp) :: suppsf(2*sbdm,2*fbdm)
     complex(dp) :: suppff(2*fbdm,2*fbdm)
-    complex(dp) :: suppsc(2*sbdm,2*cbdm)
-    complex(dp) :: suppss(2*sbdm,2*sbdm)
-    complex(dp) :: rho_Ap(2*cbdm,2*cbdm)       ! D' = D * Ap * Ap
-    complex(dp) :: suppAp(2*fbdm,2*fbdm)
-    complex(dp) :: rho_ApRp(2*cbdm,2*cbdm)     ! D' = D * ApRp * ApRp
-    complex(dp) :: suppApRp(2*fbdm,2*fbdm)
-
-    ! transform rho_m to orthogonal AO basis with suppAp
-    call matmul('C', 'N', exs2f, rho_m, suppfs)
-    call matmul('N', 'N', suppfs, exs2f, suppAp)
-    ! transform rho_m to p^2 eigenbasis with suppAp
-    call matmul('T', 'N', exAO2p2, suppAp, suppff)
-    call matmul('N', 'N', suppff, exAO2p2, suppAp)
-    ! construct reduced density matrix with suppAp and suppApRp
-    suppApRp = suppAp
+    complex(dp),allocatable :: rho_Ap(:,:)       ! D' = D * Ap * Ap
+    complex(dp),allocatable :: rho_ApRp(:,:)     ! D' = D * ApRp * ApRp
+    allocate(rho_Ap(2*sbdm,2*sbdm))
+    allocate(rho_ApRp(2*fbdm,2*fbdm))
+    rho_Ap = rho_m
+    ! transform rho_Ap to orthogonal AO basis
+    call sfgo(rho_Ap)
+    ! transform rho_Ap to p^2 eigenbasis
+    call matmul('T', 'N', exAO2p2, rho_Ap, suppff)
+    call matmul('N', 'N', suppff, exAO2p2, rho_Ap)
+    ! construct reduced density matrix
+    rho_ApRp = rho_Ap
     do ui = 1, fbdm
       do uj = 1, fbdm
-        suppApRp(ui,uj) = suppApRp(ui,uj) * ApRp(ui,ui)*ApRp(uj,uj)
-        suppApRp(fbdm+ui,uj) = suppApRp(fbdm+ui,uj) * ApRp(ui,ui)*ApRp(uj,uj)
-        suppApRp(ui,fbdm+uj) = suppApRp(ui,fbdm+uj) * ApRp(ui,ui)*ApRp(uj,uj)
-        suppApRp(fbdm+ui,fbdm+uj) = suppApRp(fbdm+ui,fbdm+uj) * &
+        rho_ApRp(ui,uj) = rho_ApRp(ui,uj) * ApRp(ui,ui)*ApRp(uj,uj)
+        rho_ApRp(fbdm+ui,uj) = rho_ApRp(fbdm+ui,uj) * ApRp(ui,ui)*ApRp(uj,uj)
+        rho_ApRp(ui,fbdm+uj) = rho_ApRp(ui,fbdm+uj) * ApRp(ui,ui)*ApRp(uj,uj)
+        rho_ApRp(fbdm+ui,fbdm+uj) = rho_ApRp(fbdm+ui,fbdm+uj) * &
         ApRp(ui,ui)*ApRp(uj,uj)
-        suppAp(ui,uj) = suppAp(ui,uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(fbdm+ui,uj) = suppAp(fbdm+ui,uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(ui,fbdm+uj) = suppAp(ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
-        suppAp(fbdm+ui,fbdm+uj) = suppAp(fbdm+ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(ui,uj) = rho_Ap(ui,uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(fbdm+ui,uj) = rho_Ap(fbdm+ui,uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(ui,fbdm+uj) = rho_Ap(ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
+        rho_Ap(fbdm+ui,fbdm+uj) = rho_Ap(fbdm+ui,fbdm+uj) * Ap(ui,ui)*Ap(uj,uj)
       end do
     end do
-    ! transform rho_m to orthogonal AO basis with suppAp and suppApRp
-    call matmul('N', 'N', exAO2p2, suppApRp, suppff)
-    call matmul('N', 'T', suppff, exAO2p2, suppApRp)
-    call matmul('N', 'N', exAO2p2, suppAp, suppff)
-    call matmul('N', 'T', suppff, exAO2p2, suppAp)
-    ! transform rho_m to Cartesian basis with rho_Ap and rho_ApRp
-    call matmul('C', 'N', exf2s, suppAp, suppsf)
-    call matmul('N', 'N', suppsf, exf2s, suppss)
-    call matmul('N', 'C', suppss, exc2s, suppsc)
-    call matmul('N', 'N', exc2s, suppsc, rho_Ap)
-    call matmul('C', 'N', exf2s, suppApRp, suppsf)
-    call matmul('N', 'N', suppsf, exf2s, suppss)
-    call matmul('N', 'C', suppss, exc2s, suppsc)
-    call matmul('N', 'N', exc2s, suppsc, rho_ApRp)
-    ! transform rho_m to Cartesian basis with rho_m
-    call matmul('N', 'C', rho_m, exc2s, suppsc)
-    deallocate(rho_m)
-    allocate(rho_m(2*cbdm,2*cbdm))
-    call matmul('N', 'N', exc2s, suppsc, rho_m)
+    ! transform rho_Ap and rho_ApRp to orthogonal AO basis
+    call matmul('N', 'N', exAO2p2, rho_ApRp, suppff)
+    call matmul('N', 'T', suppff, exAO2p2, rho_ApRp)
+    call matmul('N', 'N', exAO2p2, rho_Ap, suppff)
+    call matmul('N', 'T', suppff, exAO2p2, rho_Ap)
+    ! transform rho_Ap and rho_ApRp to Cartesian basis
+    call fsgo(rho_Ap)
+    call scgo(rho_Ap)
+    call fsgo(rho_ApRp)
+    call scgo(rho_ApRp)
+    ! transform rho_m to Cartesian basis
+    call scgo(rho_m)
 
     ! initialize 2e Fock matrices
     if (allocated(mHFcol)) deallocate(mHFcol)
@@ -2590,12 +2858,12 @@ module SCF
       do j = 1, cbdm
         !------------------------------<ui>---------------------------------
         ui     = i
-        contri = basis_inf(ui) % contr
-        Li     = basis_inf(ui) % L
-        Mi     = basis_inf(ui) % M
-        expi(1:contri) = basis_inf(ui) % expo(1:contri)
-        coei(1:contri) = basis_inf(ui) % Ncoe(1:contri,Mi)
-        codi = basis_inf(ui) % pos
+        contri = cbdata(ui) % contr
+        Li     = cbdata(ui) % L
+        Mi     = cbdata(ui) % M
+        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
+        codi = cbdata(ui) % pos
         !---------------------------------------
         ! factor of x^m*d(exp)
         facdx_i(:,1) = AO_fac(:,Li,Mi)
@@ -2624,12 +2892,12 @@ module SCF
         coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
         !------------------------------<uk>---------------------------------
         uk     = j
-        contrk = basis_inf(uk) % contr
-        Lk     = basis_inf(uk) % L
-        Mk     = basis_inf(uk) % M
-        expk(1:contrk) = basis_inf(uk) % expo(1:contrk)
-        coek(1:contrk) = basis_inf(uk) % Ncoe(1:contrk,Mk)
-        codk = basis_inf(uk) % pos
+        contrk = cbdata(uk) % contr
+        Lk     = cbdata(uk) % L
+        Mk     = cbdata(uk) % M
+        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
+        codk = cbdata(uk) % pos
         !---------------------------------------
         ! factor of x^m*d(exp)
         facdx_k(:,1) = AO_fac(:,Lk,Mk)
@@ -2658,12 +2926,12 @@ module SCF
         coedz_k(contrk+1:2*contrk) = AO_fac(3,Lk,Mk) * coek(1:contrk)
         !------------------------------<uj>---------------------------------
         do uj = 1, cbdm
-          contrj = basis_inf(uj) % contr
-          Lj     = basis_inf(uj) % L
-          Mj     = basis_inf(uj) % M
-          expj(1:contrj) = basis_inf(uj) % expo(1:contrj)
-          coej(1:contrj) = basis_inf(uj) % Ncoe(1:contrj,Mj)
-          codj = basis_inf(uj) % pos
+          contrj = cbdata(uj) % contr
+          Lj     = cbdata(uj) % L
+          Mj     = cbdata(uj) % M
+          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
+          codj = cbdata(uj) % pos
           !---------------------------------------
           ! factor of x^m*d(exp)
           facdx_j(:,1) = AO_fac(:,Lj,Mj)
@@ -2692,12 +2960,12 @@ module SCF
           coedz_j(contrj+1:2*contrj) = AO_fac(3,Lj,Mj) * coej(1:contrj)
           !----------------------------<ul>---------------------------------
           do ul = 1, cbdm
-            contrl = basis_inf(ul) % contr
-            Ll     = basis_inf(ul) % L
-            Ml     = basis_inf(ul) % M
-            expl(1:contrl) = basis_inf(ul) % expo(1:contrl)
-            coel(1:contrl) = basis_inf(ul) % Ncoe(1:contrl,Ml)
-            codl = basis_inf(ul) % pos
+            contrl = cbdata(ul) % contr
+            Ll     = cbdata(ul) % L
+            Ml     = cbdata(ul) % M
+            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
+            codl = cbdata(ul) % pos
             !===========================(ij|kl)===========================
             if (uj<=ui .and. ul<=uk .and. ul-uj<=(ui*(ui-1)-uk*(uk-1))/2) then
               if (dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) > Schwarz_VT) then
@@ -2912,7 +3180,6 @@ module SCF
         call cfgo(mKSexc)
       end if
     end if
-    call csgo(rho_m)
   end subroutine Assign_Fock_ARVRA2e
 
 !------------------------------------------------------------
@@ -3052,6 +3319,7 @@ subroutine RGI()
   end if
 
   ! designation of basical configuration, BCSmult and BCSz
+  if (S__2 < 0.0_dp) S__2 = -S__2  ! negative S__2 arises from numerical error
   if (mod(electron_count,2) == 0) then
     do BCSmult = 0, 50, 2
       mcs2 = real(BCSmult)/2.0*(real(BCSmult)/2.0+1.0)
@@ -3532,7 +3800,7 @@ real(dp) function DFTD4()
   write(ch1,"(I1)") charge
   write(60,'(A)') '  calling DFT-D4 for dispersion correction'
   ! take .xyz file as input file of DFT-D4
-  ios = system('dftd4 '//trim(address_molecule)//' -f '//trim(funcemd4)//&
+  ios = system('dftd4 '//trim(address_xyz)//' -f '//trim(funcemd4)//&
   ' -c '//ch1//' --noedisp --json '//trim(address_job)//'.emd4 -s -s')
   if (ios == -1) then
     write(60,'(A)') '  DFT-D4 failed with error calling, emd4 set zero'
@@ -3571,15 +3839,15 @@ real(dp) function DFTD4()
 end function DFTD4
 
 !-----------------------------------------------------------------------
-!> project AO2MO coefficient from m_basis to basis
+!> project MO coefficient from m_basis to basis
 !!
-!! cB = i_j_s^(-1) . m_i_j . cA . m_s2fT
+!! cB = i_j_s^(-1).M_i_j.cA
 !!
-!! cA(m_sbdm, m_sbdm), cB(sbdm, m_sbdm) number of project MOs is m_sbdm
-  subroutine m_basis_proj(cA, cB)
+!! cA(M_sbdm, M_sbdm) -> cB(sbdm, M_sbdm) number of project MOs is M_sbdm
+  subroutine M_basis_proj(cA, cB)
     implicit none
-    real(dp),intent(in)  :: cA(m_sbdm, m_sbdm)
-    real(dp),intent(out) :: cB(sbdm, m_sbdm)
+    real(dp),intent(in)  :: cA(M_sbdm, M_sbdm)
+    real(dp),intent(out) :: cB(sbdm, M_sbdm)
     integer              :: ii, jj, kk, mm
     integer              :: contri, contrj
     integer              :: Li, Lj
@@ -3587,83 +3855,49 @@ end function DFTD4
     real(dp)             :: expi(16), expj(16)
     real(dp)             :: coei(16), coej(16)
     real(dp)             :: codi(3), codj(3)
-    real(dp),allocatable :: spp(:,:), spp2(:,:)
-    real(dp)             :: m_s2f(m_sbdm,m_sbdm)
+    real(dp)             :: spp(sbdm,M_sbdm)
     real(dp)             :: i_j_inv(sbdm,sbdm)
-    real(dp)             :: m_min_evl
-    real(dp)             :: itmat(sbdm, m_sbdm)
-    if (.not. allocated(m_i_j)) then
-      ! assign m_i_j
-      allocate(m_i_j(cbdm,m_cbdm), source=0.0_dp)
+    real(dp)             :: M_min_evl
+    if (.not. allocated(M_i_j)) then
+      ! assign M_i_j
+      allocate(M_i_j(cbdm,M_cbdm), source=0.0_dp)
       do ii = 1, cbdm
-        contri = basis_inf(ii) % contr
-        Li     = basis_inf(ii) % L
-        Mi     = basis_inf(ii) % M
-        expi(1:contri) = basis_inf(ii) % expo(1:contri)
-        coei(1:contri) = basis_inf(ii) % Ncoe(1:contri,Mi)
-        codi = basis_inf(ii) % pos
-        do jj = 1, m_cbdm
-          contrj = m_basis_inf(jj) % contr
-          Lj     = m_basis_inf(jj) % L
-          Mj     = m_basis_inf(jj) % M
-          expj(1:contrj) = m_basis_inf(jj) % expo(1:contrj)
-          coej(1:contrj) = m_basis_inf(jj) % Ncoe(1:contrj,Mj)
-          codj = m_basis_inf(jj) % pos
+        contri = cbdata(ii) % contr
+        Li     = cbdata(ii) % L
+        Mi     = cbdata(ii) % M
+        expi(1:contri) = cbdata(ii) % expo(1:contri)
+        coei(1:contri) = cbdata(ii) % Ncoe(1:contri)
+        codi = cbdata(ii) % pos
+        do jj = 1, M_cbdm
+          contrj = M_cbdata(jj) % contr
+          Lj     = M_cbdata(jj) % L
+          Mj     = M_cbdata(jj) % M
+          expj(1:contrj) = M_cbdata(jj) % expo(1:contrj)
+          coej(1:contrj) = M_cbdata(jj) % Ncoe(1:contrj)
+          codj = M_cbdata(jj) % pos
           do kk = 1, contri
             do mm = 1, contrj
-              m_i_j(ii,jj) = m_i_j(ii,jj) + &
+              M_i_j(ii,jj) = M_i_j(ii,jj) + &
               Integral_S_1e(coei(kk)*coej(mm),&
-              AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),& 
+              AO_fac(:,Li,Mi),M_AO_fac(:,Lj,Mj),&
               expi(kk),expj(mm),codi,codj)
             end do
           end do
         end do
       end do
-      call m_assign_cs()
-      call m_csgo(m_i_j)
+      if (.not. allocated(M_c2s)) call M_assign_cs()
+      call M_csgo(M_i_j)
     end if
     i_j_inv = i_j_s
     call inverse(i_j_inv, sbdm)
-    ! itmat = i_j_s^(-1) . m_i_j . cA, itmat is not orthogonal
-    allocate(spp(sbdm,m_sbdm))
-    call matmul('N', 'N', m_i_j, cA, spp)
-    call matmul('N', 'N', i_j_inv, spp, itmat)
-    deallocate(spp)
-    ! symmetric orthogonalisation
-    ! m_s2fT.cBT.i_j_s.cB.m_s2f = I
-    ! note that this m_s2f is not same as s2f which satisfy s2f.i_j_s.s2fT = I
-    ! cB is not orthogonal so we have to make whole MO(cBT.i_j_s.cB)
-    ! orthogonal instead of just AO(i_j_s)
-    allocate(spp(m_sbdm, sbdm))
-    allocate(spp2(m_sbdm, m_sbdm))
-    call matmul('T', 'N', itmat, i_j_s, spp)
-    call matmul('N', 'N', spp, itmat, spp2)
-    call symm_orth(spp2, m_sbdm, m_s2f, m_min_evl)
-    ! unlikely to meet linear dependency, because MO satisfy Pauli exclusion
-    ! principle so will not repeat each other
-    call matmul('N', 'N', itmat, m_s2f, cB)
-  end subroutine m_basis_proj
+    ! cB = i_j_s^(-1).M_i_j.cA, cB is not orthogonal, and no need to
+    call matmul('N', 'N', M_i_j, cA, spp)
+    call matmul('N', 'N', i_j_inv, spp, cB)
+  end subroutine M_basis_proj
 
 !-----------------------------------------------------------------------
-!> dump mol orbital information to .molden.d file
-! AO2MO is like:
-!                  |                  |
-!                  |                  |
-!                  |                  |
-!                  |                  |
-! a part1 real&img | a part2 real&img |
-!                  |                  |
-!                  |                  |
-!__________________|__________________|
-!                  |                  |
-!                  |                  |
-!                  |                  |
-!                  |                  |
-! b part1 real&img | b part1 real&img |
-!                  |                  |
-!                  |                  |
-!__________________|__________________|
-  subroutine dump_molden()
+!> dump spinor orbitals to .molden.d
+  subroutine Dump_MOLDEN()
     implicit none
     character(len=200)     :: dir
     integer                :: channel
@@ -3671,11 +3905,29 @@ end function DFTD4
     dir = trim(address_job)//'.molden.d'
     call execute_command_line('mkdir -p '//trim(dir), wait=.true., exitstat=ios)
     if (ios /= 0) call terminate(&
-    "dump to molden failed, molden.d can't be created")
+    "dump to MOLDEN failed, molden.d can't be created")
     if (.not. allocated(AO2MO)) &
-    call terminate('dump to molden failed, AO2MO is empty')
+    call terminate('dump to MOLDEN failed, AO2MO is empty')
+    write(60,'(A)') "  AO2MO is like:"
+    write(60,'(A)') "  MO 1 2 3      ...       fbdm         ...       2*fbdm"
+    write(60,'(A)') "  AO1                       |                       |"
+    write(60,'(A)') "  AO2                       |                       |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "  ...        part1          |         part2         |"
+    write(60,'(A)') "    |    alpha real&img     |    alpha real&img     |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "  sbdm______________________|_______________________|"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "  ...         part1         |         part2         |"
+    write(60,'(A)') "    |     beta real&img     |     beta real&img     |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "    |                       |                       |"
+    write(60,'(A)') "  2*sbdm____________________|_______________________|"
     
-    ! molden file contains the real part1 of AO2MO
+    ! MOLDEN file contains the real part1 of AO2MO
     open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
     '-realpart1.molden.input', status='replace', action='write', iostat=ios)
     if (ios /= 0) call terminate('creat .molden.input failed')
@@ -3754,7 +4006,7 @@ end function DFTD4
     end do
     close(channel)
 
-    ! molden file contains the real part2 of AO2MO
+    ! MOLDEN file contains the real part2 of AO2MO
     open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
     '-realpart2.molden.input', status='replace', action='write', iostat=ios)
     if (ios /= 0) call terminate('creat .molden.input failed')
@@ -3834,7 +4086,7 @@ end function DFTD4
     close(channel)
     
     if (pVp1e) then
-      ! molden file contains the imaginary part1 of AO2MO
+      ! MOLDEN file contains the imaginary part1 of AO2MO
       open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
       '-imgpart1.molden.input', status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('creat .molden.input failed')
@@ -3913,7 +4165,7 @@ end function DFTD4
       end do
       close(channel)
 
-      ! molden file contains the imaginary part2 of AO2MO
+      ! MOLDEN file contains the imaginary part2 of AO2MO
       open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
       '-imgpart2.molden.input', status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('creat .molden.input failed')
@@ -3992,6 +4244,6 @@ end function DFTD4
       end do
       close(channel)
     end if
-  end subroutine dump_molden
+  end subroutine Dump_MOLDEN
   
 end module SCF

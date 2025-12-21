@@ -1,0 +1,3805 @@
+Job execution start: 2025.12.12  12:58
+WD = /home/lky/Code_TRESC/tests/Ni0-C2H4-1/psi4(NR)
+PID = 1467104;  username = lky
+This file is the output file of job Ni0-C2H4
+Program/version: TRESC/dev
+ 
+Acknowledge: 
+  TRESC is a molecular 2-component DKH2 HF/KS-SCF
+  calculation program. For more:
+  https://github.com/Dirac4pi/TRESC
+  All results default to Atomic Units (A.U.).
+ 
+External libs:
+  IFPORT: cross-platform Fortran development
+  Intel MKL: linear algebra routines
+  OpenMP: multithreaded parallel operations
+  Libxc: exchange & correlation functionals
+ 
+  ----------<KEYWORDS>----------
+   32 threads will be used
+  damp changed to  0.300E+00
+  DFT-D4 empirical dispersion will be considered
+  -- functional name: pbe0
+  nodiis changed to   8
+  diisdamp changed to  0.100E+00
+  canonical orbitals will be dumped to .molden.d
+  exchange functional set to    101
+  correlation functional set to    130
+  HF components set to  0.250E+00
+Other settings are default, exit module Atoms
+Module Atoms:
+  input basis set file path: 
+  /home/lky/Code_TRESC/TRESC/basis/x2c-svpall-2c.gbs
+  ----------<BASIS>----------
+  element  H:
+  -- shell l = 0:
+  exp:  0.13011E+02, coe:  0.01968
+  exp:  0.19623E+01, coe:  0.13797
+  exp:  0.44454E+00, coe:  0.47832
+  -- shell l = 0:
+  exp:  0.12195E+00, coe:  1.00000
+  -- shell l = 1:
+  exp:  0.80000E+00, coe:  1.00000
+ 
+  element  C:
+  -- shell l = 0:
+  exp:  0.12318E+04, coe:  0.00584
+  exp:  0.18560E+03, coe:  0.04151
+  exp:  0.42088E+02, coe:  0.18328
+  exp:  0.11630E+02, coe:  0.46835
+  exp:  0.35841E+01, coe:  0.44306
+  -- shell l = 0:
+  exp:  0.40294E+00, coe:  1.00000
+  -- shell l = 0:
+  exp:  0.13094E+00, coe:  1.00000
+  -- shell l = 1:
+  exp:  0.94821E+01, coe:  0.03817
+  exp:  0.20121E+01, coe:  0.21000
+  exp:  0.54813E+00, coe:  0.51041
+  -- shell l = 1:
+  exp:  0.15278E+00, coe:  1.00000
+  -- shell l = 2:
+  exp:  0.80000E+00, coe:  1.00000
+ 
+  element Ni:
+  -- shell l = 0:
+  exp:  0.10504E+06, coe:  0.00352
+  exp:  0.13968E+05, coe:  0.01734
+  exp:  0.29409E+04, coe:  0.07416
+  exp:  0.78610E+03, coe:  0.25307
+  exp:  0.24526E+03, coe:  0.53860
+  exp:  0.81476E+02, coe:  0.44405
+  -- shell l = 0:
+  exp:  0.15626E+03, coe: -0.10556
+  exp:  0.18178E+02, coe:  0.64267
+  exp:  0.74444E+01, coe:  0.47149
+  -- shell l = 0:
+  exp:  0.12935E+02, coe: -0.22918
+  exp:  0.21221E+01, coe:  0.73952
+  exp:  0.87409E+00, coe:  0.45842
+  -- shell l = 0:
+  exp:  0.11045E+00, coe:  1.00000
+  -- shell l = 0:
+  exp:  0.40188E-01, coe:  1.00000
+  -- shell l = 1:
+  exp:  0.23565E+04, coe: -0.00009
+  exp:  0.51345E+03, coe: -0.00054
+  exp:  0.15820E+03, coe: -0.00245
+  exp:  0.57550E+02, coe: -0.00715
+  exp:  0.22566E+02, coe: -0.01181
+  exp:  0.90453E+01, coe: -0.00715
+  -- shell l = 1:
+  exp:  0.10459E+04, coe:  0.00929
+  exp:  0.23481E+03, coe:  0.06708
+  exp:  0.72433E+02, coe:  0.26529
+  exp:  0.25614E+02, coe:  0.53531
+  exp:  0.94080E+01, coe:  0.35959
+  -- shell l = 1:
+  exp:  0.69923E+01, coe:  1.00000
+  -- shell l = 1:
+  exp:  0.48001E+01, coe:  0.35356
+  exp:  0.18423E+01, coe:  0.59376
+  exp:  0.68658E+00, coe:  0.24918
+  -- shell l = 1:
+  exp:  0.14659E+00, coe:  1.00000
+  -- shell l = 2:
+  exp:  0.47968E+02, coe:  0.02887
+  exp:  0.13322E+02, coe:  0.15535
+  exp:  0.44560E+01, coe:  0.38214
+  exp:  0.14827E+01, coe:  0.48580
+  -- shell l = 2:
+  exp:  0.43622E+00, coe:  1.00000
+  -- shell l = 2:
+  exp:  0.12000E+00, coe:  1.00000
+  -- shell l = 3:
+  exp:  0.21740E+01, coe:  1.00000
+ 
+ 
+  input geometry file path: 
+  WD/Ni0-C2H4.xyz
+  ----------<GEOMETRY>----------
+  Ni     2.03272     6.66511    -0.46379
+   C     4.48666     4.91163     1.30088
+   C     4.87711     4.87412    -1.39478
+   H     5.73107     6.07065     2.49976
+   H     3.83695     3.18582     2.26451
+   H     4.53084     3.11799    -2.45590
+   H     6.41305     6.00889    -2.22127
+  scalar/spinor cbdm:   98 / 196
+  scalar/spinor sbdm:   90 / 180
+Module Hamiltonian:
+  ----------<PARALLEL>----------
+  threads using: 32; node nproc:128
+  KMP_AFFINITY = granularity=fine,compact,1,0
+  Integral_V initialize
+  complete! stored in: intTaycoe
+  ----------<HAMILTONIAN>----------
+  spinor basis causes additional cost in scalar SCF.
+  normalization of GTOs
+  complete!
+  one-electron integral calculation
+  complete! stored in:
+  i_j, i_p2_j, i_V_j
+  perform basis transformation
+  complete! by symm_orth.
+exit module Hamiltonian
+Module SCF:
+  construct one-electron Fock matrix
+  complete! stored in Fock1
+  calculate nuclear repulsion energy
+  complete! nuclear repulsive energy =  151.5643454 Eh
+  -- calculate Schwarz matrix <ij|V|ij>
+  -- complete! cutoff:  0.10E-11; stored in iijj_V
+  initialize Libxc
+  -- Libxc version: 7.0.0
+  -- fx_id = 101;func name: Perdew, Burke & Ernzerhof
+  -- fc_id = 130;func name: Perdew, Burke & Ernzerhof
+  complete!
+  ----------<SCF>----------
+  SCF settings:
+  -- maxiter   = 128
+  -- conv_tol  = 0.100E-05
+  -- damp      = 0.300
+  -- cutdamp   = 0.100E-01
+  -- nodiis    = 008
+  -- subsp     = 005
+  -- diisdamp  = 0.100
+  -- cutdiis   = 0.000E+00
+ 
+ 
+  SCF iter   1
+  load density matrix
+  -- MOLDEN file is NOT generated by ORCA program
+  -- basis and geometry in MOLDEN were loaded
+  -- M_cbdm / M_sbdm:   86 /  79
+  -- MO coeffs in MOLDEN were loaded
+  -- MO coeffs were projected to job basis
+  complete! stored in rho_m
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.170067 <Sz> = -0.500
+  -- LUMO  45   -0.043413 <Sz> =  0.500
+  -- gap     0.126655
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2497.561544
+  -- -- Kinetic                            1655.362311
+  -- -- Electron-nuclear attraction       -4152.923854
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    823.641240
+  -- -- Coulomb                             842.085710
+  -- -- HF Exchange                         -18.444470
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.531035
+  -- KS Correlation                          -1.821638
+  -- -<V>/<T>                                 1.954298
+  SCF energy (A.U.) = -1579.708632
+  DIIS information
+  -- damped  0.300
+  -- no DIIS acceleration
+ 
+ 
+  SCF iter   2
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.499E+00
+  -- RMSDP                   0.992E-02
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.258705 <Sz> = -0.500
+  -- LUMO  45   -0.063851 <Sz> =  0.500
+  -- gap     0.194854
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2514.779723
+  -- -- Kinetic                            1664.094695
+  -- -- Electron-nuclear attraction       -4178.874418
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    830.514588
+  -- -- Coulomb                             849.039259
+  -- -- HF Exchange                         -18.524671
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.392799
+  -- KS Correlation                          -1.814451
+  -- -<V>/<T>                                 1.955419
+  SCF energy (A.U.) = -1589.908039; delta E = -0.102E+02
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- no DIIS acceleration
+ 
+ 
+  SCF iter   3
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.749E+00
+  -- RMSDP                   0.125E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.010398 <Sz> = -0.500
+  -- LUMO  45    0.020813 <Sz> =  0.500
+  -- gap     0.031211
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2442.708112
+  -- -- Kinetic                            1631.394685
+  -- -- Electron-nuclear attraction       -4074.102797
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    798.685436
+  -- -- Coulomb                             816.738828
+  -- -- HF Exchange                         -18.053392
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.786801
+  -- KS Correlation                          -1.826283
+  -- -<V>/<T>                                 1.950151
+  SCF energy (A.U.) = -1550.071414; delta E =  0.398E+02
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- no DIIS acceleration
+ 
+ 
+  SCF iter   4
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.199E+01
+  -- RMSDP                   0.277E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.330289 <Sz> = -0.500
+  -- LUMO  45   -0.263488 <Sz> =  0.500
+  -- gap     0.066801
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2567.901400
+  -- -- Kinetic                            1700.504130
+  -- -- Electron-nuclear attraction       -4268.405530
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    838.220160
+  -- -- Coulomb                             856.601670
+  -- -- HF Exchange                         -18.381509
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -54.182825
+  -- KS Correlation                          -1.766144
+  -- -<V>/<T>                                 1.960930
+  SCF energy (A.U.) = -1634.065863; delta E = -0.840E+02
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- DIIS subspace filling  1/ 5
+ 
+ 
+  SCF iter   5
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.703E+01
+  -- RMSDP                   0.142E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.055818 <Sz> =  0.500
+  -- LUMO  45    0.096376 <Sz> = -0.500
+  -- gap     0.040557
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2298.111489
+  -- -- Kinetic                            1580.260672
+  -- -- Electron-nuclear attraction       -3878.372162
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    734.765877
+  -- -- Coulomb                             751.649820
+  -- -- HF Exchange                         -16.883943
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.795052
+  -- KS Correlation                          -1.838923
+  -- -<V>/<T>                                 1.930489
+  SCF energy (A.U.) = -1470.415242; delta E =  0.164E+03
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- DIIS subspace filling  2/ 5
+ 
+ 
+  SCF iter   6
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.632E+01
+  -- RMSDP                   0.141E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.935176 <Sz> =  0.500
+  -- LUMO  45   -0.872209 <Sz> = -0.500
+  -- gap     0.062968
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2618.492141
+  -- -- Kinetic                            1738.576499
+  -- -- Electron-nuclear attraction       -4357.068640
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    807.502266
+  -- -- Coulomb                             824.452672
+  -- -- HF Exchange                         -16.950406
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -51.936799
+  -- KS Correlation                          -1.673763
+  -- -<V>/<T>                                 1.985310
+  SCF energy (A.U.) = -1713.036091; delta E = -0.243E+03
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- DIIS subspace filling  3/ 5
+ 
+ 
+  SCF iter   7
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.415E+01
+  -- RMSDP                   0.108E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.502131 <Sz> =  0.500
+  -- LUMO  45   -0.485440 <Sz> =  0.500
+  -- gap     0.016691
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2225.653468
+  -- -- Kinetic                            1553.775182
+  -- -- Electron-nuclear attraction       -3779.428650
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    695.811645
+  -- -- Coulomb                             711.206588
+  -- -- HF Exchange                         -15.394943
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.707840
+  -- KS Correlation                          -1.839521
+  -- -<V>/<T>                                 1.924731
+  SCF energy (A.U.) = -1436.824838; delta E =  0.276E+03
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- DIIS subspace filling  4/ 5
+ 
+ 
+  SCF iter   8
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.550E+01
+  -- RMSDP                   0.108E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -1.404593 <Sz> = -0.500
+  -- LUMO  45   -1.255435 <Sz> = -0.500
+  -- gap     0.149158
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2627.508571
+  -- -- Kinetic                            1758.476185
+  -- -- Electron-nuclear attraction       -4385.984756
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    782.216503
+  -- -- Coulomb                             798.297613
+  -- -- HF Exchange                         -16.081111
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -51.633121
+  -- KS Correlation                          -1.658065
+  -- -<V>/<T>                                 1.993485
+  SCF energy (A.U.) = -1747.018909; delta E = -0.310E+03
+  convergence tolerance not met
+  DIIS information
+  -- damped  0.300
+  -- DIIS subspace filling  5/ 5
+ 
+ 
+  SCF iter   9
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.515E+01
+  -- RMSDP                   0.102E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.548101 <Sz> =  0.500
+  -- LUMO  45   -0.529633 <Sz> =  0.500
+  -- gap     0.018468
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2244.591787
+  -- -- Kinetic                            1560.004894
+  -- -- Electron-nuclear attraction       -3804.596681
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    705.451747
+  -- -- Coulomb                             720.945808
+  -- -- HF Exchange                         -15.494062
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.882835
+  -- KS Correlation                          -1.822265
+  -- -<V>/<T>                                 1.927100
+  SCF energy (A.U.) = -1446.280795; delta E =  0.301E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.107E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.849E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.575E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.210E-02, 0.000E+00)
+  -- subsp coeff 4      ( 0.471E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.389E+00, 0.000E+00)
+ 
+ 
+  SCF iter  10
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.319E+01
+  -- RMSDP                   0.631E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.338853 <Sz> = -0.500
+  -- LUMO  45   -0.299397 <Sz> =  0.500
+  -- gap     0.039455
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2602.663723
+  -- -- Kinetic                            1723.315218
+  -- -- Electron-nuclear attraction       -4325.978940
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    830.264599
+  -- -- Coulomb                             847.509013
+  -- -- HF Exchange                         -17.244414
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -53.293583
+  -- KS Correlation                          -1.684648
+  -- -<V>/<T>                                 1.972436
+  SCF energy (A.U.) = -1675.813009; delta E = -0.230E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.156E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.707E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.220E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.507E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.426E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.160E+00, 0.000E+00)
+ 
+ 
+  SCF iter  11
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.106E+01
+  -- RMSDP                   0.376E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.309578 <Sz> = -0.500
+  -- LUMO  45   -0.248113 <Sz> =  0.500
+  -- gap     0.061465
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2589.079786
+  -- -- Kinetic                            1713.340990
+  -- -- Electron-nuclear attraction       -4302.420775
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    835.761909
+  -- -- Coulomb                             853.244956
+  -- -- HF Exchange                         -17.483047
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -53.818544
+  -- KS Correlation                          -1.705056
+  -- -<V>/<T>                                 1.967278
+  SCF energy (A.U.) = -1657.277131; delta E =  0.185E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.194E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.101E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.525E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.491E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.586E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.270E-01, 0.000E+00)
+ 
+ 
+  SCF iter  12
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.205E+01
+  -- RMSDP                   0.469E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.305673 <Sz> =  0.500
+  -- LUMO  45   -0.248062 <Sz> =  0.500
+  -- gap     0.057611
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2592.134875
+  -- -- Kinetic                            1716.578713
+  -- -- Electron-nuclear attraction       -4308.713588
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    833.184088
+  -- -- Coulomb                             850.572186
+  -- -- HF Exchange                         -17.388097
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -53.680920
+  -- KS Correlation                          -1.699594
+  -- -<V>/<T>                                 1.968652
+  SCF energy (A.U.) = -1662.766956; delta E = -0.549E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.154E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.511E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.420E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.196E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.307E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.572E+00, 0.000E+00)
+ 
+ 
+  SCF iter  13
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.263E+01
+  -- RMSDP                   0.541E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.317200 <Sz> = -0.500
+  -- LUMO  45   -0.269737 <Sz> =  0.500
+  -- gap     0.047463
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2595.137879
+  -- -- Kinetic                            1718.495123
+  -- -- Electron-nuclear attraction       -4313.633002
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    831.920478
+  -- -- Coulomb                             849.289050
+  -- -- HF Exchange                         -17.368572
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -53.567500
+  -- KS Correlation                          -1.692804
+  -- -<V>/<T>                                 1.969984
+  SCF energy (A.U.) = -1666.913360; delta E = -0.415E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.950E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.363E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.136E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.334E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.128E+01, 0.000E+00)
+  -- subsp coeff 5      ( 0.145E+01, 0.000E+00)
+ 
+ 
+  SCF iter  14
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.370E+01
+  -- RMSDP                   0.730E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.327945 <Sz> =  0.500
+  -- LUMO  45   -0.189290 <Sz> = -0.500
+  -- gap     0.138655
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2554.676306
+  -- -- Kinetic                            1688.947513
+  -- -- Electron-nuclear attraction       -4243.623820
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    841.003596
+  -- -- Coulomb                             859.000114
+  -- -- HF Exchange                         -17.996517
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -54.816497
+  -- KS Correlation                          -1.764017
+  -- -<V>/<T>                                 1.958401
+  SCF energy (A.U.) = -1618.688879; delta E =  0.482E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.185E+02, 0.000E+00)
+  -- subsp coeff 1      (-0.255E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.121E+01, 0.000E+00)
+  -- subsp coeff 3      ( 0.270E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.147E+01, 0.000E+00)
+  -- subsp coeff 5      ( 0.727E+00, 0.000E+00)
+ 
+ 
+  SCF iter  15
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.237E+01
+  -- RMSDP                   0.115E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.158262 <Sz> =  0.500
+  -- LUMO  45   -0.086974 <Sz> =  0.500
+  -- gap     0.071289
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2149.755308
+  -- -- Kinetic                            1520.605332
+  -- -- Electron-nuclear attraction       -3670.360640
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    669.485688
+  -- -- Coulomb                             684.337430
+  -- -- HF Exchange                         -14.851742
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -58.142988
+  -- KS Correlation                          -1.891163
+  -- -<V>/<T>                                 1.913281
+  SCF energy (A.U.) = -1388.739425; delta E =  0.230E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.893E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.988E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.684E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.564E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.604E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.136E+00, 0.000E+00)
+ 
+ 
+  SCF iter  16
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.419E+01
+  -- RMSDP                   0.123E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.065210 <Sz> = -0.500
+  -- LUMO  45   -0.036547 <Sz> = -0.500
+  -- gap     0.028663
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2317.391142
+  -- -- Kinetic                            1590.717700
+  -- -- Electron-nuclear attraction       -3908.108843
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    738.757330
+  -- -- Coulomb                             755.405297
+  -- -- HF Exchange                         -16.647966
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.131390
+  -- KS Correlation                          -1.810145
+  -- -<V>/<T>                                 1.933548
+  SCF energy (A.U.) = -1485.011002; delta E = -0.963E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.755E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.815E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.123E+01, 0.000E+00)
+  -- subsp coeff 3      ( 0.388E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.120E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.791E-01, 0.000E+00)
+ 
+ 
+  SCF iter  17
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.604E+01
+  -- RMSDP                   0.156E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.002335 <Sz> = -0.500
+  -- LUMO  45    0.015699 <Sz> = -0.500
+  -- gap     0.013364
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2317.688568
+  -- -- Kinetic                            1591.828675
+  -- -- Electron-nuclear attraction       -3909.517243
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    736.356738
+  -- -- Coulomb                             753.068662
+  -- -- HF Exchange                         -16.711925
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.857199
+  -- KS Correlation                          -1.804494
+  -- -<V>/<T>                                 1.934415
+  SCF energy (A.U.) = -1487.429178; delta E = -0.242E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.825E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.500E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.257E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.120E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.259E+00, 0.000E+00)
+  -- subsp coeff 5      (-0.137E+00, 0.000E+00)
+ 
+ 
+  SCF iter  18
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.439E+01
+  -- RMSDP                   0.720E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.072476 <Sz> =  0.500
+  -- LUMO  45   -0.067318 <Sz> =  0.500
+  -- gap     0.005157
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2433.651484
+  -- -- Kinetic                            1627.343289
+  -- -- Electron-nuclear attraction       -4060.994773
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    792.080548
+  -- -- Coulomb                             809.561339
+  -- -- HF Exchange                         -17.480791
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.556802
+  -- KS Correlation                          -1.793074
+  -- -<V>/<T>                                 1.950848
+  SCF energy (A.U.) = -1547.356466; delta E = -0.599E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.749E+02, 0.000E+00)
+  -- subsp coeff 1      ( 0.475E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.337E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.427E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.345E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.271E+00, 0.000E+00)
+ 
+ 
+  SCF iter  19
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.407E+01
+  -- RMSDP                   0.107E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.566858 <Sz> = -0.500
+  -- LUMO  45   -0.557357 <Sz> =  0.500
+  -- gap     0.009501
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2608.637387
+  -- -- Kinetic                            1730.715706
+  -- -- Electron-nuclear attraction       -4339.353093
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    818.866696
+  -- -- Coulomb                             835.828246
+  -- -- HF Exchange                         -16.961551
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -52.935589
+  -- KS Correlation                          -1.724596
+  -- -<V>/<T>                                 1.978131
+  SCF energy (A.U.) = -1692.866531; delta E = -0.146E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.925E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.189E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.491E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.450E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.485E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.321E+00, 0.000E+00)
+ 
+ 
+  SCF iter  20
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.127E+01
+  -- RMSDP                   0.405E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.339156 <Sz> = -0.500
+  -- LUMO  45   -0.326732 <Sz> = -0.500
+  -- gap     0.012424
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2587.509094
+  -- -- Kinetic                            1714.263593
+  -- -- Electron-nuclear attraction       -4301.772687
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    834.371355
+  -- -- Coulomb                             852.099728
+  -- -- HF Exchange                         -17.728372
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -53.331301
+  -- KS Correlation                          -1.727012
+  -- -<V>/<T>                                 1.966381
+  SCF energy (A.U.) = -1656.631706; delta E =  0.362E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.205E+02, 0.000E+00)
+  -- subsp coeff 1      ( 0.211E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.116E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.283E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.246E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.375E+00, 0.000E+00)
+ 
+ 
+  SCF iter  21
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.343E+01
+  -- RMSDP                   0.106E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.151349 <Sz> =  0.500
+  -- LUMO  45   -0.115183 <Sz> = -0.500
+  -- gap     0.036166
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2313.125059
+  -- -- Kinetic                            1589.352455
+  -- -- Electron-nuclear attraction       -3902.477514
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    739.350559
+  -- -- Coulomb                             756.078811
+  -- -- HF Exchange                         -16.728251
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.311684
+  -- KS Correlation                          -1.829828
+  -- -<V>/<T>                                 1.931418
+  SCF energy (A.U.) = -1480.351666; delta E =  0.176E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.796E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.324E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.275E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.208E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.307E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.534E+00, 0.000E+00)
+ 
+ 
+  SCF iter  22
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.260E+01
+  -- RMSDP                   0.475E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.332792 <Sz> = -0.500
+  -- LUMO  45   -0.185452 <Sz> = -0.500
+  -- gap     0.147341
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2517.448167
+  -- -- Kinetic                            1664.169181
+  -- -- Electron-nuclear attraction       -4181.617348
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    830.798261
+  -- -- Coulomb                             848.910118
+  -- -- HF Exchange                         -18.111856
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.318195
+  -- KS Correlation                          -1.788596
+  -- -<V>/<T>                                 1.956749
+  SCF energy (A.U.) = -1592.192351; delta E = -0.112E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.101E+02, 0.000E+00)
+  -- subsp coeff 1      (-0.704E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.244E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.968E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.998E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.630E+00, 0.000E+00)
+ 
+ 
+  SCF iter  23
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.692E+01
+  -- RMSDP                   0.155E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.027192 <Sz> =  0.500
+  -- LUMO  45   -0.020134 <Sz> = -0.500
+  -- gap     0.007058
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2306.855511
+  -- -- Kinetic                            1585.196465
+  -- -- Electron-nuclear attraction       -3892.051976
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    739.633810
+  -- -- Coulomb                             756.405098
+  -- -- HF Exchange                         -16.771287
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.611789
+  -- KS Correlation                          -1.841308
+  -- -<V>/<T>                                 1.929923
+  SCF energy (A.U.) = -1474.110452; delta E =  0.118E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.951E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.272E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.101E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.307E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.470E+00, 0.000E+00)
+  -- subsp coeff 5      (-0.150E+00, 0.000E+00)
+ 
+ 
+  SCF iter  24
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.527E+01
+  -- RMSDP                   0.134E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.012355 <Sz> =  0.500
+  -- LUMO  45    0.012436 <Sz> = -0.500
+  -- gap     0.000081
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2305.683924
+  -- -- Kinetic                            1587.905763
+  -- -- Electron-nuclear attraction       -3893.589688
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    733.934698
+  -- -- Coulomb                             750.708355
+  -- -- HF Exchange                         -16.773657
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.163819
+  -- KS Correlation                          -1.822672
+  -- -<V>/<T>                                 1.930894
+  SCF energy (A.U.) = -1478.171371; delta E = -0.406E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.274E+02, 0.000E+00)
+  -- subsp coeff 1      ( 0.583E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.748E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.325E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.156E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.113E-01, 0.000E+00)
+ 
+ 
+  SCF iter  25
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.573E+01
+  -- RMSDP                   0.133E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.019984 <Sz> = -0.500
+  -- LUMO  45    0.020761 <Sz> = -0.500
+  -- gap     0.000777
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2300.479419
+  -- -- Kinetic                            1579.873477
+  -- -- Electron-nuclear attraction       -3880.352895
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    739.406506
+  -- -- Coulomb                             756.215886
+  -- -- HF Exchange                         -16.809380
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -57.026865
+  -- KS Correlation                          -1.852082
+  -- -<V>/<T>                                 1.929434
+  SCF energy (A.U.) = -1468.387513; delta E =  0.978E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.402E+02, 0.000E+00)
+  -- subsp coeff 1      (-0.702E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.114E+01, 0.000E+00)
+  -- subsp coeff 3      ( 0.371E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.427E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.620E+00, 0.000E+00)
+ 
+ 
+  SCF iter  26
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.685E+01
+  -- RMSDP                   0.153E+00
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.127858 <Sz> = -0.500
+  -- LUMO  45    0.159462 <Sz> = -0.500
+  -- gap     0.031604
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2289.086183
+  -- -- Kinetic                            1580.220449
+  -- -- Electron-nuclear attraction       -3869.306632
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    731.469810
+  -- -- Coulomb                             748.313229
+  -- -- HF Exchange                         -16.843419
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.676758
+  -- KS Correlation                          -1.877650
+  -- -<V>/<T>                                 1.926837
+  SCF energy (A.U.) = -1464.606437; delta E =  0.378E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.349E+02, 0.000E+00)
+  -- subsp coeff 1      ( 0.862E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.154E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.555E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.656E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.192E+00, 0.000E+00)
+ 
+ 
+  SCF iter  27
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.134E+01
+  -- RMSDP                   0.372E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.215164 <Sz> =  0.500
+  -- LUMO  45   -0.140615 <Sz> =  0.500
+  -- gap     0.074549
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2551.801107
+  -- -- Kinetic                            1688.144239
+  -- -- Electron-nuclear attraction       -4239.945346
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    838.289521
+  -- -- Coulomb                             856.664503
+  -- -- HF Exchange                         -18.374983
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -54.878521
+  -- KS Correlation                          -1.796284
+  -- -<V>/<T>                                 1.958817
+  SCF energy (A.U.) = -1618.622047; delta E = -0.154E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.969E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.310E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.285E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.401E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.101E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.815E+00, 0.000E+00)
+ 
+ 
+  SCF iter  28
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.206E+01
+  -- RMSDP                   0.588E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.087004 <Sz> = -0.500
+  -- LUMO  45   -0.035774 <Sz> = -0.500
+  -- gap     0.051229
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2350.328789
+  -- -- Kinetic                            1602.094090
+  -- -- Electron-nuclear attraction       -3952.422878
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    747.792000
+  -- -- Coulomb                             764.834156
+  -- -- HF Exchange                         -17.042156
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.598883
+  -- KS Correlation                          -1.781298
+  -- -<V>/<T>                                 1.941488
+  SCF energy (A.U.) = -1508.352623; delta E =  0.110E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.839E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.229E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.267E+00, 0.000E+00)
+  -- subsp coeff 3      ( 0.755E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.733E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.152E+00, 0.000E+00)
+ 
+ 
+  SCF iter  29
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.160E+01
+  -- RMSDP                   0.345E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.426025 <Sz> = -0.500
+  -- LUMO  45   -0.277101 <Sz> =  0.500
+  -- gap     0.148924
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2522.262126
+  -- -- Kinetic                            1665.946282
+  -- -- Electron-nuclear attraction       -4188.208407
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    830.543013
+  -- -- Coulomb                             848.821913
+  -- -- HF Exchange                         -18.278900
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.204389
+  -- KS Correlation                          -1.772563
+  -- -<V>/<T>                                 1.958693
+  SCF energy (A.U.) = -1597.131720; delta E = -0.888E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.501E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.816E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.481E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.335E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.112E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.424E+00, 0.000E+00)
+ 
+ 
+  SCF iter  30
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.137E+01
+  -- RMSDP                   0.288E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.284950 <Sz> =  0.500
+  -- LUMO  45   -0.191824 <Sz> =  0.500
+  -- gap     0.093127
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2547.353015
+  -- -- Kinetic                            1683.076127
+  -- -- Electron-nuclear attraction       -4230.429142
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    838.868980
+  -- -- Coulomb                             857.287864
+  -- -- HF Exchange                         -18.418884
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.061237
+  -- KS Correlation                          -1.783300
+  -- -<V>/<T>                                 1.958818
+  SCF energy (A.U.) = -1613.764227; delta E = -0.166E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.205E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.554E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.723E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.236E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.512E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.730E+00, 0.000E+00)
+ 
+ 
+  SCF iter  31
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.129E+01
+  -- RMSDP                   0.265E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.375471 <Sz> =  0.500
+  -- LUMO  45   -0.214265 <Sz> = -0.500
+  -- gap     0.161206
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2544.650318
+  -- -- Kinetic                            1679.999893
+  -- -- Electron-nuclear attraction       -4224.650210
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    838.678981
+  -- -- Coulomb                             857.142344
+  -- -- HF Exchange                         -18.463363
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.073875
+  -- KS Correlation                          -1.777516
+  -- -<V>/<T>                                 1.959082
+  SCF energy (A.U.) = -1611.258382; delta E =  0.251E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.190E+01, 0.000E+00)
+  -- subsp coeff 1      (-0.512E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.306E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.298E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.805E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.963E+00, 0.000E+00)
+ 
+ 
+  SCF iter  32
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.112E+01
+  -- RMSDP                   0.246E-01
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.292322 <Sz> =  0.500
+  -- LUMO  45   -0.152347 <Sz> =  0.500
+  -- gap     0.139975
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2533.984466
+  -- -- Kinetic                            1673.238512
+  -- -- Electron-nuclear attraction       -4207.222978
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    837.114422
+  -- -- Coulomb                             855.569158
+  -- -- HF Exchange                         -18.454736
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.393362
+  -- KS Correlation                          -1.796487
+  -- -<V>/<T>                                 1.957721
+  SCF energy (A.U.) = -1602.495547; delta E =  0.876E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.330E+00, 0.000E+00)
+  -- subsp coeff 1      ( 0.289E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.410E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.161E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.481E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.800E+00, 0.000E+00)
+ 
+ 
+  SCF iter  33
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.103E+01
+  -- RMSDP                   0.232E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.420422 <Sz> = -0.500
+  -- LUMO  45   -0.191248 <Sz> =  0.500
+  -- gap     0.229174
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2537.856192
+  -- -- Kinetic                            1675.453256
+  -- -- Electron-nuclear attraction       -4213.309448
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    837.263267
+  -- -- Coulomb                             855.733374
+  -- -- HF Exchange                         -18.470107
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.132746
+  -- KS Correlation                          -1.781911
+  -- -<V>/<T>                                 1.958513
+  SCF energy (A.U.) = -1605.943237; delta E = -0.345E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.124E+02, 0.000E+00)
+  -- subsp coeff 1      (-0.635E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.303E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.893E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.157E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.238E+01, 0.000E+00)
+ 
+ 
+  SCF iter  34
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.814E+01
+  -- RMSDP                   0.161E+00
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.111149 <Sz> =  0.500
+  -- LUMO  45    0.143441 <Sz> =  0.500
+  -- gap     0.032292
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2284.885720
+  -- -- Kinetic                            1574.109229
+  -- -- Electron-nuclear attraction       -3858.994949
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    733.484683
+  -- -- Coulomb                             750.314487
+  -- -- HF Exchange                         -16.829804
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -57.266721
+  -- KS Correlation                          -1.872925
+  -- -<V>/<T>                                 1.926858
+  SCF energy (A.U.) = -1458.976338; delta E =  0.147E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.363E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.205E+00, 0.000E+00)
+  -- subsp coeff 2      ( 0.137E+01, 0.000E+00)
+  -- subsp coeff 3      (-0.497E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.230E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.152E+00, 0.000E+00)
+ 
+ 
+  SCF iter  35
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.239E+01
+  -- RMSDP                   0.660E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44    0.047741 <Sz> = -0.500
+  -- LUMO  45    0.061515 <Sz> = -0.500
+  -- gap     0.013774
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2331.643840
+  -- -- Kinetic                            1592.274715
+  -- -- Electron-nuclear attraction       -3923.918555
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    743.855419
+  -- -- Coulomb                             760.942054
+  -- -- HF Exchange                         -17.086634
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -56.108472
+  -- KS Correlation                          -1.813698
+  -- -<V>/<T>                                 1.938372
+  SCF energy (A.U.) = -1494.146245; delta E = -0.352E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.217E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.156E+01, 0.000E+00)
+  -- subsp coeff 2      (-0.309E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.503E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.793E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.173E+00, 0.000E+00)
+ 
+ 
+  SCF iter  36
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.129E+01
+  -- RMSDP                   0.280E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.394647 <Sz> =  0.500
+  -- LUMO  45   -0.181559 <Sz> = -0.500
+  -- gap     0.213088
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2522.642176
+  -- -- Kinetic                            1665.121180
+  -- -- Electron-nuclear attraction       -4187.763356
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    832.452094
+  -- -- Coulomb                             850.882439
+  -- -- HF Exchange                         -18.430345
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.385087
+  -- KS Correlation                          -1.789170
+  -- -<V>/<T>                                 1.958369
+  SCF energy (A.U.) = -1595.799994; delta E = -0.102E+03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.176E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.213E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.190E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.964E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.835E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.627E+00, 0.000E+00)
+ 
+ 
+  SCF iter  37
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.106E+01
+  -- RMSDP                   0.231E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.369488 <Sz> = -0.500
+  -- LUMO  45   -0.179617 <Sz> = -0.500
+  -- gap     0.189871
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2545.269776
+  -- -- Kinetic                            1681.802697
+  -- -- Electron-nuclear attraction       -4227.072472
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    838.673537
+  -- -- Coulomb                             857.205172
+  -- -- HF Exchange                         -18.531635
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -54.938797
+  -- KS Correlation                          -1.784220
+  -- -<V>/<T>                                 1.958350
+  SCF energy (A.U.) = -1611.754910; delta E = -0.160E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.485E-01, 0.000E+00)
+  -- subsp coeff 1      ( 0.178E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.922E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.801E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.213E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.597E+00, 0.000E+00)
+ 
+ 
+  SCF iter  38
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.104E+01
+  -- RMSDP                   0.215E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.291696 <Sz> = -0.500
+  -- LUMO  45   -0.130404 <Sz> =  0.500
+  -- gap     0.161292
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2511.147171
+  -- -- Kinetic                            1659.255763
+  -- -- Electron-nuclear attraction       -4170.402934
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    829.179781
+  -- -- Coulomb                             847.603597
+  -- -- HF Exchange                         -18.423816
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.569720
+  -- KS Correlation                          -1.801599
+  -- -<V>/<T>                                 1.956920
+  SCF energy (A.U.) = -1587.774364; delta E =  0.240E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.186E-01, 0.000E+00)
+  -- subsp coeff 1      ( 0.939E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.577E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.236E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.519E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.353E+00, 0.000E+00)
+ 
+ 
+  SCF iter  39
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.976E+00
+  -- RMSDP                   0.197E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.333246 <Sz> =  0.500
+  -- LUMO  45   -0.131900 <Sz> = -0.500
+  -- gap     0.201347
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2518.706526
+  -- -- Kinetic                            1663.937205
+  -- -- Electron-nuclear attraction       -4182.643730
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    831.669136
+  -- -- Coulomb                             850.138345
+  -- -- HF Exchange                         -18.469209
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.431854
+  -- KS Correlation                          -1.798465
+  -- -<V>/<T>                                 1.957190
+  SCF energy (A.U.) = -1592.703363; delta E = -0.493E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.155E+01, 0.000E+00)
+  -- subsp coeff 1      ( 0.127E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.693E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.196E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.135E+01, 0.000E+00)
+  -- subsp coeff 5      ( 0.311E+01, 0.000E+00)
+ 
+ 
+  SCF iter  40
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.433E+00
+  -- RMSDP                   0.111E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.294366 <Sz> = -0.500
+  -- LUMO  45   -0.106961 <Sz> =  0.500
+  -- gap     0.187406
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2523.682190
+  -- -- Kinetic                            1667.994050
+  -- -- Electron-nuclear attraction       -4191.676240
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    834.011471
+  -- -- Coulomb                             852.538301
+  -- -- HF Exchange                         -18.526830
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.386187
+  -- KS Correlation                          -1.806427
+  -- -<V>/<T>                                 1.956418
+  SCF energy (A.U.) = -1595.298987; delta E = -0.260E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.123E+00, 0.000E+00)
+  -- subsp coeff 1      (-0.650E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.102E+01, 0.000E+00)
+  -- subsp coeff 3      (-0.190E+01, 0.000E+00)
+  -- subsp coeff 4      ( 0.360E+01, 0.000E+00)
+  -- subsp coeff 5      ( 0.971E+00, 0.000E+00)
+ 
+ 
+  SCF iter  41
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.379E+00
+  -- RMSDP                   0.104E-01
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.030737 <Sz> = -0.500
+  -- LUMO  45    0.010029 <Sz> =  0.500
+  -- gap     0.040766
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2463.250659
+  -- -- Kinetic                            1640.457522
+  -- -- Electron-nuclear attraction       -4103.708182
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    808.332499
+  -- -- Coulomb                             826.550818
+  -- -- HF Exchange                         -18.218318
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.668474
+  -- KS Correlation                          -1.828834
+  -- -<V>/<T>                                 1.951473
+  SCF energy (A.U.) = -1560.851122; delta E =  0.344E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.238E+00, 0.000E+00)
+  -- subsp coeff 1      (-0.879E+00, 0.000E+00)
+  -- subsp coeff 2      (-0.261E+01, 0.000E+00)
+  -- subsp coeff 3      ( 0.341E+01, 0.000E+00)
+  -- subsp coeff 4      ( 0.845E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.227E+00, 0.000E+00)
+ 
+ 
+  SCF iter  42
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.154E+00
+  -- RMSDP                   0.476E-02
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.108341 <Sz> =  0.500
+  -- LUMO  45   -0.024157 <Sz> =  0.500
+  -- gap     0.084184
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2485.814632
+  -- -- Kinetic                            1649.498572
+  -- -- Electron-nuclear attraction       -4135.313204
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    819.407507
+  -- -- Coulomb                             837.789693
+  -- -- HF Exchange                         -18.382187
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.687749
+  -- KS Correlation                          -1.827320
+  -- -<V>/<T>                                 1.953234
+  SCF energy (A.U.) = -1572.357849; delta E = -0.115E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.297E+00, 0.000E+00)
+  -- subsp coeff 1      (-0.105E+01, 0.000E+00)
+  -- subsp coeff 2      ( 0.120E+01, 0.000E+00)
+  -- subsp coeff 3      (-0.212E-01, 0.000E+00)
+  -- subsp coeff 4      (-0.197E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.107E+01, 0.000E+00)
+ 
+ 
+  SCF iter  43
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.817E-01
+  -- RMSDP                   0.268E-02
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.177364 <Sz> = -0.500
+  -- LUMO  45   -0.042967 <Sz> =  0.500
+  -- gap     0.134397
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2495.537804
+  -- -- Kinetic                            1654.020676
+  -- -- Electron-nuclear attraction       -4149.558481
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    822.127757
+  -- -- Coulomb                             840.542540
+  -- -- HF Exchange                         -18.414784
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.482346
+  -- KS Correlation                          -1.813763
+  -- -<V>/<T>                                 1.954729
+  SCF energy (A.U.) = -1579.141811; delta E = -0.678E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.727E-01, 0.000E+00)
+  -- subsp coeff 1      (-0.732E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.147E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.177E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.429E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.674E+00, 0.000E+00)
+ 
+ 
+  SCF iter  44
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.113E+00
+  -- RMSDP                   0.333E-02
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.258991 <Sz> =  0.500
+  -- LUMO  45   -0.058488 <Sz> =  0.500
+  -- gap     0.200503
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2516.796726
+  -- -- Kinetic                            1665.310478
+  -- -- Electron-nuclear attraction       -4182.107204
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    831.528856
+  -- -- Coulomb                             850.062548
+  -- -- HF Exchange                         -18.533692
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.386486
+  -- KS Correlation                          -1.815707
+  -- -<V>/<T>                                 1.955321
+  SCF energy (A.U.) = -1590.905718; delta E = -0.118E+02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.996E-02, 0.000E+00)
+  -- subsp coeff 1      (-0.320E-02, 0.000E+00)
+  -- subsp coeff 2      (-0.385E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.267E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.395E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.380E+00, 0.000E+00)
+ 
+ 
+  SCF iter  45
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.162E-01
+  -- RMSDP                   0.452E-03
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.200508 <Sz> =  0.500
+  -- LUMO  45   -0.047906 <Sz> =  0.500
+  -- gap     0.152602
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2503.707341
+  -- -- Kinetic                            1658.067720
+  -- -- Electron-nuclear attraction       -4161.775061
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    826.319211
+  -- -- Coulomb                             844.792655
+  -- -- HF Exchange                         -18.473444
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.501549
+  -- KS Correlation                          -1.817309
+  -- -<V>/<T>                                 1.954812
+  SCF energy (A.U.) = -1583.142642; delta E =  0.776E+01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.112E-02, 0.000E+00)
+  -- subsp coeff 1      ( 0.472E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.221E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.184E-01, 0.000E+00)
+  -- subsp coeff 4      (-0.546E-02, 0.000E+00)
+  -- subsp coeff 5      ( 0.999E+00, 0.000E+00)
+ 
+ 
+  SCF iter  46
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.149E-01
+  -- RMSDP                   0.254E-03
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.196960 <Sz> = -0.500
+  -- LUMO  45   -0.046668 <Sz> =  0.500
+  -- gap     0.150293
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2503.199724
+  -- -- Kinetic                            1657.857849
+  -- -- Electron-nuclear attraction       -4161.057573
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    826.082870
+  -- -- Coulomb                             844.555768
+  -- -- HF Exchange                         -18.472898
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.499174
+  -- KS Correlation                          -1.817684
+  -- -<V>/<T>                                 1.954768
+  SCF energy (A.U.) = -1582.869367; delta E =  0.273E+00
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.127E-02, 0.000E+00)
+  -- subsp coeff 1      ( 0.479E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.376E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.329E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.144E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.737E+00, 0.000E+00)
+ 
+ 
+  SCF iter  47
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.592E-02
+  -- RMSDP                   0.206E-03
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.189571 <Sz> =  0.500
+  -- LUMO  45   -0.044136 <Sz> =  0.500
+  -- gap     0.145435
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2501.815758
+  -- -- Kinetic                            1657.168584
+  -- -- Electron-nuclear attraction       -4158.984341
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.551944
+  -- -- Coulomb                             844.018721
+  -- -- HF Exchange                         -18.466777
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.512232
+  -- KS Correlation                          -1.818397
+  -- -<V>/<T>                                 1.954659
+  SCF energy (A.U.) = -1582.030097; delta E =  0.839E+00
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.218E-03, 0.000E+00)
+  -- subsp coeff 1      (-0.570E-02, 0.000E+00)
+  -- subsp coeff 2      ( 0.449E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.245E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.395E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.811E+00, 0.000E+00)
+ 
+ 
+  SCF iter  48
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.408E-02
+  -- RMSDP                   0.122E-03
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.190467 <Sz> =  0.500
+  -- LUMO  45   -0.044549 <Sz> =  0.500
+  -- gap     0.145918
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2501.924126
+  -- -- Kinetic                            1657.206616
+  -- -- Electron-nuclear attraction       -4159.130742
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.608003
+  -- -- Coulomb                             844.075913
+  -- -- HF Exchange                         -18.467910
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.513704
+  -- KS Correlation                          -1.818500
+  -- -<V>/<T>                                 1.954669
+  SCF energy (A.U.) = -1582.083981; delta E = -0.539E-01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.378E-04, 0.000E+00)
+  -- subsp coeff 1      ( 0.413E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.956E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.832E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.387E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.585E+00, 0.000E+00)
+ 
+ 
+  SCF iter  49
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.199E-02
+  -- RMSDP                   0.641E-04
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.194331 <Sz> =  0.500
+  -- LUMO  45   -0.045337 <Sz> =  0.500
+  -- gap     0.148994
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.721658
+  -- -- Kinetic                            1657.623345
+  -- -- Electron-nuclear attraction       -4160.345002
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.918721
+  -- -- Coulomb                             844.390583
+  -- -- HF Exchange                         -18.471862
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.505342
+  -- KS Correlation                          -1.818228
+  -- -<V>/<T>                                 1.954718
+  SCF energy (A.U.) = -1582.562162; delta E = -0.478E+00
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.191E-04, 0.000E+00)
+  -- subsp coeff 1      (-0.427E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.516E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.113E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.261E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.845E+00, 0.000E+00)
+ 
+ 
+  SCF iter  50
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.227E-02
+  -- RMSDP                   0.673E-04
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.194119 <Sz> = -0.500
+  -- LUMO  45   -0.045132 <Sz> = -0.500
+  -- gap     0.148987
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.786048
+  -- -- Kinetic                            1657.663202
+  -- -- Electron-nuclear attraction       -4160.449250
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.965275
+  -- -- Coulomb                             844.437908
+  -- -- HF Exchange                         -18.472633
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.506355
+  -- KS Correlation                          -1.818392
+  -- -<V>/<T>                                 1.954706
+  SCF energy (A.U.) = -1582.581174; delta E = -0.190E-01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.893E-05, 0.000E+00)
+  -- subsp coeff 1      (-0.643E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.275E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.272E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.390E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.375E+00, 0.000E+00)
+ 
+ 
+  SCF iter  51
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.667E-03
+  -- RMSDP                   0.204E-04
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.193351 <Sz> = -0.500
+  -- LUMO  45   -0.044963 <Sz> =  0.500
+  -- gap     0.148388
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.584066
+  -- -- Kinetic                            1657.560729
+  -- -- Electron-nuclear attraction       -4160.144795
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.869059
+  -- -- Coulomb                             844.340516
+  -- -- HF Exchange                         -18.471457
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.506505
+  -- KS Correlation                          -1.818350
+  -- -<V>/<T>                                 1.954701
+  SCF energy (A.U.) = -1582.475517; delta E =  0.106E+00
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.333E-05, 0.000E+00)
+  -- subsp coeff 1      ( 0.443E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.894E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.126E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.192E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.800E+00, 0.000E+00)
+ 
+ 
+  SCF iter  52
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.486E-03
+  -- RMSDP                   0.148E-04
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192609 <Sz> = -0.500
+  -- LUMO  45   -0.044850 <Sz> =  0.500
+  -- gap     0.147760
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.428603
+  -- -- Kinetic                            1657.476680
+  -- -- Electron-nuclear attraction       -4159.905283
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.811678
+  -- -- Coulomb                             844.282417
+  -- -- HF Exchange                         -18.470738
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.508613
+  -- KS Correlation                          -1.818422
+  -- -<V>/<T>                                 1.954692
+  SCF energy (A.U.) = -1582.379614; delta E =  0.959E-01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.424E-06, 0.000E+00)
+  -- subsp coeff 1      ( 0.167E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.571E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.101E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.376E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.563E+00, 0.000E+00)
+ 
+ 
+  SCF iter  53
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.612E-04
+  -- RMSDP                   0.219E-05
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192931 <Sz> =  0.500
+  -- LUMO  45   -0.044909 <Sz> = -0.500
+  -- gap     0.148022
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.497552
+  -- -- Kinetic                            1657.512922
+  -- -- Electron-nuclear attraction       -4160.010474
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.838977
+  -- -- Coulomb                             844.310060
+  -- -- HF Exchange                         -18.471083
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507903
+  -- KS Correlation                          -1.818402
+  -- -<V>/<T>                                 1.954696
+  SCF energy (A.U.) = -1582.420536; delta E = -0.409E-01
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.869E-07, 0.000E+00)
+  -- subsp coeff 1      (-0.165E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.293E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.313E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.134E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.822E+00, 0.000E+00)
+ 
+ 
+  SCF iter  54
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.874E-04
+  -- RMSDP                   0.295E-05
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192984 <Sz> = -0.500
+  -- LUMO  45   -0.044915 <Sz> =  0.500
+  -- gap     0.148070
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.511402
+  -- -- Kinetic                            1657.520381
+  -- -- Electron-nuclear attraction       -4160.031783
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.844752
+  -- -- Coulomb                             844.315909
+  -- -- HF Exchange                         -18.471157
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507772
+  -- KS Correlation                          -1.818401
+  -- -<V>/<T>                                 1.954696
+  SCF energy (A.U.) = -1582.428478; delta E = -0.794E-02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.173E-07, 0.000E+00)
+  -- subsp coeff 1      (-0.285E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.134E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.112E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.390E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.885E+00, 0.000E+00)
+ 
+ 
+  SCF iter  55
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.381E-04
+  -- RMSDP                   0.109E-05
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192944 <Sz> =  0.500
+  -- LUMO  45   -0.044905 <Sz> =  0.500
+  -- gap     0.148039
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.504358
+  -- -- Kinetic                            1657.516744
+  -- -- Electron-nuclear attraction       -4160.021102
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.842225
+  -- -- Coulomb                             844.313351
+  -- -- HF Exchange                         -18.471126
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507856
+  -- KS Correlation                          -1.818406
+  -- -<V>/<T>                                 1.954696
+  SCF energy (A.U.) = -1582.424050; delta E =  0.443E-02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.374E-08, 0.000E+00)
+  -- subsp coeff 1      (-0.242E-02, 0.000E+00)
+  -- subsp coeff 2      ( 0.561E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.728E-01, 0.000E+00)
+  -- subsp coeff 4      (-0.676E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.941E+00, 0.000E+00)
+ 
+ 
+  SCF iter  56
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.177E-04
+  -- RMSDP                   0.518E-06
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192915 <Sz> =  0.500
+  -- LUMO  45   -0.044901 <Sz> =  0.500
+  -- gap     0.148014
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.496958
+  -- -- Kinetic                            1657.512787
+  -- -- Electron-nuclear attraction       -4160.009745
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839084
+  -- -- Coulomb                             844.310171
+  -- -- HF Exchange                         -18.471088
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507915
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.419851; delta E =  0.420E-02
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.878E-09, 0.000E+00)
+  -- subsp coeff 1      ( 0.134E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.380E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.423E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.490E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.576E+00, 0.000E+00)
+ 
+ 
+  SCF iter  57
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.588E-05
+  -- RMSDP                   0.188E-06
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192917 <Sz> = -0.500
+  -- LUMO  45   -0.044902 <Sz> =  0.500
+  -- gap     0.148015
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.497851
+  -- -- Kinetic                            1657.513204
+  -- -- Electron-nuclear attraction       -4160.011055
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839607
+  -- -- Coulomb                             844.310701
+  -- -- HF Exchange                         -18.471094
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507926
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420232; delta E = -0.381E-03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.339E-10, 0.000E+00)
+  -- subsp coeff 1      (-0.191E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.616E-02, 0.000E+00)
+  -- subsp coeff 3      ( 0.163E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.236E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.615E+00, 0.000E+00)
+ 
+ 
+  SCF iter  58
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.723E-06
+  -- RMSDP                   0.260E-07
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498805
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012535
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839952
+  -- -- Coulomb                             844.311050
+  -- -- HF Exchange                         -18.471098
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507911
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420826; delta E = -0.594E-03
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.102E-10, 0.000E+00)
+  -- subsp coeff 1      (-0.597E-03, 0.000E+00)
+  -- subsp coeff 2      (-0.147E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.503E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.287E-01, 0.000E+00)
+  -- subsp coeff 5      ( 0.104E+01, 0.000E+00)
+ 
+ 
+  SCF iter  59
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.792E-06
+  -- RMSDP                   0.286E-07
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498919
+  -- -- Kinetic                            1657.513793
+  -- -- Electron-nuclear attraction       -4160.012712
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.840007
+  -- -- Coulomb                             844.311106
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507910
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420884; delta E = -0.581E-04
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.273E-11, 0.000E+00)
+  -- subsp coeff 1      (-0.427E-02, 0.000E+00)
+  -- subsp coeff 2      (-0.986E-02, 0.000E+00)
+  -- subsp coeff 3      ( 0.579E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.500E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.456E+00, 0.000E+00)
+ 
+ 
+  SCF iter  60
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.245E-06
+  -- RMSDP                   0.927E-08
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498830
+  -- -- Kinetic                            1657.513746
+  -- -- Electron-nuclear attraction       -4160.012577
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839969
+  -- -- Coulomb                             844.311068
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507911
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420834; delta E =  0.503E-04
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.632E-12, 0.000E+00)
+  -- subsp coeff 1      ( 0.477E-02, 0.000E+00)
+  -- subsp coeff 2      ( 0.399E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.686E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.236E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.651E+00, 0.000E+00)
+ 
+ 
+  SCF iter  61
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.741E-07
+  -- RMSDP                   0.309E-08
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> =  0.500
+  -- LUMO  45   -0.044903 <Sz> =  0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498801
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012531
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839957
+  -- -- Coulomb                             844.311056
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507911
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420817; delta E =  0.166E-04
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.106E-12, 0.000E+00)
+  -- subsp coeff 1      ( 0.111E-02, 0.000E+00)
+  -- subsp coeff 2      (-0.101E+00, 0.000E+00)
+  -- subsp coeff 3      (-0.233E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.163E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.960E+00, 0.000E+00)
+ 
+ 
+  SCF iter  62
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.522E-07
+  -- RMSDP                   0.212E-08
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> =  0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498809
+  -- -- Kinetic                            1657.513733
+  -- -- Electron-nuclear attraction       -4160.012543
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839962
+  -- -- Coulomb                             844.311060
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420821; delta E = -0.353E-05
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.125E-13, 0.000E+00)
+  -- subsp coeff 1      (-0.665E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.338E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.167E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.514E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.569E+00, 0.000E+00)
+ 
+ 
+  SCF iter  63
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.220E-07
+  -- RMSDP                   0.749E-09
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> =  0.500
+  -- LUMO  45   -0.044903 <Sz> =  0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498805
+  -- -- Kinetic                            1657.513732
+  -- -- Electron-nuclear attraction       -4160.012537
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839960
+  -- -- Coulomb                             844.311058
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420819; delta E =  0.192E-05
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.467E-14, 0.000E+00)
+  -- subsp coeff 1      (-0.123E-01, 0.000E+00)
+  -- subsp coeff 2      (-0.495E-01, 0.000E+00)
+  -- subsp coeff 3      (-0.168E+00, 0.000E+00)
+  -- subsp coeff 4      (-0.837E-02, 0.000E+00)
+  -- subsp coeff 5      ( 0.124E+01, 0.000E+00)
+ 
+ 
+  SCF iter  64
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.125E-07
+  -- RMSDP                   0.542E-09
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498801
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012531
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839959
+  -- -- Coulomb                             844.311057
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420816; delta E =  0.267E-05
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.405E-15, 0.000E+00)
+  -- subsp coeff 1      (-0.660E-02, 0.000E+00)
+  -- subsp coeff 2      (-0.588E-02, 0.000E+00)
+  -- subsp coeff 3      ( 0.211E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.432E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.560E+00, 0.000E+00)
+ 
+ 
+  SCF iter  65
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.102E-07
+  -- RMSDP                   0.324E-09
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> =  0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498802
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012531
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839958
+  -- -- Coulomb                             844.311057
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420816; delta E = -0.242E-06
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.182E-15, 0.000E+00)
+  -- subsp coeff 1      (-0.801E-02, 0.000E+00)
+  -- subsp coeff 2      ( 0.316E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.299E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.387E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.291E+00, 0.000E+00)
+ 
+ 
+  SCF iter  66
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.228E-08
+  -- RMSDP                   0.764E-10
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> =  0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498803
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012533
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839959
+  -- -- Coulomb                             844.311058
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420817; delta E = -0.741E-06
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.467E-16, 0.000E+00)
+  -- subsp coeff 1      ( 0.271E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.971E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.171E+00, 0.000E+00)
+  -- subsp coeff 4      ( 0.151E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.554E+00, 0.000E+00)
+ 
+ 
+  SCF iter  67
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.255E-08
+  -- RMSDP                   0.849E-10
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> =  0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498803
+  -- -- Kinetic                            1657.513731
+  -- -- Electron-nuclear attraction       -4160.012534
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839959
+  -- -- Coulomb                             844.311058
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420817; delta E = -0.261E-06
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.461E-17, 0.000E+00)
+  -- subsp coeff 1      (-0.100E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.473E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.951E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.269E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.599E+00, 0.000E+00)
+ 
+ 
+  SCF iter  68
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.275E-09
+  -- RMSDP                   0.105E-10
+  -- <S**2>                  0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> =  0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498803
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012533
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839959
+  -- -- Coulomb                             844.311058
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420817; delta E =  0.216E-06
+  convergence tolerance not met
+  DIIS information
+  -- DIIS damped  0.100
+  -- predicted residual ( 0.146E-17, 0.000E+00)
+  -- subsp coeff 1      ( 0.215E-01, 0.000E+00)
+  -- subsp coeff 2      ( 0.237E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.339E-01, 0.000E+00)
+  -- subsp coeff 4      ( 0.120E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.801E+00, 0.000E+00)
+ 
+ 
+  SCF iter  69
+  construct scalar 2e Fock matrices
+  complete! stored in mHFcol, mHFexc
+  mKSexc, mKScor
+  diagonalization of Fock matrix
+  complete!  180 eigenvectors found
+  generate and dump AO2MO to .ao2mo file
+  construct new density matrix
+  -- maxDP                   0.745E-10
+  -- RMSDP                   0.372E-11
+  -- <S**2>                 -0.00000
+  -- total alpha electron   22.00000
+  -- total beta electron    22.00000
+  complete! stored in rho_m
+  frontier orbital energy (A.U.)
+  -- HOMO  44   -0.192922 <Sz> = -0.500
+  -- LUMO  45   -0.044903 <Sz> = -0.500
+  -- gap     0.148019
+  calculate energy components (A.U.)
+  -- One-electron (core) energy           -2502.498803
+  -- -- Kinetic                            1657.513730
+  -- -- Electron-nuclear attraction       -4160.012533
+  -- -- pVp-related                           0.000000
+  -- -- pppVp-related                         0.000000
+  -- Two-electron energy                    825.839959
+  -- -- Coulomb                             844.311058
+  -- -- HF Exchange                         -18.471099
+  -- -- pVp-related Coulomb                   0.000000
+  -- -- pVp-related Exchange                  0.000000
+  -- KS Exchange                            -55.507912
+  -- KS Correlation                          -1.818407
+  -- -<V>/<T>                                 1.954695
+  SCF energy (A.U.) = -1582.420817; delta E =  0.232E-07
+  convergence tolerance met, SCF done!
+  SCF succeed!
+  calling DFT-D4 for dispersion correction
+  complete! emd4 =   -0.00334 Eh
+ 
+ 
+  =============================================================
+                           MOL INFO
+  =============================================================
+  Total electronic energy / Eh                  ...-1582.424159
+  Nuclear repulsive energy / Eh                 ...  151.564345
+  One-electron energy / Eh                      ...-2502.498803
+  -- Kinetic energy / Eh                        ... 1657.513730
+  -- Electron-nuclear attraction energy / Eh    ...-4160.012533
+  -- pVp-related energy / Eh                    ...    0.000000
+  -- pppVp-related energy / Eh                  ...    0.000000
+  Two-electron energy / Eh                      ...  825.839959
+  -- HF Coulomb energy / Eh                     ...  844.311058
+  -- HF Exchange energy / Eh                    ...  -18.471099
+  -- pVp-related Coulomb energy / Eh            ...    0.000000
+  -- pVp-related Exchange energy / Eh           ...    0.000000
+  KS Exchange energy / Eh                       ...  -55.507912
+  KS Correlation energy / Eh                    ...   -1.818407
+  Dispersion energy (DFT-D4) / Eh               ...   -0.003342
+  Virial ratio                                  ...    1.954695
+  Total Alpha electron                          ...   22.000000
+  Total Beta electron                           ...   22.000000
+  <Sz*(Sz+1)> / hbar**2                         ...   -0.000000
+  <S**2> / hbar**2                              ...   -0.000000
+  -- Note: there is little theoretical justification
+  -- to calculate <S**2> in a DFT calculation.
+  Time Reversal Symmetry (TRS) deviation parameter
+  -- kappa     = 0.44647E-13
+  -- ref kappa = 0.00000E+00
+  -- SOC kappa = 0.44647E-13
+  =============================================================
+ 
+ 
+ 
+  =============================================================
+                   Rotation Group Integration
+  =============================================================
+  basical S_mult = 1, S_z = 0/2
+  |S^0| (basical configuration)                 ... 0.10000E+01
+  |T^1|                                         ... 0.24219E-16
+  |T^0|                                         ... 0.60482E-15
+  |T^-1|                                        ... 0.23787E-16
+  =============================================================
+ 
+ 
+ 
+  =============================================================
+                       CANONICAL ORB INFO
+  =============================================================
+  HOMO-043   energy / Eh                       ...  -297.905199
+  #001       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0     Ni #01    (-0.990629, 0.000000)
+  HOMO-042   energy / Eh                       ...  -297.905199
+  #002       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0     Ni #01    (-0.990629, 0.000000)
+  HOMO-041   energy / Eh                       ...   -35.419148
+  #003       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0     Ni #01    (-0.351922, 0.000000)
+             --   A #02 L=0     Ni #01    ( 1.038227, 0.000000)
+  HOMO-040   energy / Eh                       ...   -35.419148
+  #004       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0     Ni #01    (-0.351922, 0.000000)
+             --   B #02 L=0     Ni #01    ( 1.038227, 0.000000)
+  HOMO-039   energy / Eh                       ...   -31.109633
+  #005       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #09 L=1     Ni #01    (-0.112758, 0.000000)
+             --   B #10 L=1     Ni #01    (-0.782386, 0.000000)
+             --   B #11 L=1     Ni #01    ( 0.523285, 0.000000)
+  HOMO-038   energy / Eh                       ...   -31.109633
+  #006       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #09 L=1     Ni #01    (-0.112758, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.782386, 0.000000)
+             --   A #11 L=1     Ni #01    ( 0.523285, 0.000000)
+  HOMO-037   energy / Eh                       ...   -31.106245
+  #007       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #09 L=1     Ni #01    (-0.938650, 0.000000)
+             --   A #10 L=1     Ni #01    ( 0.128582, 0.000000)
+  HOMO-036   energy / Eh                       ...   -31.106245
+  #008       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #09 L=1     Ni #01    (-0.938650, 0.000000)
+             --   B #10 L=1     Ni #01    ( 0.128582, 0.000000)
+  HOMO-035   energy / Eh                       ...   -31.095506
+  #009       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #10 L=1     Ni #01    ( 0.518917, 0.000000)
+             --   B #11 L=1     Ni #01    ( 0.789357, 0.000000)
+  HOMO-034   energy / Eh                       ...   -31.095506
+  #010       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #10 L=1     Ni #01    ( 0.518917, 0.000000)
+             --   A #11 L=1     Ni #01    ( 0.789357, 0.000000)
+  HOMO-033   energy / Eh                       ...   -10.217149
+  #011       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0      C #02    ( 0.840162, 0.000000)
+             --   A #01 L=0      C #03    ( 0.520832, 0.000000)
+  HOMO-032   energy / Eh                       ...   -10.217149
+  #012       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0      C #02    ( 0.840162, 0.000000)
+             --   B #01 L=0      C #03    ( 0.520832, 0.000000)
+  HOMO-031   energy / Eh                       ...   -10.216819
+  #013       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0      C #02    ( 0.520190, 0.000000)
+             --   B #01 L=0      C #03    (-0.839760, 0.000000)
+  HOMO-030   energy / Eh                       ...   -10.216819
+  #014       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0      C #02    ( 0.520190, 0.000000)
+             --   A #01 L=0      C #03    (-0.839760, 0.000000)
+  HOMO-029   energy / Eh                       ...    -3.926694
+  #015       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0     Ni #01    ( 0.136864, 0.000000)
+             --   A #02 L=0     Ni #01    (-0.486736, 0.000000)
+             --   A #03 L=0     Ni #01    ( 1.069226, 0.000000)
+             --   A #04 L=0     Ni #01    ( 0.107722, 0.000000)
+  HOMO-028   energy / Eh                       ...    -3.926694
+  #016       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0     Ni #01    (-0.136864, 0.000000)
+             --   B #02 L=0     Ni #01    ( 0.486736, 0.000000)
+             --   B #03 L=0     Ni #01    (-1.069226, 0.000000)
+             --   B #04 L=0     Ni #01    (-0.107722, 0.000000)
+  HOMO-027   energy / Eh                       ...    -2.560945
+  #017       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #07 L=1     Ni #01    (-0.118101, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.451827, 0.000000)
+             --   A #11 L=1     Ni #01    ( 0.302322, 0.000000)
+             --   A #15 L=1     Ni #01    ( 0.133624, 0.000000)
+             --   A #16 L=1     Ni #01    ( 0.881840, 0.000000)
+             --   A #17 L=1     Ni #01    (-0.590048, 0.000000)
+  HOMO-026   energy / Eh                       ...    -2.560945
+  #018       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #07 L=1     Ni #01    (-0.118101, 0.000000)
+             --   B #10 L=1     Ni #01    (-0.451827, 0.000000)
+             --   B #11 L=1     Ni #01    ( 0.302322, 0.000000)
+             --   B #15 L=1     Ni #01    ( 0.133624, 0.000000)
+             --   B #16 L=1     Ni #01    ( 0.881840, 0.000000)
+             --   B #17 L=1     Ni #01    (-0.590048, 0.000000)
+  HOMO-025   energy / Eh                       ...    -2.546805
+  #019       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #06 L=1     Ni #01    (-0.142333, 0.000000)
+             --   A #09 L=1     Ni #01    (-0.543655, 0.000000)
+             --   A #15 L=1     Ni #01    ( 1.059849, 0.000000)
+             --   A #16 L=1     Ni #01    (-0.150776, 0.000000)
+  HOMO-024   energy / Eh                       ...    -2.546805
+  #020       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #06 L=1     Ni #01    (-0.142333, 0.000000)
+             --   B #09 L=1     Ni #01    (-0.543655, 0.000000)
+             --   B #15 L=1     Ni #01    ( 1.059849, 0.000000)
+             --   B #16 L=1     Ni #01    (-0.150776, 0.000000)
+  HOMO-023   energy / Eh                       ...    -2.526765
+  #021       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #08 L=1     Ni #01    (-0.119518, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.300715, 0.000000)
+             --   A #11 L=1     Ni #01    (-0.457681, 0.000000)
+             --   A #16 L=1     Ni #01    ( 0.586770, 0.000000)
+             --   A #17 L=1     Ni #01    ( 0.893049, 0.000000)
+  HOMO-022   energy / Eh                       ...    -2.526765
+  #022       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #08 L=1     Ni #01    (-0.119518, 0.000000)
+             --   B #10 L=1     Ni #01    (-0.300715, 0.000000)
+             --   B #11 L=1     Ni #01    (-0.457681, 0.000000)
+             --   B #16 L=1     Ni #01    ( 0.586770, 0.000000)
+             --   B #17 L=1     Ni #01    ( 0.893049, 0.000000)
+  HOMO-021   energy / Eh                       ...    -0.754809
+  #023       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #04 L=0     Ni #01    ( 0.105862, 0.000000)
+             --   B #01 L=0      C #02    (-0.194855, 0.000000)
+             --   B #02 L=0      C #02    ( 0.380543, 0.000000)
+             --   B #04 L=1      C #02    (-0.105867, 0.000000)
+             --   B #01 L=0      C #03    (-0.194967, 0.000000)
+             --   B #02 L=0      C #03    ( 0.380752, 0.000000)
+             --   B #04 L=1      C #03    ( 0.105030, 0.000000)
+             --   B #01 L=0      H #04    ( 0.102423, 0.000000)
+             --   B #01 L=0      H #05    ( 0.102444, 0.000000)
+             --   B #01 L=0      H #06    ( 0.102429, 0.000000)
+             --   B #01 L=0      H #07    ( 0.102557, 0.000000)
+  HOMO-020   energy / Eh                       ...    -0.754809
+  #024       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #04 L=0     Ni #01    ( 0.105862, 0.000000)
+             --   A #01 L=0      C #02    (-0.194855, 0.000000)
+             --   A #02 L=0      C #02    ( 0.380543, 0.000000)
+             --   A #04 L=1      C #02    (-0.105867, 0.000000)
+             --   A #01 L=0      C #03    (-0.194967, 0.000000)
+             --   A #02 L=0      C #03    ( 0.380752, 0.000000)
+             --   A #04 L=1      C #03    ( 0.105030, 0.000000)
+             --   A #01 L=0      H #04    ( 0.102423, 0.000000)
+             --   A #01 L=0      H #05    ( 0.102444, 0.000000)
+             --   A #01 L=0      H #06    ( 0.102429, 0.000000)
+             --   A #01 L=0      H #07    ( 0.102557, 0.000000)
+  HOMO-019   energy / Eh                       ...    -0.579254
+  #025       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0      C #02    ( 0.160797, 0.000000)
+             --   B #02 L=0      C #02    (-0.333461, 0.000000)
+             --   B #04 L=1      C #02    (-0.141446, 0.000000)
+             --   B #01 L=0      C #03    (-0.160690, 0.000000)
+             --   B #02 L=0      C #03    ( 0.333284, 0.000000)
+             --   B #04 L=1      C #03    (-0.136979, 0.000000)
+             --   B #01 L=0      H #04    (-0.182422, 0.000000)
+             --   B #01 L=0      H #05    (-0.182477, 0.000000)
+             --   B #01 L=0      H #06    ( 0.182357, 0.000000)
+             --   B #01 L=0      H #07    ( 0.182483, 0.000000)
+  HOMO-018   energy / Eh                       ...    -0.579254
+  #026       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0      C #02    ( 0.160797, 0.000000)
+             --   A #02 L=0      C #02    (-0.333461, 0.000000)
+             --   A #04 L=1      C #02    (-0.141446, 0.000000)
+             --   A #01 L=0      C #03    (-0.160690, 0.000000)
+             --   A #02 L=0      C #03    ( 0.333284, 0.000000)
+             --   A #04 L=1      C #03    (-0.136979, 0.000000)
+             --   A #01 L=0      H #04    (-0.182422, 0.000000)
+             --   A #01 L=0      H #05    (-0.182477, 0.000000)
+             --   A #01 L=0      H #06    ( 0.182357, 0.000000)
+             --   A #01 L=0      H #07    ( 0.182483, 0.000000)
+  HOMO-017   energy / Eh                       ...    -0.454395
+  #027       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #05 L=1      C #02    ( 0.172122, 0.000000)
+             --   A #06 L=1      C #02    ( 0.262883, 0.000000)
+             --   A #09 L=1      C #02    ( 0.105245, 0.000000)
+             --   A #05 L=1      C #03    ( 0.171365, 0.000000)
+             --   A #06 L=1      C #03    ( 0.263172, 0.000000)
+             --   A #09 L=1      C #03    ( 0.105399, 0.000000)
+             --   A #01 L=0      H #04    ( 0.192726, 0.000000)
+             --   A #01 L=0      H #05    (-0.193007, 0.000000)
+             --   A #01 L=0      H #06    (-0.192894, 0.000000)
+             --   A #01 L=0      H #07    ( 0.192447, 0.000000)
+  HOMO-016   energy / Eh                       ...    -0.454395
+  #028       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #05 L=1      C #02    ( 0.172122, 0.000000)
+             --   B #06 L=1      C #02    ( 0.262883, 0.000000)
+             --   B #09 L=1      C #02    ( 0.105245, 0.000000)
+             --   B #05 L=1      C #03    ( 0.171365, 0.000000)
+             --   B #06 L=1      C #03    ( 0.263172, 0.000000)
+             --   B #09 L=1      C #03    ( 0.105399, 0.000000)
+             --   B #01 L=0      H #04    ( 0.192726, 0.000000)
+             --   B #01 L=0      H #05    (-0.193007, 0.000000)
+             --   B #01 L=0      H #06    (-0.192894, 0.000000)
+             --   B #01 L=0      H #07    ( 0.192447, 0.000000)
+  HOMO-015   energy / Eh                       ...    -0.429663
+  #029       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #04 L=0     Ni #01    ( 0.100757, 0.000000)
+             --   B #21 L=2     Ni #01    (-0.107820, 0.000000)
+             --   B #25 L=2     Ni #01    (-0.137799, 0.000000)
+             --   B #04 L=1      C #02    (-0.353929, 0.000000)
+             --   B #07 L=1      C #02    (-0.117612, 0.000000)
+             --   B #04 L=1      C #03    ( 0.315101, 0.000000)
+             --   B #05 L=1      C #03    (-0.174411, 0.000000)
+             --   B #07 L=1      C #03    ( 0.106132, 0.000000)
+             --   B #01 L=0      H #04    (-0.161717, 0.000000)
+             --   B #01 L=0      H #05    (-0.160367, 0.000000)
+             --   B #01 L=0      H #06    (-0.161355, 0.000000)
+             --   B #01 L=0      H #07    (-0.160805, 0.000000)
+  HOMO-014   energy / Eh                       ...    -0.429663
+  #030       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #04 L=0     Ni #01    ( 0.100757, 0.000000)
+             --   A #21 L=2     Ni #01    (-0.107820, 0.000000)
+             --   A #25 L=2     Ni #01    (-0.137799, 0.000000)
+             --   A #04 L=1      C #02    (-0.353929, 0.000000)
+             --   A #07 L=1      C #02    (-0.117612, 0.000000)
+             --   A #04 L=1      C #03    ( 0.315101, 0.000000)
+             --   A #05 L=1      C #03    (-0.174411, 0.000000)
+             --   A #07 L=1      C #03    ( 0.106132, 0.000000)
+             --   A #01 L=0      H #04    (-0.161717, 0.000000)
+             --   A #01 L=0      H #05    (-0.160367, 0.000000)
+             --   A #01 L=0      H #06    (-0.161355, 0.000000)
+             --   A #01 L=0      H #07    (-0.160805, 0.000000)
+  HOMO-013   energy / Eh                       ...    -0.349240
+  #031       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #05 L=1      C #02    ( 0.166893, 0.000000)
+             --   B #06 L=1      C #02    ( 0.252293, 0.000000)
+             --   B #05 L=1      C #03    (-0.164275, 0.000000)
+             --   B #06 L=1      C #03    (-0.254041, 0.000000)
+             --   B #01 L=0      H #04    ( 0.251057, 0.000000)
+             --   B #02 L=0      H #04    ( 0.128642, 0.000000)
+             --   B #01 L=0      H #05    (-0.252050, 0.000000)
+             --   B #02 L=0      H #05    (-0.129055, 0.000000)
+             --   B #01 L=0      H #06    ( 0.251078, 0.000000)
+             --   B #02 L=0      H #06    ( 0.128641, 0.000000)
+             --   B #01 L=0      H #07    (-0.251829, 0.000000)
+             --   B #02 L=0      H #07    (-0.128951, 0.000000)
+  HOMO-012   energy / Eh                       ...    -0.349240
+  #032       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #05 L=1      C #02    ( 0.166893, 0.000000)
+             --   A #06 L=1      C #02    ( 0.252293, 0.000000)
+             --   A #05 L=1      C #03    (-0.164275, 0.000000)
+             --   A #06 L=1      C #03    (-0.254041, 0.000000)
+             --   A #01 L=0      H #04    ( 0.251057, 0.000000)
+             --   A #02 L=0      H #04    ( 0.128642, 0.000000)
+             --   A #01 L=0      H #05    (-0.252050, 0.000000)
+             --   A #02 L=0      H #05    (-0.129055, 0.000000)
+             --   A #01 L=0      H #06    ( 0.251078, 0.000000)
+             --   A #02 L=0      H #06    ( 0.128641, 0.000000)
+             --   A #01 L=0      H #07    (-0.251829, 0.000000)
+             --   A #02 L=0      H #07    (-0.128951, 0.000000)
+  HOMO-011   energy / Eh                       ...    -0.299094
+  #033       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #03 L=0     Ni #01    ( 0.196471, 0.000000)
+             --   B #04 L=0     Ni #01    (-0.213645, 0.000000)
+             --   B #25 L=2     Ni #01    ( 0.174559, 0.000000)
+             --   B #04 L=1      C #02    (-0.161056, 0.000000)
+             --   B #05 L=1      C #02    ( 0.297020, 0.000000)
+             --   B #06 L=1      C #02    (-0.183255, 0.000000)
+             --   B #08 L=1      C #02    ( 0.174908, 0.000000)
+             --   B #09 L=1      C #02    (-0.107468, 0.000000)
+             --   B #04 L=1      C #03    ( 0.243865, 0.000000)
+             --   B #05 L=1      C #03    ( 0.242284, 0.000000)
+             --   B #06 L=1      C #03    (-0.176105, 0.000000)
+             --   B #07 L=1      C #03    ( 0.144482, 0.000000)
+             --   B #08 L=1      C #03    ( 0.142149, 0.000000)
+             --   B #09 L=1      C #03    (-0.103695, 0.000000)
+  HOMO-010   energy / Eh                       ...    -0.299094
+  #034       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #03 L=0     Ni #01    ( 0.196471, 0.000000)
+             --   A #04 L=0     Ni #01    (-0.213645, 0.000000)
+             --   A #25 L=2     Ni #01    ( 0.174559, 0.000000)
+             --   A #04 L=1      C #02    (-0.161056, 0.000000)
+             --   A #05 L=1      C #02    ( 0.297020, 0.000000)
+             --   A #06 L=1      C #02    (-0.183255, 0.000000)
+             --   A #08 L=1      C #02    ( 0.174908, 0.000000)
+             --   A #09 L=1      C #02    (-0.107468, 0.000000)
+             --   A #04 L=1      C #03    ( 0.243865, 0.000000)
+             --   A #05 L=1      C #03    ( 0.242284, 0.000000)
+             --   A #06 L=1      C #03    (-0.176105, 0.000000)
+             --   A #07 L=1      C #03    ( 0.144482, 0.000000)
+             --   A #08 L=1      C #03    ( 0.142149, 0.000000)
+             --   A #09 L=1      C #03    (-0.103695, 0.000000)
+  HOMO-009   energy / Eh                       ...    -0.243234
+  #035       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #21 L=2     Ni #01    (-0.138484, 0.000000)
+             --   B #22 L=2     Ni #01    (-0.493426, 0.000000)
+             --   B #23 L=2     Ni #01    ( 0.337391, 0.000000)
+             --   B #27 L=2     Ni #01    (-0.222631, 0.000000)
+             --   B #28 L=2     Ni #01    ( 0.152223, 0.000000)
+             --   B #03 L=0      C #02    (-0.175912, 0.000000)
+             --   B #05 L=1      C #02    ( 0.188909, 0.000000)
+             --   B #06 L=1      C #02    (-0.128648, 0.000000)
+             --   B #08 L=1      C #02    ( 0.133587, 0.000000)
+             --   B #03 L=0      C #03    ( 0.175818, 0.000000)
+             --   B #05 L=1      C #03    (-0.196004, 0.000000)
+             --   B #06 L=1      C #03    ( 0.127302, 0.000000)
+             --   B #08 L=1      C #03    (-0.150065, 0.000000)
+  HOMO-008   energy / Eh                       ...    -0.243234
+  #036       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #21 L=2     Ni #01    (-0.138484, 0.000000)
+             --   A #22 L=2     Ni #01    (-0.493426, 0.000000)
+             --   A #23 L=2     Ni #01    ( 0.337391, 0.000000)
+             --   A #27 L=2     Ni #01    (-0.222631, 0.000000)
+             --   A #28 L=2     Ni #01    ( 0.152223, 0.000000)
+             --   A #03 L=0      C #02    (-0.175912, 0.000000)
+             --   A #05 L=1      C #02    ( 0.188909, 0.000000)
+             --   A #06 L=1      C #02    (-0.128648, 0.000000)
+             --   A #08 L=1      C #02    ( 0.133587, 0.000000)
+             --   A #03 L=0      C #03    ( 0.175818, 0.000000)
+             --   A #05 L=1      C #03    (-0.196004, 0.000000)
+             --   A #06 L=1      C #03    ( 0.127302, 0.000000)
+             --   A #08 L=1      C #03    (-0.150065, 0.000000)
+  HOMO-007   energy / Eh                       ...    -0.218046
+  #037       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #21 L=2     Ni #01    (-0.706677, 0.000000)
+             --   B #22 L=2     Ni #01    ( 0.198377, 0.000000)
+             --   B #25 L=2     Ni #01    (-0.205230, 0.000000)
+             --   B #26 L=2     Ni #01    (-0.297542, 0.000000)
+             --   B #31 L=2     Ni #01    (-0.123366, 0.000000)
+  HOMO-006   energy / Eh                       ...    -0.218046
+  #038       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #21 L=2     Ni #01    (-0.706677, 0.000000)
+             --   A #22 L=2     Ni #01    ( 0.198377, 0.000000)
+             --   A #25 L=2     Ni #01    (-0.205230, 0.000000)
+             --   A #26 L=2     Ni #01    (-0.297542, 0.000000)
+             --   A #31 L=2     Ni #01    (-0.123366, 0.000000)
+  HOMO-005   energy / Eh                       ...    -0.214818
+  #039       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #24 L=2     Ni #01    ( 0.704219, 0.000000)
+             --   A #25 L=2     Ni #01    ( 0.297002, 0.000000)
+             --   A #29 L=2     Ni #01    ( 0.301218, 0.000000)
+             --   A #30 L=2     Ni #01    ( 0.127029, 0.000000)
+             --   A #34 L=2     Ni #01    ( 0.129485, 0.000000)
+  HOMO-004   energy / Eh                       ...    -0.214818
+  #040       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #24 L=2     Ni #01    ( 0.704219, 0.000000)
+             --   B #25 L=2     Ni #01    ( 0.297002, 0.000000)
+             --   B #29 L=2     Ni #01    ( 0.301218, 0.000000)
+             --   B #30 L=2     Ni #01    ( 0.127029, 0.000000)
+             --   B #34 L=2     Ni #01    ( 0.129485, 0.000000)
+  HOMO-003   energy / Eh                       ...    -0.205723
+  #041       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #22 L=2     Ni #01    ( 0.416706, 0.000000)
+             --   A #23 L=2     Ni #01    ( 0.645746, 0.000000)
+             --   A #27 L=2     Ni #01    ( 0.173975, 0.000000)
+             --   A #28 L=2     Ni #01    ( 0.269601, 0.000000)
+             --   A #33 L=2     Ni #01    ( 0.110599, 0.000000)
+  HOMO-002   energy / Eh                       ...    -0.205723
+  #042       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #22 L=2     Ni #01    ( 0.416706, 0.000000)
+             --   B #23 L=2     Ni #01    ( 0.645746, 0.000000)
+             --   B #27 L=2     Ni #01    ( 0.173975, 0.000000)
+             --   B #28 L=2     Ni #01    ( 0.269601, 0.000000)
+             --   B #33 L=2     Ni #01    ( 0.110599, 0.000000)
+  HOMO-001   energy / Eh                       ...    -0.192922
+  #043       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #03 L=0     Ni #01    ( 0.154540, 0.000000)
+             --   A #04 L=0     Ni #01    (-0.112047, 0.000000)
+             --   A #05 L=0     Ni #01    (-0.162593, 0.000000)
+             --   A #21 L=2     Ni #01    ( 0.261167, 0.000000)
+             --   A #24 L=2     Ni #01    ( 0.259826, 0.000000)
+             --   A #25 L=2     Ni #01    (-0.606549, 0.000000)
+             --   A #26 L=2     Ni #01    ( 0.106057, 0.000000)
+             --   A #29 L=2     Ni #01    ( 0.111926, 0.000000)
+             --   A #30 L=2     Ni #01    (-0.261498, 0.000000)
+             --   A #35 L=2     Ni #01    (-0.130284, 0.000000)
+  HOMO       energy / Eh                       ...    -0.192922
+  #044       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #03 L=0     Ni #01    ( 0.154540, 0.000000)
+             --   B #04 L=0     Ni #01    (-0.112047, 0.000000)
+             --   B #05 L=0     Ni #01    (-0.162593, 0.000000)
+             --   B #21 L=2     Ni #01    ( 0.261167, 0.000000)
+             --   B #24 L=2     Ni #01    ( 0.259826, 0.000000)
+             --   B #25 L=2     Ni #01    (-0.606549, 0.000000)
+             --   B #26 L=2     Ni #01    ( 0.106057, 0.000000)
+             --   B #29 L=2     Ni #01    ( 0.111926, 0.000000)
+             --   B #30 L=2     Ni #01    (-0.261498, 0.000000)
+             --   B #35 L=2     Ni #01    (-0.130284, 0.000000)
+  LUMO       energy / Eh                       ...    -0.044903
+  #045       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #03 L=0     Ni #01    (-0.190892, 0.000000)
+             --   B #04 L=0     Ni #01    ( 0.224802, 0.000000)
+             --   B #05 L=0     Ni #01    ( 1.014465, 0.000000)
+             --   B #16 L=1     Ni #01    ( 0.120268, 0.000000)
+             --   B #19 L=1     Ni #01    (-0.150273, 0.000000)
+             --   B #20 L=1     Ni #01    ( 0.100836, 0.000000)
+             --   B #25 L=2     Ni #01    (-0.171626, 0.000000)
+             --   B #35 L=2     Ni #01    (-0.141973, 0.000000)
+             --   B #03 L=0      C #02    (-0.165537, 0.000000)
+             --   B #05 L=1      C #02    ( 0.109965, 0.000000)
+             --   B #08 L=1      C #02    ( 0.145887, 0.000000)
+             --   B #03 L=0      C #03    (-0.164777, 0.000000)
+             --   B #08 L=1      C #03    ( 0.145487, 0.000000)
+             --   B #02 L=0      H #04    (-0.101516, 0.000000)
+             --   B #02 L=0      H #05    (-0.101507, 0.000000)
+             --   B #02 L=0      H #06    (-0.101805, 0.000000)
+             --   B #02 L=0      H #07    (-0.102151, 0.000000)
+  LUMO+001   energy / Eh                       ...    -0.044903
+  #046       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #03 L=0     Ni #01    (-0.190892, 0.000000)
+             --   A #04 L=0     Ni #01    ( 0.224802, 0.000000)
+             --   A #05 L=0     Ni #01    ( 1.014465, 0.000000)
+             --   A #16 L=1     Ni #01    ( 0.120268, 0.000000)
+             --   A #19 L=1     Ni #01    (-0.150273, 0.000000)
+             --   A #20 L=1     Ni #01    ( 0.100836, 0.000000)
+             --   A #25 L=2     Ni #01    (-0.171626, 0.000000)
+             --   A #35 L=2     Ni #01    (-0.141973, 0.000000)
+             --   A #03 L=0      C #02    (-0.165537, 0.000000)
+             --   A #05 L=1      C #02    ( 0.109965, 0.000000)
+             --   A #08 L=1      C #02    ( 0.145887, 0.000000)
+             --   A #03 L=0      C #03    (-0.164777, 0.000000)
+             --   A #08 L=1      C #03    ( 0.145487, 0.000000)
+             --   A #02 L=0      H #04    (-0.101516, 0.000000)
+             --   A #02 L=0      H #05    (-0.101507, 0.000000)
+             --   A #02 L=0      H #06    (-0.101805, 0.000000)
+             --   A #02 L=0      H #07    (-0.102151, 0.000000)
+  LUMO+002   energy / Eh                       ...    -0.011228
+  #047       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #15 L=1     Ni #01    ( 0.176741, 0.000000)
+             --   B #18 L=1     Ni #01    (-0.229699, 0.000000)
+             --   B #22 L=2     Ni #01    ( 0.329140, 0.000000)
+             --   B #23 L=2     Ni #01    (-0.224757, 0.000000)
+             --   B #27 L=2     Ni #01    ( 0.139114, 0.000000)
+             --   B #32 L=2     Ni #01    ( 0.218414, 0.000000)
+             --   B #33 L=2     Ni #01    (-0.149038, 0.000000)
+             --   B #03 L=0      C #02    (-0.364901, 0.000000)
+             --   B #05 L=1      C #02    ( 0.223817, 0.000000)
+             --   B #06 L=1      C #02    (-0.147161, 0.000000)
+             --   B #08 L=1      C #02    ( 0.411857, 0.000000)
+             --   B #09 L=1      C #02    (-0.272441, 0.000000)
+             --   B #03 L=0      C #03    ( 0.369838, 0.000000)
+             --   B #05 L=1      C #03    (-0.215933, 0.000000)
+             --   B #06 L=1      C #03    ( 0.145779, 0.000000)
+             --   B #07 L=1      C #03    (-0.101292, 0.000000)
+             --   B #08 L=1      C #03    (-0.403809, 0.000000)
+             --   B #09 L=1      C #03    ( 0.271256, 0.000000)
+  LUMO+003   energy / Eh                       ...    -0.011228
+  #048       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #15 L=1     Ni #01    ( 0.176741, 0.000000)
+             --   A #18 L=1     Ni #01    (-0.229699, 0.000000)
+             --   A #22 L=2     Ni #01    ( 0.329140, 0.000000)
+             --   A #23 L=2     Ni #01    (-0.224757, 0.000000)
+             --   A #27 L=2     Ni #01    ( 0.139114, 0.000000)
+             --   A #32 L=2     Ni #01    ( 0.218414, 0.000000)
+             --   A #33 L=2     Ni #01    (-0.149038, 0.000000)
+             --   A #03 L=0      C #02    (-0.364901, 0.000000)
+             --   A #05 L=1      C #02    ( 0.223817, 0.000000)
+             --   A #06 L=1      C #02    (-0.147161, 0.000000)
+             --   A #08 L=1      C #02    ( 0.411857, 0.000000)
+             --   A #09 L=1      C #02    (-0.272441, 0.000000)
+             --   A #03 L=0      C #03    ( 0.369838, 0.000000)
+             --   A #05 L=1      C #03    (-0.215933, 0.000000)
+             --   A #06 L=1      C #03    ( 0.145779, 0.000000)
+             --   A #07 L=1      C #03    (-0.101292, 0.000000)
+             --   A #08 L=1      C #03    (-0.403809, 0.000000)
+             --   A #09 L=1      C #03    ( 0.271256, 0.000000)
+  LUMO+004   energy / Eh                       ...     0.100225
+  #049       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #03 L=0     Ni #01    ( 0.161505, 0.000000)
+             --   B #04 L=0     Ni #01    (-0.616878, 0.000000)
+             --   B #05 L=0     Ni #01    ( 0.545033, 0.000000)
+             --   B #19 L=1     Ni #01    ( 0.239773, 0.000000)
+             --   B #20 L=1     Ni #01    (-0.155933, 0.000000)
+             --   B #02 L=0      C #02    (-0.116576, 0.000000)
+             --   B #03 L=0      C #02    (-1.260088, 0.000000)
+             --   B #04 L=1      C #02    (-0.136367, 0.000000)
+             --   B #07 L=1      C #02    (-0.437766, 0.000000)
+             --   B #02 L=0      C #03    (-0.116506, 0.000000)
+             --   B #03 L=0      C #03    (-1.255963, 0.000000)
+             --   B #04 L=1      C #03    ( 0.116053, 0.000000)
+             --   B #07 L=1      C #03    ( 0.398054, 0.000000)
+             --   B #08 L=1      C #03    (-0.196075, 0.000000)
+             --   B #02 L=0      H #04    ( 0.829215, 0.000000)
+             --   B #02 L=0      H #05    ( 0.830036, 0.000000)
+             --   B #02 L=0      H #06    ( 0.829975, 0.000000)
+             --   B #02 L=0      H #07    ( 0.828550, 0.000000)
+  =============================================================
+ 
+  dumping AO2MO to Ni0-C2H4.molden.d
+  -- Note: for scalar MOs, only realpart will be generated.
+  AO2MO is like:
+  MO 1 2 3      ...       fbdm         ...       2*fbdm
+  AO1                       |                       |
+  AO2                       |                       |
+    |                       |                       |
+  ...        part1          |         part2         |
+    |    alpha real&img     |    alpha real&img     |
+    |                       |                       |
+    |                       |                       |
+  sbdm______________________|_______________________|
+    |                       |                       |
+    |                       |                       |
+    |                       |                       |
+  ...         part1         |         part2         |
+    |     beta real&img     |     beta real&img     |
+    |                       |                       |
+    |                       |                       |
+  2*sbdm____________________|_______________________|
+  complete!
+exit module SCF
+ 
+----------<NORMAL TERMINATION>----------
+Job  CPU  time:   03 h 41 min 23 s
+Job clock time:   00 h 09 min 20 s

@@ -19,7 +19,7 @@ module Representation
 !> transform states from basis repre to real space repre (to generate .mog file)
 !!
 !! grad=0:grid =1:gradient =2:Laplacian =a:alpha =b:beta
-  subroutine mogrid_becke(is2c, arr, title)
+  subroutine MOgrid_becke(is2c, arr, title)
     implicit none
     logical,intent(in)          :: is2c       ! true: 2c, false: 1c
     complex(dp),intent(in)      :: arr(:)     ! input array (basis repre)
@@ -133,7 +133,7 @@ module Representation
       if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
       beta2 should be in range [0,1)")
       gamma = (1.0_dp-beta2)**(-0.5_dp)
-      call mol_Lorentztrafo()
+      call Mol_Lorentztrafo()
       if (beta2 > 1E-6) then
       write(*,*)
       write(*,*) "------------------------------------------------------------"
@@ -152,7 +152,7 @@ module Representation
       !$omp do schedule(static)
       do i = 1, nr(ii)
         if (is2c) then
-          call grid_Lorentztrafo_mo(&
+          call Grid_Lorentztrafo_MO(&
           arr,nl(ii),pos3(1:nl(ii),:,i),trafopos3(1:nl(ii),:,i),&
           datsa((i-1)*nl(ii)+1:i*nl(ii)),datsb((i-1)*nl(ii)+1:i*nl(ii)))
         else
@@ -201,11 +201,11 @@ module Representation
       close(ychannel)
       close(zchannel)
     end if
-  end subroutine mogrid_becke
+  end subroutine MOgrid_becke
 
 !------------------------------------------------------------
 !> generate Gaussian cube file for input MO
-  subroutine dump_cube(is2c, arr, title, spin)
+  subroutine Dump_cube(is2c, arr, title, spin)
     implicit none
     logical,intent(in)          :: is2c
     complex(dp),intent(in)      :: arr(2*cbdm)
@@ -345,7 +345,7 @@ module Representation
     close(99)
     if (is2c) close(100)
     deallocate(dats, points, datsa, datsb)
-  end subroutine dump_cube
+  end subroutine Dump_cube
 
 !------------------------------------------------------------
 !> transform states from basis repre to real space repre (Becke's fuzzy grid)
@@ -353,12 +353,12 @@ module Representation
 !! directly used to generate xc energies for xc functional
 !!
 !! returns only the integral value
-  subroutine basis2grid_Becke(rho_m, ex, ec, Fockx, Fockc)
+  subroutine Basis2grid_Becke(rho_m, ex, ec, Fockx, Fockc)
     implicit none
     real(dp),intent(out)   :: ex         ! exchange functional
     real(dp), optional     :: ec         ! correlation functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)! Cartesian density matrix
-    integer(8)             :: i          ! loop variables for basis2grid_Becke
+    integer(8)             :: i          ! loop variables for Basis2grid_Becke
     integer(8)             :: nr, nl     ! number of grid points
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos3w1
     real(dp)               :: pos3w1(434,4,100)
@@ -410,7 +410,7 @@ module Representation
     if (present(ec)) ec = ec + ecm
     !$omp end critical
     !$omp end parallel
-  end subroutine basis2grid_Becke
+  end subroutine Basis2grid_Becke
 
 !------------------------------------------------------------
 !> assign radial grid points (Gauss weight) using 2nd Chebyshev method
@@ -553,7 +553,7 @@ module Representation
 
 !------------------------------------------------------------
 !> assign molecule in frame of motion (trafomol)
-  subroutine mol_Lorentztrafo()
+  subroutine Mol_Lorentztrafo()
     implicit none
     integer :: ii, jj, kk
     real(dp) :: trafocoe, dot
@@ -565,7 +565,7 @@ module Representation
       dot = trafocoe*sum(beta(:)*mol(ii)%pos(:))
       trafomol(ii)%pos(:) = mol(ii)%pos(:) + dot*beta(:)
     end do
-  end subroutine mol_Lorentztrafo
+  end subroutine Mol_Lorentztrafo
 
 !------------------------------------------------------------
 !> reference frame transformation of a (basis repre) vector
@@ -574,7 +574,7 @@ module Representation
 !!
 !! “simultaneous” in motion frame: x_rest = L(x_motion)|t_motion=0,
 !! in this case, x' = x_rest; x = x_motion
-  pure subroutine grid_Lorentztrafo_mo(arr, n, points, trafopoints, datsa, datsb)
+  pure subroutine Grid_Lorentztrafo_MO(arr, n, points, trafopoints, datsa, datsb)
     implicit none
     complex(dp),intent(in)  :: arr(:)
     integer(8),intent(in)   :: n
@@ -604,20 +604,20 @@ module Representation
     datsb = c0
     do kk = 1, cbdm
       val = 0.0_dp
-      vec(:,1) = points(:,1) - basis_inf(kk) % pos(1)
-      vec(:,2) = points(:,2) - basis_inf(kk) % pos(2)
-      vec(:,3) = points(:,3) - basis_inf(kk) % pos(3)
-      contr    = basis_inf(kk) % contr
-      L        = basis_inf(kk) % L
-      M        = basis_inf(kk) % M
+      vec(:,1) = points(:,1) - cbdata(kk) % pos(1)
+      vec(:,2) = points(:,2) - cbdata(kk) % pos(2)
+      vec(:,3) = points(:,3) - cbdata(kk) % pos(3)
+      contr    = cbdata(kk) % contr
+      L        = cbdata(kk) % L
+      M        = cbdata(kk) % M
       fac(:)   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo   = basis_inf(kk) % expo(jj)
-        coeff  = basis_inf(kk) % Ncoe(jj,M)
+        expo   = cbdata(kk) % expo(jj)
+        coeff  = cbdata(kk) % Ncoe(jj)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
       val(:) = val(:) * (vec(:,1)**fac(1))
-      val(:) = val(:) * (vec(:,2)**fac(3))
+      val(:) = val(:) * (vec(:,2)**fac(2))
       val(:) = val(:) * (vec(:,3)**fac(3))
       datsa  = datsa + val * arr(kk)
       datsb  = datsb + val * arr(kk+cbdm)
@@ -636,7 +636,7 @@ module Representation
       datsa(ii) = datsa(ii) * a2/(datsa(ii)*conjg(datsa(ii)))
       datsb(ii) = datsb(ii) * b2/(datsb(ii)*conjg(datsb(ii)))
     end do
-  end subroutine grid_Lorentztrafo_mo
+  end subroutine Grid_Lorentztrafo_MO
 
 !------------------------------------------------------------
 !> perform SU(2) Euler transformation on input (spin part of) orbital(s)
@@ -645,7 +645,7 @@ module Representation
 !!
 !! based on z-y-z convention: 
 !! exp(-(i/2)*phi*sigma_z) * exp(-(i/2)*theta*sigma_y) * exp(-(i/2)*chi*sigma_z)
-  pure subroutine orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+  pure subroutine Orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
     implicit none
     complex(dp),intent(in)                :: orb_i(:,:) ! input orbitals
     complex(dp),intent(out)               :: orb_o(:,:) ! output orbitals
@@ -677,6 +677,6 @@ module Representation
         SU2rot(2,2)*orb_i(dm(1)/2+jj,ii)
       end do
     end do
-  end subroutine orb_SU2trafo
+  end subroutine Orb_SU2trafo
 
 end module Representation

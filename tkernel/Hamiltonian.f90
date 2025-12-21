@@ -16,14 +16,16 @@ module Hamiltonian
   use OMP_LIB
 
 ! <AOi|AOj> related
-  !DIR$ ATTRIBUTES ALIGN:align_size :: i_j, i_j_s, m_i_j
+  !DIR$ ATTRIBUTES ALIGN:align_size :: i_j, i_j_s, M_i_j
   real(dp),allocatable    :: i_j(:,:)      ! <AOi|AOj>
   real(dp),allocatable    :: i_j_s(:,:)    ! <AOi|AOj> (sphe-har, reverse then)
-  real(dp),allocatable    :: m_i_j(:,:)    ! <AOi|AOjm>
+  real(dp),allocatable    :: M_i_j(:,:)    ! <AOi|AOjm>
 
 ! <AOi|p^2|AOj> related
   !DIR$ ATTRIBUTES ALIGN:align_size :: i_p2_j, AO2p2, evl_p2, exi_T_j
   real(dp),allocatable    :: i_p2_j(:,:)   ! <AOi|p^2|AOj>
+  real(dp),allocatable    :: i_T_j(:,:)    ! <AOi|T|AOj>
+  real(dp),allocatable    :: i_T_j_read(:,:)    ! <AOi|T|AOj>
   ! unitary transformation from AO basis to p^2 eigenstate (validated)
   real(dp),allocatable    :: AO2p2(:,:)    ! transformation matrix from AO to p2
   ! all eigenvalues of <AOi|p^2|AOj> found by dsyevr
@@ -73,8 +75,90 @@ module Hamiltonian
   contains
 
 !-------------------------------------------------------------------
-!> calculate one-electron integrals in single-conf calculations
-  subroutine DKH_Hamiltonian()
+!> calculate non-relativistic scalar one-electron integrals
+!!
+!! and prepare for SCF process
+  subroutine Hartree_Hamiltonian()
+    implicit none
+    integer           :: si, sj            ! loop variable DKH_Hamiltonian
+    character(len=30) :: ch30
+    write(60,'(A)') 'Module Hamiltonian:'
+    ! OpenMP set up
+    write(60,'(A)') '  ----------<PARALLEL>----------'
+    nproc = omp_get_num_procs()
+    write(60,'(A,I3,A,I3)') &
+    '  threads using:',threads,'; node nproc:',nproc
+    if (nproc <= threads) then
+      write(*,'(A,I3)') &
+      'tkernel: Calculation will perform serially! node nproc: ',nproc
+      write(60,'(A)') '  Warning: calculation will be performed SERIALLY!'
+    else
+      call getenv('KMP_AFFINITY',ch30)
+      if (ch30 == '') then
+        write(60,'(A)') '  KMP_AFFINITY = None'
+      else
+        write(60,'(A)') '  KMP_AFFINITY = '//trim(ch30)
+      end if
+    end if
+    write(60,'(A)') '  Integral_V initialize'
+    call Integral_V_init()
+    write(60,'(A)') '  complete! stored in: intTaycoe'
+    write(60,'(A)') '  ----------<HAMILTONIAN>----------'
+    write(60,'(A)') '  spinor basis causes additional cost in scalar SCF.'
+    !-----------------------------------------------
+    ! 1e integral calculation
+    write(60,'(A)') '  normalization of GTOs'
+    call Calc_Ncoe(cbdata, cbdm)
+    write(60,'(A)') '  complete!'
+    write(60,'(A)') '  one-electron integral calculation'
+    call Assign_matrices_1e()
+    write(60,'(A)') '  complete! stored in:'
+    write(60,'(A)') '  i_j, i_p2_j, i_V_j'
+    ! cbdm -> sbdm -> fbdm
+    write(60,"(A)") '  perform basis transformation'
+    allocate(i_j_s(cbdm,cbdm))
+    i_j_s = i_j
+    call Assign_csf(i_j)
+    call csgo(i_j_s)
+
+
+
+    ! allocate(i_T_j_read(sbdm,sbdm))
+    ! open(14, file='ao_overlap.mat', status="old", action="read")
+    ! do si = 1, sbdm
+    !   read(14, *) i_T_j_read(si,:)
+    ! end do
+    ! do si = 1, sbdm
+    !   do sj = 1, sbdm
+    !     if (abs(i_j_s(si,sj)-i_T_j_read(si,sj)) > 1.0d-6) write(60,'(I6,A,I1,I6,E12.5,E12.5,I5,I5)') si,' L=',sbdata(si)%L, sj, i_j_s(si,sj), abs(i_j_s(si,sj)-i_T_j_read(si,sj)), sbdata(sj)%L, sbdata(sj)%M
+    !   end do
+    ! end do
+    ! close(14)
+    ! write(60,*) 'complete!!!!!!'
+    ! stop
+
+
+
+
+
+
+    call cfgo(i_V_j)
+    call cfgo(i_p2_j)
+    if (fbdm == sbdm) then
+      write(60,"(A)") '  complete! by symm_orth.'
+    else
+      write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
+    end if
+    write(60,'(A)') 'exit module Hamiltonian'
+  end subroutine Hartree_Hamiltonian
+
+!-------------------------------------------------------------------
+!> calculate relativistic spinor one-electron integrals proposed by Hess
+!!
+!! (doi:10.1063/1.1515314, include pVp-related integrals)
+!!
+!! and prepare for SCF process
+  subroutine Hess_Hamiltonian()
     implicit none
     integer           :: si            ! loop variable DKH_Hamiltonian
     character(len=30) :: ch30
@@ -99,107 +183,71 @@ module Hamiltonian
     write(60,'(A)') '  Integral_V initialize'
     call Integral_V_init()
     write(60,'(A)') '  complete! stored in: intTaycoe'
-    write(60,'(A)') '  ----------<1E INTEGRALS>----------'
-    
-!------------------<NONRELATIVISTIC HAMILTONIAN>------------------
-    if (pVp1e == 0) then
-      write(60,'(A)') &
-      '  spinor basis causes additional cost in scalar SCF.'
-      !-----------------------------------------------
-      ! 1e integral calculation 
-      write(60,'(A)') '  one-electron integral calculation'
-      call Assign_matrices_1e()
-      write(60,'(A)') '  complete! stored in:'
-      write(60,'(A)') '  i_j, i_p2_j, i_V_j'
-      ! cbdm -> sbdm -> fbdm
-      write(60,"(A)") '  perform basis transformation'
-      allocate(i_j_s(cbdm,cbdm))
-      i_j_s = i_j
-      call Assign_csf(i_j)
-      call csgo(i_j_s)
-      call cfgo(i_V_j)
-      call cfgo(i_p2_j)
-      allocate(f2s(fbdm,sbdm), source=0.0_dp)
-      allocate(exf2s(2*fbdm,2*sbdm), source=c0)
-      call matmul('C', 'N', s2f, i_j_s, f2s)
-      exf2s(1:fbdm,1:sbdm) = f2s * c1
-      exf2s(fbdm+1:2*fbdm,sbdm+1:2*sbdm) = f2s * c1
-
-      if (fbdm == sbdm) then
-        write(60,"(A)") '  complete! by symm_orth.'
-      else
-        write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
-      end if
-      
-!------------------<DKH2 HAMILTONIAN>------------------
-    else
-      write(60,'(A)') &
-      '  QED effect: radiative correction(c^-3, c^-4, spin-dependent).'
-      write(60,'(A)') &
-      '  1e DKH transformation: scalar terms up to c^-2 order, spin-'
-      write(60,'(A)') &
-      '  dependent terms up to c^-4 order.'
-      write(60,'(A)') &
-      '  Incompleteness of basis introduces error in 1e Fock.'
-      !-----------------------------------------------
-      ! 1e integral calculation
-      write(60,'(A)') '  one-electron integral calculation'
-      call Assign_matrices_1e()
-      write(60,'(A)') '  complete! stored in:'
-      write(60,'(A)') '  i_j, i_p2_j, i_V_j, i_pVp_j (9 matrices)'
-      if (pppVp) write(60,'(A)') '  i_pppVp_j (9 matrices)'
-      ! cbdm -> sbdm -> fbdm
-      write(60,"(A)") '  perform basis transformation'
-      allocate(i_j_s(cbdm,cbdm))
-      i_j_s = i_j
-      call Assign_csf(i_j)
-      call csgo(i_j_s)
-      call cfgo(i_V_j)
-      call cfgo(i_p2_j)
-      call cfgo(pxVpx)
-      call cfgo(pyVpy)
-      call cfgo(pzVpz)
-      call cfgo(pxVpy)
-      call cfgo(pyVpx)
-      call cfgo(pxVpz)
-      call cfgo(pzVpx)
-      call cfgo(pyVpz)
-      call cfgo(pzVpy)
-      if (pppVp) then
-        call cfgo(px3Vpx)
-        call cfgo(py3Vpy)
-        call cfgo(pz3Vpz)
-        call cfgo(px3Vpy)
-        call cfgo(py3Vpx)
-        call cfgo(px3Vpz)
-        call cfgo(pz3Vpx)
-        call cfgo(py3Vpz)
-        call cfgo(pz3Vpy)
-      end if
-      allocate(f2s(fbdm,sbdm), source=0.0_dp)
-      allocate(exf2s(2*fbdm,2*sbdm), source=c0)
-      call matmul('T', 'N', s2f, i_j_s, f2s)
-      exf2s(1:fbdm,1:sbdm) = f2s * c1
-      exf2s(fbdm+1:2*fbdm,sbdm+1:2*sbdm) = f2s * c1
-      if (fbdm == sbdm) then
-        write(60,"(A)") '  complete! by symm_orth.'
-      else
-        write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
-      end if
-      ! <AOi|p^2|AOj> diagonalization
-      write(60,'(A)') '  <AOi|p^2|AOj> diagonalization'
-      allocate(AO2p2(fbdm,fbdm))
-      allocate(evl_p2(fbdm))
-      call diag(i_p2_j, fbdm, AO2p2, evl_p2)
-      do si = 1, fbdm
-        if (evl_p2(si) < 0.0) &
-        call terminate('evl(T) less than zero, may due to code error')
-      end do
-      ! (AO2p2)^T(i_p2_j)(AO2p2)=evl_p2
-      write(60,'(A,I4,A)') '  complete!', fbdm, ' eigenvalues found.'
+    write(60,'(A)') '  ----------<HAMILTONIAN>----------'
+    write(60,'(A)') &
+    '  QED effect: radiative correction(c^-3, c^-4, spin-dependent).'
+    write(60,'(A)') &
+    '  1e DKH transformation: scalar terms up to c^-2 order, spin-'
+    write(60,'(A)') &
+    '  dependent terms up to c^-4 order.'
+    write(60,'(A)') &
+    '  Incompleteness of basis introduces error in 1e Fock.'
+    !-----------------------------------------------
+    ! 1e integral calculation
+    write(60,'(A)') '  normalization of GTOs'
+    call Calc_Ncoe(cbdata, cbdm)
+    write(60,'(A)') '  complete!'
+    write(60,'(A)') '  one-electron integral calculation'
+    call Assign_matrices_1e()
+    write(60,'(A)') '  complete! stored in:'
+    write(60,'(A)') '  i_j, i_p2_j, i_V_j, i_pVp_j (9 matrices)'
+    if (pppVp) write(60,'(A)') '  i_pppVp_j (9 matrices)'
+    ! cbdm -> sbdm -> fbdm
+    write(60,"(A)") '  perform basis transformation'
+    allocate(i_j_s(cbdm,cbdm))
+    i_j_s = i_j
+    call Assign_csf(i_j)
+    call csgo(i_j_s)
+    call cfgo(i_V_j)
+    call cfgo(i_p2_j)
+    call cfgo(pxVpx)
+    call cfgo(pyVpy)
+    call cfgo(pzVpz)
+    call cfgo(pxVpy)
+    call cfgo(pyVpx)
+    call cfgo(pxVpz)
+    call cfgo(pzVpx)
+    call cfgo(pyVpz)
+    call cfgo(pzVpy)
+    if (pppVp) then
+      call cfgo(px3Vpx)
+      call cfgo(py3Vpy)
+      call cfgo(pz3Vpz)
+      call cfgo(px3Vpy)
+      call cfgo(py3Vpx)
+      call cfgo(px3Vpz)
+      call cfgo(pz3Vpx)
+      call cfgo(py3Vpz)
+      call cfgo(pz3Vpy)
     end if
+    if (fbdm == sbdm) then
+      write(60,"(A)") '  complete! by symm_orth.'
+    else
+      write(60,"(A,I4)") '  complete! by can_orth. fbdm = ', fbdm
+    end if
+    ! <AOi|p^2|AOj> diagonalization
+    write(60,'(A)') '  <AOi|p^2|AOj> diagonalization'
+    allocate(AO2p2(fbdm,fbdm))
+    allocate(evl_p2(fbdm))
+    call diag(i_p2_j, fbdm, AO2p2, evl_p2)
+    do si = 1, fbdm
+      if (evl_p2(si) < 0.0) &
+      call terminate('evl(T) less than zero, may due to code error')
+    end do
+    ! (AO2p2)^T(i_p2_j)(AO2p2)=evl_p2
+    write(60,'(A,I4,A)') '  complete!', fbdm, ' eigenvalues found.'
     write(60,'(A)') 'exit module Hamiltonian'
-  end subroutine DKH_Hamiltonian
+  end subroutine Hess_Hamiltonian
   
 !-----------------------------------------------------------------------
 !> Assign value to one-electron integral matrices
@@ -276,12 +324,12 @@ module Hamiltonian
     do i = 1, cbdm
       do j = 1, cbdm
         si = i
-        contri = basis_inf(si) % contr
-        Li     = basis_inf(si) % L
-        Mi     = basis_inf(si) % M
-        expi(1:contri) = basis_inf(si) % expo(1:contri)
-        coei(1:contri) = basis_inf(si) % Ncoe(1:contri,Mi)
-        codi = basis_inf(si) % pos
+        contri = cbdata(si) % contr
+        Li     = cbdata(si) % L
+        Mi     = cbdata(si) % M
+        expi(1:contri) = cbdata(si) % expo(1:contri)
+        coei(1:contri) = cbdata(si) % Ncoe(1:contri)
+        codi = cbdata(si) % pos
         !---------------------------------------
         ! factor of x^m*d(exp)
         facdx_i(:,1) = AO_fac(:,Li,Mi)
@@ -309,12 +357,12 @@ module Hamiltonian
         coedy_i(contri+1:2*contri) = AO_fac(2,Li,Mi) * coei(1:contri)
         coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
         sj = j
-        contrj = basis_inf(sj) % contr
-        Lj     = basis_inf(sj) % L
-        Mj     = basis_inf(sj) % M
-        expj(1:contrj) = basis_inf(sj) % expo(1:contrj)
-        coej(1:contrj) = basis_inf(sj) % Ncoe(1:contrj,Mj)
-        codj = basis_inf(sj) % pos
+        contrj = cbdata(sj) % contr
+        Lj     = cbdata(sj) % L
+        Mj     = cbdata(sj) % M
+        expj(1:contrj) = cbdata(sj) % expo(1:contrj)
+        coej(1:contrj) = cbdata(sj) % Ncoe(1:contrj)
+        codj = cbdata(sj) % pos
         !---------------------------------------
         ! factor of x^m*d(exp)
         facdx_j(:,1) = AO_fac(:,Lj,Mj)
@@ -973,7 +1021,58 @@ module Hamiltonian
     return
   end function Calc_pppVp_1e
   
-  
+!-----------------------------------------------------------------------
+!> normalization of primitive shell (GTFs) and contracted shell (GTOs)
+  pure subroutine Calc_Ncoe(incbdata, incbdm)
+    implicit none
+    type(basis_data),intent(inout) :: incbdata(:)! input cbdata
+    integer, intent(in)            :: incbdm     ! input cbdm
+    integer                        :: contr    ! contr of atom, shell
+    real(dp)                       :: expo(16) ! expo of |AO>
+    real(dp)                       :: coe(16)  ! coe of |AO>
+    integer                        :: fac(3)   ! xyz factor of |AO>
+    integer                        :: L        ! angular quantum number of |AO>
+    integer                        :: M        ! magnetic quantum number of |AO>
+    real(dp)                       :: cod(3)   ! central coordinate of |AO>
+    real(dp)                       :: i_i      ! full space integral
+    integer                        :: oi,oj,ok ! loop variables for Calc_Ncoe
+    ! normalization of primitive shell (GTFs)
+    do oi = 1, incbdm
+      contr = incbdata(oi) % contr
+      expo(1:contr) = incbdata(oi) % expo(1:contr)
+      coe(1:contr)  = incbdata(oi) % coe(1:contr)
+      L = incbdata(oi) % L
+      M = incbdata(oi) % M
+      do oj = 1, contr
+        incbdata(oi)%Ncoe(oj) = coe(oj) * &
+        AON(expo(oj),AO_fac(1,L,M),AO_fac(2,L,M),AO_fac(3,L,M))
+      end do
+    end do
+    ! normalization of contracted shell (GTOs)
+    do oi = 1, incbdm
+      contr = incbdata(oi) % contr
+      expo(1:contr) = incbdata(oi) % expo(1:contr)
+      coe(1:contr) = incbdata(oi)%Ncoe(1:contr)
+      cod  = incbdata(oi) % pos
+      L = incbdata(oi) % L
+      M = incbdata(oi) % M
+      i_i = 0.0_dp
+      do oj = 1, contr
+        do ok = 1, contr
+          i_i = i_i + Integral_S_1e(         &
+          coe(oj)*coe(ok),                   &
+          AO_fac(:,L,M),                     &
+          AO_fac(:,L,M),                     &
+          expo(oj),                          &
+          expo(ok),                          &
+          cod,                               &
+          cod)
+        end do
+      end do
+      incbdata(oi)%Ncoe(1:contr)=incbdata(oi)%Ncoe(1:contr)/i_i**0.5_dp
+    end do
+  end subroutine Calc_Ncoe
+
 !-----------------------------------------------------------------------
 !> full space integration of product of 2 Gaussian functions in Cartesian
   real(dp) pure function Integral_S_1e(&
@@ -1066,25 +1165,31 @@ module Hamiltonian
     integer             :: max1, max2, max3
     real(dp)            :: tmp, br2, expbr2, invbr2, prec
 
-    select case (2*(sum(faci)+sum(facj) + 4))
-      case(0:10)
+    select case (2*(sum(faci)+sum(facj)+4))
+      case(0:5)
         tayeps = 5
         xts = 0.01
+      case(6:10)
+        tayeps = 12
+        xts = 0.2
       case(11:15)
-        tayeps = 8
-        xts = 0.1
-      case(16:25)
         tayeps = 15
-        xts = 1.0
-      case(26:35)
+        xts = 0.5
+      case(16:20)
         tayeps = 20
         xts = 1.0
-      case(36:40)
+      case(21:25)
         tayeps = 25
-        xts = 3.0
-      case(41:50)
+        xts = 2.0
+      case(26:30)
         tayeps = 30
+        xts = 3.0
+      case(31:40)
+        tayeps = 35
         xts = 4.0
+      case(41:50)
+        tayeps = 45
+        xts = 5.0
     end select
     !--------------------------
     ! Gaussian shell production
@@ -1188,8 +1293,7 @@ module Hamiltonian
               int_mic = int_mic * GNC**2
             else
               do vo = 1, tayeps
-                int_mic = int_mic + prec**(vo-1)*&
-                intTaycoe(vo,2*vi-vj-vk+1)
+                int_mic = int_mic + prec**(vo-1)*intTaycoe(vo,2*vi-vj-vk+1)
               end do
               int_mic = int_mic * GNC**(2*vi-vj-vk+1)
             end if
@@ -1237,7 +1341,7 @@ module Hamiltonian
 !! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
 !! xA  xB
 !! Li > Lj, Lk > Ll
-  pure real(dp) function Integral_V_2e(&
+  real(dp) pure function Integral_V_2e(&
   faci,facj,fack,facl,ai,aj,ak,al,codi,codj,codk,codl) result(int)
     implicit none
     integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
@@ -1293,13 +1397,13 @@ module Hamiltonian
     fackl1 = fack + facl + 1
     !=============================================================
     ! Rys quadrature for low angular momentum Gaussian functions
-    if (int(real(nt)/2.0) + 1 <= 5) then
-      nroots = int(real(nt)/2.0) + 1
-      ! call rys_roots(libcint-like), GRysroots(GAMESS-like)
-      call GRysroots(nroots, X, u, w)
+    if (.false.) then       !int(real(nt)/1.99) + 1 <= 5
+      nroots = int(real(nt)/1.99) + 1
+      ! call rys_roots(from LibCInt), GRysroots(from GAMESS)
+      call Grysroots(nroots, X, u, w)
       int = 0.0_dp
       do ri = 1, nroots
-        !t2 = u(ri) / (rou+u(ri))       ! for rys_roots
+        !t2 = u(ri) / (rou+u(ri))             ! for rys_roots
         t2 = u(ri)                           ! for GRysroots
         f0 = coe2AB*t2
         f3 = coe2A-coe3B*t2
@@ -1372,21 +1476,30 @@ module Hamiltonian
     else
       ! Ix(ni+nj,0,nk+nl,0,u)
       select case (2*(nt+6)-2)
-        case(0:15)
-          tayeps = 8
-          xts = 0.01
-        case(16:25)
-          tayeps = 15
-          xts = 1.0
-        case(26:35)
-          tayeps = 20
-          xts = 1.0
-        case(36:40)
-          tayeps = 25
-          xts = 3.0
-        case(41:50)
-          tayeps = 30
-          xts = 4.0
+      case(0:5)
+        tayeps = 5
+        xts = 0.01
+      case(6:10)
+        tayeps = 12
+        xts = 0.2
+      case(11:15)
+        tayeps = 15
+        xts = 0.5
+      case(16:20)
+        tayeps = 20
+        xts = 1.0
+      case(21:25)
+        tayeps = 25
+        xts = 2.0
+      case(26:30)
+        tayeps = 30
+        xts = 3.0
+      case(31:40)
+        tayeps = 35
+        xts = 4.0
+      case(41:50)
+        tayeps = 45
+        xts = 5.0
       end select
       Gnm = 0.0_dp
       !---------------------------------------------------------------------
@@ -1547,10 +1660,10 @@ module Hamiltonian
     real(dp)            :: expTaycoe(64)
     real(dp)            :: erfTaycoe(64)
     expTaycoe = 0.0_dp     ! Taylor expansion coefficients for exp(-x)
-    erfTaycoe = 0.0_dp     ! Taylor expansion coefficients for I_0, also erf(x)
+    erfTaycoe = 0.0_dp     ! Taylor expansion coefficients for I_0
     do jj = 1, 64
       expTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/factorial(jj-1))
-      erfTaycoe(jj) = (-1.0_dp)**(jj+1)*(1.0_dp/(real(2*jj-1)*factorial(jj-1)))
+      erfTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/(real(2*jj-1)*factorial(jj-1)))
     end do
     intTaycoe = 0.0_dp
     do ii = 0, 42
@@ -1563,7 +1676,7 @@ module Hamiltonian
           intTaycoe(jj,2) = -0.5_dp*expTaycoe(jj+1)
         end do
       else                  ! Taycoes for I_n, GNC^(n+1)*[1 + (GNC*br2)^2 + ...]
-        do jj = 1, 64-int(real(ii)/2.0)-mod(ii,2)
+        do jj = 1, 64-int(real(ii)/1.99)-mod(ii,2)
           intTaycoe(jj,ii+1) = 0.5_dp*(real(ii-1,dp)*intTaycoe(jj+1,ii-1) - &
                                        expTaycoe(jj+1))
         end do

@@ -2,7 +2,7 @@
 !!
 !! @brief Rys quadrature roots and weights
 !!
-!! @brief edit based on libcint version 6.1.1 https://github.com/sunqm/libcint
+!! @brief modified based on LibCInt 6.1.1 https://github.com/sunqm/libcint
 !!
 !! @syntax Fortran 2008 free format
 !!
@@ -17,14 +17,15 @@ real(dp),parameter :: SMALLX_LIMIT = 3e-7
 
 contains
 
-subroutine rys_roots(nroots, x, u, w)
+pure subroutine rys_roots(nroots, x, u, w)
 integer,intent(in) :: nroots
 real(dp),intent(in) :: x
 real(dp),intent(out) :: u(5)
 real(dp),intent(out) :: w(5)
 integer :: off
-integer :: i, err = 1
+integer :: i, err
 real(dp) :: rt, t
+err = 1
 off = nroots * (nroots - 1) / 2
 t = sqrt(PIE4/x)
   if (x <= SMALLX_LIMIT) then
@@ -44,22 +45,23 @@ t = sqrt(PIE4/x)
 
   select case (nroots)
   case (1)
-          err = rys_root1(x, u, w)
+          call rys_root1(x, err, u, w)
   case (2)
-          err = rys_root2(x, u, w)
+          call rys_root2(x, err, u, w)
   case (3)
-          err = rys_root3(x, u, w)
+          call rys_root3(x, err, u, w)
   case (4)
-          err = rys_root4(x, u, w)
+          call rys_root4(x, err, u, w)
   case (5)
-          err = rys_root5(x, u, w)
+          call rys_root5(x, err, u, w)
   end select
 end subroutine rys_roots
 
-integer function rys_root1(X, roots, weights)
+pure subroutine rys_root1(X, err, roots, weights)
 
   real(dp) :: Y, F1
   real(dp),intent(in) :: X
+  integer,intent(out) :: err
   real(dp),intent(out) :: roots(1), weights(1)
   real(dp) :: E
   real(dp) :: WW1
@@ -68,12 +70,12 @@ integer function rys_root1(X, roots, weights)
   if (X > 33.) then
           weights(1) = sqrt(PIE4/X)
           roots(1) = 0.5E+00/(X-0.5E+00)
-          rys_root1 = 0
+          err = 0
           return
   else if (X < 3.e-7) then 
           weights(1) = 1.0E+00 -X/3.0E+00
           roots(1) = 0.5E+00 -X/5.0E+00
-          rys_root1 = 0
+          err = 0
           return
   end if
 
@@ -120,12 +122,13 @@ integer function rys_root1(X, roots, weights)
   end if
   weights(1) = WW1
   roots(1) = F1 / (WW1 - F1)
-  rys_root1 = 0
+  err = 0
   return
-end function rys_root1
+end subroutine rys_root1
 
-integer function rys_root2(X, roots, weights)
+pure subroutine rys_root2(X, err, roots, weights)
   real(dp),intent(in) :: X
+  integer,intent(out) :: err
   real(dp),intent(out) :: roots(2), weights(2)
   real(dp) :: R12, R22, W22
   real(dp) :: RT1, RT2, WW1, WW2
@@ -280,13 +283,14 @@ integer function rys_root2(X, roots, weights)
   roots(2) = RT2
   weights(1) = WW1
   weights(2) = WW2
-  rys_root2 = 0
+  err = 0
   return
-end function rys_root2
+end subroutine rys_root2
 
-integer function rys_root3(X, roots, weights)
+pure subroutine rys_root3(X, err, roots, weights) 
 
   real(dp),intent(in) :: X
+  integer,intent(out) :: err
   real(dp),intent(out) :: roots(3), weights(3)
   real(dp) :: R13, R23, W23, R33, W33
   real(dp) :: RT1, RT2, RT3, WW1, WW2, WW3
@@ -553,12 +557,13 @@ integer function rys_root3(X, roots, weights)
   weights(1) = WW1
   weights(2) = WW2
   weights(3) = WW3
-  rys_root3 = 0
+  err = 0
   return
-end function rys_root3
+end subroutine rys_root3
 
-integer function rys_root4(X, roots, weights)
+pure subroutine rys_root4(X, err, roots, weights)
   real(dp),intent(in) :: X
+  integer,intent(out) :: err
   real(dp),intent(out) :: roots(4), weights(4)
   real(dp) :: R14, R24, W24, R34, W34, R44, W44
   real(dp) :: RT1, RT2, RT3, RT4, WW1, WW2, WW3, WW4
@@ -922,12 +927,13 @@ integer function rys_root4(X, roots, weights)
   weights(2) = WW2
   weights(3) = WW3
   weights(4) = WW4
-  rys_root4 = 0
+  err = 0
   return
-end function rys_root4
+end subroutine rys_root4
 
-integer function rys_root5(X, roots, weights)
+pure subroutine rys_root5(X, err, roots, weights)
   real(dp),intent(in) :: X
+  integer,intent(out) :: err
   real(dp),intent(out) :: roots(5), weights(5)
   real(dp) :: R15,R25,W25,R35,W35,R45,W45,R55,W55
   real(dp) :: RT1, RT2, RT3, RT4, RT5, WW1, WW2, WW3, WW4, WW5
@@ -1428,7 +1434,7 @@ integer function rys_root5(X, roots, weights)
   weights(3) = WW3
   weights(4) = WW4
   weights(5) = WW5
-  rys_root5 = 0
+  err = 0
   return
-end function rys_root5
+end subroutine rys_root5
 end module Rys

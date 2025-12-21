@@ -22,8 +22,8 @@ module functional
   contains
 
 !------------------------------------------------------------
-!> grid points, spin=0:total =1:alpha =2:beta
-  pure subroutine grid(arr, n, points, spin, dats)
+!> Grid points, spin=0:total =1:alpha =2:beta
+  pure subroutine Grid(arr, n, points, spin, dats)
     implicit none
     complex(dp),intent(in)  :: arr(:)
     integer(8),intent(in)   :: n
@@ -60,28 +60,28 @@ module functional
         kk = ii - cbdm
       end if
       val = 0.0_dp
-      vec(:,1) = points(:,1) - basis_inf(kk) % pos(1)
-      vec(:,2) = points(:,2) - basis_inf(kk) % pos(2)
-      vec(:,3) = points(:,3) - basis_inf(kk) % pos(3)
-      contr    = basis_inf(kk) % contr
-      L        = basis_inf(kk) % L
-      M        = basis_inf(kk) % M
+      vec(:,1) = points(:,1) - cbdata(kk) % pos(1)
+      vec(:,2) = points(:,2) - cbdata(kk) % pos(2)
+      vec(:,3) = points(:,3) - cbdata(kk) % pos(3)
+      contr    = cbdata(kk) % contr
+      L        = cbdata(kk) % L
+      M        = cbdata(kk) % M
       fac(:)   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo   = basis_inf(kk) % expo(jj)
-        coeff  = basis_inf(kk) % Ncoe(jj,M)
+        expo   = cbdata(kk) % expo(jj)
+        coeff  = cbdata(kk) % Ncoe(jj)
         val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
       end do
       val(:) = val(:) * (vec(:,1)**fac(1))
-      val(:) = val(:) * (vec(:,2)**fac(3))
+      val(:) = val(:) * (vec(:,2)**fac(2))
       val(:) = val(:) * (vec(:,3)**fac(3))
       dats   = dats + val * arr(ii)
     end do
-  end subroutine grid
+  end subroutine Grid
 
 !------------------------------------------------------------
-!> norm of gradient of grid points, spin=0:total =1:alpha =2:beta
-  pure complex(dp) function gradient(arr, point, spin) result(pointvl)
+!> norm of Gradient of Grid points, spin=0:total =1:alpha =2:beta
+  pure complex(dp) function Gradient(arr, point, spin) result(pointvl)
     implicit none
     complex(dp),intent(in) :: arr(2*cbdm)
     real(dp),intent(in) :: point(3)
@@ -116,17 +116,17 @@ module functional
       else if ((spin==2) .or. (spin==0 .and. ii>cbdm)) then
         kk = ii - cbdm
       end if
-      vec   = point - basis_inf(kk) % pos
-      contr = basis_inf(kk) % contr
-      L     = basis_inf(kk) % L
-      M     = basis_inf(kk) % M
+      vec   = point - cbdata(kk) % pos
+      contr = cbdata(kk) % contr
+      L     = cbdata(kk) % L
+      M     = cbdata(kk) % M
       fac   = AO_fac(:,L,M)
       valdx = c0
       valdy = c0
       valdz = c0
       do jj = 1, contr
-        expo  = basis_inf(kk) % expo(jj)
-        coeff = basis_inf(kk) % Ncoe(jj,M)
+        expo  = cbdata(kk) % expo(jj)
+        coeff = cbdata(kk) % Ncoe(jj)
         ! d/dx
         if (fac(1) == 0) then
           valdx = valdx + &
@@ -163,10 +163,10 @@ module functional
       val(3) = val(3) + valdz * arr(ii)
     end do
     pointvl = sqrt(sum(val**2))
-  end function gradient
+  end function Gradient
 
 !------------------------------------------------------------
-!> Laplacian of grid points, spin=0:total =1:alpha =2:beta
+!> Laplacian of Grid points, spin=0:total =1:alpha =2:beta
   pure complex(dp) function Laplacian(arr, point, spin) result(pointvl)
     implicit none
     complex(dp),intent(in) :: arr(2*cbdm)
@@ -202,14 +202,14 @@ module functional
         kk = ii - cbdm
       end if
       val = c0
-      vec   = point - basis_inf(kk) % pos
-      contr = basis_inf(kk) % contr
-      L     = basis_inf(kk) % L
-      M     = basis_inf(kk) % M
+      vec   = point - cbdata(kk) % pos
+      contr = cbdata(kk) % contr
+      L     = cbdata(kk) % L
+      M     = cbdata(kk) % M
       fac   = AO_fac(:,L,M)
       do jj = 1, contr
-        expo  = basis_inf(kk) % expo(jj)
-        coeff = basis_inf(kk) % Ncoe(jj,M)
+        expo  = cbdata(kk) % expo(jj)
+        coeff = cbdata(kk) % Ncoe(jj)
         ! d2/dx2
         if (fac(1) == 0) then
           valdx = (4*expo**2*vec(1)**2 - 2*expo)&
@@ -260,8 +260,8 @@ module functional
   end function Laplacian
 
 !------------------------------------------------------------
-!> calculate a series of grid data for xc functional
-  pure subroutine grid_xc(&
+!> calculate a series of Grid data for xc functional
+  pure subroutine Grid_xc(&
   mat, n, point, rhoa, rhob, drhoa, drhob, AOAO, dxAOAO, dyAOAO, dzAOAO)
     implicit none
     complex(dp),intent(in) :: mat(2*cbdm, 2*cbdm)
@@ -287,20 +287,20 @@ module functional
       valdx = 0.0_dp
       valdy = 0.0_dp
       valdz = 0.0_dp
-      contr = basis_inf(ii) % contr
-      L     = basis_inf(ii) % L
-      M     = basis_inf(ii) % M
+      contr = cbdata(ii) % contr
+      L     = cbdata(ii) % L
+      M     = cbdata(ii) % M
       fac = AO_fac(:,L,M)
-      vec(:,1) = point(:,1) - basis_inf(ii) % pos(1)
-      vec(:,2) = point(:,2) - basis_inf(ii) % pos(2)
-      vec(:,3) = point(:,3) - basis_inf(ii) % pos(3)
+      vec(:,1) = point(:,1) - cbdata(ii) % pos(1)
+      vec(:,2) = point(:,2) - cbdata(ii) % pos(2)
+      vec(:,3) = point(:,3) - cbdata(ii) % pos(3)
       do jj = 1, contr
-        b     = basis_inf(ii) % expo(jj)
-        coeff = basis_inf(ii) % Ncoe(jj,M)
+        b     = cbdata(ii) % expo(jj)
+        coeff = cbdata(ii) % Ncoe(jj)
         d(:)  = coeff*exp(-b*(sum(vec(:,:)**2,dim=2)))
 
-        ! calculate the grid value
-        ! grid value
+        ! calculate the Grid value
+        ! Grid value
         val(:) = val(:) + d(:)
 
         ! d/dx
@@ -364,7 +364,7 @@ module functional
     rhob = real(crhob,dp)
     drhoa = real(cdrhoa,dp)
     drhob = real(cdrhob,dp)
-  end subroutine grid_xc
+  end subroutine Grid_xc
 
 !------------------------------------------------------------
 !> assign a group of points value of exchange-correlation Fock
@@ -411,7 +411,7 @@ module functional
       pos(:,3) = pos3w1(1:nl,3,ii)
       weight(:) = pos3w1(1:nl,4,ii)
 
-      call grid_xc(&
+      call Grid_xc(&
       rho_m, nl, pos, rhoa, rhob, drhoa, drhob, AOAO, dxAOAO, dyAOAO, dzAOAO)
       rho(1:2*nl-1:2) = rhoa(:)
       rho(2:2*nl:2) = rhob(:)
