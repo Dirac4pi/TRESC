@@ -140,7 +140,7 @@ module Fundamentals
   private :: real_det, cmplx_det
   public  :: dump_matrix, load_matrix, generate_output, terminate, matmul, norm
   public  :: lowercase, is_alpha, diag, inverse, can_orth, symm_orth, atnz2block
-  public  :: wigner_d, binomialcoe, factorial, det
+  public  :: Wigner_d, binomialcoe, factorial, det, Hermite_poly
 
   contains
   
@@ -196,7 +196,7 @@ module Fundamentals
     logical                       :: isopen
     character(len = *),intent(in) :: terminate_message
     call lowercase(terminate_message)
-    inquire(unit = 60, opened = isopen)
+    inquire(unit=60, opened=isopen)
     if (isopen) then
       if (terminate_message == 'normal' .or. terminate_message == 'keep') then
         write(60,*)
@@ -906,7 +906,7 @@ module Fundamentals
 !! S,M,K and specific angle theta based on z-y-z convention of Euler angles.
 !!
 !! !!Note: the input S,M,K is actually 2S,2M,2K respectively
-  pure recursive real(dp) function wigner_d(S, M, K, theta) result(smalld)
+  pure recursive real(dp) function Wigner_d(S, M, K, theta) result(smalld)
     implicit none
     integer,intent(in)  ::  S          ! spin quantum number S/2
     integer,intent(in)  ::  M          ! spin magnetic quantum number M/2
@@ -949,15 +949,15 @@ module Fundamentals
     if (.not.(M >= 0 .and. M >= abs(K))) then
       if (M >= 0) then
         if (K > 0) then        ! K > M >= 0
-          smalld = (-1.0_dp)**((K-M)/2)*wigner_d(S, K, M, theta)
+          smalld = (-1.0_dp)**((K-M)/2)*Wigner_d(S, K, M, theta)
         else if (K < 0) then   ! M >= 0 > K  (e.g. M=1, K=-2)
-          smalld = wigner_d(S, -K, -M, theta)
+          smalld = Wigner_d(S, -K, -M, theta)
         end if
       else if (M < 0) then
         if (K > 0) then        ! K > 0 > M
-          smalld = (-1.0_dp)**((K-M)/2)*wigner_d(S, K, M, theta)
+          smalld = (-1.0_dp)**((K-M)/2)*Wigner_d(S, K, M, theta)
         else if (K <= 0) then  ! M < 0  k <= 0
-          smalld = wigner_d(S, -K, -M, theta)
+          smalld = Wigner_d(S, -K, -M, theta)
         end if
       end if
       return
@@ -1016,14 +1016,14 @@ module Fundamentals
           smalld = 0.5_dp*(3.0_dp*dcos(theta)**2-1.0_dp)
         end if
     end select
-  end function wigner_d
+  end function Wigner_d
 
 !-----------------------------------------------------------------------
 !> fast factorial of given a
   pure elemental real(dp) function factorial(a)
     implicit none
     integer,intent(in) :: a
-    integer :: na
+    integer            :: na
     select case (a)
     case (0)
       factorial = 1.0_dp
@@ -1082,7 +1082,7 @@ module Fundamentals
   pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
     implicit none
     integer,intent(in) :: N,M
-    integer :: fi, numerator, denominator
+    integer            :: fi, numerator, denominator
     if (M == 0 .or. N == 0 .or. M == N) then
       bicoe = 1.0
       return
@@ -1149,4 +1149,31 @@ module Fundamentals
       return
     end if
   end function binomialcoe
+
+!-----------------------------------------------------------------------
+!> fast Hermite polynomials of given n, x (H_n(x))
+!!
+!! H_0 = 1, H_1 = 2x, H_{n+1} = 2*x*H_n - 2*n*H_{n-1}
+  pure function Hermite_poly(n, x) result(Hn)
+    implicit none
+    integer, intent(in)  :: n
+    real(dp), intent(in) :: x
+    integer              :: k
+    real(dp)             :: Hnm2, Hnm1, Hn
+
+    if (n <= 0) then
+      Hn = 1.0_dp
+      return
+    else if (n == 1) then
+      Hn = 2.0_dp*x
+      return
+    end if
+    Hnm2 = 1.0_dp
+    Hnm1 = 2.0_dp*x
+    do k = 1, n-1
+      Hn = 2.0_dp*x*Hnm1 - 2.0_dp*real(k,dp)*Hnm2
+      Hnm2 = Hnm1
+      Hnm1 = Hn
+    end do
+  end function Hermite_poly
 end module Fundamentals

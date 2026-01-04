@@ -1,5 +1,5 @@
 '''
-visualizing complex 2-component orbital with structured data
+visualization of complex spinor orbital with structured grid data
 coding:UTF-8
 env:vis2c
 '''
@@ -17,10 +17,8 @@ spin_phase = True
 
 def cub2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
-  complex 2-component MO visualization, uniform cube grid net.
+  visualization of complex spinor orbital with structured grid data
   --
-  !!! 2 Gaussian cube format file contain (alpha real & beta real),\n
-  (alpha imagine & beta imagine) of a selected 2-component complex orbital.\n
   moldendir: address of xxx.molden.d, contains molden file of 2c MOs\n
   index: index of MO.\n
   isovalue: isovalue of amplitude.\n
@@ -39,8 +37,8 @@ def cub2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   #-----------------------------------------------------------------------------
   # load data from cube files
   print('loading grid data from cub files...')
-  real = index+'-real.cub'
-  img  = index+'-img.cub'
+  real = index+'-realreal.cub'
+  img  = index+'-realimg.cub'
   atoms, real_mat_alpha, nmo = vk.load_cube(real, 1)
   if nmo == 0:
     raise RuntimeError('no orbital info in cube file '+real)

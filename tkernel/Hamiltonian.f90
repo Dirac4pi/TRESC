@@ -120,28 +120,6 @@ module Hamiltonian
     i_j_s = i_j
     call Assign_csf(i_j)
     call csgo(i_j_s)
-
-
-
-    ! allocate(i_T_j_read(sbdm,sbdm))
-    ! open(14, file='ao_overlap.mat', status="old", action="read")
-    ! do si = 1, sbdm
-    !   read(14, *) i_T_j_read(si,:)
-    ! end do
-    ! do si = 1, sbdm
-    !   do sj = 1, sbdm
-    !     if (abs(i_j_s(si,sj)-i_T_j_read(si,sj)) > 1.0d-6) write(60,'(I6,A,I1,I6,E12.5,E12.5,I5,I5)') si,' L=',sbdata(si)%L, sj, i_j_s(si,sj), abs(i_j_s(si,sj)-i_T_j_read(si,sj)), sbdata(sj)%L, sbdata(sj)%M
-    !   end do
-    ! end do
-    ! close(14)
-    ! write(60,*) 'complete!!!!!!'
-    ! stop
-
-
-
-
-
-
     call cfgo(i_V_j)
     call cfgo(i_p2_j)
     if (fbdm == sbdm) then

@@ -26,7 +26,7 @@ program Tkernel
     end if
 
     if (cmd1(1:1) /= '-') then
-      call SConf_Calc(.true.)
+      call Elec_Struc_Calc(.true.)
     else if ((trim(cmd1) == '-v' .or. trim(cmd1) == '-V')) then
       call Printversion()
     else if ((trim(cmd1) == '--version')) then
@@ -48,13 +48,13 @@ program Tkernel
 
     call lowercase(cmd1)
     if (trim(cmd1) == '-cub2c') then
-      call MO2cgrid(.true., .true.)
+      call Grid2c(.true., .true.)
     else if (trim(cmd1) == '-mog2c') then
-      call MO2cgrid(.false., .true.)
+      call Grid2c(.false., .true.)
     else if (trim(cmd1) == '-cub1c') then
-      call MO1cgrid(.true., .true.)
+      call Grid1c(.true., .true.)
     else if (trim(cmd1) == '-mog1c') then
-      call MO1cgrid(.false., .true.)
+      call Grid1c(.false., .true.)
     else
       call terminate('unknown argument '//trim(cmd1))
     end if
@@ -80,8 +80,8 @@ subroutine Printversion()
 end subroutine Printversion
 
 !-----------------------------------------------------------------------
-!> standard single-configuration calculation
-subroutine SConf_Calc(kill_)
+!> standard electronic structure calculation
+subroutine Elec_Struc_Calc(kill_)
   use SCF
   use Fundamentals
   implicit none
@@ -111,11 +111,13 @@ subroutine SConf_Calc(kill_)
   end if
   call Outputprint()
   call Globinit(kill_)
-end subroutine SConf_Calc
+end subroutine Elec_Struc_Calc
 
 !-----------------------------------------------------------------------
 !> dump grid value of 2-component spherical molecular orbitals for visualization
-subroutine MO2cgrid(cube, kill_)
+!!
+!! if cube, will also generate momentum space grid points
+subroutine Grid2c(cube, kill_)
   use Representation
   use Fundamentals
   use Hamiltonian
@@ -165,17 +167,20 @@ subroutine MO2cgrid(cube, kill_)
   arr = arr + ci * supparr
   call matmul('N', exc2s, arr, arr2)
   if (cube) then
-    call dump_cube(.true., arr2, cmd3)
+    call Basis2real_cube(.true., arr2, cmd3)
+    call Basis2momentum_cube(.true., arr2, cmd3)
   else
-    call MOgrid_Becke(.true., arr2, cmd3)
+    call Basis2real_Becke_mog(.true., arr2, cmd3)
   end if
   deallocate(arr, arr2, supparr)
   if (kill_) call terminate('normal')
-end subroutine MO2cgrid
+end subroutine Grid2c
 
 !-----------------------------------------------------------------------
 !> dump grid value of scalar spherical molecular orbitals for visualization
-subroutine MO1cgrid(cube, kill_)
+!!
+!! if cube, will also generate momentum space grid points
+subroutine Grid1c(cube, kill_)
   use Representation
   use Fundamentals
   use Hamiltonian
@@ -230,10 +235,11 @@ subroutine MO1cgrid(cube, kill_)
   end if
   call matmul('N', exc2s, arr*c1, arr2)
   if (cube) then
-    call dump_cube(.false., arr2, cmd3, spin)
+    call Basis2real_cube(.false., arr2, cmd3, spin)
+    call Basis2momentum_cube(.false., arr2, cmd3, spin)
   else
-    call MOgrid_Becke(.false., arr2, cmd3)
+    call Basis2real_Becke_mog(.false., arr2, cmd3)
   end if
   deallocate(arr, arr2)
   if (kill_) call terminate('normal')
-end subroutine MO1cgrid
+end subroutine Grid1c

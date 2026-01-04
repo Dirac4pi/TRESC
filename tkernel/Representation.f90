@@ -16,15 +16,15 @@ module Representation
   contains
 
 !------------------------------------------------------------
-!> transform states from basis repre to real space repre (to generate .mog file)
+!> transform states from basis repre to real space repre (Becke's fuzzy grid)
 !!
-!! grad=0:grid =1:gradient =2:Laplacian =a:alpha =b:beta
-  subroutine MOgrid_becke(is2c, arr, title)
+!! generate .mog file can be used to visualize MOs via vis2c
+  subroutine Basis2real_Becke_mog(is2c, arr, title)
     implicit none
     logical,intent(in)          :: is2c       ! true: 2c, false: 1c
     complex(dp),intent(in)      :: arr(:)     ! input array (basis repre)
     character(len=*),intent(in) :: title      ! title of .mog file
-    integer(8)                  :: i, ii, jj, kk, ll  ! loop varables
+    integer(8)                  :: i, ii, jj, kk, ll  ! loop variables
     integer(8)                  :: nl(atom_count), nr(atom_count), cnr, cnl
     integer                     :: Archannel, Aichannel, Brchannel, Bichannel
     integer                     :: xchannel, ychannel ,zchannel
@@ -67,15 +67,15 @@ module Representation
       if (ios /= 0) call terminate('dump binary .mog failed')
     end if
     call getenv('TRESC',env_TRESC)
-    open(30, file=trim(env_TRESC)//'/settings.ini', status='old', &
+    open(30, file=trim(env_TRESC)//'/gridsettings.ini', status='old', &
     action='read', iostat=ios)
     if (ios /= 0) then
-      call terminate("can't open file "//trim(env_TRESC)//'/settings.ini')
+      call terminate("can't open file "//trim(env_TRESC)//'/gridsettings.ini')
     end if
     do
       read(30, '(A)', iostat=ios) line
       if (ios /= 0) then
-        call terminate("no mogtype in "//trim(env_TRESC)//'/settings.ini')
+        call terminate("no mogtype in "//trim(env_TRESC)//'/gridsettings.ini')
       else if(index(line,'mogtype=') == 1) then
         call lowercase(line)
         if (line(index(line,'=')+1:index(line,'=')+1) == 'e') then
@@ -86,38 +86,39 @@ module Representation
         exit
       end if
     end do
-    if (ios /= 0) then
-      call terminate("can't read file "//trim(env_TRESC)//'/settings.ini')
-    end if
     nr = 0
     nl = 0
     if (mog_element) then
       do
         read(30, '(A)', iostat=ios) line
-        if (index(line,'//') == 1) cycle
-        if (index(line,'nr[') /= 1) exit
-        read(line(4:index(line,']=')-1), '(I)') r
-        read(line(index(line,']=')+2:index(line,',')-1), '(I)') cnr
-        line = line(index(line,']=')+2:)
-        read(line(index(line,']=')+2:index(line,';')-1), '(I)') cnl
-        do ii = 1, atom_count
-          if (mol(ii)%atom_number == r) then
-            nr(ii) = cnr
-            nl(ii) = cnl
-          end if
-        end do
+        if (ios /= 0) exit
+        if (index(line,'#') == 1) cycle
+        if (index(line,'nr[') == 1) then
+          read(line(4:index(line,']=')-1), '(I)') r
+          read(line(index(line,']=')+2:index(line,',')-1), '(I)') cnr
+          line = line(index(line,']=')+2:)
+          read(line(index(line,']=')+2:index(line,';')-1), '(I)') cnl
+          do ii = 1, atom_count
+            if (mol(ii)%atom_number == r) then
+              nr(ii) = cnr
+              nl(ii) = cnl
+            end if
+          end do
+        end if
       end do
     else
       do
         read(30, '(A)', iostat=ios) line
-        if (index(line,'//') == 1) cycle
-        if (index(line,'nr{') /= 1) exit
-        read(line(4:index(line,'}=')-1), '(I)') r
-        read(line(index(line,'}=')+2:index(line,',')-1), '(I)') cnr
-        line = line(index(line,'}=')+2:)
-        read(line(index(line,'}=')+2:index(line,';')-1), '(I)') cnl
-        nr(r) = cnr
-        nl(r) = cnl
+        if (ios /= 0) exit
+        if (index(line,'#') == 1) cycle
+        if (index(line,'nr{') == 1) then
+          read(line(4:index(line,'}=')-1), '(I)') r
+          read(line(index(line,'}=')+2:index(line,',')-1), '(I)') cnr
+          line = line(index(line,'}=')+2:)
+          read(line(index(line,'}=')+2:index(line,';')-1), '(I)') cnl
+          nr(r) = cnr
+          nl(r) = cnl
+        end if
       end do
     end if
     close(30)
@@ -133,7 +134,7 @@ module Representation
       if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
       beta2 should be in range [0,1)")
       gamma = (1.0_dp-beta2)**(-0.5_dp)
-      call Mol_Lorentztrafo()
+      call Mol_real_Lorentztrafo()
       if (beta2 > 1E-6) then
       write(*,*)
       write(*,*) "------------------------------------------------------------"
@@ -152,12 +153,12 @@ module Representation
       !$omp do schedule(static)
       do i = 1, nr(ii)
         if (is2c) then
-          call Grid_Lorentztrafo_MO(&
+          call Grid_real_Lorentztrafo(&
           arr,nl(ii),pos3(1:nl(ii),:,i),trafopos3(1:nl(ii),:,i),&
           datsa((i-1)*nl(ii)+1:i*nl(ii)),datsb((i-1)*nl(ii)+1:i*nl(ii)))
         else
           ! always alpha
-          call grid(arr,nl(ii),pos3(1:nl(ii),:,i),1,&
+          call Grid_real(arr,nl(ii),pos3(1:nl(ii),:,i),1,&
           datsa((i-1)*nl(ii)+1:i*nl(ii)))
         end if
       end do
@@ -201,11 +202,15 @@ module Representation
       close(ychannel)
       close(zchannel)
     end if
-  end subroutine MOgrid_becke
+  end subroutine Basis2real_Becke_mog
 
 !------------------------------------------------------------
-!> generate Gaussian cube file for input MO
-  subroutine Dump_cube(is2c, arr, title, spin)
+!> transform states from basis repre to real space repre (uniform cube grid)
+!!
+!! generate .cub file can be used to visualize MOs via vis2c
+!!
+!! spin(optional)=0:total =1:alpha =2:beta
+  subroutine Basis2real_cube(is2c, arr, title, spin)
     implicit none
     logical,intent(in)          :: is2c
     complex(dp),intent(in)      :: arr(2*cbdm)
@@ -215,7 +220,7 @@ module Representation
     integer,optional            :: spin
     integer                     :: end
     integer                     :: i, ii, jj, kk
-    real(dp)                    :: maxx, minx, maxy, miny, maxz, minz
+    real(dp)                    :: maxx, minx, maxy, miny, maxz, minz, edge
     real(dp)                    :: deltax, deltay, deltaz
     integer(8)                  :: nx, ny, nz
     !DIR$ ATTRIBUTES ALIGN:align_size :: points, datsa, datsb
@@ -225,50 +230,59 @@ module Representation
     complex(dp),allocatable     :: dats(:,:,:)
 
     call getenv('TRESC',env_TRESC)
-    open(30, file=trim(env_TRESC)//'/settings.ini', status='old', &
+    open(30, file=trim(env_TRESC)//'/gridsettings.ini', status='old', &
     action='read', iostat=ios)
-    if (ios /= 0) then
-      call terminate("can't open file "//trim(env_TRESC)//'/settings.ini')
-    end if
+    if (ios /= 0) call terminate(&
+    "can't open file "//trim(env_TRESC)//'/gridsettings.ini')
+    nx = 64        ! default settings
+    ny = 64
+    nz = 64
+    edge = 3.0_dp
     do
       read(30, '(A)', iostat=ios) line
       if (ios /= 0) then
-        call terminate("no nx,ny,nz in "//trim(env_TRESC)//'/settings.ini')
+        exit
       else if(index(line,'nx=') == 1) then
         read(line(index(line,'=')+1:index(line,';')-1), '(I)') nx
+        if (nx <= 0) call terminate("nx should be positive integer")
       else if(index(line,'ny=') == 1) then
         read(line(index(line,'=')+1:index(line,';')-1), '(I)') ny
+        if (ny <= 0) call terminate("ny should be positive integer")
       else if(index(line,'nz=') == 1) then
         read(line(index(line,'=')+1:index(line,';')-1), '(I)') nz
-        exit
+        if (nz <= 0) call terminate("nz should be positive integer")
+      else if(index(line,'edge=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(F)') edge
+        if (edge <= 0.0) call terminate("edge should be positive float")
       end if
     end do
     close(30)
     allocate(dats(2*nz,ny,nx))
     allocate(points(nz,3), datsa(nz), datsb(nz))
     if (is2c) then
-      open(99, file=trim(title)//"-real.cub", status="replace", action="write")
+      open(99,file=trim(title)//"-realreal.cub",status="replace",action="write")
       write(99,'(A)') 'generate by TRESC: real part of 2-component orb '&
-      //trim(title)
+      //trim(title)//' in real space'
       write(99,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
-      open(100, file=trim(title)//"-img.cub", status="replace", action="write")
+      open(100,file=trim(title)//"-realimg.cub",status="replace",action="write")
       write(100,'(A)') 'generated by TRESC: imaginary part of 2-component orb '&
-      //trim(title)
+      //trim(title)//' in real space'
       write(100,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
     else
-      open(99, file=trim(title)//".cub", status="replace", action="write")
-      write(99,'(A)') 'generated by TRESC'
+      open(99, file=trim(title)//"-real.cub", status="replace", action="write")
+      write(99,'(A)') 'generated by TRESC: scalar orb '&
+      //trim(title)//' in real space'
       write(99,'(A,I,A)') 'total ',nx*ny*nz,' points'
     end if
     ! generate grid points
-    maxx = maxval(mol(:)%pos(1)) + 3.0
-    minx = minval(mol(:)%pos(1)) - 3.0
+    maxx = maxval(mol(:)%pos(1)) + edge
+    minx = minval(mol(:)%pos(1)) - edge
     deltax = (maxx-minx) / nx
-    maxy = maxval(mol(:)%pos(2)) + 3.0
-    miny = minval(mol(:)%pos(2)) - 3.0
+    maxy = maxval(mol(:)%pos(2)) + edge
+    miny = minval(mol(:)%pos(2)) - edge
     deltay = (maxy-miny) / ny
-    maxz = maxval(mol(:)%pos(3)) + 3.0
-    minz = minval(mol(:)%pos(3)) - 3.0
+    maxz = maxval(mol(:)%pos(3)) + edge
+    minz = minval(mol(:)%pos(3)) - edge
     deltaz = (maxz-minz) / nz
     if (is2c) then
       write(99,'(I4,3F14.8)') -atom_count, minx, miny, minz
@@ -301,7 +315,7 @@ module Representation
       end do
       write(99,'(I3,A4)') 1, trim(title(:ii-1)//title(ii+1:))
     end if
-    !$omp parallel num_threads(10) default(shared) private(i, ii, jj, kk, &
+    !$omp parallel num_threads(16) default(shared) private(i, ii, jj, kk, &
     !$omp& points, datsa, datsb) if(atom_count > 5)
     !$omp do schedule(static)
     do i = 1, nx
@@ -313,14 +327,14 @@ module Representation
           points(kk,3) = minz + (kk-1) * deltaz
         end do
         if (is2c) then
-          call grid(arr, nz, points, 1, datsa)
-          call grid(arr, nz, points, 2, datsb)
+          call Grid_real(arr, nz, points, 1, datsa)
+          call Grid_real(arr, nz, points, 2, datsb)
           do kk = 1, nz
             dats(2*kk-1,jj,ii) = datsa(kk)
             dats(2*kk,jj,ii) = datsb(kk)
           end do
         else
-          call grid(arr, nz, points, spin, dats(1:nz,jj,ii))
+          call Grid_real(arr, nz, points, spin, dats(1:nz,jj,ii))
         end if
       end do
     end do
@@ -345,20 +359,196 @@ module Representation
     close(99)
     if (is2c) close(100)
     deallocate(dats, points, datsa, datsb)
-  end subroutine Dump_cube
+  end subroutine Basis2real_cube
+
+!------------------------------------------------------------
+!> transform states from basis repre to momentum space repre (uniform cube grid)
+!!
+!! generate .cub file can be used to visualize MOs via vis2c
+!!
+!! spin(optional)=0:total =1:alpha =2:beta
+  subroutine Basis2momentum_cube(is2c, arr, title, spin)
+    implicit none
+    logical,intent(in)          :: is2c
+    complex(dp),intent(in)      :: arr(2*cbdm)
+    character(len=*),intent(in) :: title
+    character(len=200)          :: env_TRESC
+    character(len=100)          :: line
+    integer,optional            :: spin
+    integer                     :: end
+    integer                     :: i, ii, jj, kk
+    real(dp)                    :: maxexpo, maxcoeinshell, maxexpoinshell
+    real(dp)                    :: maxx, minx, maxy, miny, maxz, minz, sigma
+    real(dp)                    :: deltax, deltay, deltaz
+    integer(8)                  :: nx, ny, nz
+    !DIR$ ATTRIBUTES ALIGN:align_size :: mmts, datsa, datsb
+    real(dp),allocatable        :: mmts(:,:)
+    complex(dp),allocatable     :: datsa(:), datsb(:)
+    !DIR$ ATTRIBUTES ALIGN:align_size :: dats
+    complex(dp),allocatable     :: dats(:,:,:)
+
+    call getenv('TRESC',env_TRESC)
+    open(30, file=trim(env_TRESC)//'/gridsettings.ini', status='old', &
+    action='read', iostat=ios)
+    if (ios /= 0) call terminate(&
+    "can't open file "//trim(env_TRESC)//'/gridsettings.ini')
+    nx = 64        ! default settings
+    ny = 64
+    nz = 64
+    sigma = 3.0_dp
+    do
+      read(30, '(A)', iostat=ios) line
+      if (ios /= 0) then
+        exit
+      else if(index(line,'nx=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') nx
+        if (nx <= 0) call terminate("nx should be positive integer")
+      else if(index(line,'ny=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') ny
+        if (ny <= 0) call terminate("ny should be positive integer")
+      else if(index(line,'nz=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(I)') nz
+        if (nz <= 0) call terminate("nz should be positive integer")
+      else if(index(line,'sigma=') == 1) then
+        read(line(index(line,'=')+1:index(line,';')-1), '(F)') sigma
+        if (sigma <= 0.0) call terminate("sigma should be positive float")
+      end if
+    end do
+    close(30)
+    allocate(dats(2*nz,ny,nx))
+    allocate(mmts(nz,3), datsa(nz), datsb(nz))
+    if (is2c) then
+      open(99,file=trim(title)//"-mmtreal.cub",status="replace",action="write")
+      write(99,'(A)') 'generate by TRESC: real part of 2-component orb '&
+      //trim(title)//' in momentum space'
+      write(99,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
+      open(100,file=trim(title)//"-mmtimg.cub",status="replace",action="write")
+      write(100,'(A)') 'generated by TRESC: imaginary part of 2-component orb '&
+      //trim(title)//' in momentum space'
+      write(100,'(A,I,A)') 'total ',nx*ny*nz,' grid points'
+    else
+      open(99, file=trim(title)//"-mmt.cub", status="replace", action="write")
+      write(99,'(A)') 'generated by TRESC: scalar orb '&
+      //trim(title)//' in momentum space'
+      write(99,'(A,I,A)') 'total ',nx*ny*nz,' points'
+    end if
+    ! generate grid points
+    ! three-sigma boundary of the primitive GTO contributing most significantly
+    ! to the GTO contributing more than 5% to the MO
+    maxexpo = 0.0_dp
+    do ii = 1, cbdm
+      if (abs(arr(ii)) < 0.05) cycle
+      maxcoeinshell = cbdata(ii)%Ncoe(1)
+      maxexpoinshell = cbdata(ii)%expo(1)
+      do jj = 1, cbdata(ii)%contr
+        if (cbdata(ii)%Ncoe(jj) > maxcoeinshell) then
+          maxcoeinshell = cbdata(ii)%Ncoe(jj)
+          maxexpoinshell = cbdata(ii)%expo(jj)
+        end if
+      end do
+      if (maxexpoinshell > maxexpo) maxexpo = maxexpoinshell
+    end do
+    ! amplitude of GTO under the momentum representation exhibits inversion
+    ! symmetry, abs(psi(p)) = abs(psi(-p)), therefore, the square box is centred
+    ! on (0,0,0).
+    maxx = sigma*dsqrt(2.0_dp*maxexpo)
+    minx = -maxx
+    deltax = (maxx-minx) / real(nx,dp)
+    maxy = maxx
+    miny = minx
+    deltay = deltax
+    maxz = maxx
+    minz = minx
+    deltaz = deltax
+    if (is2c) then
+      write(99,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(99,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(99,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(99,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      write(100,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(100,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(100,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(100,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      do ii = 1, atom_count
+        write(99,'(I4,4F14.8)') mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+        write(100,'(I4,4F14.8)')mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+      end do
+      write(99,'(I3,A4,A4)') 2, trim(title), trim(title)
+      write(100,'(I3,A4,A4)') 2, trim(title), trim(title)
+    else
+      write(99,'(I4,3F14.8)') -atom_count, minx, miny, minz
+      write(99,'(I3,3F14.8)') nx, deltax, 0.0, 0.0
+      write(99,'(I3,3F14.8)') ny, 0.0, deltay, 0.0
+      write(99,'(I3,3F14.8)') nz, 0.0, 0.0, deltaz
+      do ii = 1, atom_count
+        write(99,'(I4,4F14.8)') mol(ii)%atom_number, real(mol(ii)%atom_number),&
+        mol(ii)%pos(1), mol(ii)%pos(2), mol(ii)%pos(3)
+      end do
+      do ii = 1, len(title)
+        if (is_alpha(title(ii:ii))) exit
+      end do
+      write(99,'(I3,A4)') 1, trim(title(:ii-1)//title(ii+1:))
+    end if
+    !$omp parallel num_threads(16) default(shared) private(i, ii, jj, kk, &
+    !$omp& mmts, datsa, datsb) if(atom_count > 5)
+    !$omp do schedule(static)
+    do i = 1, nx
+      ii = i
+      mmts(:,1) = minx + (ii-1) * deltax
+      do jj = 1, ny
+        mmts(:,2) = miny + (jj-1) * deltay
+        do kk = 1, nz
+          mmts(kk,3) = minz + (kk-1) * deltaz
+        end do
+        if (is2c) then
+          call Grid_momentum(arr, nz, mmts, 1, datsa)
+          call Grid_momentum(arr, nz, mmts, 2, datsb)
+          do kk = 1, nz
+            dats(2*kk-1,jj,ii) = datsa(kk)
+            dats(2*kk,jj,ii) = datsb(kk)
+          end do
+        else
+          call Grid_momentum(arr, nz, mmts, spin, dats(1:nz,jj,ii))
+        end if
+      end do
+    end do
+    !$omp end do
+    !$omp end parallel
+    do ii = 1, nx
+      do jj = 1, ny
+        if (is2c) then
+          do kk = 1, 2*nz, 6
+            end = min(kk+5, 2*nz)
+            write(99, '(6ES15.6)') real(dats(kk:end,jj,ii))
+            write(100, '(6ES15.6)') aimag(dats(kk:end,jj,ii))
+          end do
+        else
+          do kk = 1, nz, 6
+            end = min(kk+5, nz)
+            write(99, '(6ES15.6)') real(dats(kk:end,jj,ii))
+          end do
+        end if
+      end do
+    end do
+    close(99)
+    if (is2c) close(100)
+    deallocate(dats, mmts, datsa, datsb)
+  end subroutine Basis2momentum_cube
 
 !------------------------------------------------------------
 !> transform states from basis repre to real space repre (Becke's fuzzy grid)
 !!
-!! directly used to generate xc energies for xc functional
+!! it's used to generate xc energies for xc functional
 !!
 !! returns only the integral value
-  subroutine Basis2grid_Becke(rho_m, ex, ec, Fockx, Fockc)
+  subroutine Basis2real_Becke_XCintegral(rho_m, ex, ec, Fockx, Fockc)
     implicit none
     real(dp),intent(out)   :: ex         ! exchange functional
     real(dp), optional     :: ec         ! correlation functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)! Cartesian density matrix
-    integer(8)             :: i          ! loop variables for Basis2grid_Becke
+    integer(8)             :: i          ! loop variable
     integer(8)             :: nr, nl     ! number of grid points
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos3w1
     real(dp)               :: pos3w1(434,4,100)
@@ -410,7 +600,7 @@ module Representation
     if (present(ec)) ec = ec + ecm
     !$omp end critical
     !$omp end parallel
-  end subroutine Basis2grid_Becke
+  end subroutine Basis2real_Becke_XCintegral
 
 !------------------------------------------------------------
 !> assign radial grid points (Gauss weight) using 2nd Chebyshev method
@@ -552,10 +742,147 @@ module Representation
   end function Becke_miu
 
 !------------------------------------------------------------
-!> assign molecule in frame of motion (trafomol)
-  subroutine Mol_Lorentztrafo()
+!> grid points in real space of input (basis repre) vector
+!!
+!! spin=0:total =1:alpha =2:beta
+  pure subroutine Grid_real(arr, n, points, spin, dats)
     implicit none
-    integer :: ii, jj, kk
+    complex(dp),intent(in)  :: arr(:)
+    integer(8),intent(in)   :: n
+    real(dp),intent(in)     :: points(n, 3)
+    integer,intent(in)      :: spin
+    complex(dp),intent(out) :: dats(n)
+    integer                 :: ii, jj, kk
+    integer                 :: contr
+    real(dp)                :: vec(n, 3)
+    integer                 :: L, M
+    integer                 :: fac(3)
+    real(dp)                :: coeff
+    real(dp)                :: expo
+    real(dp)                :: val(n)
+    integer                 :: init, final, step
+    dats = c0
+    if (spin == 0) then
+      init = 1
+      step = 1
+      final = 2*cbdm
+    else if (spin == 1) then
+      init = 1
+      step = 1
+      final = cbdm
+    else if (spin == 2) then
+      init = cbdm+1
+      step = 1
+      final = 2*cbdm
+    end if
+    do ii = init, final, step
+      if (ii <= cbdm) then
+        kk = ii
+      else
+        kk = ii - cbdm
+      end if
+      val = 0.0_dp
+      vec(:,1) = points(:,1) - cbdata(kk) % pos(1)
+      vec(:,2) = points(:,2) - cbdata(kk) % pos(2)
+      vec(:,3) = points(:,3) - cbdata(kk) % pos(3)
+      contr    = cbdata(kk) % contr
+      L        = cbdata(kk) % L
+      M        = cbdata(kk) % M
+      fac(:)   = AO_fac(:,L,M)
+      do jj = 1, contr
+        expo   = cbdata(kk) % expo(jj)
+        coeff  = cbdata(kk) % Ncoe(jj)
+        val(:) = val(:) + coeff * exp(-expo*(sum(vec(:,:)**2,dim=2)))
+      end do
+      val(:) = val(:) * (vec(:,1)**fac(1))
+      val(:) = val(:) * (vec(:,2)**fac(2))
+      val(:) = val(:) * (vec(:,3)**fac(3))
+      dats   = dats + val * arr(ii)
+    end do
+  end subroutine Grid_real
+
+!------------------------------------------------------------
+!> grid points in momentum space of input (basis repre) vector
+!!
+!! spin=0:total =1:alpha =2:beta
+  pure subroutine Grid_momentum(arr, n, mmts, spin, dats)
+    implicit none
+    complex(dp),intent(in)  :: arr(:)
+    integer(8),intent(in)   :: n
+    real(dp), intent(in)    :: mmts(n,3)
+    integer,intent(in)      :: spin
+    complex(dp),intent(out) :: dats(n)
+    integer                 :: ii, jj, kk, mm
+    integer                 :: contr
+    real(dp)                :: rx, ry, rz
+    real(dp)                :: px, py, pz
+    integer                 :: L, M
+    integer                 :: fac(3)
+    complex(dp)             :: coeff(cbdm,16)
+    real(dp)                :: expo(16)
+    complex(dp)             :: val
+    integer                 :: init, final, step
+    real(dp)                :: p2, inv2sqrtb(cbdm,16)
+
+    do ii = 1, cbdm
+      inv2sqrtb(ii,:) = 1.0_dp / (2.0_dp*sqrt(cbdata(ii)%expo))
+      L = cbdata(ii)%L - 1
+      expo = cbdata(ii)%expo
+      coeff(ii,:) = cbdata(ii)%Ncoe(:)*(-ci)**L/((2.0_dp**(real(L,dp)+1.5_dp))*&
+      (expo(:)**(0.5_dp*real(L,dp)+1.5_dp)))
+    end do
+    if (spin == 0) then
+      init = 1
+      step = 1
+      final = 2*cbdm
+    else if (spin == 1) then
+      init = 1
+      step = 1
+      final = cbdm
+    else if (spin == 2) then
+      init = cbdm+1
+      step = 1
+      final = 2*cbdm
+    end if
+    dats = c0
+    do mm = 1, n
+      px = mmts(mm,1)
+      py = mmts(mm,2)
+      pz = mmts(mm,3)
+      p2 = px**2 + py**2 + pz**2
+      do ii = init, final, step
+        if (ii <= cbdm) then
+          kk = ii
+        else
+          kk = ii - cbdm
+        end if
+        val = c0
+        contr  = cbdata(kk)%contr
+        expo   = cbdata(kk)%expo
+        fac(:) = AO_fac(:,cbdata(kk)%L,cbdata(kk)%M)
+        rx     = cbdata(kk)%pos(1)
+        ry     = cbdata(kk)%pos(2)
+        rz     = cbdata(kk)%pos(3)
+        do jj = 1, contr
+          val = val + coeff(kk,jj)                       *&
+          exp(-p2/(4.0_dp*expo(jj)))                     *&
+          Hermite_poly(fac(1),px*inv2sqrtb(kk,jj))       *&
+          Hermite_poly(fac(2),py*inv2sqrtb(kk,jj))       *&
+          Hermite_poly(fac(3),pz*inv2sqrtb(kk,jj))
+        end do
+        val = val * exp(-ci*(px*rx+py*ry+pz*rz))
+        dats(mm) = dats(mm) + val * arr(ii)
+      end do
+    end do
+  end subroutine Grid_momentum
+
+!------------------------------------------------------------
+!> reference frame transformation in real space of mol
+!!
+!! assign molecule in frame of motion (trafomol)
+  subroutine Mol_real_Lorentztrafo()
+    implicit none
+    integer  :: ii, jj, kk
     real(dp) :: trafocoe, dot
     ! Lorentz transformation of x, leads to length contraction
     ! x' = x - gamma/(gamma+1.0_dp)(x.beta) * beta
@@ -565,16 +892,16 @@ module Representation
       dot = trafocoe*sum(beta(:)*mol(ii)%pos(:))
       trafomol(ii)%pos(:) = mol(ii)%pos(:) + dot*beta(:)
     end do
-  end subroutine Mol_Lorentztrafo
+  end subroutine Mol_real_Lorentztrafo
 
 !------------------------------------------------------------
-!> reference frame transformation of a (basis repre) vector
+!> reference frame transformation in real space of input (basis repre) vector
 !!
 !! input "points" is the coordinates in rest frame
 !!
 !! “simultaneous” in motion frame: x_rest = L(x_motion)|t_motion=0,
 !! in this case, x' = x_rest; x = x_motion
-  pure subroutine Grid_Lorentztrafo_MO(arr, n, points, trafopoints, datsa, datsb)
+  pure subroutine Grid_real_Lorentztrafo(arr,n,points,trafopoints,datsa,datsb)
     implicit none
     complex(dp),intent(in)  :: arr(:)
     integer(8),intent(in)   :: n
@@ -636,16 +963,16 @@ module Representation
       datsa(ii) = datsa(ii) * a2/(datsa(ii)*conjg(datsa(ii)))
       datsb(ii) = datsb(ii) * b2/(datsb(ii)*conjg(datsb(ii)))
     end do
-  end subroutine Grid_Lorentztrafo_MO
+  end subroutine Grid_real_Lorentztrafo
 
 !------------------------------------------------------------
-!> perform SU(2) Euler transformation on input (spin part of) orbital(s)
+!> perform SU(2) Euler transformation of input (spin part of) orbital(s)
 !!
-!! Euler angle: phi [0,2pi), theta [0,pi], chi [0,2pi)
+!! in spinor space, Euler angle: phi [0,2pi), theta [0,pi], chi [0,2pi)
 !!
 !! based on z-y-z convention: 
 !! exp(-(i/2)*phi*sigma_z) * exp(-(i/2)*theta*sigma_y) * exp(-(i/2)*chi*sigma_z)
-  pure subroutine Orb_SU2trafo(orb_i, orb_o, phi, theta, chi)
+  pure subroutine MO_spinor_SU2trafo(orb_i, orb_o, phi, theta, chi)
     implicit none
     complex(dp),intent(in)                :: orb_i(:,:) ! input orbitals
     complex(dp),intent(out)               :: orb_o(:,:) ! output orbitals
@@ -677,6 +1004,6 @@ module Representation
         SU2rot(2,2)*orb_i(dm(1)/2+jj,ii)
       end do
     end do
-  end subroutine Orb_SU2trafo
+  end subroutine MO_spinor_SU2trafo
 
 end module Representation

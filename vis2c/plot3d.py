@@ -10,8 +10,7 @@ from json import load as jsload
 import qcelemental as qcel
 qcel.CovalentRadii("ALVAREZ2008")
 from mayavi import mlab
-from tvtk.api import tvtk
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import zoom, gaussian_filter
 
 dtol = 0.01 # tolerance of delaunay
 maxpoints = 1e5 # max grid points
@@ -19,7 +18,7 @@ maxpoints = 1e5 # max grid points
 #-------------------------------------------------------------------------------
 def sync_camera(fig1, fig2, sync_coe:float) -> None:
   """
-  Synchronise camera parameters from fig1.scene to fig2.scene.
+  Synchronise camera parameters from fig1.scene to fig2.scene
   --
   """
   fig2.scene.camera.position = sync_coe*(fig1.scene.camera.position - \
@@ -30,15 +29,15 @@ def sync_camera(fig1, fig2, sync_coe:float) -> None:
 
 #-------------------------------------------------------------------------------
 def cmplx_orb_plot_cub(\
-    title:str, atoms, amplitude, phase, x, y, z, isovalue:float)->float:
+    title:str, atoms, amp, pha, x, y, z, isovalue:float)->float:
   '''
-  plot amplitude(contour) and phase(color) of scalar complex structured grid.
+  plot amplitude(contour) and phase(color) of scalar complex structured grid
   --
   !!! for 2c MO, alpha and beta components should be plotted separately.\n
   title: title of figure\n
   atoms: atom information\n
-  real: real part of function\n
-  img: imaginary part of function\n
+  amp: amplitude of function\n
+  pha: phase of function\n
   x: x grid points\n
   y: y grid points\n
   z: z grid points\n
@@ -53,26 +52,30 @@ def cmplx_orb_plot_cub(\
   mlab.clf(fig1)
   fig_try = mlab.figure(675)
   # amplitude of MO not amplitude of linear combine of AO
+  amp_smooth = gaussian_filter(amp, sigma=1)
   try:
-    mlab.contour3d(x, y, z, amplitude, figure=fig_try, contours=[isovalue])
+    mlab.contour3d(x, y, z, amp_smooth, figure=fig_try, contours=[isovalue])
   except Exception as e:
     print(f'Error: {e}')
     if str(e).find('Contour instance must be') >= 0:
       isovalue = float(str(e)[str(e).rfind('<=')+3 : \
         str(e).rfind('<=')+14]) * .5 
         # factor of 0.5 is usually appropriate
-      contouramp = mlab.contour3d(x, y, z, amplitude, figure=fig1, \
+      contouramp = mlab.contour3d(x, y, z, amp_smooth, figure=fig1, \
         contours=[isovalue], opacity=.2, colormap='Greys')
       print('------')
       print('ignore previous error')
     else:
       raise RuntimeError()
   else:
-    contouramp = mlab.contour3d(x, y, z, amplitude, figure=fig1, \
-      contours=[isovalue], opacity=.2, colormap='Greys')
+    contouramp = mlab.contour3d(x, y, z, amp_smooth, figure=fig1, \
+      contours=[isovalue], opacity=.7, colormap='Greys')
   finally:
-    contouramp.actor.property.line_width = 0.05
-    contouramp.actor.property.edge_visibility = True
+    contouramp.actor.property.interpolation = 'phong'
+    contouramp.actor.property.ambient  = 0.15
+    contouramp.actor.property.diffuse  = 0.75
+    contouramp.actor.property.specular = 0.35
+    contouramp.actor.property.specular_power = 20
   mlab.close(675)
   atom_list = atoms['index']
   atomx = atoms['x']
@@ -85,10 +88,10 @@ def cmplx_orb_plot_cub(\
   mlab.clf(fig2)
   # isosurface of amplitude
   # amplitude of MO are not linear combine of amplitude of AO
-  src = mlab.pipeline.scalar_field(x,y,z,amplitude)
+  src = mlab.pipeline.scalar_field(x,y,z,amp_smooth)
   # colour mapping of phase
   # use arctan2 to describe complex plane completly
-  src.image_data.point_data.add_array(phase.T.ravel())
+  src.image_data.point_data.add_array(pha.T.ravel())
   src.image_data.point_data.get_array(1).name = 'phase'
   src.update()
   # contour of amplitude
@@ -116,7 +119,7 @@ def cmplx_orb_plot_cub(\
 def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
                        phase, x, y, z, isovalue:float)->float:
   '''
-  plot amplitude(contour) and phase(color) of scalar complex unstructured grid.
+  plot amplitude(contour) and phase(color) of scalar complex unstructured grid
   --
   !!! for 2c MO, alpha and beta components should be plotted separately.\n
   title: title of figure\n
@@ -162,10 +165,13 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   contour = mlab.pipeline.contour(delaunay)
   try:
     contour.filter.contours = [isovalue]
-    surface = mlab.pipeline.surface(contour, figure=fig1, opacity=0.2,\
+    surface = mlab.pipeline.surface(contour, figure=fig1, opacity=.7,\
                                     colormap='Greys')
-    surface.actor.property.edge_visibility = True
-    surface.actor.property.line_width = 0.05
+    surface.actor.property.interpolation = 'phong'
+    surface.actor.property.ambient  = 0.15
+    surface.actor.property.diffuse  = 0.75
+    surface.actor.property.specular = 0.35
+    surface.actor.property.specular_power = 20
   except Exception as e:
     raise RuntimeError(f'Error: {e}')
   atom_list = atoms['index']
@@ -210,7 +216,7 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
 #-------------------------------------------------------------------------------
 def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   '''
-  plot value of scalar complex structured grid.
+  plot scalar real structured grid
   --
   title: title of figure\n
   atoms: atom information\n
@@ -235,8 +241,20 @@ def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   elif isovalue < 2*np.abs(val_smoothed).min():
     isovalue = 0.5 * (np.abs(val_smoothed).max() + np.abs(val_smoothed).min())
     print(f"Adjust isovalue to {isovalue} (mid-range)")
-  mlab.contour3d(x, y, z, val, contours=[isovalue], colormap='winter')
-  mlab.contour3d(x, y, z, val, contours=[-isovalue], colormap='autumn')
+  contourpos = mlab.contour3d(x, y, z, val_smoothed, contours=[isovalue], \
+                              opacity=.7, colormap='winter')
+  contourpos.actor.property.interpolation = 'phong'
+  contourpos.actor.property.ambient  = 0.15
+  contourpos.actor.property.diffuse  = 0.75
+  contourpos.actor.property.specular = 0.35
+  contourpos.actor.property.specular_power = 20
+  contourneg = mlab.contour3d(x, y, z, val_smoothed, contours=[-isovalue], \
+                              opacity=.7, colormap='autumn')
+  contourneg.actor.property.interpolation = 'phong'
+  contourneg.actor.property.ambient  = 0.15
+  contourneg.actor.property.diffuse  = 0.75
+  contourneg.actor.property.specular = 0.35
+  contourneg.actor.property.specular_power = 20
   # -------------<plot atoms>-------------
   atom_list = atoms['index']
   atomx = atoms['x']
@@ -248,9 +266,60 @@ def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   return isovalue
 
 #-------------------------------------------------------------------------------
+def real_orb_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
+  '''
+  plot scalar real structured grid (amplitude only)
+  --
+  title: title of figure\n
+  atoms: atom information\n
+  val: grid value of function\n
+  x: x grid points\n
+  y: y grid points\n
+  z: z grid points\n
+  isovalue: isovalue of val\n
+  Return: final isovalue
+  '''
+  if isovalue <= 0.0:
+    raise RuntimeError('isovalue should be positive')
+  # -------------<plot orb>-------------
+  fig1 = mlab.figure(figure=f'{title}', size=(400,400), \
+    fgcolor=(0,0,0), bgcolor=(1,1,1))
+  mlab.clf(fig1)
+  # amplitude of MO not amplitude of linear combine of AO
+  val_amp = np.abs(val)
+  val_smoothed = gaussian_filter(val_amp, sigma=1.0)
+  if isovalue > 0.5*val_smoothed.max():
+    isovalue = 0.5 * (val_smoothed.max() + val_smoothed.min())
+    print(f"Adjust isovalue to {isovalue} (mid-range)")
+  elif isovalue < 2*val_smoothed.min():
+    isovalue = 0.5 * (val_smoothed.max() + val_smoothed.min())
+    print(f"Adjust isovalue to {isovalue} (mid-range)")
+  contour = mlab.contour3d(x, y, z, val_smoothed, figure=fig1, \
+                           contours=[isovalue], opacity=.7, colormap='Greys')
+  contour.actor.property.interpolation = 'phong'
+  contour.actor.property.ambient  = 0.15
+  contour.actor.property.diffuse  = 0.75
+  contour.actor.property.specular = 0.35
+  contour.actor.property.specular_power = 20
+  # -------------<plot atoms>-------------
+  if (title.startswith('real')):
+    atom_list = atoms['index']
+    atomx = atoms['x']
+    atomy = atoms['y']
+    atomz = atoms['z']
+    mlab.figure(fig1)
+    atoms_plot(atom_list, atomx, atomy, atomz)
+  elif (title.startswith('momentum')):
+    mlab.points3d(0.0, 0.0, 0.0, figure=fig1, \
+                  scale_factor=0.3, resolution=20, \
+                  color=(0.0,0.0,0.0), opacity=1.0, scale_mode='none')
+  fig1.scene.show_axes = True
+  return isovalue
+
+#-------------------------------------------------------------------------------
 def hex2rgb(hexcolor:str) -> tuple[int,int,int]:
   '''
-  colour format conversion from Hex to RGB.
+  color format conversion from Hex to RGB
   --
   Return: RGB color
   '''
@@ -300,7 +369,7 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
     B = RGB[2] / 255.
     mlab.points3d(atomx[i], atomy[i], atomz[i], figure=fig, \
       scale_factor=atom_radius[i], resolution=20, \
-        color=(R, G, B), opacity=1., scale_mode='none')
+        color=(R,G,B), opacity=1., scale_mode='none')
     for j in range (num_atom):
       pointi = np.array([atomx[i], atomy[i], atomz[i]])
       pointj = np.array([atomx[j], atomy[j], atomz[j]])
@@ -311,4 +380,5 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
         lz = np.linspace(pointi[2], pointj[2], 2)
         mlab.plot3d(lx, ly, lz, tube_radius=0.05, \
                     color=(0.3,0.3,0.3), tube_sides=20)
+  fig.scene.background = (1.0,1.0,1.0)
 

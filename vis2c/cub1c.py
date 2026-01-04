@@ -1,5 +1,5 @@
 '''
-visualizing real scalar orbital
+visualization of real scalar orbital with structured grid data
 coding:UTF-8
 env:vis2c
 '''
@@ -13,19 +13,24 @@ from traitsui.api import View, Item
 
 def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
   '''
-  real scalar MO visualization, uniform cube grid net.
+  visualization of real scalar orbital with structured grid data
   --
   molden: title of .molden.input file.\n
   index: index of MO with spin.\n
   isovalue: isovalue of amplitude of MO.\n
   Returns: None
   '''
-  if not molden.endswith('.molden.input'):
-    molden = molden + '.molden.input'
+  if not molden.endswith('.molden.input') and not molden.endswith('.molden'):
+    if not path.exists(molden.strip('.molden.input')):
+      if not path.exists(molden.strip('.molden')):
+        raise RuntimeError(f"can't find {molden}.molden.input \
+                           or {molden}.molden")
+      else:
+        molden = molden + '.molden'
+    else:
+      molden = molden + '.molden.input'
   if not path.exists(molden):
-    molden = molden.strip('.input')
-    if not path.exists(molden):
-      raise RuntimeError(f"can't find {molden}")
+    raise RuntimeError(f"can't find {molden}")
   #-----------------------------------------------------------------------------
   # generate cube file
   print('generating cub file...')
@@ -33,7 +38,7 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
   #-----------------------------------------------------------------------------
   # load data from cube file
   print('loading grid data from cub file...')
-  cub = index+'.cub'
+  cub = index+'-real.cub'
   atoms, mat, nmo = vk.load_cube(cub, 1)
   if nmo == 0:
     raise RuntimeError('no orbital info in cube file '+cub)
@@ -54,7 +59,7 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
     @observe('isov')
     def update_isov(self,event):
       new_isov = event.new
-      mlab.close('scalar')
+      mlab.close(f'{index}')
       p3.real_orb_plot_cub(index, atoms, val, x, y, z, new_isov)
       mlab.draw()
       mlab.view()

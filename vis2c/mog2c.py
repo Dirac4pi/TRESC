@@ -1,5 +1,5 @@
 '''
-visualizing 2-component complex orbital with unstructured data
+visualization of complex spinor orbital with unstructured grid data
 coding:UTF-8
 env:vis2c
 '''
@@ -17,7 +17,7 @@ spin_phase = True
 
 def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
-  2-component complex MO visualization, unstructured grid net.
+  visualization of complex spinor orbital with unstructured grid data
   --
   !!! 2 molden format file contain (alpha real & beta real),\n
   (alpha imagine & beta imagine) of a selected 2-component complex orbital.\n

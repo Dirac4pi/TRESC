@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091
 ulimit -s 524288  # stack size limit to 512 MB
 export MKL_THREADING_LAYER=INTEL
 
@@ -17,6 +18,14 @@ case "$1" in
     prog='tkernel'
     ;;
 esac
+
+# source oneAPI environment
+__saved_args=("$@")
+source "${ONEAPI_ROOT}/compiler/latest/env/vars.sh"
+source "${ONEAPI_ROOT}/mkl/latest/env/vars.sh"
+source "${ONEAPI_ROOT}/mpi/latest/env/vars.sh"
+set -- "${__saved_args[@]}"
+unset __saved_args
 
 case "$1" in
   #----------------------------------------------------------------------------
@@ -46,14 +55,15 @@ case "$1" in
     echo "         |------TRESC------|" >&2
     echo " here are some hints for you" >&2
     echo " tshell" >&2
-    echo "        inputfilename.xyz   electronic structure calculation" >&2
-    echo "        -v                  program version" >&2
-    echo "        -h                  input hints" >&2
-    echo "        -mog1c/-mog2c       generate 1c/2c unstructured grid data" >&2
-    echo "        -cub1c/-cub2c       generate 1c/2c structured grid data" >&2
-    echo "        -d                  debug (need tkerneld)" >&2
-    echo "        -td                 vtune threading analysis" >&2
-    echo "        -hp                 vtune hotspots analysis" >&2
+    echo "        input.xyz      electronic structure calculation" >&2
+    echo "        -v             program version" >&2
+    echo "        -h             input hints" >&2
+    echo "        -mog1c/-mog2c  generate 1c/2c unstructured MO grid" >&2
+    echo "        -cub1c/-cub2c  generate 1c/2c structured MO grid" >&2
+    echo "                       in real space and momentum space" >&2
+    echo "        -d             debug (need tkerneld)" >&2
+    echo "        -td            vtune threading analysis" >&2
+    echo "        -hp            vtune hotspots analysis" >&2
     echo " For more: https://github.com/Dirac4pi/TRESC" >&2
     ;;
   #----------------------------------------------------------------------------
@@ -72,7 +82,7 @@ case "$1" in
   #----------------------------------------------------------------------------
   # vtune hotspots analysis
   "-hotspots"|"-hp"|"-HP"|"-HOTSPOTS")
-    source $ONEAPI_ROOT/vtune/latest/vtune-vars.sh
+    source "$ONEAPI_ROOT/vtune/latest/vtune-vars.sh"
     echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
     inp=$2
     if [ ! -f "$inp" ]; then
@@ -92,7 +102,7 @@ case "$1" in
   #----------------------------------------------------------------------------
   # vtune threading analysis
   "-threading"|"-THREADING"|"-td"|"-TD"|"-th"|"-TH")
-    source $ONEAPI_ROOT/vtune/latest/vtune-vars.sh
+    source "$ONEAPI_ROOT/vtune/latest/vtune-vars.sh"
     echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
     inp=$2
     if [ ! -f "$inp" ]; then
