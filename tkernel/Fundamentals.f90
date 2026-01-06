@@ -39,7 +39,7 @@ module Fundamentals
   character(len=200)  :: address_fch
   character(len=200)  :: wd = ''                    ! working directory
   character(len=50)   :: usrname = ''
-  character(len=10),parameter :: version = 'main'   ! TRESC version
+  character(len=10),parameter :: version = 'dev'    ! TRESC version
   
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
