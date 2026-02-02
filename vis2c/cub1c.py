@@ -11,6 +11,7 @@ from mayavi import mlab
 from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
 
+#-------------------------------------------------------------------------------
 def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
   '''
   visualization of real scalar orbital with structured grid data
@@ -31,25 +32,19 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
       molden = molden + '.molden.input'
   if not path.exists(molden):
     raise RuntimeError(f"can't find {molden}")
-  #-----------------------------------------------------------------------------
   # generate cube file
-  print('generating cub file...')
+  print('calling TRESC:')
   vk.call_executable(['tshell.sh', '-cub1c', molden, index])
-  #-----------------------------------------------------------------------------
   # load data from cube file
-  print('loading grid data from cub file...')
   cub = index+'-real.cub'
-  atoms, mat, nmo = vk.load_cube(cub, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+cub)
-  elif nmo != 1:
-    raise RuntimeError('cube file '+cub+' should contain only 1 orbital.')
+  print(f'loading real space grid data from {cub}...')
+  atoms, mat = vk.load_cube(cub)
+  print('done')
   # grid data
   x = mat['x']
   y = mat['y']
   z = mat['z']
   val = mat['value']
-  #-----------------------------------------------------------------------------
   # plot the real scalar orbital
   print('plotting...')
   isovl = p3.real_orb_plot_cub(index, atoms, val, x, y, z, isovalue)
@@ -72,6 +67,7 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
+#===============================================================================
 if __name__ == "__main__":
   from sys import argv
   if len(argv) != 3:

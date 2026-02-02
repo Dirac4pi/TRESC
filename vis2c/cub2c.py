@@ -15,6 +15,7 @@ from numpy import sqrt, square, arctan2
 # True: alpha and beta visualization as phase, False: as components
 spin_phase = True
 
+#-------------------------------------------------------------------------------
 def cub2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
   visualization of complex spinor orbital with structured grid data
@@ -24,44 +25,41 @@ def cub2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   isovalue: isovalue of amplitude.\n
   Returns: None
   '''
+  global spin_phase
   isovalue = float(isovalue)
   if not moldendir.endswith('.molden.d'):
     raise RuntimeError(f'moldendir should be xxx.molden.d')
   if not path.exists(moldendir):
     raise RuntimeError(f"can't find dir {moldendir}")
   print(f'spin_phase = {spin_phase}')
-  #-----------------------------------------------------------------------------
   # generate cube files
-  print('generating cub files...')
+  print('calling TRESC:')
   vk.call_executable(['tshell.sh', '-cub2c', moldendir, str(index)])
-  #-----------------------------------------------------------------------------
   # load data from cube files
-  print('loading grid data from cub files...')
-  real = index+'-realreal.cub'
-  img  = index+'-realimg.cub'
-  atoms, real_mat_alpha, nmo = vk.load_cube(real, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+real)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+real+' should contain both \
-      alpha and beta orbitals.')
+  alphareal = index+'-rar.cub'
+  alphaimg  = index+'-rai.cub'
+  betareal = index+'-rbr.cub'
+  betaimg  = index+'-rbi.cub'
+  print(f'loading real space grid alpha real part data from {alphareal}...')
+  atoms, real_mat_alpha = vk.load_cube(alphareal)
+  print('done')
   # grid data
   x = real_mat_alpha['x']
   y = real_mat_alpha['y']
   z = real_mat_alpha['z']
   ar = real_mat_alpha['value']
-  atoms, real_mat_beta, nmo = vk.load_cube(real, 2)
+  print(f'loading real space grid beta real part data from {betareal}...')
+  atoms, real_mat_beta = vk.load_cube(betareal)
+  print('done')
   br = real_mat_beta['value']
-  atoms, img_mat_alpha, nmo = vk.load_cube(img, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+img)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+img+' should contain both \
-      alpha and beta orbitals.')
+  print(f'loading real space grid alpha imaginary part data from {alphaimg}...')
+  atoms, img_mat_alpha = vk.load_cube(alphaimg)
+  print('done')
   ai = img_mat_alpha['value']
-  atoms, img_mat_beta, nmo = vk.load_cube(img, 2)
+  print(f'loading real space grid beta imaginary part data from {betaimg}...')
+  atoms, img_mat_beta = vk.load_cube(betaimg)
+  print('done')
   bi = img_mat_beta['value']
-  #-----------------------------------------------------------------------------
   # plot the complex 2c orbital
   print('plotting...')
   if spin_phase:
@@ -128,6 +126,7 @@ def cub2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
+#===============================================================================
 if __name__ == "__main__":
   from sys import argv
   if len(argv) != 3:

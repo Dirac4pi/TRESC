@@ -1,6 +1,6 @@
-Job execution start: 2025.12.12  13:31
-WD = /home/lky/Code_TRESC/tests/Ni0-C2H4-1/psi4(NR)
-PID = 1483603;  username = lky
+Job execution start: 2026.01.27  23:40
+WD = /home/lky/Code_TRESC/tests/Ni0-C2H4-1/NR
+PID = 4006529;  username = lky
 This file is the output file of job Ni0-C2H4
 Program/version: TRESC/dev
  
@@ -197,8 +197,9 @@ Module SCF:
   -- -- HF Exchange                         -18.347490
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.250098
-  -- KS Correlation                          -1.817965
+  -- KS Exchange (x_func)                   -55.250098
+  -- KS Correlation (c_func)                 -1.817965
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998816
   SCF energy (A.U.) = -1583.084810
   DIIS information
@@ -216,7 +217,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.223E-01
   -- RMSDP                   0.573E-03
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -235,8 +236,9 @@ Module SCF:
   -- -- HF Exchange                         -18.323429
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.080252
-  -- KS Correlation                          -1.818346
+  -- KS Exchange (x_func)                   -55.080252
+  -- KS Correlation (c_func)                 -1.818346
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998576
   SCF energy (A.U.) = -1583.393435; delta E = -0.309E+00
   convergence tolerance not met
@@ -255,13 +257,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.656E-02
   -- RMSDP                   0.221E-03
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.171112 <Sz> = -0.500
-  -- LUMO  45   -0.039293 <Sz> = -0.500
+  -- LUMO  45   -0.039293 <Sz> =  0.500
   -- gap     0.131819
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2502.077987
@@ -274,8 +276,9 @@ Module SCF:
   -- -- HF Exchange                         -18.314223
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.042160
-  -- KS Correlation                          -1.818604
+  -- KS Exchange (x_func)                   -55.042160
+  -- KS Correlation (c_func)                 -1.818604
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998510
   SCF energy (A.U.) = -1583.130559; delta E =  0.263E+00
   convergence tolerance not met
@@ -294,13 +297,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.722E-02
   -- RMSDP                   0.278E-03
-  -- <S**2>                  0.00000
+  -- <S**2>                 -0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.178068 <Sz> = -0.500
-  -- LUMO  45   -0.041332 <Sz> = -0.500
+  -- LUMO  45   -0.041332 <Sz> =  0.500
   -- gap     0.136736
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2503.535662
@@ -313,8 +316,9 @@ Module SCF:
   -- -- HF Exchange                         -18.319664
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.018380
-  -- KS Correlation                          -1.818203
+  -- KS Exchange (x_func)                   -55.018380
+  -- KS Correlation (c_func)                 -1.818203
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998554
   SCF energy (A.U.) = -1583.989741; delta E = -0.859E+00
   convergence tolerance not met
@@ -333,7 +337,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.239E-01
   -- RMSDP                   0.900E-03
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -352,8 +356,9 @@ Module SCF:
   -- -- HF Exchange                         -18.294261
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.048132
-  -- KS Correlation                          -1.819283
+  -- KS Exchange (x_func)                   -55.048132
+  -- KS Correlation (c_func)                 -1.819283
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998364
   SCF energy (A.U.) = -1581.276686; delta E =  0.271E+01
   convergence tolerance not met
@@ -372,13 +377,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.713E-01
   -- RMSDP                   0.264E-02
-  -- <S**2>                  0.00000
+  -- <S**2>                 -0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.226228 <Sz> = -0.500
-  -- LUMO  45   -0.054864 <Sz> = -0.500
+  -- LUMO  45   -0.054864 <Sz> =  0.500
   -- gap     0.171364
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2512.630729
@@ -391,8 +396,9 @@ Module SCF:
   -- -- HF Exchange                         -18.360063
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -54.939864
-  -- KS Correlation                          -1.815718
+  -- KS Exchange (x_func)                   -54.939864
+  -- KS Correlation (c_func)                 -1.815718
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998847
   SCF energy (A.U.) = -1589.389514; delta E = -0.811E+01
   convergence tolerance not met
@@ -430,8 +436,9 @@ Module SCF:
   -- -- HF Exchange                         -17.979568
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.254517
-  -- KS Correlation                          -1.825327
+  -- KS Exchange (x_func)                   -55.254517
+  -- KS Correlation (c_func)                 -1.825327
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.995624
   SCF energy (A.U.) = -1556.886935; delta E =  0.325E+02
   convergence tolerance not met
@@ -469,8 +476,9 @@ Module SCF:
   -- -- HF Exchange                         -18.302379
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -53.938986
-  -- KS Correlation                          -1.773202
+  -- KS Exchange (x_func)                   -53.938986
+  -- KS Correlation (c_func)                 -1.773202
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 2.001077
   SCF energy (A.U.) = -1629.364969; delta E = -0.725E+02
   convergence tolerance not met
@@ -489,13 +497,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.697E+01
   -- RMSDP                   0.143E+00
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
-  -- HOMO  44    0.051675 <Sz> =  0.500
-  -- LUMO  45    0.112473 <Sz> = -0.500
+  -- HOMO  44    0.051675 <Sz> = -0.500
+  -- LUMO  45    0.112473 <Sz> =  0.500
   -- gap     0.060797
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2292.002904
@@ -508,8 +516,9 @@ Module SCF:
   -- -- HF Exchange                         -16.674212
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -56.327002
-  -- KS Correlation                          -1.838623
+  -- KS Exchange (x_func)                   -56.327002
+  -- KS Correlation (c_func)                 -1.838623
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.977593
   SCF energy (A.U.) = -1468.727926; delta E =  0.161E+03
   convergence tolerance not met
@@ -552,8 +561,9 @@ Module SCF:
   -- -- HF Exchange                         -18.312831
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.023147
-  -- KS Correlation                          -1.818542
+  -- KS Exchange (x_func)                   -55.023147
+  -- KS Correlation (c_func)                 -1.818542
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998503
   SCF energy (A.U.) = -1583.281979; delta E = -0.115E+03
   convergence tolerance not met
@@ -577,13 +587,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.546E-03
   -- RMSDP                   0.207E-04
-  -- <S**2>                  0.00000
+  -- <S**2>                 -0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.173116 <Sz> = -0.500
-  -- LUMO  45   -0.039739 <Sz> = -0.500
+  -- LUMO  45   -0.039739 <Sz> =  0.500
   -- gap     0.133377
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2502.499648
@@ -596,8 +606,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313661
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.020795
-  -- KS Correlation                          -1.818438
+  -- KS Exchange (x_func)                   -55.020795
+  -- KS Correlation (c_func)                 -1.818438
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.391295; delta E = -0.109E+00
   convergence tolerance not met
@@ -621,13 +632,13 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.820E-03
   -- RMSDP                   0.261E-04
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.172448 <Sz> = -0.500
-  -- LUMO  45   -0.039627 <Sz> = -0.500
+  -- LUMO  45   -0.039627 <Sz> =  0.500
   -- gap     0.132821
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2502.351459
@@ -640,8 +651,9 @@ Module SCF:
   -- -- HF Exchange                         -18.312996
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.022919
-  -- KS Correlation                          -1.818523
+  -- KS Exchange (x_func)                   -55.022919
+  -- KS Correlation (c_func)                 -1.818523
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998503
   SCF energy (A.U.) = -1583.299982; delta E =  0.913E-01
   convergence tolerance not met
@@ -684,8 +696,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313409
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021690
-  -- KS Correlation                          -1.818449
+  -- KS Exchange (x_func)                   -55.021690
+  -- KS Correlation (c_func)                 -1.818449
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998510
   SCF energy (A.U.) = -1583.365841; delta E = -0.659E-01
   convergence tolerance not met
@@ -728,8 +741,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313422
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021599
-  -- KS Correlation                          -1.818460
+  -- KS Exchange (x_func)                   -55.021599
+  -- KS Correlation (c_func)                 -1.818460
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998508
   SCF energy (A.U.) = -1583.365119; delta E =  0.722E-03
   convergence tolerance not met
@@ -759,7 +773,7 @@ Module SCF:
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.172839 <Sz> = -0.500
-  -- LUMO  45   -0.039757 <Sz> =  0.500
+  -- LUMO  45   -0.039757 <Sz> = -0.500
   -- gap     0.133082
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2502.431696
@@ -772,8 +786,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313294
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021835
-  -- KS Correlation                          -1.818467
+  -- KS Exchange (x_func)                   -55.021835
+  -- KS Correlation (c_func)                 -1.818467
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.349789; delta E =  0.153E-01
   convergence tolerance not met
@@ -816,8 +831,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313360
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021787
-  -- KS Correlation                          -1.818467
+  -- KS Exchange (x_func)                   -55.021787
+  -- KS Correlation (c_func)                 -1.818467
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.356392; delta E = -0.660E-02
   convergence tolerance not met
@@ -841,7 +857,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.207E-05
   -- RMSDP                   0.861E-07
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -860,8 +876,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021803
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021803
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355485; delta E =  0.907E-03
   convergence tolerance not met
@@ -885,7 +902,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.174E-05
   -- RMSDP                   0.662E-07
-  -- <S**2>                  0.00000
+  -- <S**2>                 -0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -904,8 +921,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313354
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021802
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021802
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355608; delta E = -0.123E-03
   convergence tolerance not met
@@ -948,8 +966,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313355
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021802
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021802
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355636; delta E = -0.275E-04
   convergence tolerance not met
@@ -992,8 +1011,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021805
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021805
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355470; delta E =  0.166E-03
   convergence tolerance not met
@@ -1036,8 +1056,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355486; delta E = -0.162E-04
   convergence tolerance not met
@@ -1067,7 +1088,7 @@ Module SCF:
   complete! stored in rho_m
   frontier orbital energy (A.U.)
   -- HOMO  44   -0.172884 <Sz> = -0.500
-  -- LUMO  45   -0.039771 <Sz> = -0.500
+  -- LUMO  45   -0.039771 <Sz> =  0.500
   -- gap     0.133112
   calculate energy components (A.U.)
   -- One-electron (core) energy           -2502.442148
@@ -1080,8 +1101,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355490; delta E = -0.402E-05
   convergence tolerance not met
@@ -1124,8 +1146,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313354
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355511; delta E = -0.206E-04
   convergence tolerance not met
@@ -1149,7 +1172,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.261E-07
   -- RMSDP                   0.856E-09
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -1168,8 +1191,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355502; delta E =  0.801E-05
   convergence tolerance not met
@@ -1212,8 +1236,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355500; delta E =  0.276E-05
   convergence tolerance not met
@@ -1237,7 +1262,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.165E-07
   -- RMSDP                   0.561E-09
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -1256,8 +1281,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355501; delta E = -0.163E-05
   convergence tolerance not met
@@ -1265,7 +1291,7 @@ Module SCF:
   -- DIIS damped  0.100
   -- predicted residual ( 0.241E-14, 0.000E+00)
   -- subsp coeff 1      (-0.105E+00, 0.000E+00)
-  -- subsp coeff 2      ( 0.328E-02, 0.000E+00)
+  -- subsp coeff 2      ( 0.327E-02, 0.000E+00)
   -- subsp coeff 3      ( 0.226E+00, 0.000E+00)
   -- subsp coeff 4      ( 0.173E+00, 0.000E+00)
   -- subsp coeff 5      ( 0.703E+00, 0.000E+00)
@@ -1300,8 +1326,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355503; delta E = -0.133E-05
   convergence tolerance not met
@@ -1344,8 +1371,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355503; delta E = -0.578E-06
   convergence tolerance not met
@@ -1388,15 +1416,16 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355503; delta E =  0.665E-06
   convergence tolerance not met
   DIIS information
   -- DIIS damped  0.100
   -- predicted residual ( 0.249E-16, 0.000E+00)
-  -- subsp coeff 1      ( 0.294E-01, 0.000E+00)
+  -- subsp coeff 1      ( 0.293E-01, 0.000E+00)
   -- subsp coeff 2      ( 0.568E-01, 0.000E+00)
   -- subsp coeff 3      ( 0.199E-01, 0.000E+00)
   -- subsp coeff 4      ( 0.701E-01, 0.000E+00)
@@ -1413,7 +1442,7 @@ Module SCF:
   construct new density matrix
   -- maxDP                   0.115E-08
   -- RMSDP                   0.392E-10
-  -- <S**2>                 -0.00000
+  -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
   complete! stored in rho_m
@@ -1432,19 +1461,20 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355502; delta E =  0.195E-06
   convergence tolerance not met
   DIIS information
   -- DIIS damped  0.100
-  -- predicted residual ( 0.293E-17, 0.000E+00)
+  -- predicted residual ( 0.292E-17, 0.000E+00)
   -- subsp coeff 1      (-0.177E-01, 0.000E+00)
   -- subsp coeff 2      (-0.139E-01, 0.000E+00)
-  -- subsp coeff 3      ( 0.142E-01, 0.000E+00)
+  -- subsp coeff 3      ( 0.143E-01, 0.000E+00)
   -- subsp coeff 4      ( 0.294E+00, 0.000E+00)
-  -- subsp coeff 5      ( 0.723E+00, 0.000E+00)
+  -- subsp coeff 5      ( 0.724E+00, 0.000E+00)
  
  
   SCF iter  31
@@ -1456,7 +1486,7 @@ Module SCF:
   generate and dump AO2MO to .ao2mo file
   construct new density matrix
   -- maxDP                   0.229E-09
-  -- RMSDP                   0.902E-11
+  -- RMSDP                   0.903E-11
   -- <S**2>                  0.00000
   -- total alpha electron   22.00000
   -- total beta electron    22.00000
@@ -1476,8 +1506,9 @@ Module SCF:
   -- -- HF Exchange                         -18.313353
   -- -- pVp-related Coulomb                   0.000000
   -- -- pVp-related Exchange                  0.000000
-  -- KS Exchange                            -55.021804
-  -- KS Correlation                          -1.818468
+  -- KS Exchange (x_func)                   -55.021804
+  -- KS Correlation (c_func)                 -1.818468
+  -- KS Exchange-Correlation (xc_func)        0.000000
   -- -<V>/<T>                                 1.998507
   SCF energy (A.U.) = -1583.355502; delta E = -0.625E-07
   convergence tolerance met, SCF done!
@@ -1501,20 +1532,21 @@ Module SCF:
   -- HF Exchange energy / Eh                    ...  -18.313353
   -- pVp-related Coulomb energy / Eh            ...    0.000000
   -- pVp-related Exchange energy / Eh           ...    0.000000
-  KS Exchange energy / Eh                       ...  -55.021804
-  KS Correlation energy / Eh                    ...   -1.818468
+  KS Exchange energy (x_func) / Eh              ...  -55.021804
+  KS Correlation energy (c_func) / Eh           ...   -1.818468
+  KS Exchange-Correlation energy (xc_func) / Eh ...    0.000000
   Dispersion energy (DFT-D4) / Eh               ...   -0.003342
-  Virial ratio                                  ...    1.998507
+  Virial ratio (-<V>/<T>)                       ...    1.998507
   Total Alpha electron                          ...   22.000000
   Total Beta electron                           ...   22.000000
-  <Sz*(Sz+1)> / hbar**2                         ...    0.000000
+  <Sz*(Sz+1)> / hbar**2                         ...   -0.000000
   <S**2> / hbar**2                              ...    0.000000
   -- Note: there is little theoretical justification
   -- to calculate <S**2> in a DFT calculation.
   Time Reversal Symmetry (TRS) deviation parameter
-  -- kappa     = 0.38819E-13
+  -- kappa     = 0.39158E-13
   -- ref kappa = 0.00000E+00
-  -- SOC kappa = 0.38819E-13
+  -- SOC kappa = 0.39158E-13
   =============================================================
  
  
@@ -1524,9 +1556,9 @@ Module SCF:
   =============================================================
   basical S_mult = 1, S_z = 0/2
   |S^0| (basical configuration)                 ... 0.10000E+01
-  |T^1|                                         ... 0.25902E-16
-  |T^0|                                         ... 0.59512E-15
-  |T^-1|                                        ... 0.24169E-16
+  |T^1|                                         ... 0.26637E-16
+  |T^0|                                         ... 0.75449E-15
+  |T^-1|                                        ... 0.28352E-16
   =============================================================
  
  
@@ -1536,16 +1568,16 @@ Module SCF:
   =============================================================
   HOMO-043   energy / Eh                       ...  -298.883132
   #001       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...     0.500000
-                 orb-in-atom  atom-in-mol      RE        IM
-             --   A #01 L=0     Ni #01    ( 0.865027, 0.000000)
-             --   A #02 L=0     Ni #01    ( 0.122703, 0.000000)
-  HOMO-042   energy / Eh                       ...  -298.883132
-  #002       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #01 L=0     Ni #01    ( 0.865027, 0.000000)
-             --   B #02 L=0     Ni #01    ( 0.122703, 0.000000)
+             --   B #01 L=0     Ni #01    (-0.865027, 0.000000)
+             --   B #02 L=0     Ni #01    (-0.122703, 0.000000)
+  HOMO-042   energy / Eh                       ...  -298.883132
+  #002       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...     0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   A #01 L=0     Ni #01    (-0.865027, 0.000000)
+             --   A #02 L=0     Ni #01    (-0.122703, 0.000000)
   HOMO-041   energy / Eh                       ...   -35.584961
   #003       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
@@ -1558,156 +1590,156 @@ Module SCF:
   #004       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #01 L=0     Ni #01    ( 0.288571, 0.000000)
-             --   B #02 L=0     Ni #01    ( 0.159234, 0.000000)
-             --   B #03 L=0     Ni #01    (-0.599230, 0.000000)
-             --   B #04 L=0     Ni #01    (-0.446047, 0.000000)
+             --   B #01 L=0     Ni #01    (-0.288571, 0.000000)
+             --   B #02 L=0     Ni #01    (-0.159234, 0.000000)
+             --   B #03 L=0     Ni #01    ( 0.599230, 0.000000)
+             --   B #04 L=0     Ni #01    ( 0.446047, 0.000000)
   HOMO-039   energy / Eh                       ...   -31.179632
   #005       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...    -0.500000
-                 orb-in-atom  atom-in-mol      RE        IM
-             --   B #10 L=1     Ni #01    (-0.123464, 0.000000)
-             --   B #11 L=1     Ni #01    (-0.814702, 0.000000)
-             --   B #12 L=1     Ni #01    ( 0.545366, 0.000000)
-  HOMO-038   energy / Eh                       ...   -31.179632
-  #006       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #10 L=1     Ni #01    (-0.123464, 0.000000)
-             --   A #11 L=1     Ni #01    (-0.814702, 0.000000)
-             --   A #12 L=1     Ni #01    ( 0.545366, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.814702, 0.000000)
+             --   A #11 L=1     Ni #01    ( 0.545366, 0.000000)
+             --   A #12 L=1     Ni #01    (-0.123464, 0.000000)
+  HOMO-038   energy / Eh                       ...   -31.179632
+  #006       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #10 L=1     Ni #01    (-0.814702, 0.000000)
+             --   B #11 L=1     Ni #01    ( 0.545366, 0.000000)
+             --   B #12 L=1     Ni #01    (-0.123464, 0.000000)
   HOMO-037   energy / Eh                       ...   -31.172600
   #007       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #10 L=1     Ni #01    ( 0.978254, 0.000000)
-             --   B #11 L=1     Ni #01    (-0.138919, 0.000000)
+             --   B #10 L=1     Ni #01    (-0.138919, 0.000000)
+             --   B #12 L=1     Ni #01    ( 0.978254, 0.000000)
   HOMO-036   energy / Eh                       ...   -31.172600
   #008       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #10 L=1     Ni #01    ( 0.978254, 0.000000)
-             --   A #11 L=1     Ni #01    (-0.138919, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.138919, 0.000000)
+             --   A #12 L=1     Ni #01    ( 0.978254, 0.000000)
   HOMO-035   energy / Eh                       ...   -31.163541
   #009       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #11 L=1     Ni #01    ( 0.541682, 0.000000)
-             --   A #12 L=1     Ni #01    ( 0.823956, 0.000000)
+             --   A #10 L=1     Ni #01    (-0.541682, 0.000000)
+             --   A #11 L=1     Ni #01    (-0.823956, 0.000000)
   HOMO-034   energy / Eh                       ...   -31.163541
   #010       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #11 L=1     Ni #01    ( 0.541682, 0.000000)
-             --   B #12 L=1     Ni #01    ( 0.823956, 0.000000)
+             --   B #10 L=1     Ni #01    (-0.541682, 0.000000)
+             --   B #11 L=1     Ni #01    (-0.823956, 0.000000)
   HOMO-033   energy / Eh                       ...   -10.197249
   #011       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...    -0.500000
-                 orb-in-atom  atom-in-mol      RE        IM
-             --   B #01 L=0      C #02    ( 0.861710, 0.000000)
-             --   B #01 L=0      C #03    ( 0.481963, 0.000000)
-  HOMO-032   energy / Eh                       ...   -10.197249
-  #012       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #01 L=0      C #02    ( 0.861710, 0.000000)
-             --   A #01 L=0      C #03    ( 0.481963, 0.000000)
+             --   A #01 L=0      C #02    (-0.861710, 0.000000)
+             --   A #01 L=0      C #03    (-0.481963, 0.000000)
+  HOMO-032   energy / Eh                       ...   -10.197249
+  #012       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #01 L=0      C #02    (-0.861710, 0.000000)
+             --   B #01 L=0      C #03    (-0.481963, 0.000000)
   HOMO-031   energy / Eh                       ...   -10.197001
   #013       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #01 L=0      C #02    ( 0.481246, 0.000000)
-             --   B #01 L=0      C #03    (-0.861305, 0.000000)
+             --   B #01 L=0      C #02    (-0.481246, 0.000000)
+             --   B #01 L=0      C #03    ( 0.861305, 0.000000)
   HOMO-030   energy / Eh                       ...   -10.197001
   #014       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #01 L=0      C #02    ( 0.481246, 0.000000)
-             --   A #01 L=0      C #03    (-0.861305, 0.000000)
+             --   A #01 L=0      C #02    (-0.481246, 0.000000)
+             --   A #01 L=0      C #03    ( 0.861305, 0.000000)
   HOMO-029   energy / Eh                       ...    -3.928573
   #015       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #01 L=0     Ni #01    (-0.110142, 0.000000)
-             --   A #03 L=0     Ni #01    ( 0.296501, 0.000000)
-             --   A #04 L=0     Ni #01    ( 0.217136, 0.000000)
-             --   A #05 L=0     Ni #01    ( 0.231018, 0.000000)
-             --   A #06 L=0     Ni #01    (-0.748494, 0.000000)
-             --   A #07 L=0     Ni #01    (-0.474999, 0.000000)
+             --   A #01 L=0     Ni #01    ( 0.110142, 0.000000)
+             --   A #03 L=0     Ni #01    (-0.296501, 0.000000)
+             --   A #04 L=0     Ni #01    (-0.217136, 0.000000)
+             --   A #05 L=0     Ni #01    (-0.231018, 0.000000)
+             --   A #06 L=0     Ni #01    ( 0.748494, 0.000000)
+             --   A #07 L=0     Ni #01    ( 0.474999, 0.000000)
   HOMO-028   energy / Eh                       ...    -3.928573
   #016       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #01 L=0     Ni #01    (-0.110142, 0.000000)
-             --   B #03 L=0     Ni #01    ( 0.296501, 0.000000)
-             --   B #04 L=0     Ni #01    ( 0.217136, 0.000000)
-             --   B #05 L=0     Ni #01    ( 0.231018, 0.000000)
-             --   B #06 L=0     Ni #01    (-0.748494, 0.000000)
-             --   B #07 L=0     Ni #01    (-0.474999, 0.000000)
+             --   B #01 L=0     Ni #01    ( 0.110142, 0.000000)
+             --   B #03 L=0     Ni #01    (-0.296501, 0.000000)
+             --   B #04 L=0     Ni #01    (-0.217136, 0.000000)
+             --   B #05 L=0     Ni #01    (-0.231018, 0.000000)
+             --   B #06 L=0     Ni #01    ( 0.748494, 0.000000)
+             --   B #07 L=0     Ni #01    ( 0.474999, 0.000000)
   HOMO-027   energy / Eh                       ...    -2.551132
   #017       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #11 L=1     Ni #01    (-0.332370, 0.000000)
-             --   A #12 L=1     Ni #01    ( 0.222454, 0.000000)
-             --   A #14 L=1     Ni #01    ( 0.296289, 0.000000)
-             --   A #15 L=1     Ni #01    (-0.198305, 0.000000)
-             --   A #17 L=1     Ni #01    ( 0.479171, 0.000000)
-             --   A #18 L=1     Ni #01    (-0.320709, 0.000000)
-             --   A #20 L=1     Ni #01    ( 0.212232, 0.000000)
-             --   A #21 L=1     Ni #01    (-0.142044, 0.000000)
+             --   A #10 L=1     Ni #01    ( 0.332370, 0.000000)
+             --   A #11 L=1     Ni #01    (-0.222454, 0.000000)
+             --   A #13 L=1     Ni #01    (-0.296289, 0.000000)
+             --   A #14 L=1     Ni #01    ( 0.198305, 0.000000)
+             --   A #16 L=1     Ni #01    (-0.479171, 0.000000)
+             --   A #17 L=1     Ni #01    ( 0.320709, 0.000000)
+             --   A #19 L=1     Ni #01    (-0.212232, 0.000000)
+             --   A #20 L=1     Ni #01    ( 0.142044, 0.000000)
   HOMO-026   energy / Eh                       ...    -2.551132
   #018       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #11 L=1     Ni #01    (-0.332370, 0.000000)
-             --   B #12 L=1     Ni #01    ( 0.222454, 0.000000)
-             --   B #14 L=1     Ni #01    ( 0.296289, 0.000000)
-             --   B #15 L=1     Ni #01    (-0.198305, 0.000000)
-             --   B #17 L=1     Ni #01    ( 0.479171, 0.000000)
-             --   B #18 L=1     Ni #01    (-0.320709, 0.000000)
-             --   B #20 L=1     Ni #01    ( 0.212232, 0.000000)
-             --   B #21 L=1     Ni #01    (-0.142044, 0.000000)
+             --   B #10 L=1     Ni #01    ( 0.332370, 0.000000)
+             --   B #11 L=1     Ni #01    (-0.222454, 0.000000)
+             --   B #13 L=1     Ni #01    (-0.296289, 0.000000)
+             --   B #14 L=1     Ni #01    ( 0.198305, 0.000000)
+             --   B #16 L=1     Ni #01    (-0.479171, 0.000000)
+             --   B #17 L=1     Ni #01    ( 0.320709, 0.000000)
+             --   B #19 L=1     Ni #01    (-0.212232, 0.000000)
+             --   B #20 L=1     Ni #01    ( 0.142044, 0.000000)
   HOMO-025   energy / Eh                       ...    -2.531151
   #019       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #10 L=1     Ni #01    ( 0.399627, 0.000000)
-             --   A #13 L=1     Ni #01    (-0.356550, 0.000000)
-             --   A #16 L=1     Ni #01    (-0.576012, 0.000000)
-             --   A #19 L=1     Ni #01    (-0.254153, 0.000000)
+             --   A #12 L=1     Ni #01    (-0.399627, 0.000000)
+             --   A #15 L=1     Ni #01    ( 0.356550, 0.000000)
+             --   A #18 L=1     Ni #01    ( 0.576012, 0.000000)
+             --   A #21 L=1     Ni #01    ( 0.254153, 0.000000)
   HOMO-024   energy / Eh                       ...    -2.531151
   #020       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #10 L=1     Ni #01    ( 0.399627, 0.000000)
-             --   B #13 L=1     Ni #01    (-0.356550, 0.000000)
-             --   B #16 L=1     Ni #01    (-0.576012, 0.000000)
-             --   B #19 L=1     Ni #01    (-0.254153, 0.000000)
+             --   B #12 L=1     Ni #01    (-0.399627, 0.000000)
+             --   B #15 L=1     Ni #01    ( 0.356550, 0.000000)
+             --   B #18 L=1     Ni #01    ( 0.576012, 0.000000)
+             --   B #21 L=1     Ni #01    ( 0.254153, 0.000000)
   HOMO-023   energy / Eh                       ...    -2.512938
   #021       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #11 L=1     Ni #01    (-0.221229, 0.000000)
-             --   A #12 L=1     Ni #01    (-0.336684, 0.000000)
-             --   A #14 L=1     Ni #01    ( 0.197622, 0.000000)
-             --   A #15 L=1     Ni #01    ( 0.300757, 0.000000)
-             --   A #17 L=1     Ni #01    ( 0.318159, 0.000000)
-             --   A #18 L=1     Ni #01    ( 0.484201, 0.000000)
-             --   A #20 L=1     Ni #01    ( 0.141349, 0.000000)
-             --   A #21 L=1     Ni #01    ( 0.215113, 0.000000)
+             --   A #10 L=1     Ni #01    ( 0.221229, 0.000000)
+             --   A #11 L=1     Ni #01    ( 0.336684, 0.000000)
+             --   A #13 L=1     Ni #01    (-0.197622, 0.000000)
+             --   A #14 L=1     Ni #01    (-0.300757, 0.000000)
+             --   A #16 L=1     Ni #01    (-0.318159, 0.000000)
+             --   A #17 L=1     Ni #01    (-0.484201, 0.000000)
+             --   A #19 L=1     Ni #01    (-0.141349, 0.000000)
+             --   A #20 L=1     Ni #01    (-0.215113, 0.000000)
   HOMO-022   energy / Eh                       ...    -2.512938
   #022       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #11 L=1     Ni #01    (-0.221229, 0.000000)
-             --   B #12 L=1     Ni #01    (-0.336684, 0.000000)
-             --   B #14 L=1     Ni #01    ( 0.197622, 0.000000)
-             --   B #15 L=1     Ni #01    ( 0.300757, 0.000000)
-             --   B #17 L=1     Ni #01    ( 0.318159, 0.000000)
-             --   B #18 L=1     Ni #01    ( 0.484201, 0.000000)
-             --   B #20 L=1     Ni #01    ( 0.141349, 0.000000)
-             --   B #21 L=1     Ni #01    ( 0.215113, 0.000000)
+             --   B #10 L=1     Ni #01    ( 0.221229, 0.000000)
+             --   B #11 L=1     Ni #01    ( 0.336684, 0.000000)
+             --   B #13 L=1     Ni #01    (-0.197622, 0.000000)
+             --   B #14 L=1     Ni #01    (-0.300757, 0.000000)
+             --   B #16 L=1     Ni #01    (-0.318159, 0.000000)
+             --   B #17 L=1     Ni #01    (-0.484201, 0.000000)
+             --   B #19 L=1     Ni #01    (-0.141349, 0.000000)
+             --   B #20 L=1     Ni #01    (-0.215113, 0.000000)
   HOMO-021   energy / Eh                       ...    -0.746438
   #023       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
@@ -1715,11 +1747,11 @@ Module SCF:
              --   A #01 L=0      C #02    (-0.194670, 0.000000)
              --   A #02 L=0      C #02    ( 0.376083, 0.000000)
              --   A #03 L=0      C #02    ( 0.117328, 0.000000)
-             --   A #04 L=1      C #02    (-0.103288, 0.000000)
+             --   A #06 L=1      C #02    (-0.103288, 0.000000)
              --   A #01 L=0      C #03    (-0.194779, 0.000000)
              --   A #02 L=0      C #03    ( 0.376259, 0.000000)
              --   A #03 L=0      C #03    ( 0.117664, 0.000000)
-             --   A #04 L=1      C #03    ( 0.102849, 0.000000)
+             --   A #06 L=1      C #03    ( 0.102849, 0.000000)
   HOMO-020   energy / Eh                       ...    -0.746438
   #024       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
@@ -1727,11 +1759,11 @@ Module SCF:
              --   B #01 L=0      C #02    (-0.194670, 0.000000)
              --   B #02 L=0      C #02    ( 0.376083, 0.000000)
              --   B #03 L=0      C #02    ( 0.117328, 0.000000)
-             --   B #04 L=1      C #02    (-0.103288, 0.000000)
+             --   B #06 L=1      C #02    (-0.103288, 0.000000)
              --   B #01 L=0      C #03    (-0.194779, 0.000000)
              --   B #02 L=0      C #03    ( 0.376259, 0.000000)
              --   B #03 L=0      C #03    ( 0.117664, 0.000000)
-             --   B #04 L=1      C #03    ( 0.102849, 0.000000)
+             --   B #06 L=1      C #03    ( 0.102849, 0.000000)
   HOMO-019   energy / Eh                       ...    -0.573092
   #025       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
@@ -1739,11 +1771,11 @@ Module SCF:
              --   A #01 L=0      C #02    (-0.160063, 0.000000)
              --   A #02 L=0      C #02    ( 0.321621, 0.000000)
              --   A #03 L=0      C #02    ( 0.179627, 0.000000)
-             --   A #04 L=1      C #02    ( 0.144059, 0.000000)
+             --   A #06 L=1      C #02    ( 0.144059, 0.000000)
              --   A #01 L=0      C #03    ( 0.159953, 0.000000)
              --   A #02 L=0      C #03    (-0.321394, 0.000000)
              --   A #03 L=0      C #03    (-0.179542, 0.000000)
-             --   A #04 L=1      C #03    ( 0.138741, 0.000000)
+             --   A #06 L=1      C #03    ( 0.138741, 0.000000)
              --   A #01 L=0      H #04    ( 0.170916, 0.000000)
              --   A #01 L=0      H #05    ( 0.170985, 0.000000)
              --   A #01 L=0      H #06    (-0.170864, 0.000000)
@@ -1755,11 +1787,11 @@ Module SCF:
              --   B #01 L=0      C #02    (-0.160063, 0.000000)
              --   B #02 L=0      C #02    ( 0.321621, 0.000000)
              --   B #03 L=0      C #02    ( 0.179627, 0.000000)
-             --   B #04 L=1      C #02    ( 0.144059, 0.000000)
+             --   B #06 L=1      C #02    ( 0.144059, 0.000000)
              --   B #01 L=0      C #03    ( 0.159953, 0.000000)
              --   B #02 L=0      C #03    (-0.321394, 0.000000)
              --   B #03 L=0      C #03    (-0.179542, 0.000000)
-             --   B #04 L=1      C #03    ( 0.138741, 0.000000)
+             --   B #06 L=1      C #03    ( 0.138741, 0.000000)
              --   B #01 L=0      H #04    ( 0.170916, 0.000000)
              --   B #01 L=0      H #05    ( 0.170985, 0.000000)
              --   B #01 L=0      H #06    (-0.170864, 0.000000)
@@ -1768,12 +1800,12 @@ Module SCF:
   #027       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #05 L=1      C #02    ( 0.173306, 0.000000)
-             --   A #06 L=1      C #02    ( 0.264663, 0.000000)
-             --   A #09 L=1      C #02    ( 0.121090, 0.000000)
-             --   A #05 L=1      C #03    ( 0.172553, 0.000000)
-             --   A #06 L=1      C #03    ( 0.264948, 0.000000)
-             --   A #09 L=1      C #03    ( 0.121429, 0.000000)
+             --   A #04 L=1      C #02    ( 0.173306, 0.000000)
+             --   A #05 L=1      C #02    ( 0.264663, 0.000000)
+             --   A #08 L=1      C #02    ( 0.121090, 0.000000)
+             --   A #04 L=1      C #03    ( 0.172553, 0.000000)
+             --   A #05 L=1      C #03    ( 0.264948, 0.000000)
+             --   A #08 L=1      C #03    ( 0.121429, 0.000000)
              --   A #01 L=0      H #04    ( 0.181371, 0.000000)
              --   A #01 L=0      H #05    (-0.181590, 0.000000)
              --   A #01 L=0      H #06    (-0.181492, 0.000000)
@@ -1782,12 +1814,12 @@ Module SCF:
   #028       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #05 L=1      C #02    ( 0.173306, 0.000000)
-             --   B #06 L=1      C #02    ( 0.264663, 0.000000)
-             --   B #09 L=1      C #02    ( 0.121090, 0.000000)
-             --   B #05 L=1      C #03    ( 0.172553, 0.000000)
-             --   B #06 L=1      C #03    ( 0.264948, 0.000000)
-             --   B #09 L=1      C #03    ( 0.121429, 0.000000)
+             --   B #04 L=1      C #02    ( 0.173306, 0.000000)
+             --   B #05 L=1      C #02    ( 0.264663, 0.000000)
+             --   B #08 L=1      C #02    ( 0.121090, 0.000000)
+             --   B #04 L=1      C #03    ( 0.172553, 0.000000)
+             --   B #05 L=1      C #03    ( 0.264948, 0.000000)
+             --   B #08 L=1      C #03    ( 0.121429, 0.000000)
              --   B #01 L=0      H #04    ( 0.181371, 0.000000)
              --   B #01 L=0      H #05    (-0.181590, 0.000000)
              --   B #01 L=0      H #06    (-0.181492, 0.000000)
@@ -1798,11 +1830,11 @@ Module SCF:
                  orb-in-atom  atom-in-mol      RE        IM
              --   A #22 L=2     Ni #01    (-0.104127, 0.000000)
              --   A #26 L=2     Ni #01    (-0.129597, 0.000000)
-             --   A #04 L=1      C #02    (-0.358552, 0.000000)
-             --   A #07 L=1      C #02    (-0.141218, 0.000000)
-             --   A #04 L=1      C #03    ( 0.319565, 0.000000)
-             --   A #05 L=1      C #03    (-0.175507, 0.000000)
-             --   A #07 L=1      C #03    ( 0.124699, 0.000000)
+             --   A #06 L=1      C #02    (-0.358552, 0.000000)
+             --   A #09 L=1      C #02    (-0.141218, 0.000000)
+             --   A #04 L=1      C #03    (-0.175507, 0.000000)
+             --   A #06 L=1      C #03    ( 0.319565, 0.000000)
+             --   A #09 L=1      C #03    ( 0.124699, 0.000000)
              --   A #01 L=0      H #04    (-0.152572, 0.000000)
              --   A #01 L=0      H #05    (-0.151372, 0.000000)
              --   A #01 L=0      H #06    (-0.152251, 0.000000)
@@ -1813,11 +1845,11 @@ Module SCF:
                  orb-in-atom  atom-in-mol      RE        IM
              --   B #22 L=2     Ni #01    (-0.104127, 0.000000)
              --   B #26 L=2     Ni #01    (-0.129597, 0.000000)
-             --   B #04 L=1      C #02    (-0.358552, 0.000000)
-             --   B #07 L=1      C #02    (-0.141218, 0.000000)
-             --   B #04 L=1      C #03    ( 0.319565, 0.000000)
-             --   B #05 L=1      C #03    (-0.175507, 0.000000)
-             --   B #07 L=1      C #03    ( 0.124699, 0.000000)
+             --   B #06 L=1      C #02    (-0.358552, 0.000000)
+             --   B #09 L=1      C #02    (-0.141218, 0.000000)
+             --   B #04 L=1      C #03    (-0.175507, 0.000000)
+             --   B #06 L=1      C #03    ( 0.319565, 0.000000)
+             --   B #09 L=1      C #03    ( 0.124699, 0.000000)
              --   B #01 L=0      H #04    (-0.152572, 0.000000)
              --   B #01 L=0      H #05    (-0.151372, 0.000000)
              --   B #01 L=0      H #06    (-0.152251, 0.000000)
@@ -1826,12 +1858,12 @@ Module SCF:
   #031       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #05 L=1      C #02    (-0.167864, 0.000000)
-             --   A #06 L=1      C #02    (-0.253820, 0.000000)
-             --   A #09 L=1      C #02    (-0.146232, 0.000000)
-             --   A #05 L=1      C #03    ( 0.165310, 0.000000)
-             --   A #06 L=1      C #03    ( 0.255523, 0.000000)
-             --   A #09 L=1      C #03    ( 0.147302, 0.000000)
+             --   A #04 L=1      C #02    (-0.167864, 0.000000)
+             --   A #05 L=1      C #02    (-0.253820, 0.000000)
+             --   A #08 L=1      C #02    (-0.146232, 0.000000)
+             --   A #04 L=1      C #03    ( 0.165310, 0.000000)
+             --   A #05 L=1      C #03    ( 0.255523, 0.000000)
+             --   A #08 L=1      C #03    ( 0.147302, 0.000000)
              --   A #01 L=0      H #04    (-0.230043, 0.000000)
              --   A #02 L=0      H #04    (-0.121832, 0.000000)
              --   A #01 L=0      H #05    ( 0.230953, 0.000000)
@@ -1844,12 +1876,12 @@ Module SCF:
   #032       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #05 L=1      C #02    (-0.167864, 0.000000)
-             --   B #06 L=1      C #02    (-0.253820, 0.000000)
-             --   B #09 L=1      C #02    (-0.146232, 0.000000)
-             --   B #05 L=1      C #03    ( 0.165310, 0.000000)
-             --   B #06 L=1      C #03    ( 0.255523, 0.000000)
-             --   B #09 L=1      C #03    ( 0.147302, 0.000000)
+             --   B #04 L=1      C #02    (-0.167864, 0.000000)
+             --   B #05 L=1      C #02    (-0.253820, 0.000000)
+             --   B #08 L=1      C #02    (-0.146232, 0.000000)
+             --   B #04 L=1      C #03    ( 0.165310, 0.000000)
+             --   B #05 L=1      C #03    ( 0.255523, 0.000000)
+             --   B #08 L=1      C #03    ( 0.147302, 0.000000)
              --   B #01 L=0      H #04    (-0.230043, 0.000000)
              --   B #02 L=0      H #04    (-0.121832, 0.000000)
              --   B #01 L=0      H #05    ( 0.230953, 0.000000)
@@ -1860,80 +1892,80 @@ Module SCF:
              --   B #02 L=0      H #07    ( 0.122246, 0.000000)
   HOMO-011   energy / Eh                       ...    -0.291605
   #033       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...    -0.500000
-                 orb-in-atom  atom-in-mol      RE        IM
-             --   B #06 L=0     Ni #01    ( 0.136725, 0.000000)
-             --   B #08 L=0     Ni #01    (-0.189035, 0.000000)
-             --   B #26 L=2     Ni #01    ( 0.150861, 0.000000)
-             --   B #04 L=1      C #02    (-0.155127, 0.000000)
-             --   B #05 L=1      C #02    ( 0.299178, 0.000000)
-             --   B #06 L=1      C #02    (-0.185120, 0.000000)
-             --   B #08 L=1      C #02    ( 0.192575, 0.000000)
-             --   B #09 L=1      C #02    (-0.120014, 0.000000)
-             --   B #04 L=1      C #03    ( 0.238866, 0.000000)
-             --   B #05 L=1      C #03    ( 0.245762, 0.000000)
-             --   B #06 L=1      C #03    (-0.177995, 0.000000)
-             --   B #07 L=1      C #03    ( 0.141738, 0.000000)
-             --   B #08 L=1      C #03    ( 0.162074, 0.000000)
-             --   B #09 L=1      C #03    (-0.116217, 0.000000)
-  HOMO-010   energy / Eh                       ...    -0.291605
-  #034       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
              --   A #06 L=0     Ni #01    ( 0.136725, 0.000000)
              --   A #08 L=0     Ni #01    (-0.189035, 0.000000)
              --   A #26 L=2     Ni #01    ( 0.150861, 0.000000)
-             --   A #04 L=1      C #02    (-0.155127, 0.000000)
-             --   A #05 L=1      C #02    ( 0.299178, 0.000000)
-             --   A #06 L=1      C #02    (-0.185120, 0.000000)
-             --   A #08 L=1      C #02    ( 0.192575, 0.000000)
-             --   A #09 L=1      C #02    (-0.120014, 0.000000)
-             --   A #04 L=1      C #03    ( 0.238866, 0.000000)
-             --   A #05 L=1      C #03    ( 0.245762, 0.000000)
-             --   A #06 L=1      C #03    (-0.177995, 0.000000)
-             --   A #07 L=1      C #03    ( 0.141738, 0.000000)
-             --   A #08 L=1      C #03    ( 0.162074, 0.000000)
-             --   A #09 L=1      C #03    (-0.116217, 0.000000)
+             --   A #04 L=1      C #02    ( 0.299178, 0.000000)
+             --   A #05 L=1      C #02    (-0.185120, 0.000000)
+             --   A #06 L=1      C #02    (-0.155127, 0.000000)
+             --   A #07 L=1      C #02    ( 0.192575, 0.000000)
+             --   A #08 L=1      C #02    (-0.120014, 0.000000)
+             --   A #04 L=1      C #03    ( 0.245762, 0.000000)
+             --   A #05 L=1      C #03    (-0.177995, 0.000000)
+             --   A #06 L=1      C #03    ( 0.238866, 0.000000)
+             --   A #07 L=1      C #03    ( 0.162074, 0.000000)
+             --   A #08 L=1      C #03    (-0.116217, 0.000000)
+             --   A #09 L=1      C #03    ( 0.141738, 0.000000)
+  HOMO-010   energy / Eh                       ...    -0.291605
+  #034       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #06 L=0     Ni #01    ( 0.136725, 0.000000)
+             --   B #08 L=0     Ni #01    (-0.189035, 0.000000)
+             --   B #26 L=2     Ni #01    ( 0.150861, 0.000000)
+             --   B #04 L=1      C #02    ( 0.299178, 0.000000)
+             --   B #05 L=1      C #02    (-0.185120, 0.000000)
+             --   B #06 L=1      C #02    (-0.155127, 0.000000)
+             --   B #07 L=1      C #02    ( 0.192575, 0.000000)
+             --   B #08 L=1      C #02    (-0.120014, 0.000000)
+             --   B #04 L=1      C #03    ( 0.245762, 0.000000)
+             --   B #05 L=1      C #03    (-0.177995, 0.000000)
+             --   B #06 L=1      C #03    ( 0.238866, 0.000000)
+             --   B #07 L=1      C #03    ( 0.162074, 0.000000)
+             --   B #08 L=1      C #03    (-0.116217, 0.000000)
+             --   B #09 L=1      C #03    ( 0.141738, 0.000000)
   HOMO-009   energy / Eh                       ...    -0.227025
   #035       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   A #22 L=2     Ni #01    ( 0.134684, 0.000000)
-             --   A #23 L=2     Ni #01    ( 0.479423, 0.000000)
-             --   A #24 L=2     Ni #01    (-0.327679, 0.000000)
-             --   A #28 L=2     Ni #01    ( 0.218586, 0.000000)
-             --   A #29 L=2     Ni #01    (-0.149420, 0.000000)
-             --   A #03 L=0      C #02    ( 0.414500, 0.000000)
-             --   A #05 L=1      C #02    (-0.197265, 0.000000)
-             --   A #06 L=1      C #02    ( 0.134243, 0.000000)
-             --   A #07 L=1      C #02    (-0.148552, 0.000000)
-             --   A #08 L=1      C #02    (-0.198953, 0.000000)
-             --   A #09 L=1      C #02    ( 0.142544, 0.000000)
-             --   A #03 L=0      C #03    (-0.415782, 0.000000)
-             --   A #05 L=1      C #03    ( 0.204636, 0.000000)
-             --   A #06 L=1      C #03    (-0.133102, 0.000000)
-             --   A #08 L=1      C #03    ( 0.231335, 0.000000)
-             --   A #09 L=1      C #03    (-0.144319, 0.000000)
+             --   A #22 L=2     Ni #01    (-0.134684, 0.000000)
+             --   A #23 L=2     Ni #01    (-0.479423, 0.000000)
+             --   A #24 L=2     Ni #01    ( 0.327679, 0.000000)
+             --   A #28 L=2     Ni #01    (-0.218586, 0.000000)
+             --   A #29 L=2     Ni #01    ( 0.149420, 0.000000)
+             --   A #03 L=0      C #02    (-0.414500, 0.000000)
+             --   A #04 L=1      C #02    ( 0.197265, 0.000000)
+             --   A #05 L=1      C #02    (-0.134243, 0.000000)
+             --   A #07 L=1      C #02    ( 0.198953, 0.000000)
+             --   A #08 L=1      C #02    (-0.142544, 0.000000)
+             --   A #09 L=1      C #02    ( 0.148552, 0.000000)
+             --   A #03 L=0      C #03    ( 0.415782, 0.000000)
+             --   A #04 L=1      C #03    (-0.204636, 0.000000)
+             --   A #05 L=1      C #03    ( 0.133102, 0.000000)
+             --   A #07 L=1      C #03    (-0.231335, 0.000000)
+             --   A #08 L=1      C #03    ( 0.144319, 0.000000)
   HOMO-008   energy / Eh                       ...    -0.227025
   #036       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #22 L=2     Ni #01    ( 0.134684, 0.000000)
-             --   B #23 L=2     Ni #01    ( 0.479423, 0.000000)
-             --   B #24 L=2     Ni #01    (-0.327679, 0.000000)
-             --   B #28 L=2     Ni #01    ( 0.218586, 0.000000)
-             --   B #29 L=2     Ni #01    (-0.149420, 0.000000)
-             --   B #03 L=0      C #02    ( 0.414500, 0.000000)
-             --   B #05 L=1      C #02    (-0.197265, 0.000000)
-             --   B #06 L=1      C #02    ( 0.134243, 0.000000)
-             --   B #07 L=1      C #02    (-0.148552, 0.000000)
-             --   B #08 L=1      C #02    (-0.198953, 0.000000)
-             --   B #09 L=1      C #02    ( 0.142544, 0.000000)
-             --   B #03 L=0      C #03    (-0.415782, 0.000000)
-             --   B #05 L=1      C #03    ( 0.204636, 0.000000)
-             --   B #06 L=1      C #03    (-0.133102, 0.000000)
-             --   B #08 L=1      C #03    ( 0.231335, 0.000000)
-             --   B #09 L=1      C #03    (-0.144319, 0.000000)
+             --   B #22 L=2     Ni #01    (-0.134684, 0.000000)
+             --   B #23 L=2     Ni #01    (-0.479423, 0.000000)
+             --   B #24 L=2     Ni #01    ( 0.327679, 0.000000)
+             --   B #28 L=2     Ni #01    (-0.218586, 0.000000)
+             --   B #29 L=2     Ni #01    ( 0.149420, 0.000000)
+             --   B #03 L=0      C #02    (-0.414500, 0.000000)
+             --   B #04 L=1      C #02    ( 0.197265, 0.000000)
+             --   B #05 L=1      C #02    (-0.134243, 0.000000)
+             --   B #07 L=1      C #02    ( 0.198953, 0.000000)
+             --   B #08 L=1      C #02    (-0.142544, 0.000000)
+             --   B #09 L=1      C #02    ( 0.148552, 0.000000)
+             --   B #03 L=0      C #03    ( 0.415782, 0.000000)
+             --   B #04 L=1      C #03    (-0.204636, 0.000000)
+             --   B #05 L=1      C #03    ( 0.133102, 0.000000)
+             --   B #07 L=1      C #03    (-0.231335, 0.000000)
+             --   B #08 L=1      C #03    ( 0.144319, 0.000000)
   HOMO-007   energy / Eh                       ...    -0.201957
   #037       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
@@ -1945,7 +1977,7 @@ Module SCF:
              --   A #26 L=2     Ni #01    ( 0.269710, 0.000000)
              --   A #27 L=2     Ni #01    ( 0.306918, 0.000000)
              --   A #31 L=2     Ni #01    ( 0.113998, 0.000000)
-             --   A #33 L=1     Ni #01    ( 0.107120, 0.000000)
+             --   A #32 L=1     Ni #01    ( 0.107120, 0.000000)
   HOMO-006   energy / Eh                       ...    -0.201957
   #038       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
@@ -1957,23 +1989,23 @@ Module SCF:
              --   B #26 L=2     Ni #01    ( 0.269710, 0.000000)
              --   B #27 L=2     Ni #01    ( 0.306918, 0.000000)
              --   B #31 L=2     Ni #01    ( 0.113998, 0.000000)
-             --   B #33 L=1     Ni #01    ( 0.107120, 0.000000)
+             --   B #32 L=1     Ni #01    ( 0.107120, 0.000000)
   HOMO-005   energy / Eh                       ...    -0.200315
   #039       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...    -0.500000
-                 orb-in-atom  atom-in-mol      RE        IM
-             --   B #25 L=2     Ni #01    ( 0.713675, 0.000000)
-             --   B #26 L=2     Ni #01    ( 0.301168, 0.000000)
-             --   B #30 L=2     Ni #01    ( 0.326030, 0.000000)
-             --   B #31 L=2     Ni #01    ( 0.137594, 0.000000)
-  HOMO-004   energy / Eh                       ...    -0.200315
-  #040       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
              --   A #25 L=2     Ni #01    ( 0.713675, 0.000000)
              --   A #26 L=2     Ni #01    ( 0.301168, 0.000000)
              --   A #30 L=2     Ni #01    ( 0.326030, 0.000000)
              --   A #31 L=2     Ni #01    ( 0.137594, 0.000000)
+  HOMO-004   energy / Eh                       ...    -0.200315
+  #040       <S**2> / hbar**2                  ...     0.750000
+             <Sz> / hbar                       ...    -0.500000
+                 orb-in-atom  atom-in-mol      RE        IM
+             --   B #25 L=2     Ni #01    ( 0.713675, 0.000000)
+             --   B #26 L=2     Ni #01    ( 0.301168, 0.000000)
+             --   B #30 L=2     Ni #01    ( 0.326030, 0.000000)
+             --   B #31 L=2     Ni #01    ( 0.137594, 0.000000)
   HOMO-003   energy / Eh                       ...    -0.186763
   #041       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...     0.500000
@@ -2029,10 +2061,10 @@ Module SCF:
              --   A #25 L=2     Ni #01    ( 0.108121, 0.000000)
              --   A #26 L=2     Ni #01    (-0.254402, 0.000000)
              --   A #31 L=2     Ni #01    (-0.113551, 0.000000)
-             --   A #33 L=1     Ni #01    (-0.343033, 0.000000)
-             --   A #34 L=1     Ni #01    ( 0.229773, 0.000000)
-             --   A #05 L=1      C #02    ( 0.112342, 0.000000)
-             --   A #05 L=1      C #03    ( 0.102203, 0.000000)
+             --   A #32 L=1     Ni #01    (-0.343033, 0.000000)
+             --   A #33 L=1     Ni #01    ( 0.229773, 0.000000)
+             --   A #04 L=1      C #02    ( 0.112342, 0.000000)
+             --   A #04 L=1      C #03    ( 0.102203, 0.000000)
              --   A #02 L=0      H #04    (-0.115760, 0.000000)
              --   A #02 L=0      H #05    (-0.116051, 0.000000)
              --   A #02 L=0      H #06    (-0.115649, 0.000000)
@@ -2046,10 +2078,10 @@ Module SCF:
              --   B #25 L=2     Ni #01    ( 0.108121, 0.000000)
              --   B #26 L=2     Ni #01    (-0.254402, 0.000000)
              --   B #31 L=2     Ni #01    (-0.113551, 0.000000)
-             --   B #33 L=1     Ni #01    (-0.343033, 0.000000)
-             --   B #34 L=1     Ni #01    ( 0.229773, 0.000000)
-             --   B #05 L=1      C #02    ( 0.112342, 0.000000)
-             --   B #05 L=1      C #03    ( 0.102203, 0.000000)
+             --   B #32 L=1     Ni #01    (-0.343033, 0.000000)
+             --   B #33 L=1     Ni #01    ( 0.229773, 0.000000)
+             --   B #04 L=1      C #02    ( 0.112342, 0.000000)
+             --   B #04 L=1      C #03    ( 0.102203, 0.000000)
              --   B #02 L=0      H #04    (-0.115760, 0.000000)
              --   B #02 L=0      H #05    (-0.116051, 0.000000)
              --   B #02 L=0      H #06    (-0.115649, 0.000000)
@@ -2063,19 +2095,19 @@ Module SCF:
              --   A #24 L=2     Ni #01    (-0.246028, 0.000000)
              --   A #28 L=2     Ni #01    ( 0.159999, 0.000000)
              --   A #29 L=2     Ni #01    (-0.109290, 0.000000)
-             --   A #32 L=1     Ni #01    (-0.480372, 0.000000)
+             --   A #34 L=1     Ni #01    (-0.480372, 0.000000)
              --   A #03 L=0      C #02    ( 0.407549, 0.000000)
-             --   A #05 L=1      C #02    ( 0.225532, 0.000000)
-             --   A #06 L=1      C #02    (-0.147891, 0.000000)
-             --   A #07 L=1      C #02    (-0.196156, 0.000000)
-             --   A #08 L=1      C #02    ( 0.279688, 0.000000)
-             --   A #09 L=1      C #02    (-0.167598, 0.000000)
+             --   A #04 L=1      C #02    ( 0.225532, 0.000000)
+             --   A #05 L=1      C #02    (-0.147891, 0.000000)
+             --   A #07 L=1      C #02    ( 0.279688, 0.000000)
+             --   A #08 L=1      C #02    (-0.167598, 0.000000)
+             --   A #09 L=1      C #02    (-0.196156, 0.000000)
              --   A #03 L=0      C #03    (-0.409754, 0.000000)
-             --   A #05 L=1      C #03    (-0.215981, 0.000000)
-             --   A #06 L=1      C #03    ( 0.146264, 0.000000)
-             --   A #07 L=1      C #03    (-0.272179, 0.000000)
-             --   A #08 L=1      C #03    (-0.212489, 0.000000)
-             --   A #09 L=1      C #03    ( 0.159225, 0.000000)
+             --   A #04 L=1      C #03    (-0.215981, 0.000000)
+             --   A #05 L=1      C #03    ( 0.146264, 0.000000)
+             --   A #07 L=1      C #03    (-0.212489, 0.000000)
+             --   A #08 L=1      C #03    ( 0.159225, 0.000000)
+             --   A #09 L=1      C #03    (-0.272179, 0.000000)
   LUMO+003   energy / Eh                       ...     0.004066
   #048       <S**2> / hbar**2                  ...     0.750000
              <Sz> / hbar                       ...    -0.500000
@@ -2085,39 +2117,39 @@ Module SCF:
              --   B #24 L=2     Ni #01    (-0.246028, 0.000000)
              --   B #28 L=2     Ni #01    ( 0.159999, 0.000000)
              --   B #29 L=2     Ni #01    (-0.109290, 0.000000)
-             --   B #32 L=1     Ni #01    (-0.480372, 0.000000)
+             --   B #34 L=1     Ni #01    (-0.480372, 0.000000)
              --   B #03 L=0      C #02    ( 0.407549, 0.000000)
-             --   B #05 L=1      C #02    ( 0.225532, 0.000000)
-             --   B #06 L=1      C #02    (-0.147891, 0.000000)
-             --   B #07 L=1      C #02    (-0.196156, 0.000000)
-             --   B #08 L=1      C #02    ( 0.279688, 0.000000)
-             --   B #09 L=1      C #02    (-0.167598, 0.000000)
+             --   B #04 L=1      C #02    ( 0.225532, 0.000000)
+             --   B #05 L=1      C #02    (-0.147891, 0.000000)
+             --   B #07 L=1      C #02    ( 0.279688, 0.000000)
+             --   B #08 L=1      C #02    (-0.167598, 0.000000)
+             --   B #09 L=1      C #02    (-0.196156, 0.000000)
              --   B #03 L=0      C #03    (-0.409754, 0.000000)
-             --   B #05 L=1      C #03    (-0.215981, 0.000000)
-             --   B #06 L=1      C #03    ( 0.146264, 0.000000)
-             --   B #07 L=1      C #03    (-0.272179, 0.000000)
-             --   B #08 L=1      C #03    (-0.212489, 0.000000)
-             --   B #09 L=1      C #03    ( 0.159225, 0.000000)
+             --   B #04 L=1      C #03    (-0.215981, 0.000000)
+             --   B #05 L=1      C #03    ( 0.146264, 0.000000)
+             --   B #07 L=1      C #03    (-0.212489, 0.000000)
+             --   B #08 L=1      C #03    ( 0.159225, 0.000000)
+             --   B #09 L=1      C #03    (-0.272179, 0.000000)
   LUMO+004   energy / Eh                       ...     0.098080
   #049       <S**2> / hbar**2                  ...     0.750000
-             <Sz> / hbar                       ...    -0.500000
+             <Sz> / hbar                       ...     0.500000
                  orb-in-atom  atom-in-mol      RE        IM
-             --   B #07 L=0     Ni #01    (-0.155609, 0.000000)
-             --   B #08 L=0     Ni #01    ( 0.933203, 0.000000)
-             --   B #09 L=0     Ni #01    (-0.915985, 0.000000)
-             --   B #33 L=1     Ni #01    (-0.333514, 0.000000)
-             --   B #34 L=1     Ni #01    ( 0.221643, 0.000000)
-             --   B #03 L=0      C #02    ( 1.145316, 0.000000)
-             --   B #04 L=1      C #02    ( 0.129743, 0.000000)
-             --   B #07 L=1      C #02    ( 0.363678, 0.000000)
-             --   B #03 L=0      C #03    ( 1.144275, 0.000000)
-             --   B #04 L=1      C #03    (-0.107226, 0.000000)
-             --   B #07 L=1      C #03    (-0.325471, 0.000000)
-             --   B #08 L=1      C #03    ( 0.177563, 0.000000)
-             --   B #02 L=0      H #04    (-0.689585, 0.000000)
-             --   B #02 L=0      H #05    (-0.688512, 0.000000)
-             --   B #02 L=0      H #06    (-0.688630, 0.000000)
-             --   B #02 L=0      H #07    (-0.689593, 0.000000)
+             --   A #07 L=0     Ni #01    (-0.155609, 0.000000)
+             --   A #08 L=0     Ni #01    ( 0.933203, 0.000000)
+             --   A #09 L=0     Ni #01    (-0.915985, 0.000000)
+             --   A #32 L=1     Ni #01    (-0.333514, 0.000000)
+             --   A #33 L=1     Ni #01    ( 0.221643, 0.000000)
+             --   A #03 L=0      C #02    ( 1.145316, 0.000000)
+             --   A #06 L=1      C #02    ( 0.129743, 0.000000)
+             --   A #09 L=1      C #02    ( 0.363678, 0.000000)
+             --   A #03 L=0      C #03    ( 1.144275, 0.000000)
+             --   A #06 L=1      C #03    (-0.107226, 0.000000)
+             --   A #07 L=1      C #03    ( 0.177563, 0.000000)
+             --   A #09 L=1      C #03    (-0.325471, 0.000000)
+             --   A #02 L=0      H #04    (-0.689585, 0.000000)
+             --   A #02 L=0      H #05    (-0.688512, 0.000000)
+             --   A #02 L=0      H #06    (-0.688630, 0.000000)
+             --   A #02 L=0      H #07    (-0.689593, 0.000000)
   =============================================================
  
   dumping AO2MO to Ni0-C2H4.molden.d
@@ -2144,5 +2176,5 @@ Module SCF:
 exit module SCF
  
 ----------<NORMAL TERMINATION>----------
-Job  CPU  time:   01 h 00 min 03 s
-Job clock time:   00 h 02 min 59 s
+Job  CPU  time:   01 h 00 min 01 s
+Job clock time:   00 h 02 min 54 s

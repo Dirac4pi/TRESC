@@ -34,8 +34,9 @@ demanding on memory and disk r&w.
 * Grid integration are based on the Becke's fuzzy partitioning, the
 exchange-correlation energy and the partial derivative terms of the
 exchange-correlation potential are obtained by external library Libxc.
-* Support for density functionals: LDA functionals, GGA functionals and hybrid
-functionals, the results of non-relativistic calculation differ negligibly from
+* Support for density functionals: (hybrid) LDAs, (hybrid) GGAs and (hybrid)
+meta-GGAs excluding long-range corrected functionals and non-local
+correlation, the results of non-relativistic calculation differ negligibly from
 the Psi4 program.
 * 2c-Hamiltonian causes mixing between alpha and beta orbitals, sometimes we
 want this mixing as little as possible (maintaining the initial spin state as
@@ -157,7 +158,7 @@ computation of integrals like $$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, it has
 a small effect on results but will significantly increases the one-electron
 integral cost.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;SRTP is currently has no evidence support, if you're
-interested, try keyword `pppVp` in module Hamiltonian when performing DKH2
+interested, try keyword `pppVp` in %Hamiltonian when performing DKH2
 calculation.<br>
 
 ## Characterization of spinor states
@@ -263,6 +264,54 @@ The visualisation are as follows:<br>
 example, the phase-matching principle for bonding orbitals should be replaced by
 the momentum-matching principle.
 
+# Options
+
+&nbsp;&nbsp;&nbsp;&nbsp;TRESC allows to adjust computation by providing keywords
+in each module, now list the keywords currently supported.<br>
+
+## %ATOMS (modeling)
+
+* `basis`: choice of basis set
+* `geom`: XYZ geometry file in working directory
+* `charge`: charge of molecule
+* `spin`: spin multiplicity of molecule
+
+## %HAMILTONIAN (electronic integrations)
+
+* `pVp1e`: one-electron pVp integrals (DKH2 spinor)
+* `pVp2e`: two-electron pVp integrals (DKH2 spinor)
+* `pVp`: equal to pVp1e + pVp2e
+* `pppVp`: one-electron pppVp integrals (SRTP effect)
+* `cutS`: threshold of eigenvalue of overlapping matrix for orthogonalisation
+* `threads`: number of threads in multi-threaded calculation
+
+## %SCF (SCF settings)
+
+* `guess`: initial guess of wavefunction
+* `schwarz`: threshold of Cauchy-Schwarz screening
+* `maxiter`: maximum number of SCF iterations
+* `convertol`: SCF convergence tolerance
+* `damp`: SCF damping coefficient
+* `diisdamp`: DIIS damping coefficient
+* `nodiis`: number of initial iterations without DIIS
+* `subsp`: size of subspace of DIIS
+* `cutdamp`: cut damp when threshold is reached
+* `cutdiis`: cut DIIS when threshold is reached
+* `prtlev`: minimum AO coefficient output when SCF done
+* `cspin`: constrained spin multiplicity calculation
+* `molden`: dump MOs to MOLDEN files when SCF done
+* `emd4`: DFT-D4 dispersion correction
+
+## %FUNCTIONAL (exchange-correlation functionals)
+
+> Identity of functionals can be found at
+[Libxc](https://libxc.gitlab.io/functionals/libxc-7.0.0/)<br>
+All functionals are available except range-separated and non-local correlation
+
+* `xid`: identity of exchange functional
+* `cid`: identity of correlation functional
+* `xcid`: identity of exchange-correlation functional
+
 # Build
 
 > If AVX2 / AVX512 instruction set is supported, please modify the compilation
@@ -272,38 +321,65 @@ options and compiler directives (e.g. align_size) manually.<br>
 
 ## Linux (Debian as example)
 
-1. Deploy build tools by root or sudo user:<br>
-`sudo apt install ninja-build`<br>
-`sudo apt install cmake`<br>
-2. Install [Intel oneAPI HPC Toolkit](
+Deploy build tools by root or sudo user:
+
+```Shell
+sudo apt install ninja-build
+sudo apt install cmake
+```
+
+Install [Intel oneAPI HPC Toolkit](
 https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html),
-and append the following to `~/.bashrc`:<br>
-`export ONEAPI_ROOT="/path/to/oneapi"`<br>
-`export PATH="$ONEAPI_ROOT/compiler/latest/bin:$PATH"`<br>
-3. Download the stable release of [Libxc](
-https://libxc.gitlab.io/download/) and build it (in oneAPI environment) by:<br>
-`cmake -S . \`<br>
-`-B build \`<br>
-`-G Ninja \`<br>
-`-DCMAKE_BUILD_TYPE=Release \`<br>
-`-DENABLE_FORTRAN=ON \`<br>
-`-DBUILD_TESTING=OFF \`<br>
-`-DBUILD_FPIC=ON \`<br>
-`-DCMAKE_Fortran_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/ifx" \`<br>
-`-DCMAKE_C_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/icx" \`<br>
-`-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \`<br>
-`-DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -O3 -xCORE-AVX2"`<br>
+and append the following to `~/.bashrc`:
+
+```Shell
+export ONEAPI_ROOT="/path/to/oneapi"
+export PATH="$ONEAPI_ROOT/compiler/latest/bin:$PATH"
+```
+
+Download the stable release of [Libxc](
+https://libxc.gitlab.io/download/) and build it (in oneAPI environment) by:
+
+```Shell
+cmake -S . \
+-B build \
+-G Ninja \
+-DCMAKE_BUILD_TYPE=Release \
+-DENABLE_FORTRAN=ON \
+-DBUILD_TESTING=OFF \
+-DBUILD_FPIC=ON \
+-DCMAKE_Fortran_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/ifx" \
+-DCMAKE_C_COMPILER="${ONEAPI_ROOT}/compiler/latest/bin/icx" \
+-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+-DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -O3 -xCORE-AVX2"
+```
+
 then<br>
-`cd build && ninja`<br>
+
+```Shell
+cd build && ninja
+```
+
 append to `~/.bashrc` after a successful build:<br>
-`export LIBXC_ROOT="/path/to/libxc"`
-4. Change directory to TRESC root and build it by:<br>
-`chmod +x release.sh && ./release.sh`<br>
+
+```Shell
+export LIBXC_ROOT="/path/to/libxc"
+```
+
+Change directory to TRESC root and build it by:<br>
+
+```Shell
+chmod +x release.sh && ./release.sh
+```
+
 append to `~/.bashrc` when everything is done:<br>
-`export TRESC="/path/to/TRESC"`<br>
-`export PATH="$TRESC/build:$PATH`<br>
-`alias TRESC='tshell.sh'`<br>
-`alias tshell='tshell.sh'`
+
+```Shell
+export TRESC="/path/to/TRESC"
+export PATH="$TRESC/build:$PATH
+alias TRESC='tshell.sh'
+alias tshell='tshell.sh'
+```
 
 # Upcoming
 

@@ -14,7 +14,7 @@ from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
 from numpy import sqrt, square
 
-
+#-------------------------------------------------------------------------------
 def pro2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
   visualization of complex spinor orbital with structured
@@ -31,67 +31,59 @@ def pro2c(moldendir:str, index:int, isovalue:float=0.05)->None:
     raise RuntimeError(f'moldendir should be xxx.molden.d')
   if not path.exists(moldendir):
     raise RuntimeError(f"can't find dir {moldendir}")
-  #-----------------------------------------------------------------------------
   # generate cube files (with real cube and momentum cube)
-  print('generating cube files...')
-  vk.call_executable(['tshell.sh', '-cub2c', moldendir, str(index)])
-  #-----------------------------------------------------------------------------
+  print('calling TRESC:')
+  vk.call_executable(['tshell.sh', '-pro2c', moldendir, str(index)])
   # load data from real space cube file
-  print('loading grid data from real space cub file...')
-  real = index+'-realreal.cub'
-  img  = index+'-realimg.cub'
-  atoms, real_mat_alpha, nmo = vk.load_cube(real, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+real)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+real+' should contain both \
-      alpha and beta orbitals.')
+  alphareal = index+'-rar.cub'
+  alphaimg  = index+'-rai.cub'
+  betareal = index+'-rbr.cub'
+  betaimg  = index+'-rbi.cub'
+  print(f'loading real space grid alpha real part data from {alphareal}...')
+  atoms, real_mat_alpha = vk.load_cube(alphareal)
+  print('done')
   # grid data
   rx = real_mat_alpha['x']
   ry = real_mat_alpha['y']
   rz = real_mat_alpha['z']
   rar = real_mat_alpha['value']
-  atoms, real_mat_beta, nmo = vk.load_cube(real, 2)
-  rbr = real_mat_beta['value']
-  atoms, img_mat_alpha, nmo = vk.load_cube(img, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+img)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+img+' should contain both \
-      alpha and beta orbitals.')
-  rai = img_mat_alpha['value']
-  atoms, img_mat_beta, nmo = vk.load_cube(img, 2)
-  rbi = img_mat_beta['value']
+  print(f'loading real space grid beta real part data from {betareal}...')
+  atoms, real_mat_beta = vk.load_cube(betareal)
   print('done')
-  #-----------------------------------------------------------------------------
+  rbr = real_mat_beta['value']
+  print(f'loading real space grid alpha imaginary part data from {alphaimg}...')
+  atoms, img_mat_alpha = vk.load_cube(alphaimg)
+  print('done')
+  rai = img_mat_alpha['value']
+  print(f'loading real space grid beta imaginary part data from {betaimg}...')
+  atoms, img_mat_beta = vk.load_cube(betaimg)
+  print('done')
+  rbi = img_mat_beta['value']
   # load data from momentum space cube file
-  print('loading grid data from momentum space cub file...')
-  real = index+'-mmtreal.cub'
-  img  = index+'-mmtimg.cub'
-  atoms, real_mat_alpha, nmo = vk.load_cube(real, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+real)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+real+' should contain both \
-      alpha and beta orbitals.')
+  alphareal = index+'-mar.cub'
+  alphaimg  = index+'-mai.cub'
+  betareal = index+'-mbr.cub'
+  betaimg  = index+'-mbi.cub'
+  print(f'loading momentum grid alpha real part data from {alphareal}...')
+  atoms, real_mat_alpha = vk.load_cube(alphareal)
+  print('done')
   # grid data
   px = real_mat_alpha['x']
   py = real_mat_alpha['y']
   pz = real_mat_alpha['z']
   par = real_mat_alpha['value']
-  atoms, real_mat_beta, nmo = vk.load_cube(real, 2)
-  pbr = real_mat_beta['value']
-  atoms, img_mat_alpha, nmo = vk.load_cube(img, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+img)
-  elif nmo != 2:
-    raise RuntimeError('cube file '+img+' should contain both \
-      alpha and beta orbitals.')
-  pai = img_mat_alpha['value']
-  atoms, img_mat_beta, nmo = vk.load_cube(img, 2)
-  pbi = img_mat_beta['value']
+  print(f'loading momentum grid beta real part data from {betareal}...')
+  atoms, real_mat_beta = vk.load_cube(betareal)
   print('done')
-  #-----------------------------------------------------------------------------
+  pbr = real_mat_beta['value']
+  print(f'loading momentum grid alpha imaginary part data from {alphaimg}...')
+  atoms, img_mat_alpha = vk.load_cube(alphaimg)
+  print('done')
+  pai = img_mat_alpha['value']
+  print(f'loading momentum grid beta imaginary part data from {betaimg}...')
+  atoms, img_mat_beta = vk.load_cube(betaimg)
+  print('done')
+  pbi = img_mat_beta['value']
   # plot the complex spinor orbital in real space and momentum space
   print('plotting in real space and momentum space ...')
   rmod = sqrt(square(rar) + square(rai) + square(rbr) + square(rbi))
@@ -134,6 +126,7 @@ def pro2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
+#===============================================================================
 if __name__ == "__main__":
   from sys import argv
   if len(argv) != 3:

@@ -15,6 +15,7 @@ from numpy import sqrt, square, arctan2
 # True: alpha and beta visualization as phase, False: as components
 spin_phase = True
 
+#-------------------------------------------------------------------------------
 def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
   visualization of complex spinor orbital with unstructured grid data
@@ -26,6 +27,7 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   isovalue: isovalue of amplitude of MO.\n
   Returns: None
   '''
+  global spin_phase
   isovalue = float(isovalue)
   if not moldendir.endswith('.molden.d'):
     raise RuntimeError(f'moldendir should be xxx.molden.d')
@@ -34,16 +36,13 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   if not path.exists(moldendir):
     raise RuntimeError(f"can't find dir {moldendir}")
   print(f'spin_phase = {spin_phase}')
-  #-----------------------------------------------------------------------------
   # generate mog files
-  print('generating mog files...')
+  print('calling TRESC:')
   vk.call_executable(['tshell.sh', '-mog2c', moldendir, str(index)])
-  #-----------------------------------------------------------------------------
   # load geometry
   print('loading grid data from mog files...')
   title = moldendir+'/'+basename+'-realpart1.molden.input'
   atoms = vk.load_geometry_molden(title)
-  #-----------------------------------------------------------------------------
   # load mog
   x = vk.load_binary(basename+'.mogx')
   y = vk.load_binary(basename+'.mogy')
@@ -64,7 +63,6 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   bi = vk.load_binary(str(index)+'.mogbi')
   if bi.size != x.size:
     raise RuntimeError('x, bi size not match')
-  #-----------------------------------------------------------------------------
   # plot the complex 2c orbital
   print('plotting...')
   if spin_phase:
@@ -131,6 +129,7 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
+#===============================================================================
 if __name__ == "__main__":
   from sys import argv
   if len(argv) != 3:

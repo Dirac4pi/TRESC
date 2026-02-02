@@ -62,15 +62,18 @@ def cmplx_orb_plot_cub(\
         str(e).rfind('<=')+14]) * .5 
         # factor of 0.5 is usually appropriate
       contouramp = mlab.contour3d(x, y, z, amp_smooth, figure=fig1, \
-        contours=[isovalue], opacity=.2, colormap='Greys')
+                                  contours=[isovalue], opacity=1.0)
       print('------')
       print('ignore previous error')
     else:
       raise RuntimeError()
   else:
     contouramp = mlab.contour3d(x, y, z, amp_smooth, figure=fig1, \
-      contours=[isovalue], opacity=.7, colormap='Greys')
+                                contours=[isovalue], opacity=1.0)
   finally:
+    contouramp.actor.mapper.scalar_visibility = True
+    lut = contouramp.module_manager.scalar_lut_manager.lut
+    lut.table = [(180, 180, 180, 180)] * 256
     contouramp.actor.property.interpolation = 'phong'
     contouramp.actor.property.ambient  = 0.15
     contouramp.actor.property.diffuse  = 0.75
@@ -101,8 +104,15 @@ def cmplx_orb_plot_cub(\
   # color map of phase based on contour of amplitude
   contourpha2 = mlab.pipeline.set_active_attribute(contourpha,
     point_scalars='phase', figure=fig2)
-  mlab.pipeline.surface(contourpha2, colormap='hsv', opacity=.5, \
-    vmax=np.pi, vmin=-np.pi, figure=fig2)
+  if title == 'spin':
+    surf = mlab.pipeline.surface(contourpha2, colormap='RdBu', opacity=.5, \
+                                 vmax=np.pi, vmin=0, figure=fig2)
+    # spin phase is non-periodic and range in [0,pi/2]
+    surf.module_manager.scalar_lut_manager.data_range = [0, np.pi/2]
+  elif title == 'orb':
+    surf = mlab.pipeline.surface(contourpha2, colormap='hsv', opacity=.5, \
+                                 vmax=np.pi, vmin=-np.pi, figure=fig2)
+    surf.module_manager.scalar_lut_manager.data_range = [-np.pi, np.pi]
   mlab.colorbar(title='phase', orientation='vertical', nb_labels=5)
   mlab.view(figure=fig1)
   fig1.scene.show_axes = True
@@ -132,6 +142,7 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   isovalue: isovalue of amplitude\n
   Return: final isovalue
   '''
+  global dtol, maxpoints
   print('Unstructured data need to be Delaunay triangulated before extracting')
   print('isosurface, the time consumed increases significantly...')
   print('...please be patient...')
@@ -165,8 +176,10 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   contour = mlab.pipeline.contour(delaunay)
   try:
     contour.filter.contours = [isovalue]
-    surface = mlab.pipeline.surface(contour, figure=fig1, opacity=.7,\
-                                    colormap='Greys')
+    surface = mlab.pipeline.surface(contour, figure=fig1, opacity=.7)
+    surface.actor.mapper.scalar_visibility = True
+    lut = surface.module_manager.scalar_lut_manager.lut
+    lut.table = [(110, 110, 110, 180)] * 256
     surface.actor.property.interpolation = 'phong'
     surface.actor.property.ambient  = 0.15
     surface.actor.property.diffuse  = 0.75
@@ -198,7 +211,7 @@ def cmplx_orb_plot_mog(title:str, atoms, amplitude, \
   contour_phase = mlab.pipeline.set_active_attribute(contour, \
                                                      point_scalars='phase')
   if title == 'spin':
-    surf = mlab.pipeline.surface(contour_phase, colormap='jet', opacity=0.5)
+    surf = mlab.pipeline.surface(contour_phase, colormap='RdBu', opacity=0.5)
     # spin phase is non-periodic and range in [0,pi/2]
     surf.module_manager.scalar_lut_manager.data_range = [0, np.pi/2]
   else:
@@ -241,20 +254,38 @@ def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   elif isovalue < 2*np.abs(val_smoothed).min():
     isovalue = 0.5 * (np.abs(val_smoothed).max() + np.abs(val_smoothed).min())
     print(f"Adjust isovalue to {isovalue} (mid-range)")
-  contourpos = mlab.contour3d(x, y, z, val_smoothed, contours=[isovalue], \
-                              opacity=.7, colormap='winter')
+  contourpos = mlab.contour3d(x, y, z, val_smoothed, \
+                              contours=[isovalue], opacity=1.0)
+  contourpos.actor.mapper.scalar_visibility = True
+  lut = contourpos.module_manager.scalar_lut_manager.lut
+  lut.table = [(0, 151, 141, 180)] * 256
   contourpos.actor.property.interpolation = 'phong'
-  contourpos.actor.property.ambient  = 0.15
-  contourpos.actor.property.diffuse  = 0.75
+  contourpos.actor.property.ambient  = 0.3
+  contourpos.actor.property.diffuse  = 0.85
   contourpos.actor.property.specular = 0.35
   contourpos.actor.property.specular_power = 20
-  contourneg = mlab.contour3d(x, y, z, val_smoothed, contours=[-isovalue], \
-                              opacity=.7, colormap='autumn')
+  # lut.table = [(191, 29, 45, 180)] * 256
+  # contourpos.actor.property.interpolation = 'phong'
+  # contourpos.actor.property.ambient  = 0.25
+  # contourpos.actor.property.diffuse  = 0.75
+  # contourpos.actor.property.specular = 0.35
+  # contourpos.actor.property.specular_power = 20
+  contourneg = mlab.contour3d(x, y, z, val_smoothed, \
+                              contours=[-isovalue], opacity=1.0)
+  contourneg.actor.mapper.scalar_visibility = True
+  lut = contourneg.module_manager.scalar_lut_manager.lut
+  lut.table = [(0, 91, 160, 180)] * 256
   contourneg.actor.property.interpolation = 'phong'
-  contourneg.actor.property.ambient  = 0.15
-  contourneg.actor.property.diffuse  = 0.75
+  contourneg.actor.property.ambient  = 0.2
+  contourneg.actor.property.diffuse  = 0.7
   contourneg.actor.property.specular = 0.35
   contourneg.actor.property.specular_power = 20
+  # lut.table = [(41, 56, 144, 180)] * 256
+  # contourneg.actor.property.interpolation = 'phong'
+  # contourneg.actor.property.ambient  = 0.3
+  # contourneg.actor.property.diffuse  = 0.8
+  # contourneg.actor.property.specular = 0.35
+  # contourneg.actor.property.specular_power = 20
   # -------------<plot atoms>-------------
   atom_list = atoms['index']
   atomx = atoms['x']
@@ -295,7 +326,10 @@ def real_orb_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
     isovalue = 0.5 * (val_smoothed.max() + val_smoothed.min())
     print(f"Adjust isovalue to {isovalue} (mid-range)")
   contour = mlab.contour3d(x, y, z, val_smoothed, figure=fig1, \
-                           contours=[isovalue], opacity=.7, colormap='Greys')
+                           contours=[isovalue], opacity=1.0)
+  contour.actor.mapper.scalar_visibility = True
+  lut = contour.module_manager.scalar_lut_manager.lut
+  lut.table = [(180, 180, 180, 180)] * 256
   contour.actor.property.interpolation = 'phong'
   contour.actor.property.ambient  = 0.15
   contour.actor.property.diffuse  = 0.75

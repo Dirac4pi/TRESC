@@ -64,14 +64,16 @@ module SCF
   complex(dp),allocatable :: exAO2p2(:,:)   ! extended AO2p2 matrix
   
   !--------------<two-electron Fock>--------------
-  !DIR$ ATTRIBUTES ALIGN:align_size :: mHFcol, mHFexc, mKSexc, mKScor,mpVpcol_11
-  !DIR$ ATTRIBUTES ALIGN:align_size :: mpVpexc_11, mpVpcol_22, mpVpexc_22
-  !DIR$ ATTRIBUTES ALIGN:align_size :: iijj_V, iijj_pxVpx,iijj_pyVpy, iijj_pzVpz
-  !DIR$ ATTRIBUTES ALIGN:align_size :: ijij_pxVpx, ijij_pyVpy, ijij_pzVpz
+  !DIR$ ATTRIBUTES ALIGN:align_size :: mHFcol, mHFexc, mKSexc, mKScor, mKSexccor
+  !DIR$ ATTRIBUTES ALIGN:align_size :: mpVpcol_11, mpVpexc_11, mpVpcol_22
+  !DIR$ ATTRIBUTES ALIGN:align_size :: mpVpexc_22, iijj_V, iijj_pxVpx,iijj_pyVpy
+  !DIR$ ATTRIBUTES ALIGN:align_size :: iijj_pzVpz, ijij_pxVpx, ijij_pyVpy
+  !DIR$ ATTRIBUTES ALIGN:align_size :: ijij_pzVpz
   complex(dp),allocatable :: mHFcol(:,:)    ! 2e HF Coulomb matrix
   complex(dp),allocatable :: mHFexc(:,:)    ! 2e HF Exchange matrix
   complex(dp),allocatable :: mKSexc(:,:)    ! 2e KS Exchange matrix
   complex(dp),allocatable :: mKScor(:,:)    ! 2e KS correlation matrix
+  complex(dp),allocatable :: mKSexccor(:,:) ! 2e KS Exchange-correlation matrix
   complex(dp),allocatable :: mpVpcol_11(:,:)! 2e pVp Coulomb matrix(one with ii)
   complex(dp),allocatable :: mpVpexc_11(:,:)! 2e pVp Exchange matrix
   complex(dp),allocatable :: mpVpcol_22(:,:)! 2e pVp Coulomb matrix(one with ii)
@@ -94,6 +96,7 @@ module SCF
   real(dp)                :: HFexc          ! Hartree-Fock exchange energy
   real(dp)                :: KSexc          ! Kohn-Shanm exchange energy
   real(dp)                :: KScor          ! Kohn-Shanm correlation energy
+  real(dp)                :: KSexccor       ! Kohn-Shanm exchange-correlation
   real(dp)                :: Ecore          ! one-electron (core) energy
   real(dp)                :: E2e            ! two-electron energy
   real(dp)                :: T              ! kinetic energy
@@ -144,7 +147,7 @@ module SCF
     '  complete! nuclear repulsive energy = ', nucE, ' Eh'
     call Assign_Schwarz_V2e()
     write(60,'(A)') '  initialize Libxc'
-    if (fx_id /= -1) call Fockxc_init()
+    if (fx_id /= -1 .or. fxc_id /= -1) call Libxc_init()
     write(60,'(A)') '  complete!'
     allocate(Fock(2*fbdm,2*fbdm))
     allocate(orbE(2*fbdm))
@@ -182,19 +185,18 @@ module SCF
       call Assign_Fock_V2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
       if (fx_id /= -1) then
-        if (fc_id /= -1) then
-          write(60,'(A)') '  mKSexc, mKScor'
-          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
-        else
-          x_HF = 0.0_dp
-          KScor = 0.0_dp
-          write(60,'(A)') '  mKSexc'
-          Fock = Fock1 + mHFcol + mKSexc
-        end if
-      else    ! pure Hartree-Fock
-        x_HF = 1.0_dp
+        KSexccor = 0.0_dp
+        write(60,'(A)') '  mKSexc, mKScor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor
+      else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
+        write(60,'(A)') '  mKSexccor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor
+      else    ! pure Hartree-Fock
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        KSexccor = 0.0_dp
         Fock = Fock1 + mHFcol + mHFexc
       end if
       ! diagonalization of Fock matrix
@@ -272,7 +274,7 @@ module SCF
     '  complete! nuclear repulsive energy = ', nucE, ' Eh'
     call Assign_Schwarz_V2e()
     write(60,'(A)') '  initialize Libxc'
-    if (fx_id /= -1) call Fockxc_init()
+    if (fx_id /= -1 .or. fxc_id /= -1) call Libxc_init()
     write(60,'(A)') '  complete!'
     allocate(Fock(2*fbdm,2*fbdm))
     allocate(orbE(2*fbdm))
@@ -310,19 +312,18 @@ module SCF
       call Assign_Fock_AVA2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
       if (fx_id /= -1) then
-        if (fc_id /= -1) then
-          write(60,'(A)') '  mKSexc, mKScor'
-          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
-        else
-          x_HF = 0.0_dp
-          KScor = 0.0_dp
-          write(60,'(A)') '  mKSexc'
-          Fock = Fock1 + mHFcol + mKSexc
-        end if
-      else    ! pure Hartree-Fock
-        x_HF = 1.0_dp
+        KSexccor = 0.0_dp
+        write(60,'(A)') '  mKSexc, mKScor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor
+      else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
+        write(60,'(A)') '  mKSexccor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor
+      else    ! pure Hartree-Fock
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        KSexccor = 0.0_dp
         Fock = Fock1 + mHFcol + mHFexc
       end if
 
@@ -400,7 +401,7 @@ module SCF
     '  complete! nuclear repulsive energy = ', nucE, ' Eh'
     call Assign_Schwarz_pVp2e()
     write(60,'(A)') '  initialize Libxc'
-    if (fx_id /= -1) call Fockxc_init()
+    if (fx_id /= -1 .or. fxc_id /= -1) call Libxc_init()
     write(60,'(A)') '  complete!'
     allocate(Fock(2*fbdm,2*fbdm))
     allocate(orbE(2*fbdm))
@@ -460,19 +461,18 @@ module SCF
       call Assign_Fock_AVA2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
       if (fx_id /= -1) then
-        if (fc_id /= -1) then
-          write(60,'(A)') '  mKSexc, mKScor'
-          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + mKScor
-        else
-          x_HF = 0.0_dp
-          KScor = 0.0_dp
-          write(60,'(A)') '  mKSexc'
-          Fock = Fock1 + mHFcol + mKSexc
-        end if
-      else    ! pure Hartree-Fock
-        x_HF = 1.0_dp
+        KSexccor = 0.0_dp
+        write(60,'(A)') '  mKSexc, mKScor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor
+      else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
+        write(60,'(A)') '  mKSexccor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor
+      else    ! pure Hartree-Fock
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        KSexccor = 0.0_dp
         Fock = Fock1 + mHFcol + mHFexc
       end if
       ! diagonalization of Fock matrix
@@ -523,12 +523,8 @@ module SCF
     write(60,'(A)') '        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
     write(60,'(A)') '        !!!!!!<SPINOR CONVERGENCE STAGE>!!!!!!'
     pVp2e = .True.
-    if (subsp <= 8) then
-      nodiis = subsp
-    else
-      nodiis = 5
-      subsp = 5
-    end if
+    if (damp_ < 0.7) damp = 0.7_dp
+    if (diisdamp_ < 0.7) diisdamp = 0.7_dp
     write(60,'(A)') '        !!SCF settings:                     !!'
     write(60,'(A,I3.3,A)')  '        !!-- maxiter  =            ', maxiter,   &
     '      !!'
@@ -567,21 +563,20 @@ module SCF
       write(60,'(A)') '  mpVpcol_11, mpVpexc_11, mpVpcol_22, mpVpexc_22'
       ! assign Fock matrix
       if (fx_id /= -1) then
-        if (fc_id /= -1) then
-          write(60,'(A)') '  mKSexc, mKScor'
-          Fock = Fock1 + mHFcol + x_HF*mHFexc + (1.0_dp-x_HF)*mKSexc + &
-          mKScor + mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
-        else
-          x_HF = 0.0_dp
-          KScor = 0.0_dp
-          write(60,'(A)') '  mKSexc'
-          Fock = Fock1 + mHFcol + mKSexc + &
-          mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
-        end if
-      else    ! pure Hartree-Fock
-        x_HF = 1.0_dp
+        KSexccor = 0.0_dp
+        write(60,'(A)') '  mKSexc, mKScor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor + &
+        mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
+      else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
+        write(60,'(A)') '  mKSexccor'
+        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor +&
+        mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
+      else    ! pure Hartree-Fock
+        KScor = 0.0_dp
+        KSexc = 0.0_dp
+        KSexccor = 0.0_dp
         Fock = Fock1 + mHFcol + mHFexc + &
         mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
       end if
@@ -617,25 +612,6 @@ module SCF
         end if
       end if
       write(60,'(A)') '  DIIS information'
-      ! dynamic damping control
-      if (iter /= 1) then
-        if (abs(molE - molE_pre) > 1E-3) then
-          if (damp_ < 0.7) damp = 0.7_dp
-          if (diisdamp_ < 0.7) diisdamp = 0.7_dp
-        else if (abs(molE - molE_pre) > 1E-4) then
-          if (damp_ < 0.5) damp = 0.5_dp
-          if (diisdamp_ < 0.5) diisdamp = 0.5_dp
-        else if (abs(molE - molE_pre) > 1E-5) then
-          if (damp_ < 0.3) damp = 0.3_dp
-          if (diisdamp_ < 0.3) diisdamp = 0.3_dp
-        else
-          damp = damp_
-          diisdamp = diisdamp_
-        end if
-      else
-        if (damp_ < 0.7) damp = 0.7_dp
-        if (diisdamp_ < 0.7) diisdamp = 0.7_dp
-      end if
       call DIIS()
       rho_pre = rho_m
     end do
@@ -872,17 +848,19 @@ module SCF
     write(60,'(A,F12.6)') &
     '  -- -- pVp-related Exchange              ', 0.5_dp*EpVpexc
     write(60,'(A,F12.6)') &
-    '  -- KS Exchange                          ', (1-x_HF)*KSexc
+    '  -- KS Exchange (x_func)                 ', KSexc
     write(60,'(A,F12.6)') &
-    '  -- KS Correlation                       ', KScor
+    '  -- KS Correlation (c_func)              ', KScor
+    write(60,'(A,F12.6)') &
+    '  -- KS Exchange-Correlation (xc_func)    ', KSexccor
 
     ! electronic energy
     if (iter /= 1) molE_pre = molE
-    molE = nucE + Ecore + E2e + (1.0_dp-x_HF)*KSexc + KScor
+    molE = nucE + Ecore + E2e + KSexc + KScor + KSexccor
 
     ! (non-relativistic) Virial ratio
     Virial = -(nucE+Ecore-T-EpVp-ESR+0.5_dp*(HFCol+x_HF*HFexc)+&
-    (1.0_dp-x_HF)*KSexc+KScor) / T
+               KSexc+KScor+KSexccor) / T
     write(60,'(A,F12.6)') &
     '  -- -<V>/<T>                             ', Virial
   end subroutine SCFprint
@@ -926,13 +904,15 @@ module SCF
     write(60,'(A,F12.6)') &
     '  -- pVp-related Exchange energy / Eh           ...',0.5_dp*EpVpexc
     write(60,'(A,F12.6)') &
-    '  KS Exchange energy / Eh                       ...',(1.0_dp-x_HF)*KSexc
+    '  KS Exchange energy (x_func) / Eh              ...',KSexc
     write(60,'(A,F12.6)') &
-    '  KS Correlation energy / Eh                    ...',KScor
+    '  KS Correlation energy (c_func) / Eh           ...',KScor
+    write(60,'(A,F12.6)') &
+    '  KS Exchange-Correlation energy (xc_func) / Eh ...',KSexccor
     if (d4) write(60,'(A,F12.6)') &
     '  Dispersion energy (DFT-D4) / Eh               ...',emd4
     write(60,'(A,F12.6)') &
-    '  Virial ratio                                  ...',Virial
+    '  Virial ratio (-<V>/<T>)                       ...',Virial
     if (pVp1e) then
       write(60,'(A)') '  -- Note: relativistic calculation causes the'
       write(60,'(A)') '  -- Virial ratio to deviate (usually below) 2.0'
@@ -946,7 +926,7 @@ module SCF
     ((totalpha-totbeta)/2.0)*((totalpha-totbeta)/2.0+1.0_dp)
     write(60,'(A,F12.6)') &
     '  <S**2> / hbar**2                              ...',S__2
-    if (fx_id /= 0) then
+    if (fx_id /= -1 .or. fxc_id /= -1) then
       write(60,'(A)') '  -- Note: there is little theoretical justification'
       write(60,'(A)') '  -- to calculate <S**2> in a DFT calculation.'
     end if
@@ -1138,15 +1118,17 @@ module SCF
     end if
     if (allocated(mKScor)) deallocate(mKScor)
     if (allocated(mKSexc)) deallocate(mKSexc)
+    if (allocated(mKSexccor)) deallocate(mKSexccor)
     deallocate(i_j, i_p2_j, i_V_j, c2s, exc2s)
     deallocate(s2f, exs2f, f2s, exf2s, c2f, exc2f)
     deallocate(c2soper, exc2soper, s2coper, exs2coper, f2soper, exf2soper)
     deallocate(s2foper, exs2foper, c2foper, exc2foper)
     if (allocated(M_c2s)) deallocate(M_c2s, M_exc2s)
-    if (kill) then
-      if (fx_id /= -1) call Fockxc_end()
-      deallocate(AO2MO, rho_m, Fock, orbE, oper3, occindex)
-    end if
+    if (fx_id /= -1 .or. fxc_id /= -1) call Libxc_exit()
+    fx_id = -1
+    fc_id = -1
+    fxc_id = -1
+    if (kill) deallocate(AO2MO, rho_m, Fock, orbE, oper3, occindex)
     ini_rho = .true.
     deallocate(AVA)
     if (pVp1e) then
@@ -1178,7 +1160,7 @@ module SCF
       ! load MO coefficient
       !-------------------------load from MOLDEN-------------------------
       if (guess_type == 'molden') then
-        if (.not. allocated(AO2MO)) allocate(AO2MO(2*sbdm,2*fbdm))
+        if (.not. allocated(AO2MO)) allocate(AO2MO(2*sbdm,2*fbdm), source=c0)
         call load_geombasis_MOLDEN(.true.)
         if (M_atom_count /= atom_count) call terminate(&
         'n_atoms in MOLDEN is not consistent with n_atoms in .xyz')
@@ -1214,6 +1196,13 @@ module SCF
               T_AO2MO_b(ii,kk)*T_AO2MO_b(jj,kk)
             end do
           end do
+        end do
+        ! For meta-GGAs, initial occupied MO coefficients is required
+        do ii = 1, Nalpha
+          AO2MO(1:sbdm,ii) = T_AO2MO_a(1:sbdm,ii)
+        end do
+        do ii = 1, Nbeta
+          AO2MO(sbdm+1:2*sbdm,Nalpha+ii) = T_AO2MO_b(1:sbdm,ii)
         end do
         deallocate(M_AO2MO_a, M_AO2MO_b, T_AO2MO_a, T_AO2MO_b)
       !-------------------------load from .ao2mo-------------------------
@@ -2395,7 +2384,7 @@ module SCF
 !------------------------------------------------------------
 !> construct non-relativistic 2-electron Fock matrices
 !!
-!! (mHFcol, mHFexc, mKSexc, mKScor)
+!! (mHFcol, mHFexc, mKSexc, mKScor, mKSexccor)
 !!
 !! "direct" calculation to avoid memory overflow and disk r&w
 !!
@@ -2436,10 +2425,11 @@ module SCF
     real(dp)    :: codj(3)             ! coordinate of center of |AOj>
     real(dp)    :: codk(3)             ! coordinate of center of |AOk>
     real(dp)    :: codl(3)             ! coordinate of center of |AOl>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic
+    !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic, supp, cAO2MO
     complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: supp(2*sbdm,2*cbdm)
+    complex(dp) :: cAO2MO(2*cbdm,2*fbdm)     ! Cartesian AO to MO coeff
     ! transform rho_m to Cartesian basis
     call scgo(rho_m)
     if (allocated(mHFcol)) deallocate(mHFcol)
@@ -2519,16 +2509,18 @@ module SCF
     if (fx_id /= -1) then
       if (allocated(mKSexc)) deallocate(mKSexc)
       allocate(mKSexc(2*cbdm, 2*cbdm))
-      if (fc_id /= -1) then
-        if (allocated(mKScor)) deallocate(mKScor)
-        allocate(mKScor(2*cbdm, 2*cbdm))
-        call Basis2real_Becke_XCintegral(rho_m, KSexc, KScor, mKSexc, mKScor)
-        call cfgo(mKSexc)
-        call cfgo(mKScor)
-      else
-        call Basis2real_Becke_XCintegral(rho_m=rho_m, ex=KSexc, Fockx=mKSexc)
-        call cfgo(mKSexc)
-      end if
+      if (allocated(mKScor)) deallocate(mKScor)
+      allocate(mKScor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XandC(rho_m, cAO2MO, KSexc, KScor, mKSexc, mKScor)
+      call cfgo(mKSexc)
+      call cfgo(mKScor)
+    else if (fxc_id /= -1) then
+      if (allocated(mKSexccor)) deallocate(mKSexccor)
+      allocate(mKSexccor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XC(rho_m, cAO2MO, KSexccor, mKSexccor)
+      call cfgo(mKSexccor)
     end if
     call cfgo(mHFcol)
     call cfgo(mHFexc)
@@ -2537,7 +2529,7 @@ module SCF
 !------------------------------------------------------------
 !> construct DKH2 scalar 2-electron Fock matrices
 !!
-!! (mHFcol, mHFexc, mKSexc, mKScor)
+!! (mHFcol, mHFexc, mKSexc, mKScor, mKSexccor)
 !!
 !! "direct" calculation to avoid memory overflow and disk r&w
 !!
@@ -2584,6 +2576,7 @@ module SCF
     !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, suppff
     complex(dp),allocatable :: rho_Ap(:,:)     ! D' = D * Ap * Ap
     complex(dp) :: suppff(2*fbdm,2*fbdm)
+    complex(dp) :: cAO2MO(2*cbdm,2*fbdm)       ! Cartesian AO to MO coeff
     allocate(rho_Ap(2*sbdm,2*sbdm))
     rho_Ap = rho_m
     ! transform rho_Ap to orthogonal AO basis
@@ -2690,22 +2683,26 @@ module SCF
     if (fx_id /= -1) then
       if (allocated(mKSexc)) deallocate(mKSexc)
       allocate(mKSexc(2*cbdm, 2*cbdm))
-      if (fc_id /= -1) then
-        if (allocated(mKScor)) deallocate(mKScor)
-        allocate(mKScor(2*cbdm, 2*cbdm))
-        call Basis2real_Becke_XCintegral(rho_m, KSexc, KScor, mKSexc, mKScor)
-        call cfgo(mKSexc)
-        call cfgo(mKScor)
-      else
-        call Basis2real_Becke_XCintegral(rho_m=rho_m, ex=KSexc, Fockx=mKSexc)
-        call cfgo(mKSexc)
-      end if
+      if (allocated(mKScor)) deallocate(mKScor)
+      allocate(mKScor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XandC(rho_m, cAO2MO, KSexc, KScor, mKSexc, mKScor)
+      call cfgo(mKSexc)
+      call cfgo(mKScor)
+    else if (fxc_id /= -1) then
+      if (allocated(mKSexccor)) deallocate(mKSexccor)
+      allocate(mKSexccor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XC(rho_m, cAO2MO, KSexccor, mKSexccor)
+      call cfgo(mKSexccor)
     end if
   end subroutine Assign_Fock_AVA2e
 !------------------------------------------------------------
 !> construct DKH2 spinor 2-electron Fock matrices
 !!
-!! (mHFcol, mHFexc, mKSexc, mKScor, mpVpexc_11,mpVpcol_11,mpVpexc_22,mpVpcol_22)
+!! (mHFcol, mHFexc, mKSexc, mKScor, mKSexccor)
+!!
+!! (mpVpexc_11, mpVpcol_11, mpVpexc_22, mpVpcol_22)
 !!
 !! "direct" calculation to avoid memory overflow and disk r&w
 !!
@@ -2786,6 +2783,7 @@ module SCF
     complex(dp) :: suppff(2*fbdm,2*fbdm)
     complex(dp),allocatable :: rho_Ap(:,:)       ! D' = D * Ap * Ap
     complex(dp),allocatable :: rho_ApRp(:,:)     ! D' = D * ApRp * ApRp
+    complex(dp) :: cAO2MO(2*cbdm,2*fbdm)         ! Cartesian AO to MO coeff
     allocate(rho_Ap(2*sbdm,2*sbdm))
     allocate(rho_ApRp(2*fbdm,2*fbdm))
     rho_Ap = rho_m
@@ -3169,16 +3167,18 @@ module SCF
     if (fx_id /= -1) then
       if (allocated(mKSexc)) deallocate(mKSexc)
       allocate(mKSexc(2*cbdm, 2*cbdm))
-      if (fc_id /= -1) then
-        if (allocated(mKScor)) deallocate(mKScor)
-        allocate(mKScor(2*cbdm, 2*cbdm))
-        call Basis2real_Becke_XCintegral(rho_m, KSexc, KScor, mKSexc, mKScor)
-        call cfgo(mKSexc)
-        call cfgo(mKScor)
-      else
-        call Basis2real_Becke_XCintegral(rho_m=rho_m, ex=KSexc, Fockx=mKSexc)
-        call cfgo(mKSexc)
-      end if
+      if (allocated(mKScor)) deallocate(mKScor)
+      allocate(mKScor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XandC(rho_m, cAO2MO, KSexc, KScor, mKSexc, mKScor)
+      call cfgo(mKSexc)
+      call cfgo(mKScor)
+    else if (fxc_id /= -1) then
+      if (allocated(mKSexccor)) deallocate(mKSexccor)
+      allocate(mKSexccor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XC(rho_m, cAO2MO, KSexccor, mKSexccor)
+      call cfgo(mKSexccor)
     end if
   end subroutine Assign_Fock_ARVRA2e
 
@@ -3879,7 +3879,7 @@ end function DFTD4
             do mm = 1, contrj
               M_i_j(ii,jj) = M_i_j(ii,jj) + &
               Integral_S_1e(coei(kk)*coej(mm),&
-              AO_fac(:,Li,Mi),M_AO_fac(:,Lj,Mj),&
+              AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),&
               expi(kk),expj(mm),codi,codj)
             end do
           end do

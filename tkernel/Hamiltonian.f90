@@ -1001,6 +1001,10 @@ module Hamiltonian
   
 !-----------------------------------------------------------------------
 !> normalization of primitive shell (GTFs) and contracted shell (GTOs)
+!!
+!! since all GTFs in a GTO have the same normalization coefficient, normalizing
+!!
+!! of GTO is equivalent to normalizing the GTO after normalizing the all GTFs.
   pure subroutine Calc_Ncoe(incbdata, incbdm)
     implicit none
     type(basis_data),intent(inout) :: incbdata(:)! input cbdata
@@ -1050,6 +1054,33 @@ module Hamiltonian
       incbdata(oi)%Ncoe(1:contr)=incbdata(oi)%Ncoe(1:contr)/i_i**0.5_dp
     end do
   end subroutine Calc_Ncoe
+
+!-----------------------------------------------------------------------
+!> normalization of primitive shell (GTFs)
+  pure subroutine Calc_Ncoe_GTF(incbdata, incbdm)
+    implicit none
+    type(basis_data),intent(inout) :: incbdata(:)! input cbdata
+    integer, intent(in)            :: incbdm     ! input cbdm
+    integer                        :: contr    ! contr of atom, shell
+    real(dp)                       :: expo(16) ! expo of |AO>
+    real(dp)                       :: coe(16)  ! coe of |AO>
+    integer                        :: fac(3)   ! xyz factor of |AO>
+    integer                        :: L        ! angular quantum number of |AO>
+    integer                        :: M        ! magnetic quantum number of |AO>
+    integer                        :: oi,oj    ! loop variables for Calc_Ncoe
+    ! normalization of primitive shell (GTFs)
+    do oi = 1, incbdm
+      contr = incbdata(oi) % contr
+      expo(1:contr) = incbdata(oi) % expo(1:contr)
+      coe(1:contr)  = incbdata(oi) % coe(1:contr)
+      L = incbdata(oi) % L
+      M = incbdata(oi) % M
+      do oj = 1, contr
+        incbdata(oi)%Ncoe(oj) = coe(oj) * &
+        AON(expo(oj),AO_fac(1,L,M),AO_fac(2,L,M),AO_fac(3,L,M))
+      end do
+    end do
+  end subroutine Calc_Ncoe_GTF
 
 !-----------------------------------------------------------------------
 !> full space integration of product of 2 Gaussian functions in Cartesian

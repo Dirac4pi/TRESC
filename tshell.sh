@@ -60,6 +60,8 @@ case "$1" in
     echo "        -h             input hints" >&2
     echo "        -mog1c/-mog2c  generate 1c/2c unstructured MO grid" >&2
     echo "        -cub1c/-cub2c  generate 1c/2c structured MO grid" >&2
+    echo "                       in real space" >&2
+    echo "        -pro1c/-pro2c  generate 1c/2c structured MO grid" >&2
     echo "                       in real space and momentum space" >&2
     echo "        -d             debug (need tkerneld)" >&2
     echo "        -td            vtune threading analysis" >&2
@@ -72,10 +74,11 @@ case "$1" in
     exec "$prog" "-v"
     ;;
   #----------------------------------------------------------------------------
-  # orbital visualization
-  "-mog1c"|"-MOG1C"|"-mog2c"|"-MOG2C"|"-cub1c"|"-CUB1C"|"-cub2c"|"-CUB2C")
+  # generate structured/unstructured grid in real/momentum space for orbitals
+  "-mog1c"|"-MOG1C"|"-mog2c"|"-MOG2C"|"-cub1c"|"-CUB1C"|"-cub2c"|"-CUB2C"|\
+  "-pro1c"|"-PRO1C"|"-pro2c"|"-PRO2C")
     export KMP_AFFINITY="granularity=fine,compact,1,0"
-    export MKL_NUM_THREADS=8
+    export MKL_NUM_THREADS=16
     export OMP_STACKSIZE=256M
     exec "$prog" "$@"
     ;;

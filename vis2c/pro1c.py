@@ -13,6 +13,7 @@ from mayavi import mlab
 from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
 
+#-------------------------------------------------------------------------------
 def pro1c(molden:str, index:str, isovalue:float=0.05)->None:
   '''
   visualization of real scalar orbital with structured
@@ -35,41 +36,29 @@ def pro1c(molden:str, index:str, isovalue:float=0.05)->None:
       molden = molden + '.molden.input'
   if not path.exists(molden):
     raise RuntimeError(f"can't find {molden}")
-  #-----------------------------------------------------------------------------
   # generate cube file (with real cube and momentum cube)
-  print('generating cube file...')
-  vk.call_executable(['tshell.sh', '-cub1c', molden, index])
-  #-----------------------------------------------------------------------------
+  print('calling TRESC:')
+  vk.call_executable(['tshell.sh', '-pro1c', molden, index])
   # load data from real space cube file
-  print('loading grid data from real space cub file...')
   cub = index+'-real.cub'
-  atoms, mat, nmo = vk.load_cube(cub, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+cub)
-  elif nmo != 1:
-    raise RuntimeError('cube file '+cub+' should contain only 1 orbital.')
+  print(f'loading real space grid data from {cub}...')
+  atoms, mat = vk.load_cube(cub)
+  print(f'done')
   # grid data
   rx = mat['x']
   ry = mat['y']
   rz = mat['z']
   rval = mat['value']
-  print('done')
-  #-----------------------------------------------------------------------------
   # load data from momentum space cube file
-  print('loading grid data from momentum space cub file...')
   cub = index+'-mmt.cub'
-  atoms, mat, nmo = vk.load_cube(cub, 1)
-  if nmo == 0:
-    raise RuntimeError('no orbital info in cube file '+cub)
-  elif nmo != 1:
-    raise RuntimeError('cube file '+cub+' should contain only 1 orbital.')
+  print(f'loading momentum grid data from {cub}...')
+  atoms, mat = vk.load_cube(cub)
+  print('done')
   # grid data
   px = mat['x']
   py = mat['y']
   pz = mat['z']
   pval = mat['value']
-  print('done')
-  #-----------------------------------------------------------------------------
   # plot the real scalar orbital in real space and momentum space
   print('plotting in real space and momentum space ...')
   risovl = p3.real_orb_ampplot_cub('real space', atoms, rval, \
@@ -110,6 +99,7 @@ def pro1c(molden:str, index:str, isovalue:float=0.05)->None:
   controller = IsoValueController()
   controller.configure_traits()
 
+#===============================================================================
 if __name__ == "__main__":
   from sys import argv
   if len(argv) != 3:

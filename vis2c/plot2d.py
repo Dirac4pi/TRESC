@@ -7,7 +7,7 @@ env:vis2c
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+#-------------------------------------------------------------------------------
 def fill(digit:int, num:int=2, element:str='0') -> str:
   '''
   fill in the blank of a digit
@@ -28,6 +28,7 @@ def fill(digit:int, num:int=2, element:str='0') -> str:
     i += 1
   return filled
 
+#-------------------------------------------------------------------------------
 def batch_plot(start:str, flag:str) -> None:
   '''
   Plot data from batch calculations
@@ -69,7 +70,7 @@ def batch_plot(start:str, flag:str) -> None:
   plt.grid()
   plt.show()
 
-
+#-------------------------------------------------------------------------------
 def scf_plot(filename:str) -> None:
   '''
   visualisation of iteration for ongoing or completed SCF computation
@@ -112,7 +113,6 @@ def scf_plot(filename:str) -> None:
       flag = 0
     elif line.find('SCF succeed!') != -1:
       converged = True
-      
   file.close()
   count1 = np.linspace(1, loop, loop)
   if converged:
