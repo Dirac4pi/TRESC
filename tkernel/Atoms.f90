@@ -12,24 +12,30 @@ module Atoms
   
 !-----------------------------------------------------------------------
 ! element definations & atom properties
-  integer,parameter :: element_count = 30
-  character(len = 2),parameter :: element_list(element_count) =       &
-  (/ ' H',                                                      'He', &  ! 1-2
-     'Li','Be',                        ' B',' C',' N',' O',' F','Ne', &  ! 3-10
-     'Na','Mg',                        'Al','Si',' P',' S','Cl','Ar', &  ! 11-18
-     ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn'     /)  ! 19-30
-  
-  integer,parameter :: element_massnumber(element_count) =            &
-  (/  2,                                                           4, &  ! 1-2
-      7,   9,                            11,  12,  14,  16,  19,  20, &  ! 3-10
-     23,  24,                            27,  28,  31,  32,  35,  40, &  ! 11-18
-     39,  40,  45,  48,  51,  52,  55,  56,  59,  59,  64,  65       /)  ! 19-30
+  integer,parameter :: element_count = 56
+  character(len = 2),parameter :: element_list(element_count) =        &
+  (/ ' H',                                                       'He', & ! 1-2
+     'Li','Be',                         ' B',' C',' N',' O',' F','Ne', & ! 3-10
+     'Na','Mg',                         'Al','Si',' P',' S','Cl','Ar', & ! 11-18
+     ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga', & ! 19-31
+     'Ge','As','Sn','Br','Kr','Rb','Sr',' Y','Zr','Nb','Mo','Tc','Ru', & ! 32-44
+     'Rh','Pd','Ag','Cd','In','Sn','Sb','Te',' I','Xe','Cs','Ba'      /) ! 45-56
 
-  real(dp),parameter :: CSD_CovR(element_count) =                     &
-  (/ 0.59,                                                      0.53, &  ! 1-2
-     2.42,1.81,                        1.59,1.38,1.34,1.25,1.08,1.10, &  ! 3-10
-     3.14,2.66,                        2.29,2.10,2.02,1.98,1.93,2.00, &  ! 11-18
-     3.84,3.33,3.21,3.02,2.89,2.63,2.83,2.68,2.61,2.34,2.49,2.31     /)  ! 19-30
+  integer,parameter :: element_massnumber(element_count) =            &
+  (/  2,                                                          4,  &  ! 1-2
+      7,   9,                           11,  12,  14,  16,  19,  20,  &  ! 3-10
+     23,  24,                           27,  28,  31,  32,  35,  40,  &  ! 11-18
+     39,  40,  45,  48,  51,  52,  55,  56,  59,  59,  64,  65,  70,  &  ! 19-31
+     73,  75,  79,  80,  84,  85,  88,  89,  91,  93,  96,  98, 101,  &  ! 32-44
+    103, 106, 108, 112, 115, 119, 122, 127, 127, 131, 133, 137       /)  ! 45-56
+
+  real(dp),parameter :: CSD_CovR(element_count) =                      &
+  (/ 0.59,                                                       0.53, & ! 1-2
+     2.42,1.81,                         1.59,1.38,1.34,1.25,1.08,1.10, & ! 3-10
+     3.14,2.66,                         2.29,2.10,2.02,1.98,1.93,2.00, & ! 11-18
+     3.84,3.33,3.21,3.02,2.89,2.63,2.83,2.68,2.61,2.34,2.49,2.31,2.31, & ! 19-31
+     2.27,2.25,2.27,2.27,2.19,4.16,3.68,3.59,3.31,3.10,2.91,2.78,2.76, & ! 32-44
+     2.68,2.63,2.74,2.72,2.68,2.63,2.63,2.61,2.63,2.65,4.61,4.06      /) ! 45-56
 
 !-----------------------------------------------------------------------
 ! AO basis definations, sequence consistent with MOLDEN format
@@ -248,7 +254,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   private :: Get_basis_count, Load_1MO_MOLDEN, Load_MOs_MOLDEN
   private :: csgo_1c, csgo_2c, sfgo_1c, sfgo_2c, cfgo_1c, cfgo_2c
   public  :: Load_basis_gbs, Load_geom_xyz, Load_geombasis_MOLDEN
-  public  :: Load_keywords_tre, Inputcheck, Inputprint, Assign_csf, M_Assign_cs
+  public  :: Load_keywords_tre, Check_all_loads, Assign_csf, M_Assign_cs
   public  :: Load_MO_MOLDEN, csgo, sfgo, cfgo, M_csgo
 
   interface Load_MO_MOLDEN
@@ -805,59 +811,6 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       end if
     end do
   end subroutine Load_geom_xyz
-
-!-----------------------------------------------------------------------
-!> print basis set information, geometry information and calculation settings
-  subroutine Inputprint()
-    implicit none
-    integer :: ai, aj, ak, am  ! loop variables Inputprint
-    write(60,"(A)") 'Module Atoms:'
-    write(60,"(A)") '  input basis set file path: '
-    write(60,"(A)") '  '//trim(address_basis)
-    write(60,"(A)") '  ----------<BASIS>----------'
-    ai = 1
-    do while(ai <= basis_count)  ! print only basis of atoms in mol
-      do aj = 1, atom_count
-        if (mol(aj) % basis_number == ai) exit
-      end do
-      if (aj == atom_count + 1) then
-        ai = ai + 1
-        cycle
-      end if
-      write(60,"(A10,A2,A)") &
-      '  element ',element_list(atom_basis(ai) % atom_number),':'
-      ak = 0
-      do while(ak <= shell_in_element(mol(aj) % atom_number) - 1)
-        write(60,"(A15,I1,A1)") '  -- shell l = ',&
-        atom_basis(ai + ak) % L,':'
-        am = 1
-        do while(am <= atom_basis(ai + ak) % contr)
-          write(60,"(A7,E12.5E2,A6,F9.5)") &
-          '  exp: ',atom_basis(ai + ak) % &
-          expo(am), ', coe:',atom_basis(ai + ak) % coe(am)
-          am = am + 1
-        end do
-        ak = ak + 1
-      end do
-      ai = ai + 1
-      write(60,*)
-    end do
-    write(60,*)
-    write(60,"(A)") '  input geometry file path: '
-    if (index(address_xyz,'/') == 0) then
-      write(60,"(A)") '  WD/'//trim(address_xyz)
-    else
-      write(60,"(A)") '  '//trim(address_xyz)
-    end if
-    write(60,"(A)") '  ----------<GEOMETRY>----------'
-    do ai = 1, atom_count
-      write(60,"(A2, A2, A3, F9.5, A3, F9.5, A3, F9.5)") &
-      '  ',element_list(mol(ai) % atom_number), '   ',&
-      mol(ai) % pos(1), '   ', mol(ai) % pos(2), '   ', mol(ai) % pos(3)
-    end do
-    write(60,"(A22,I4,A2,I4)") '  scalar/spinor cbdm: ', cbdm, ' /', 2*cbdm
-    write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
-  end subroutine Inputprint
   
 !-----------------------------------------------------------------------
 !> read keywords from .tre file
@@ -1067,16 +1020,30 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           else if (index(keyword,'schwarz') == 1) then
             if (index(keyword,'=') /= 0) then
               read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
-              "(F20.12)",iostat = ios) schwarz_VT
+              "(F20.12)",iostat = ios) schwarz
               if (ios /= 0) call terminate(&
               "Schwarz screening setting should be written as 'schwarz=n',"//&
               " no scientific notation")
               write(60,'(A,E10.3)') &
-              '  Schwarz screen threshold changed to ',schwarz_VT
+              '  Schwarz screen threshold changed to ',schwarz
             else
               call terminate(&
               "Schwarz screening setting should be written as 'schwarz=n',"//&
               " no scientific notation")
+            end if
+          else if (index(keyword,'dmschwarz') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) DMschwarz
+              if (ios /= 0) call terminate(&
+              "DMSchwarz screening setting should be written as 'dmschwarz=n',"&
+              //" no scientific notation")
+              write(60,'(A,E10.3)') &
+              '  DMSchwarz screening turn on when RMSDP reaches ',DMschwarz
+            else
+              call terminate(&
+              "DMSchwarz screening setting should be written as 'dmschwarz=n',"&
+              //" no scientific notation")
             end if
           else if (index(keyword,'convertol') == 1) then
             if (index(keyword,'=') /= 0) then
@@ -1168,6 +1135,16 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             else
               call terminate&
               ("Cutting damp threshold should be written as 'cutdamp=n'")
+            end if
+          else if (index(keyword,'lshift') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) lshift
+              if (ios /= 0) call terminate(&
+              "Level shift should be written as 'lshift=n'")
+              write(60,'(A,E10.3)') '  level shift changed to ',lshift
+            else
+              call terminate("Level shift should be written as 'lshift=n'")
             end if
           else if (index(keyword,'cspin') == 1) then
             if (index(keyword,'=') /= 0) then
@@ -1284,9 +1261,12 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   end subroutine Load_keywords_tre
   
 !-----------------------------------------------------------------------
-!> check the self-consistency of computational settings
-  subroutine Inputcheck()
+!> check the self-consistency of basis set information, geometry information and
+!!
+!! calculation settings and print them
+  subroutine Check_all_loads()
     implicit none
+    integer :: ai, aj, ak, am  ! loop variables Check_all_loads
     if (address_basis == '') call terminate('No basis set specified.')
     if (guess_type == 'molden') then
       address_MOLDEN = trim(address_job)//'.molden.input'
@@ -1333,15 +1313,21 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     'pppVp must be used in conjunction with pVp1e')
     if (.not. pVp1e .and. pVp2e) call terminate(&
     'pVp2e must be used in conjunction with pVp1e')
-    if (subsp <= 1) call terminate('subsp two small')
+    if (schwarz < 0.0_dp) call terminate('Schwarz should be non-negative')
+    if (DMschwarz < 0.0_dp) call terminate('DMSchwarz should be non-negative')
+    if (subsp <= 1) call terminate('subsp too small')
     if (nodiis - subsp < 2) call terminate('nodiis should be set larger')
+    if (maxiter <= 0) call terminate('maxiter should be positive')
+    if (subsp >= maxiter) call terminate('subsp should be smaller than maxiter')
+    if (nodiis >= maxiter) call terminate(&
+    'nodiis should be smaller than maxiter')
     if (damp > 0.91 .or. damp < 0.0) call terminate(&
     'damp shall be in range [0.05,0.9]')
-    if (cutdamp < 0.0) call terminate('cutdamp should large than 0')
+    if (cutdamp < 0.0) call terminate('cutdamp should be larger than 0')
     if (diisdamp > 1.0 .or. diisdamp < 0.0) call terminate(&
     'diisdamp shall be in range [0,1]')
-    if (cutdiis < 0.0) call terminate('cutdiis should large than 0')
-    if (cutS < 0.0) call terminate('cutS should large than 0')
+    if (cutdiis < 0.0) call terminate('cutdiis should be larger than 0')
+    if (cutS < 0.0) call terminate('cutS should be larger than 0')
     if (fxc_id /= -1 .and. fx_id /= -1) call terminate("&
     there's a conflict between xcid and xid")
     if (beta(1) < 0.0 .or. beta(1) >= 1.0) call terminate("&
@@ -1354,7 +1340,54 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
     beta2 should be in range [0,1)")
     gamma = (1.0_dp-beta2)**(-0.5_dp)
-  end subroutine Inputcheck
+    if (lshift < 0.0) call terminate('level shift should be non-negative')
+    write(60,"(A)") 'Module Atoms:'
+    write(60,"(A)") '  input basis set file path: '
+    write(60,"(A)") '  '//trim(address_basis)
+    write(60,"(A)") '  ----------<BASIS>----------'
+    ai = 1
+    do while(ai <= basis_count)  ! print only basis of atoms in mol
+      do aj = 1, atom_count
+        if (mol(aj) % basis_number == ai) exit
+      end do
+      if (aj == atom_count + 1) then
+        ai = ai + 1
+        cycle
+      end if
+      write(60,"(A10,A2,A)") &
+      '  element ',element_list(atom_basis(ai) % atom_number),':'
+      ak = 0
+      do while(ak <= shell_in_element(mol(aj) % atom_number) - 1)
+        write(60,"(A15,I1,A1)") '  -- shell l = ',&
+        atom_basis(ai + ak) % L,':'
+        am = 1
+        do while(am <= atom_basis(ai + ak) % contr)
+          write(60,"(A7,E12.5E2,A6,F9.5)") &
+          '  exp: ',atom_basis(ai + ak) % &
+          expo(am), ', coe:',atom_basis(ai + ak) % coe(am)
+          am = am + 1
+        end do
+        ak = ak + 1
+      end do
+      ai = ai + 1
+      write(60,*)
+    end do
+    write(60,*)
+    write(60,"(A)") '  input geometry file path: '
+    if (index(address_xyz,'/') == 0) then
+      write(60,"(A)") '  WD/'//trim(address_xyz)
+    else
+      write(60,"(A)") '  '//trim(address_xyz)
+    end if
+    write(60,"(A)") '  ----------<GEOMETRY>----------'
+    do ai = 1, atom_count
+      write(60,"(A2, A2, A3, F9.5, A3, F9.5, A3, F9.5)") &
+      '  ',element_list(mol(ai) % atom_number), '   ',&
+      mol(ai) % pos(1), '   ', mol(ai) % pos(2), '   ', mol(ai) % pos(3)
+    end do
+    write(60,"(A22,I4,A2,I4)") '  scalar/spinor cbdm: ', cbdm, ' /', 2*cbdm
+    write(60,"(A22,I4,A2,I4)") '  scalar/spinor sbdm: ', sbdm, ' /', 2*sbdm
+  end subroutine Check_all_loads
 
 !-----------------------------------------------------------------------
 !> normalization factor of GTFs

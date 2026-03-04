@@ -33,8 +33,8 @@ module Representation
     character(len=100)          :: line
     logical                     :: mog_element
     !DIR$ ATTRIBUTES ALIGN:align_size :: datsa, datsb, pos3
-    complex(dp)                 :: datsa(43400), datsb(43400)
-    real(dp)                    :: pos3(434,3,100), trafopos3(434,3,100)
+    complex(dp)                 :: datsa(59000), datsb(59000)
+    real(dp)                    :: pos3(590,3,100), trafopos3(590,3,100)
     character(len=100)          :: input_line
     inquire(file='.mogx',exist=exists)
     if (.not. exists) then
@@ -910,7 +910,7 @@ module Representation
     integer(8)             :: i,j          ! loop variable
     integer(8)             :: nr, nl     ! number of grid points
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos3w1
-    real(dp)               :: pos3w1(434,4,100)
+    real(dp)               :: pos3w1(590,4,100)
     complex(dp),intent(out):: Fockx(2*cbdm, 2*cbdm)
     complex(dp),intent(out):: Fockc(2*cbdm, 2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: Fockxmic, Fockcmic
@@ -930,18 +930,19 @@ module Representation
     !$omp& if(threads < nproc)
     !$omp do schedule(dynamic, 1)
     do i = 1, atom_count
+      ! integral precision equivalent to 'int=ultrafine' in Gaussian program
       if (mol(i)%atom_number <= 2) then
-        nr = 35
-        nl = 434
+        nr = 50
+        nl = 590
       else if (mol(i)%atom_number <= 10) then
-        nr = 65
-        nl = 434
+        nr = 70
+        nl = 590
       else if (mol(i)%atom_number <= 18) then
-        nr = 80
-        nl = 434
+        nr = 90
+        nl = 590
       else
         nr = 100
-        nl = 434
+        nl = 590
       end if
       call Chebyshev2_Lebedev(i, nr, nl, pos3w1)
       select case (xc_f03_func_info_get_family(x_info))
@@ -976,7 +977,7 @@ module Representation
     integer(8)             :: i          ! loop variable
     integer(8)             :: nr, nl     ! number of grid points
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos3w1
-    real(dp)               :: pos3w1(434,4,100)
+    real(dp)               :: pos3w1(590,4,100)
     complex(dp),intent(out):: Fockxc(2*cbdm, 2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: Fockxcmic
     real(dp)               :: Fockxcmic(2*cbdm, 2*cbdm)
@@ -992,18 +993,19 @@ module Representation
     !$omp& if(threads < nproc)
     !$omp do schedule(dynamic, 1)
     do i = 1, atom_count
+      ! integral precision equivalent to 'int=ultrafine' in Gaussian program
       if (mol(i)%atom_number <= 2) then
-        nr = 35
-        nl = 434
+        nr = 50
+        nl = 590
       else if (mol(i)%atom_number <= 10) then
-        nr = 65
-        nl = 434
+        nr = 70
+        nl = 590
       else if (mol(i)%atom_number <= 18) then
-        nr = 80
-        nl = 434
+        nr = 90
+        nl = 590
       else
         nr = 100
-        nl = 434
+        nl = 590
       end if
       call Chebyshev2_Lebedev(i, nr, nl, pos3w1)
       select case (xc_f03_func_info_get_family(xc_info))
@@ -1034,7 +1036,7 @@ module Representation
     integer               :: nl2   ! nl2 = nl
     !DIR$ ATTRIBUTES ALIGN:align_size :: wr, R
     real(dp)              :: wr(nr), R(nr)
-    real(dp),intent(out)  :: pos3w1(434,4,100) ! x, y, z, weight
+    real(dp),intent(out)  :: pos3w1(590,4,100) ! x, y, z, weight
     !DIR$ ATTRIBUTES ALIGN:align_size :: lx, ly, lz, wl
     real(dp)              :: lx(nl), ly(nl), lz(nl), wl(nl)
     real(dp)              :: p, x_i, point(3), spacew
@@ -1053,6 +1055,8 @@ module Representation
       call LD0230(lx, ly, lz, wl, nl2)
     else if (nl == 434) then
       call LD0434(lx, ly, lz, wl, nl2)
+    else if (nl == 590) then
+      call LD0590(lx, ly, lz, wl, nl2)
     end if
     wl = wl * 4.0_dp * pi ! sphere weight
     do ii = 1, nr
@@ -1084,7 +1088,7 @@ module Representation
     integer               :: nl2
     !DIR$ ATTRIBUTES ALIGN:align_size :: R
     real(dp)              :: R(nr)
-    real(dp),intent(out)  :: pos3(434,3,100) ! x, y, z
+    real(dp),intent(out)  :: pos3(590,3,100) ! x, y, z
     !DIR$ ATTRIBUTES ALIGN:align_size :: lx, ly, lz, wl
     real(dp)              :: lx(nl), ly(nl), lz(nl), wl(nl)
     real(dp)              :: p, x_i
@@ -1102,6 +1106,8 @@ module Representation
       call LD0230(lx, ly, lz, wl, nl2)
     else if (nl == 434) then
       call LD0434(lx, ly, lz, wl, nl2)
+    else if (nl == 590) then
+      call LD0590(lx, ly, lz, wl, nl2)
     end if
     do ii = 1, nr
       pos3(1:nl,1,ii) = R(ii) * lx(:)

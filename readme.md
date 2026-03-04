@@ -28,7 +28,10 @@ $$\left<V\right>,\left<pVp\right>, \left<pppVp\right>$$.
 * DKH2 2e-integrals are calculated to the order $$c^{-2}$$, which contains
 realativistic Coulomb, Exchange terms and so-called spin-same-orbit coupling
 terms; all four-center integrals utilize permutation symmetry and Cauchy-Schwarz
-screening technique.
+screening technique. When the RMSDP is sufficiently small, the effect of density
+matrix will be considered in screening as: $$P_{\max}\sqrt{\left( \mu \nu |\mu
+\nu \right) \left(\sigma \lambda |\sigma \lambda \right)} \leq threshold$$.
+Similar algorithm has been employed in the CP2K program.
 * Construct Fock matrix via **direct** way, which is time consuming but less
 demanding on memory and disk r&w.
 * Grid integration are based on the Becke's fuzzy partitioning, the
@@ -44,8 +47,8 @@ much as possible); in this case, should try `cspin=f` or `cspin=d` (the latter
 is for nearly degenerate frontier orbitals), but these methods may cause
 variational instability, so be sure to check the convergence of the last few
 iterations.
-* DIIS (Pulay mixing) can be used to accelerate HF/KS-SCF, dynamic damping can
-be used to enhance convergence.
+* DIIS (Pulay mixing), dynamic damping, virtual orbital level shifting can be
+used to facilitate HF/KS-SCF process.
 * Basic linear algebra is computed using LAPACK subroutines.
 * 1e and 2e Fock matices construction and grid-based integration support OpenMP
 parallel computation and all parallel zone are thread safe.
@@ -289,6 +292,8 @@ in each module, now list the keywords currently supported.<br>
 
 * `guess`: initial guess of wavefunction
 * `schwarz`: threshold of Cauchy-Schwarz screening
+* `dmschwarz`: RMSDP threshold for considering density matrix in Cauchy-Schwarz
+screening
 * `maxiter`: maximum number of SCF iterations
 * `convertol`: SCF convergence tolerance
 * `damp`: SCF damping coefficient
@@ -301,6 +306,7 @@ in each module, now list the keywords currently supported.<br>
 * `cspin`: constrained spin multiplicity calculation
 * `molden`: dump MOs to MOLDEN files when SCF done
 * `emd4`: DFT-D4 dispersion correction
+* `lshift`: virtual orbital energy level shift (Eh), better be in range [0.1,1]
 
 ## %FUNCTIONAL (exchange-correlation functionals)
 

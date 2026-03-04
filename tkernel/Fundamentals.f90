@@ -39,7 +39,7 @@ module Fundamentals
   character(len=200)  :: address_fch
   character(len=200)  :: wd = ''                    ! working directory
   character(len=50)   :: usrname = ''
-  character(len=10),parameter :: version = 'main'    ! TRESC version
+  character(len=10),parameter :: version = 'dev'    ! TRESC version
   
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
@@ -68,7 +68,9 @@ module Fundamentals
   integer         :: electron_count       ! number of electrons of the system
   integer         :: Nalpha, Nbeta        ! number of alpha and beta elctron
   !---------------------<module SCF>---------------------
-  real(dp)        :: schwarz_VT  = 1E-12  ! Schwarz screening cutoff
+  real(dp)        :: schwarz     = 1E-10  ! Schwarz screening threshold
+  ! consider density matrix in Schwarz screening when RMSDP reaches DMschwarz
+  real(dp)        :: DMschwarz   = safmin
   integer         :: maxiter     = 128    ! upper limit of convergence loops
   real(dp)        :: conver_tol  = 1E-6   ! convergence tolerence of energy
   real(dp)        :: damp        = 0.0    ! dynamical damp (-(dE)^damp+1)
@@ -82,6 +84,8 @@ module Fundamentals
   real(dp)        :: cutdamp     = 0.01   ! cut damp when threshold is reached
   character       :: cspin       = 'n'    ! constrained spin multiplicity mode
                                           ! n: normal  d: degenerate  f: force
+  real(dp)        :: lshift      = 0.0    ! virtual orbital energy level shift
+                                          ! better be in range [0.1,1]
   logical         :: d4          = .false.! use DFT-D4 dispersion correction
   character(len=8):: guess_type  = 'molden'  ! initial guess for SCF
   logical         :: molden      = .false.! save MOs to MOLDEN file
@@ -154,7 +158,7 @@ module Fundamentals
   public  :: dump_matrix, load_matrix, generate_output, terminate
   public  :: matmul, norm, lowercase, is_alpha, diag, inverse
   public  :: can_orth, symm_orth, atnz2block, Wigner_d, binomialcoe
-  public  :: factorial, det, Hermite_poly, swap, quicksort, sort
+  public  :: factorial, det, Hermite_poly, swap, quicksort, sort, Identity
 
   contains
   
@@ -1401,5 +1405,18 @@ module Fundamentals
       Hnm1 = Hn
     end do
   end function Hermite_poly
+
+!-----------------------------------------------------------------------
+!> returns an identity matrix of dimension n
+  pure function Identity(n) result(I)
+    implicit none
+    integer, intent(in)  :: n
+    integer              :: k
+    real(dp)             :: I(n,n)
+    I = 0.0_dp
+    do k = 1, n
+      I(k,k) = 1.0_dp
+    end do
+  end function Identity
 
 end module Fundamentals

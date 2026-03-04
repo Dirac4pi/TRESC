@@ -93,13 +93,11 @@ subroutine Elec_Struc_Calc(kill_)
   call get_command_argument(1, address_tre, status=trestat)
   if (trestat > 0) call terminate('input file (.tre) retrieval fails')
   if (trestat < 0) call terminate('input file name (.tre) too long')
-  ! get information from .gbs and .xyz files
   call generate_output()
   call Load_keywords_tre()
   call Load_basis_gbs()
   call Load_geom_xyz()
-  call inputcheck()
-  call inputprint()
+  call Check_all_loads()
   if (pVp1e) then
     call Hess_Hamiltonian()
   else
@@ -112,7 +110,6 @@ subroutine Elec_Struc_Calc(kill_)
   else if (pVp1e .and. pVp2e) then
     call SCF_ARVRA2e()
   end if
-  call Outputprint()
   call Globinit(kill_)
 end subroutine Elec_Struc_Calc
 

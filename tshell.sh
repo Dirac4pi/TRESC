@@ -44,7 +44,16 @@ case "$1" in
     export KMP_AFFINITY="granularity=fine,compact,1,0"
     export MKL_NUM_THREADS=$thr
     export OMP_STACKSIZE=256M
-    exec "$prog" "$@"
+    "$prog" "$@"
+    # send message to nfty
+    exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+      curl --retry 5 --retry-delay 3 -d \
+      "TRESC: Normal termination of job $1" ntfy.sh/batchannel
+    elif [ $exit_code -eq 1 ]; then
+      curl --retry 5 --retry-delay 3 -d \
+      "TRESC: Error termination of job $1" ntfy.sh/batchannel
+    fi
     ;;
   #----------------------------------------------------------------------------
   # input hints
@@ -55,7 +64,7 @@ case "$1" in
     echo "         |------TRESC------|" >&2
     echo " here are some hints for you" >&2
     echo " tshell" >&2
-    echo "        input.xyz      electronic structure calculation" >&2
+    echo "        input.tre      electronic structure calculation" >&2
     echo "        -v             program version" >&2
     echo "        -h             input hints" >&2
     echo "        -mog1c/-mog2c  generate 1c/2c unstructured MO grid" >&2
@@ -71,7 +80,7 @@ case "$1" in
   #----------------------------------------------------------------------------
   # program version
   "-v"|"-V"|"--version"|"--VERSION")
-    exec "$prog" "-v"
+    "$prog" "-v"
     ;;
   #----------------------------------------------------------------------------
   # generate structured/unstructured grid in real/momentum space for orbitals
@@ -80,7 +89,7 @@ case "$1" in
     export KMP_AFFINITY="granularity=fine,compact,1,0"
     export MKL_NUM_THREADS=16
     export OMP_STACKSIZE=256M
-    exec "$prog" "$@"
+    "$prog" "$@"
     ;;
   #----------------------------------------------------------------------------
   # vtune hotspots analysis

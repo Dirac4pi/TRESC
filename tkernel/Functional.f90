@@ -476,7 +476,7 @@ module functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: ex
     real(dp),intent(out)   :: ec
     real(dp),intent(out)   :: matx(2*cbdm, 2*cbdm)
@@ -549,7 +549,7 @@ module functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: ex
     real(dp),intent(out)   :: ec
     real(dp),intent(out)   :: matx(2*cbdm, 2*cbdm)
@@ -661,7 +661,7 @@ module functional
     complex(dp),intent(in) :: cAO2MO(2*cbdm, 2*fbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: ex
     real(dp),intent(out)   :: ec
     real(dp),intent(out)   :: matx(2*cbdm, 2*cbdm)
@@ -852,7 +852,7 @@ module functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: exc
     real(dp),intent(out)   :: matxc(2*cbdm, 2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos, weight, rhoa, rhob
@@ -908,7 +908,7 @@ module functional
     complex(dp),intent(in) :: rho_m(2*cbdm, 2*cbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: exc
     real(dp),intent(out)   :: matxc(2*cbdm, 2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos, weight, rhoa, rhob
@@ -987,7 +987,7 @@ module functional
     complex(dp),intent(in) :: cAO2MO(2*cbdm, 2*fbdm)
     integer                :: ii, jj, kk, ll
     integer(8),intent(in)  :: nr, nl
-    real(dp),intent(in)    :: pos3w1(434,4,100)
+    real(dp),intent(in)    :: pos3w1(590,4,100)
     real(dp),intent(out)   :: exc
     real(dp),intent(out)   :: matxc(2*cbdm, 2*cbdm)
     !DIR$ ATTRIBUTES ALIGN:align_size :: pos, weight, rhoa, rhob
