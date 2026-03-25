@@ -68,7 +68,7 @@ module Hamiltonian
   complex(dp),allocatable :: exSR(:,:)     ! extended SR matrix
   ! <AOi|pxVpy3|AOj> = Trans(<AOi|py3Vpx|AOj>)
 
-! interation Taylor expansion coefficients for Integral_V_1e and Integral_V_2e
+! interation Taylor expansion coefficients for Integral_V_1e and Integral_V_2e_OS
   !DIR$ ATTRIBUTES ALIGN:align_size :: intTaycoe
   real(dp)                :: intTaycoe(64,43)
 
@@ -100,15 +100,15 @@ module Hamiltonian
         write(60,'(A)') '  KMP_AFFINITY = '//trim(ch30)
       end if
     end if
-    write(60,'(A)') '  Integral_V initialize'
-    call Integral_V_init()
-    write(60,'(A)') '  complete! stored in: intTaycoe'
     write(60,'(A)') '  ----------<HAMILTONIAN>----------'
     write(60,'(A)') '  spinor basis causes additional cost in scalar SCF.'
     !-----------------------------------------------
     ! 1e integral calculation
     write(60,'(A)') '  normalization of GTOs'
     call Calc_Ncoe(cbdata, cbdm)
+    write(60,'(A)') '  complete!'
+    write(60,'(A)') '  initialize Gaussian integration'
+    call Integral_init()
     write(60,'(A)') '  complete!'
     write(60,'(A)') '  one-electron integral calculation'
     call Assign_matrices_1e()
@@ -158,9 +158,6 @@ module Hamiltonian
         write(60,'(A)') '  KMP_AFFINITY = '//trim(ch30)
       end if
     end if
-    write(60,'(A)') '  Integral_V initialize'
-    call Integral_V_init()
-    write(60,'(A)') '  complete! stored in: intTaycoe'
     write(60,'(A)') '  ----------<HAMILTONIAN>----------'
     write(60,'(A)') &
     '  QED effect: radiative correction(c^-3, c^-4, spin-dependent).'
@@ -174,6 +171,9 @@ module Hamiltonian
     ! 1e integral calculation
     write(60,'(A)') '  normalization of GTOs'
     call Calc_Ncoe(cbdata, cbdm)
+    write(60,'(A)') '  complete!'
+    write(60,'(A)') '  initialize Gaussian integration'
+    call Integral_init()
     write(60,'(A)') '  complete!'
     write(60,'(A)') '  one-electron integral calculation'
     call Assign_matrices_1e()
@@ -233,11 +233,9 @@ module Hamiltonian
     implicit none
     integer          :: i, j                 ! openMP parallel variable
     integer          :: contri               ! contr of atoMi, shelLi
-    integer          :: Li                   ! angular quantum number of |AOi>
-    integer          :: Mi                   ! magnetic quantum number of |AOi>
+    integer          :: faci(3)              ! xyz factor of |AOi>
     integer          :: contrj               ! contr of atoMj, shelLj
-    integer          :: Lj                   ! angular quantum number of |AOj>
-    integer          :: Mj                   ! magnetic quantum number of |AOj>
+    integer          :: facj(3)              ! xyz factor of |AOj>
     real(dp)         :: expi(16)             ! expo of |AOi>
     real(dp)         :: expj(16)             ! expo of |AOj>
     real(dp)         :: coei(16)             ! coefficient of |AOi>
@@ -279,7 +277,7 @@ module Hamiltonian
     end if
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads) default(shared) private(i,j,si,sj,sk,&
-    !$omp& sl,contri,Li,Mi,contrj,Lj,Mj,expi,expj,coei,coej,codi,codj,&
+    !$omp& sl,contri,faci,contrj,facj,expi,expj,coei,coej,codi,codj,&
     !$omp& facdx_i,facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,facdx_j,&
     !$omp& facdy_j,facdz_j,coedx_j,coedy_j,coedz_j,tl) if(threads < nproc)
     allocate(&
@@ -303,151 +301,104 @@ module Hamiltonian
       do j = 1, cbdm
         si = i
         contri = cbdata(si) % contr
-        Li     = cbdata(si) % L
-        Mi     = cbdata(si) % M
+        faci   = cbdata(si) % fac
         expi(1:contri) = cbdata(si) % expo(1:contri)
         coei(1:contri) = cbdata(si) % Ncoe(1:contri)
-        codi = cbdata(si) % pos
+        codi    = cbdata(si) % pos
+        facdx_i = cbdata(si) % facdx
+        facdy_i = cbdata(si) % facdy
+        facdz_i = cbdata(si) % facdz
+        coedx_i(1:2*contri) = cbdata(si) % coedx(1:2*contri)
+        coedy_i(1:2*contri) = cbdata(si) % coedy(1:2*contri)
+        coedz_i(1:2*contri) = cbdata(si) % coedz(1:2*contri)
         !---------------------------------------
-        ! factor of x^m*d(exp)
-        facdx_i(:,1) = AO_fac(:,Li,Mi)
-        facdx_i(1,1) = facdx_i(1,1) + 1
-        facdy_i(:,1) = AO_fac(:,Li,Mi)
-        facdy_i(2,1) = facdy_i(2,1) + 1
-        facdz_i(:,1) = AO_fac(:,Li,Mi)
-        facdz_i(3,1) = facdz_i(3,1) + 1
-        !-------------------------------
-        ! factor of d(x^m)*exp
-        facdx_i(:,2) = AO_fac(:,Li,Mi)
-        facdx_i(1,2) = max(facdx_i(1,2)-1,0)
-        facdy_i(:,2) = AO_fac(:,Li,Mi)
-        facdy_i(2,2) = max(facdy_i(2,2)-1,0)
-        facdz_i(:,2) = AO_fac(:,Li,Mi)
-        facdz_i(3,2) = max(facdz_i(3,2)-1,0)
-        !---------------------------------------
-        ! coefficient of x^m*d(exp)
-        coedx_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        coedy_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        coedz_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        !---------------------------------
-        ! coefficient of d(x^m)*exp
-        coedx_i(contri+1:2*contri) = AO_fac(1,Li,Mi) * coei(1:contri)
-        coedy_i(contri+1:2*contri) = AO_fac(2,Li,Mi) * coei(1:contri)
-        coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
         sj = j
         contrj = cbdata(sj) % contr
-        Lj     = cbdata(sj) % L
-        Mj     = cbdata(sj) % M
+        facj   = cbdata(sj) % fac
         expj(1:contrj) = cbdata(sj) % expo(1:contrj)
         coej(1:contrj) = cbdata(sj) % Ncoe(1:contrj)
-        codj = cbdata(sj) % pos
-        !---------------------------------------
-        ! factor of x^m*d(exp)
-        facdx_j(:,1) = AO_fac(:,Lj,Mj)
-        facdx_j(1,1) = facdx_j(1,1) + 1
-        facdy_j(:,1) = AO_fac(:,Lj,Mj)
-        facdy_j(2,1) = facdy_j(2,1) + 1
-        facdz_j(:,1) = AO_fac(:,Lj,Mj)
-        facdz_j(3,1) = facdz_j(3,1) + 1
-        !-------------------------------
-        ! factor of d(x^m)*exp
-        facdx_j(:,2) = AO_fac(:,Lj,Mj)
-        facdx_j(1,2) = max(facdx_j(1,2)-1,0)
-        facdy_j(:,2) = AO_fac(:,Lj,Mj)
-        facdy_j(2,2) = max(facdy_j(2,2)-1,0)
-        facdz_j(:,2) = AO_fac(:,Lj,Mj)
-        facdz_j(3,2) = max(facdz_j(3,2)-1,0)
-        !---------------------------------------
-        ! coefficient of x^m*d(exp)
-        coedx_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-        coedy_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-        coedz_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-        !---------------------------------
-        ! coefficient of d(x^m)*exp
-        coedx_j(contrj+1:2*contrj) = AO_fac(1,Lj,Mj) * coej(1:contrj)
-        coedy_j(contrj+1:2*contrj) = AO_fac(2,Lj,Mj) * coej(1:contrj)
-        coedz_j(contrj+1:2*contrj) = AO_fac(3,Lj,Mj) * coej(1:contrj)
+        codj    = cbdata(sj) % pos
+        facdx_j = cbdata(sj) % facdx
+        facdy_j = cbdata(sj) % facdy
+        facdz_j = cbdata(sj) % facdz
+        coedx_j(1:2*contrj) = cbdata(sj) % coedx(1:2*contrj)
+        coedy_j(1:2*contrj) = cbdata(sj) % coedy(1:2*contrj)
+        coedz_j(1:2*contrj) = cbdata(sj) % coedz(1:2*contrj)
         ! calc <AOi|V|AOj>
-        tl%i_V_j(si,sj) = Calc_V_1e(&
-        contri,contrj,coei(1:contri),coej(1:contrj),&
-        AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),expi(1:contri),expj(1:contrj),codi,codj)
-        
+        tl%i_V_j(si,sj) = Calc_V_1e(contri,contrj,coei(1:contri),coej(1:contrj),&
+        faci,facj,expi(1:contri),expj(1:contrj),codi,codj)
         if (pVp1e) then
           ! calc <AOi|pVp|AOj>,totally 9 matrices,6 matrices will be calculated
-          tl%pxVpx(si,sj)=Calc_pVp_1e(AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),&
-          contri,contrj,coedx_i(1:2*contri),coedx_j(1:2*contrj),&
-          facdx_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
-          tl%pyVpy(si,sj)=Calc_pVp_1e(AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),&
-          contri,contrj,coedy_i(1:2*contri),coedy_j(1:2*contrj),&
-          facdy_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
-          tl%pzVpz(si,sj)=Calc_pVp_1e(AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),&
-          contri,contrj,coedz_i(1:2*contri),coedz_j(1:2*contrj),&
-          facdz_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
-          tl%pxVpy(si,sj)=Calc_pVp_1e(AO_fac(1,Li,Mi),AO_fac(2,Lj,Mj),&
-          contri,contrj,coedx_i(1:2*contri),coedy_j(1:2*contrj),&
-          facdx_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pxVpx(si,sj)=Calc_pVp_1e(faci(1),facj(1),contri,contrj, &
+          coedx_i(1:2*contri),coedx_j(1:2*contrj),facdx_i,facdx_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pyVpy(si,sj)=Calc_pVp_1e(faci(2),facj(2),contri,contrj, &
+          coedy_i(1:2*contri),coedy_j(1:2*contrj),facdy_i,facdy_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pzVpz(si,sj)=Calc_pVp_1e(faci(3),facj(3),contri,contrj, &
+          coedz_i(1:2*contri),coedz_j(1:2*contrj),facdz_i,facdz_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pxVpy(si,sj)=Calc_pVp_1e(faci(1),facj(2),contri,contrj, &
+          coedx_i(1:2*contri),coedy_j(1:2*contrj),facdx_i,facdy_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
           tl%pyVpx(sj,si) = tl%pxVpy(si,sj)
-          tl%pxVpz(si,sj)=Calc_pVp_1e(AO_fac(1,Li,Mi),AO_fac(3,Lj,Mj),&
-          contri,contrj,coedx_i(1:2*contri),coedz_j(1:2*contrj),&
-          facdx_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pxVpz(si,sj)=Calc_pVp_1e(faci(1),facj(3),contri,contrj, &
+          coedx_i(1:2*contri),coedz_j(1:2*contrj),facdx_i,facdz_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
           tl%pzVpx(sj,si) = tl%pxVpz(si,sj)
-          tl%pyVpz(si,sj)=Calc_pVp_1e(AO_fac(2,Li,Mi),AO_fac(3,Lj,Mj),&
-          contri,contrj,coedy_i(1:2*contri),coedz_j(1:2*contrj),&
-          facdy_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
+          tl%pyVpz(si,sj)=Calc_pVp_1e(faci(2),facj(3),contri,contrj, &
+          coedy_i(1:2*contri),coedz_j(1:2*contrj),facdy_i,facdz_j,   &
+          expi(1:contri),expj(1:contrj),codi,codj)
           tl%pzVpy(sj,si) = tl%pyVpz(si,sj)
           ! calc <AOi|p^3Vp|AOj> and <AOi|pVp^3|AOj>, totally 18 matrices,
           ! 9 matrices will be calculated
           if (pppVp) then
-            tl%px3Vpx(si,sj) = Calc_pppVp_1e(1,AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),&
-            contri,contrj,coedx_i(1:2*contri),coedx_j(1:2*contrj),&
+            tl%px3Vpx(si,sj) = Calc_pppVp_1e(1,faci(1),facj(1),       &
+            contri,contrj,coedx_i(1:2*contri),coedx_j(1:2*contrj),    &
             facdx_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%py3Vpy(si,sj) = Calc_pppVp_1e(2,AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),&
-            contri,contrj,coedy_i(1:2*contri),coedy_j(1:2*contrj),&
+            tl%py3Vpy(si,sj) = Calc_pppVp_1e(2,faci(2),facj(2),       &
+            contri,contrj,coedy_i(1:2*contri),coedy_j(1:2*contrj),    &
             facdy_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%pz3Vpz(si,sj) = Calc_pppVp_1e(3,AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),&
-            contri,contrj,coedz_i(1:2*contri),coedz_j(1:2*contrj),&
+            tl%pz3Vpz(si,sj) = Calc_pppVp_1e(3,faci(3),facj(3),       &
+            contri,contrj,coedz_i(1:2*contri),coedz_j(1:2*contrj),    &
             facdz_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%px3Vpy(si,sj) = Calc_pppVp_1e(1,AO_fac(1,Li,Mi),AO_fac(2,Lj,Mj),&
-            contri,contrj,coedx_i(1:2*contri),coedy_j(1:2*contrj),&
+            tl%px3Vpy(si,sj) = Calc_pppVp_1e(1,faci(1),facj(2),       &
+            contri,contrj,coedx_i(1:2*contri),coedy_j(1:2*contrj),    &
             facdx_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%py3Vpx(si,sj) = Calc_pppVp_1e(2,AO_fac(2,Li,Mi),AO_fac(1,Lj,Mj),&
-            contri,contrj,coedy_i(1:2*contri),coedx_j(1:2*contrj),&
+            tl%py3Vpx(si,sj) = Calc_pppVp_1e(2,faci(2),facj(1),       &
+            contri,contrj,coedy_i(1:2*contri),coedx_j(1:2*contrj),    &
             facdy_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%px3Vpz(si,sj) = Calc_pppVp_1e(1,AO_fac(1,Li,Mi),AO_fac(3,Lj,Mj),&
-            contri,contrj,coedx_i(1:2*contri),coedz_j(1:2*contrj),&
+            tl%px3Vpz(si,sj) = Calc_pppVp_1e(1,faci(1),facj(3),       &
+            contri,contrj,coedx_i(1:2*contri),coedz_j(1:2*contrj),    &
             facdx_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%pz3Vpx(si,sj) = Calc_pppVp_1e(3,AO_fac(3,Li,Mi),AO_fac(1,Lj,Mj),&
-            contri,contrj,coedz_i(1:2*contri),coedx_j(1:2*contrj),&
+            tl%pz3Vpx(si,sj) = Calc_pppVp_1e(3,faci(3),facj(1),       &
+            contri,contrj,coedz_i(1:2*contri),coedx_j(1:2*contrj),    &
             facdz_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%py3Vpz(si,sj) = Calc_pppVp_1e(2,AO_fac(2,Li,Mi),AO_fac(3,Lj,Mj),&
-            contri,contrj,coedy_i(1:2*contri),coedz_j(1:2*contrj),&
+            tl%py3Vpz(si,sj) = Calc_pppVp_1e(2,faci(2),facj(3),       &
+            contri,contrj,coedy_i(1:2*contri),coedz_j(1:2*contrj),    &
             facdy_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
-            tl%pz3Vpy(si,sj) = Calc_pppVp_1e(3,AO_fac(3,Li,Mi),AO_fac(2,Lj,Mj),&
-            contri,contrj,coedz_i(1:2*contri),coedy_j(1:2*contrj),&
+            tl%pz3Vpy(si,sj) = Calc_pppVp_1e(3,faci(3),facj(2),       &
+            contri,contrj,coedz_i(1:2*contri),coedy_j(1:2*contrj),    &
             facdz_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
           end if
         end if
         !-------------<basis overlap integral>-------------
         do sk = 1, contri
           do sl = 1, contrj
-            tl%i_j(si,sj) = tl%i_j(si,sj) + &
-            Integral_S_1e(coei(sk)*coej(sl),&
-            AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),expi(sk),expj(sl),codi,codj)
+            tl%i_j(si,sj) = tl%i_j(si,sj) + Integral_S_1e(&
+            coei(sk)*coej(sl),faci,facj,expi(sk),expj(sl),codi,codj)
           end do
         end do
         !-------------<P2 integral>-------------
-        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + &
-        Calc_pp_1e(AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),contri,contrj,&
-        coedx_i(1:2*contri),coedx_j(1:2*contrj),facdx_i,facdx_j,&
-        expi(1:contri),expj(1:contrj),codi,codj)
-        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + &
-        Calc_pp_1e(AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),contri,contrj,&
-        coedy_i(1:2*contri),coedy_j(1:2*contrj),facdy_i,facdy_j,&
-        expi(1:contri),expj(1:contrj),codi,codj)
-        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + &
-        Calc_pp_1e(AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),contri,contrj,&
-        coedz_i(1:2*contri),coedz_j(1:2*contrj),facdz_i,facdz_j,&
-        expi(1:contri),expj(1:contrj),codi,codj)
+        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + Calc_pp_1e(                     &
+        faci(1),facj(1),contri,contrj,coedx_i(1:2*contri),coedx_j(1:2*contrj),&
+        facdx_i,facdx_j,expi(1:contri),expj(1:contrj),codi,codj)
+        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + Calc_pp_1e(                     &
+        faci(2),facj(2),contri,contrj,coedy_i(1:2*contri),coedy_j(1:2*contrj),&
+        facdy_i,facdy_j,expi(1:contri),expj(1:contrj),codi,codj)
+        tl%i_p2_j(si,sj) = tl%i_p2_j(si,sj) + Calc_pp_1e(                     &
+        faci(3),facj(3),contri,contrj,coedz_i(1:2*contri),coedz_j(1:2*contrj),&
+        facdz_i,facdz_j,expi(1:contri),expj(1:contrj),codi,codj)
       end do
     end do
     !$omp end do
@@ -544,7 +495,6 @@ module Hamiltonian
         end do
       end do
     end do
-    return
   end function Calc_pp_1e
 
 !-----------------------------------------------------------------------
@@ -591,61 +541,56 @@ module Hamiltonian
         end do
       end do
     end do
-    return
   end function Calc_V_1e
 
 !-----------------------------------------------------------------------
 !> calculate (AOiAOj|V|AOkAOl)
   real(dp) pure function Calc_V_2e(&
-  contri,contrj,contrk,contrl,coei,coej,coek,coel,faci,facj,fack,facl,&
-  expi,expj,expk,expl,codi,codj,codk,codl) result(val)
+  contri,contrj,contrk,contrl,coei,coej,coek,coel,codi,codj,codk,codl,&
+  codA,codB,A,B,Gij,Gkl,Gimij,Gimkl,faci,facj,fack,facl) result(val)
     implicit none
-    integer,intent(in)  :: contri          ! contr of |AOi>
-    integer,intent(in)  :: contrj          ! contr of |AOj>
-    integer,intent(in)  :: contrk          ! contr of |AOk>
-    integer,intent(in)  :: contrl          ! contr of |AOl>
-    real(dp),intent(in) :: coei(contri)    ! coefficients of |AOi>
-    real(dp),intent(in) :: coej(contrj)    ! coefficients of |AOj>
-    real(dp),intent(in) :: coek(contrk)    ! coefficients of |AOk>
-    real(dp),intent(in) :: coel(contrl)    ! coefficients of |AOl>
-    integer,intent(in)  :: faci(3)         ! xyz factor of |AOi>
-    integer,intent(in)  :: facj(3)         ! xyz factor of |AOj>
-    integer,intent(in)  :: fack(3)         ! xyz factor of |AOk>
-    integer,intent(in)  :: facl(3)         ! xyz factor of |AOl>
-    real(dp),intent(in) :: expi(contri)    ! expo of |AOi>
-    real(dp),intent(in) :: expj(contrj)    ! expo of |AOj>
-    real(dp),intent(in) :: expk(contrk)    ! expo of |AOk>
-    real(dp),intent(in) :: expl(contrl)    ! expo of |AOl>
-    real(dp),intent(in) :: codi(3)         ! centrol coordintates.|AOi>
-    real(dp),intent(in) :: codj(3)         ! centrol coordintates.|AOj>
-    real(dp),intent(in) :: codk(3)         ! centrol coordintates.|AOk>
-    real(dp),intent(in) :: codl(3)         ! centrol coordintates.|AOl>
-    integer             :: um, un, uo, up  ! loop variables for Calc_V_2e
+    integer,intent(in)  :: contri, contrj, contrk, contrl ! contraction of |AO>
+    real(dp),intent(in) :: coei(contri), coej(contrj)     ! coefficients of |AO>
+    real(dp),intent(in) :: coek(contrk), coel(contrl)     ! coefficients of |AO>
+    real(dp),intent(in) :: codi(3),codj(3),codk(3),codl(3)! centrol of |AO>
+    real(dp),intent(in) :: codA(3,contri,contrj)          ! PRISM parameters
+    real(dp),intent(in) :: codB(3,contrk,contrl)          ! PRISM parameters
+    real(dp),intent(in) :: A(contri,contrj)               ! PRISM parameters
+    real(dp),intent(in) :: B(contrk,contrl)               ! PRISM parameters
+    real(dp),intent(in) :: Gij(3,contri,contrj)           ! PRISM parameters
+    real(dp),intent(in) :: Gkl(3,contrk,contrl)           ! PRISM parameters
+    real(dp),intent(in) :: Gimij(3,contri,contrj)         ! PRISM parameters
+    real(dp),intent(in) :: Gimkl(3,contrk,contrl)         ! PRISM parameters
+    integer,intent(in)  :: faci(3),facj(3),fack(3),facl(3)! xyz factor of |AO>
+    real(dp)            :: codAin(3), codBin(3), Ain, Bin
+    real(dp)            :: GA(3), GimA(3), G(3), Gim(3)
+    integer             :: i, j, uo, up                 ! loop variables
     val = 0.0_dp
-    do um = 1, contri
-      do un = 1, contrj
+    !$omp simd reduction(+:val) collapse(2) private(i,j,uo,up,codAin,Ain,GA,&
+    !$omp& GimA,codBin,Bin,G,Gim)
+    do i = 1, contri
+      do j = 1, contrj
+        codAin(:) = codA(:,i,j)
+        Ain = A(i,j)
+        GA(:) = Gij(:,i,j)
+        GimA(:) = Gimij(:,i,j)
         do uo = 1, contrk
           do up = 1, contrl
-            val = val +                              &
-            coei(um)*coej(un)*coek(uo)*coel(up)*     &
-            Integral_V_2e(                           &
-            faci,                                    &
-            facj,                                    &
-            fack,                                    &
-            facl,                                    &
-            expi(um),                                &
-            expj(un),                                &
-            expk(uo),                                &
-            expl(up),                                &
-            codi,                                    &
-            codj,                                    &
-            codk,                                    &
-            codl)
+            codBin(:) = codB(:,uo,up)
+            Bin = B(uo,up)
+            G(:) = GA(:) + Gkl(:,uo,up)
+            Gim(:) = GimA(:) * Gimkl(:,uo,up)
+            val = val +                            &
+            coei(i)*coej(j)*coek(uo)*coel(up)*   &
+            Integral_V_2e_OS_PRISM(                &
+            codi, codj, codk, codl,                &
+            codAin, codBin, Ain, Bin, G, Gim,      &
+            faci, facj, fack, facl                 &
+            )
           end do
         end do
       end do
     end do
-    return
   end function Calc_V_2e
   
 !-----------------------------------------------------------------------
@@ -711,46 +656,37 @@ module Hamiltonian
       end do
       end do
     end do
-    return
   end function Calc_pVp_1e
 
 !-----------------------------------------------------------------------
 !> calculate (AOiAOj|pVp|AOkAOl) = (pAOipAOj|V|AOkAOl)
   real(dp) pure function Calc_pVp_2eij(&
-  ni,nj,contri,contrj,contrk,contrl,&
-  coei,coej,coek,coel,&
-  faci,facj,fack,facl,&
-  expi,expj,expk,expl,&
-  codi,codj,codk,codl) result(val)
+  ni,nj,contri,contrj,contrk,contrl,coei,coej,coek,coel,codi,codj,codk,codl,&
+  codA,codB,A,B,Gij,Gkl,Gimij,Gimkl,faci,facj,fack,facl) result(val)
     implicit none
-    integer,intent(in)    :: ni            ! number of x/y/z in |AOi>
-    integer,intent(in)    :: nj            ! number of x/y/z in |AOj>
-    integer,intent(in)    :: contri        ! contr of |AOi>
-    integer,intent(in)    :: contrj        ! contr of |AOj>
-    integer,intent(in)    :: contrk        ! contr of |AOk>
-    integer,intent(in)    :: contrl        ! contr of |AOl>
-    ! coefficients of first-order derivative of |AOi>
-    real(dp),intent(in)   :: coei(2*contri)
-    ! coefficients of first-order derivative of |AOj>
-    real(dp),intent(in)   :: coej(2*contrj)
-    real(dp),intent(in)   :: coek(contrk)  ! coefficients of |AOk>
-    real(dp),intent(in)   :: coel(contrl)  ! coefficients of |AOl>
-    integer,intent(in)    :: faci(3,2)     ! xyz factor of |AOi>
-    integer,intent(in)    :: facj(3,2)     ! xyz factor of |AOj>
-    integer,intent(in)    :: fack(3)       ! xyz factor of |AOk>
-    integer,intent(in)    :: facl(3)       ! xyz factor of |AOl>
-    real(dp),intent(in)   :: expi(contri)  ! expo of |AOi>
-    real(dp),intent(in)   :: expj(contrj)  ! expo of |AOj>
-    real(dp),intent(in)   :: expk(contrk)  ! expo of |AOk>
-    real(dp),intent(in)   :: expl(contrl)  ! expo of |AOl>
-    real(dp),intent(in)   :: codi(3)       ! centrol coordintates.|AOi>
-    real(dp),intent(in)   :: codj(3)       ! centrol coordintates.|AOj>
-    real(dp),intent(in)   :: codk(3)       ! centrol coordintates.|AOk>
-    real(dp),intent(in)   :: codl(3)       ! centrol coordintates.|AOl>
-    integer               :: numi, numj
-    integer               :: um, un, uo, up! loop variables for Calc_pVp_2eij
-    integer               :: ii, jj        ! loop variables for Calc_pVp_2eij
-
+    integer,intent(in)  :: ni                         ! number of x/y/z in |AOi>
+    integer,intent(in)  :: nj                         ! number of x/y/z in |AOj>
+    integer,intent(in)  :: contri, contrj, contrk, contrl ! contraction of |AO>
+    ! coefficients of first-order derivative of |AOi> and |AOj>
+    real(dp),intent(in) :: coei(2*contri), coej(2*contrj)
+    real(dp),intent(in) :: coek(contrk), coel(contrl)     ! coefficients of |AO>
+    real(dp),intent(in) :: codi(3),codj(3),codk(3),codl(3)! centrol of |AO>
+    real(dp),intent(in) :: codA(3,contri,contrj)          ! PRISM parameters
+    real(dp),intent(in) :: codB(3,contrk,contrl)          ! PRISM parameters
+    real(dp),intent(in) :: A(contri,contrj)               ! PRISM parameters
+    real(dp),intent(in) :: B(contrk,contrl)               ! PRISM parameters
+    real(dp),intent(in) :: Gij(3,contri,contrj)           ! PRISM parameters
+    real(dp),intent(in) :: Gkl(3,contrk,contrl)           ! PRISM parameters
+    real(dp),intent(in) :: Gimij(3,contri,contrj)         ! PRISM parameters
+    real(dp),intent(in) :: Gimkl(3,contrk,contrl)         ! PRISM parameters
+    ! xyz factor of first-order derivative of |AOi> and |AOj>
+    integer,intent(in)  :: faci(3,2),facj(3,2)
+    integer,intent(in)  :: fack(3),facl(3)                ! xyz factor of |AO>
+    real(dp)            :: codAin(3), codBin(3), Ain, Bin
+    real(dp)            :: GA(3), GimA(3), G(3), Gim(3)
+    integer             :: numi, numj
+    integer             :: um, un, uo, up                 ! loop variables
+    integer             :: ii, jj                         ! loop variables
     if (ni == 0) then
       numi = 1
     else
@@ -766,70 +702,60 @@ module Hamiltonian
     do um = 1, contri
       do jj = 1, numj
       do un = 1, contrj
+        codAin(:) = codA(:,um,un)
+        Ain = A(um,un)
+        GA(:) = Gij(:,um,un)
+        GimA(:) = Gimij(:,um,un)
         do uo = 1, contrk
           do up = 1, contrl
-            val = val +                                         &
-            coei((ii-1)*contri+um)*coej((jj-1)*contrj+un)*      &
-            coek(uo)*coel(up)*                                  &
-            Integral_V_2e(                                      &
-            faci(:,ii),                                         &
-            facj(:,jj),                                         &
-            fack,                                               &
-            facl,                                               &
-            expi(um),                                           &
-            expj(un),                                           &
-            expk(uo),                                           &
-            expl(up),                                           &
-            codi,                                               &
-            codj,                                               &
-            codk,                                               &
-            codl)
+            codBin(:) = codB(:,uo,up)
+            Bin = B(uo,up)
+            G(:) = GA(:) + Gkl(:,uo,up)
+            Gim(:) = GimA(:) * Gimkl(:,uo,up)
+            val = val +                                                      &
+            coei((ii-1)*contri+um)*coej((jj-1)*contrj+un)*coek(uo)*coel(up)* &
+            Integral_V_2e_OS_PRISM(                                          &
+            codi, codj, codk, codl,                                          &
+            codAin, codBin, Ain, Bin, G, Gim,                                &
+            faci(:,ii), facj(:,jj), fack, facl                               &
+            )
           end do
         end do
       end do
       end do
     end do
     end do
-    return
   end function Calc_pVp_2eij
 
 !-----------------------------------------------------------------------
 !> calculate (AOiAOj|pVp|AOkAOl) = (pAOiAOj|V|pAOkAOl)
   real(dp) pure function Calc_pVp_2eik(&
-  ni,nk,contri,contrj,contrk,contrl,&
-  coei,coej,coek,coel,&
-  faci,facj,fack,facl,&
-  expi,expj,expk,expl,&
-  codi,codj,codk,codl) result(val)
+  ni,nk,contri,contrj,contrk,contrl,coei,coej,coek,coel,codi,codj,codk,codl,&
+  codA,codB,A,B,Gij,Gkl,Gimij,Gimkl,faci,facj,fack,facl) result(val)
     implicit none
-    integer,intent(in)    :: ni            ! number of x/y/z in |AOi>
-    integer,intent(in)    :: nk            ! number of x/y/z in |AOk>
-    integer,intent(in)    :: contri        ! contr of |AOi>
-    integer,intent(in)    :: contrj        ! contr of |AOj>
-    integer,intent(in)    :: contrk        ! contr of |AOk>
-    integer,intent(in)    :: contrl        ! contr of |AOl>
-    ! coefficients of first-order derivative of |AOi>
-    real(dp),intent(in)   :: coei(2*contri)
-    real(dp),intent(in)   :: coej(contrj)  ! coefficients of |AOj>
-    ! coefficients of first-order derivative of |AOk>
-    real(dp),intent(in)   :: coek(2*contrk)
-    real(dp),intent(in)   :: coel(contrl)  ! coefficients of |AOl>
-    integer,intent(in)    :: faci(3,2)     ! xyz factor of |AOi>
-    integer,intent(in)    :: facj(3)       ! xyz factor of |AOj>
-    integer,intent(in)    :: fack(3,2)     ! xyz factor of |AOk>
-    integer,intent(in)    :: facl(3)       ! xyz factor of |AOl>
-    real(dp),intent(in)   :: expi(contri)  ! expo of |AOi>
-    real(dp),intent(in)   :: expj(contrj)  ! expo of |AOj>
-    real(dp),intent(in)   :: expk(contrk)  ! expo of |AOk>
-    real(dp),intent(in)   :: expl(contrl)  ! expo of |AOl>
-    real(dp),intent(in)   :: codi(3)       ! centrol coordintates.|AOi>
-    real(dp),intent(in)   :: codj(3)       ! centrol coordintates.|AOj>
-    real(dp),intent(in)   :: codk(3)       ! centrol coordintates.|AOk>
-    real(dp),intent(in)   :: codl(3)       ! centrol coordintates.|AOl>
-    integer               :: numi, numk
-    integer               :: um, un, uo, up! loop variables for Calc_pVp_2eik
-    integer               :: ii, kk        ! loop variables for Calc_pVp_2eik
-
+    integer,intent(in)  :: ni                         ! number of x/y/z in |AOi>
+    integer,intent(in)  :: nk                         ! number of x/y/z in |AOk>
+    integer,intent(in)  :: contri, contrj, contrk, contrl ! contraction of |AO>
+    ! coefficients of first-order derivative of |AOi> and |AOk>
+    real(dp),intent(in) :: coei(2*contri), coek(2*contrk)
+    real(dp),intent(in) :: coej(contrj), coel(contrl)     ! coefficients of |AO>
+    real(dp),intent(in) :: codi(3),codj(3),codk(3),codl(3)! centrol of |AO>
+    real(dp),intent(in) :: codA(3,contri,contrj)          ! PRISM parameters
+    real(dp),intent(in) :: codB(3,contrk,contrl)          ! PRISM parameters
+    real(dp),intent(in) :: A(contri,contrj)               ! PRISM parameters
+    real(dp),intent(in) :: B(contrk,contrl)               ! PRISM parameters
+    real(dp),intent(in) :: Gij(3,contri,contrj)           ! PRISM parameters
+    real(dp),intent(in) :: Gkl(3,contrk,contrl)           ! PRISM parameters
+    real(dp),intent(in) :: Gimij(3,contri,contrj)         ! PRISM parameters
+    real(dp),intent(in) :: Gimkl(3,contrk,contrl)         ! PRISM parameters
+    ! xyz factor of first-order derivative of |AOi> and |AOk>
+    integer,intent(in)  :: faci(3,2),fack(3,2)
+    integer,intent(in)  :: facj(3),facl(3)                ! xyz factor of |AO>
+    real(dp)            :: codAin(3), codBin(3), Ain, Bin
+    real(dp)            :: GA(3), GimA(3), G(3), Gim(3)
+    integer             :: numi, numk
+    integer             :: um, un, uo, up                 ! loop variables
+    integer             :: ii, kk                         ! loop variables
     if (ni == 0) then
       numi = 1
     else
@@ -844,32 +770,30 @@ module Hamiltonian
     do ii = 1, numi
     do um = 1, contri
       do un = 1, contrj
+        codAin(:) = codA(:,um,un)
+        Ain = A(um,un)
+        GA(:) = Gij(:,um,un)
+        GimA(:) = Gimij(:,um,un)
         do kk = 1, numk
         do uo = 1, contrk
           do up = 1, contrl
-            val = val +                                         &
-            coei((ii-1)*contri+um)*coej(un)*                    &
-            coek((kk-1)*contrk+uo)*coel(up)*                    &
-            Integral_V_2e(                                      &
-            faci(:,ii),                                         &
-            facj,                                               &
-            fack(:,kk),                                         &
-            facl,                                               &
-            expi(um),                                           &
-            expj(un),                                           &
-            expk(uo),                                           &
-            expl(up),                                           &
-            codi,                                               &
-            codj,                                               &
-            codk,                                               &
-            codl)
+            codBin(:) = codB(:,uo,up)
+            Bin = B(uo,up)
+            G(:) = GA(:) + Gkl(:,uo,up)
+            Gim(:) = GimA(:) * Gimkl(:,uo,up)
+            val = val +                                                      &
+            coei((ii-1)*contri+um)*coej(un)*coek((kk-1)*contrk+uo)*coel(up)* &
+            Integral_V_2e_OS_PRISM(                                          &
+            codi, codj, codk, codl,                                          &
+            codAin, codBin, Ain, Bin, G, Gim,                                &
+            faci(:,ii), facj, fack(:,kk), facl                               &
+            )
           end do
         end do
         end do
       end do
     end do
     end do
-    return
   end function Calc_pVp_2eik
   
 !-----------------------------------------------------------------------
@@ -996,7 +920,6 @@ module Hamiltonian
         end do
       end do
     end do
-    return
   end function Calc_pppVp_1e
   
 !-----------------------------------------------------------------------
@@ -1055,35 +978,118 @@ module Hamiltonian
     end do
   end subroutine Calc_Ncoe
 
-!-----------------------------------------------------------------------
-!> normalization of primitive shell (GTFs)
-  pure subroutine Calc_Ncoe_GTF(incbdata, incbdm)
+!------------------------------------------------------------
+!> initialising Integral_V_1e and Integral_V_2e_OS and initialising Pairwise
+!!
+!! Recursive Integral Strategy for Multipoles (PRISM), assign Gaussian
+!!
+!! production of GTOs and \hat{p} GTOs, ref 10.1002/jcc.540040206
+!!
+!! must be called after Calc_Ncoe and before Gaussian Integration
+  subroutine Integral_init()
     implicit none
-    type(basis_data),intent(inout) :: incbdata(:)! input cbdata
-    integer, intent(in)            :: incbdm     ! input cbdm
-    integer                        :: contr    ! contr of atom, shell
-    real(dp)                       :: expo(16) ! expo of |AO>
-    real(dp)                       :: coe(16)  ! coe of |AO>
-    integer                        :: fac(3)   ! xyz factor of |AO>
-    integer                        :: L        ! angular quantum number of |AO>
-    integer                        :: M        ! magnetic quantum number of |AO>
-    integer                        :: oi,oj    ! loop variables for Calc_Ncoe
-    ! normalization of primitive shell (GTFs)
-    do oi = 1, incbdm
-      contr = incbdata(oi) % contr
-      expo(1:contr) = incbdata(oi) % expo(1:contr)
-      coe(1:contr)  = incbdata(oi) % coe(1:contr)
-      L = incbdata(oi) % L
-      M = incbdata(oi) % M
-      do oj = 1, contr
-        incbdata(oi)%Ncoe(oj) = coe(oj) * &
-        AON(expo(oj),AO_fac(1,L,M),AO_fac(2,L,M),AO_fac(3,L,M))
+    integer  :: ii, jj, kk, ll
+    real(dp) :: expTaycoe(64)
+    real(dp) :: erfTaycoe(64)
+    real(dp) :: ai(16), aj(16)
+    real(dp) :: codi(3), codj(3)
+    real(dp) :: coedx_i(32), coedy_i(32), coedz_i(32)
+    real(dp) :: coedx_j(32), coedy_j(32), coedz_j(32)
+    integer  :: cti, ctj
+    ! initialising Integral_V_1e and Integral_V_2e_OS
+    expTaycoe = 0.0_dp     ! Taylor expansion coefficients for exp(-x)
+    erfTaycoe = 0.0_dp     ! Taylor expansion coefficients for I_0
+    do jj = 1, 64
+      expTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/factorial(jj-1))
+      erfTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/(real(2*jj-1)*factorial(jj-1)))
+    end do
+    intTaycoe = 0.0_dp
+    do ii = 0, 42
+      if (ii == 0) then     ! Taycoes for I_0, GNC^1*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 64
+          intTaycoe(jj,1) = erfTaycoe(jj)
+        end do
+      else if(ii == 1) then ! Taycoes for I_1, GNC^2*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 63
+          intTaycoe(jj,2) = -0.5_dp*expTaycoe(jj+1)
+        end do
+      else                  ! Taycoes for I_n, GNC^(n+1)*[1 + (GNC*br2)^2 + ...]
+        do jj = 1, 64-int(real(ii)/1.99)-mod(ii,2)
+          intTaycoe(jj,ii+1) = 0.5_dp*(real(ii-1,dp)*intTaycoe(jj+1,ii-1) - &
+                                       expTaycoe(jj+1))
+        end do
+      end if
+    end do
+    ! initialising PRISM
+    ! data in AOpair can also be used for <AOi|\hat{p}|\hat{p}|AOj>
+    allocate(AOpair(cbdm,cbdm))
+    do ii = 1, cbdm
+      cti = cbdata(ii) % contr
+      ai = cbdata(ii) % expo
+      codi = cbdata(ii) % pos
+      do jj = 1, cbdm
+        ctj = cbdata(jj) % contr
+        aj = cbdata(jj) % expo
+        codj = cbdata(jj) % pos
+        !------------------------------
+        AOpair(ii,jj) % contri = cti
+        AOpair(ii,jj) % contrj = ctj
+        allocate(AOpair(ii,jj) % sumexpo(cti, ctj),   &
+                 AOpair(ii,jj) % cod(3, cti, ctj),    &
+                 AOpair(ii,jj) % Gij(3, cti, ctj),    &
+                 AOpair(ii,jj) % Gimij(3, cti, ctj),  &
+                 source = 0.0_dp)
+        do kk = 1, cti
+          do ll = 1, ctj
+            AOpair(ii,jj) % cod(:,kk,ll) = &
+            (ai(kk)*codi(:)+aj(ll)*codj(:)) / (ai(kk)+aj(ll))
+            AOpair(ii,jj) % sumexpo(kk,ll) = ai(kk)+aj(ll)
+            AOpair(ii,jj) % Gij(:,kk,ll) = &
+            (ai(kk)*aj(ll)/(ai(kk)+aj(ll))) * (codi(:)-codj(:))**2
+            AOpair(ii,jj) % Gimij(:,kk,ll) = &
+            rpi / dsqrt(AOpair(ii,jj)%sumexpo(kk,ll)) * &
+            dexp(-AOpair(ii,jj)%Gij(:,kk,ll))
+          end do
+        end do
       end do
     end do
-  end subroutine Calc_Ncoe_GTF
+    ! assign facdx, coedx, facdy, coedy, facdz, coedz in cbdata
+    do ii = 1, cbdm
+      cti = cbdata(ii) % contr
+      ai = cbdata(ii) % expo
+      !---------------------------------------
+      ! factor of x^m*d(exp)
+      cbdata(ii)%facdx(:,1) = cbdata(ii)%fac
+      cbdata(ii)%facdx(1,1) = cbdata(ii)%facdx(1,1) + 1
+      cbdata(ii)%facdy(:,1) = cbdata(ii)%fac
+      cbdata(ii)%facdy(2,1) = cbdata(ii)%facdy(2,1) + 1
+      cbdata(ii)%facdz(:,1) = cbdata(ii)%fac
+      cbdata(ii)%facdz(3,1) = cbdata(ii)%facdz(3,1) + 1
+      !-------------------------------
+      ! factor of d(x^m)*exp
+      cbdata(ii)%facdx(:,2) = cbdata(ii)%fac
+      cbdata(ii)%facdx(1,2) = max(cbdata(ii)%facdx(1,2)-1, 0)
+      cbdata(ii)%facdy(:,2) = cbdata(ii)%fac
+      cbdata(ii)%facdy(2,2) = max(cbdata(ii)%facdy(2,2)-1, 0)
+      cbdata(ii)%facdz(:,2) = cbdata(ii)%fac
+      cbdata(ii)%facdz(3,2) = max(cbdata(ii)%facdz(3,2)-1, 0)
+      !---------------------------------------
+      ! coefficient of x^m*d(exp)
+      cbdata(ii)%coedx(1:cti) = -2.0_dp * cbdata(ii)%Ncoe(1:cti) * ai(1:cti)
+      cbdata(ii)%coedy(1:cti) = -2.0_dp * cbdata(ii)%Ncoe(1:cti) * ai(1:cti)
+      cbdata(ii)%coedz(1:cti) = -2.0_dp * cbdata(ii)%Ncoe(1:cti) * ai(1:cti)
+      !---------------------------------
+      ! coefficient of d(x^m)*exp
+      cbdata(ii)%coedx(cti+1:2*cti) = cbdata(ii)%fac(1) * cbdata(ii)%Ncoe(1:cti)
+      cbdata(ii)%coedy(cti+1:2*cti) = cbdata(ii)%fac(2) * cbdata(ii)%Ncoe(1:cti)
+      cbdata(ii)%coedz(cti+1:2*cti) = cbdata(ii)%fac(3) * cbdata(ii)%Ncoe(1:cti)
+    end do
+  end subroutine Integral_init
 
 !-----------------------------------------------------------------------
 !> full space integration of product of 2 Gaussian functions in Cartesian
+!!
+!! it's not compatible with PRISM
   real(dp) pure function Integral_S_1e(&
   coe,faci,facj,expi,expj,codi,codj) result(val)
     implicit none
@@ -1128,7 +1134,7 @@ module Hamiltonian
           end if
         end do
         integral(gk) = integral(gk) + &
-        binomialcoe(faci(gk),gi)*(-codpos(gk))**(gi)*mic
+        binom(faci(gk),gi)*(-codpos(gk))**(gi)*mic
       end do
     end do
     val = pcoe * integral(1) * integral(2) * integral(3)
@@ -1136,9 +1142,13 @@ module Hamiltonian
   end function Integral_S_1e
   
 !-----------------------------------------------------------------------
-!> integration of electron-nuclear attraction potential in Cartesian coordinate:
+!> integration of electron-nuclear attraction potential in Cartesian coordinate
+!!
+!! scheme: Obara-Saika
 !!
 !! inategral transformation: (x-xi)^m*(x-xj)^n*expo(-b*x^2)*expo(x^2*t^2)dxdt
+!!
+!! it's not compatible with PRISM
   real(dp) pure function Integral_V_1e(&
   Z,coei,coej,faci,facj,expi,expj,codi,codj,rn) result(val)
     implicit none
@@ -1201,7 +1211,7 @@ module Hamiltonian
         xts = 5.0
     end select
     !--------------------------
-    ! Gaussian shell production
+    ! Gaussian production
     coe = -Z * coei * coej
     expo = expi + expj
     invexpo = 1.0_dp / (expi + expj)
@@ -1244,8 +1254,8 @@ module Hamiltonian
             end if
           end do
           t2pb_xyz(:,vk) = t2pb_xyz(:,vk) + &
-          binomialcoe(faci(vk),vi) * &
-          binomialcoe(facj(vk),vj) * &
+          binom(faci(vk),vi) * &
+          binom(facj(vk),vj) * &
           (-codi(vk))**(vi) * (-codj(vk))**(vj) * mic
         end do
       end do
@@ -1272,11 +1282,11 @@ module Hamiltonian
       do vi = 0, max1
         int = 0.0_dp
         do vj = 0, vi
-          tmp = (-1.0_dp)**(vj)*binomialcoe(vi,vj)
+          tmp = (-1.0_dp)**(vj)*binom(vi,vj)
           do vk = 0, vi
             int_mic = GNC**(2*vi-vj-vk+1) / &
             (real(2*vi-vj-vk,dp) + 1.0_dp)
-            int = int + tmp * binomialcoe(vi,vk) * int_mic
+            int = int + tmp * binom(vi,vk) * int_mic
           end do
         end do
         val = val + 2.0_dp*(-1.0_dp)**(vi) * expo**(-vi-1) * t2pb(vi+2) * int
@@ -1287,7 +1297,7 @@ module Hamiltonian
       do vi = 0, max1
         int = 0.0_dp
         do vj = 0, vi
-          tmp = (-1.0_dp)**(vj) * binomialcoe(vi,vj)
+          tmp = (-1.0_dp)**(vj) * binom(vi,vj)
           do vk = 0, vi
             int_mic = 0.0_dp
             if (2*vi-vj-vk == 0) then
@@ -1306,7 +1316,7 @@ module Hamiltonian
               end do
               int_mic = int_mic * GNC**(2*vi-vj-vk+1)
             end if
-            int = int + tmp * binomialcoe(vi,vk) * int_mic
+            int = int + tmp * binom(vi,vk) * int_mic
           end do
         end do
         val = val + 2.0_dp*(-1.0_dp)**(vi) * expo**(-vi-1) * t2pb(vi+2) * int
@@ -1318,7 +1328,7 @@ module Hamiltonian
       do vi = 0, max1
         int = 0.0_dp
         do vj = 0, vi
-          tmp = (-1.0_dp)**(vj) * binomialcoe(vi,vj)
+          tmp = (-1.0_dp)**(vj) * binom(vi,vj)
           do vk = 0, vi
             do vmic = 0, 2*vi-vj-vk
               if (vmic == 0) then
@@ -1333,7 +1343,7 @@ module Hamiltonian
                 GNC**(vmic-1)*expbr2) * invbr2
               end if
             end do
-            int = int + tmp * binomialcoe(vi,vk) * int_mic
+            int = int + tmp * binom(vi,vk) * int_mic
           end do
         end do
         val = val + 2.0_dp*(-1.0_dp)**(vi) * expo**(-vi-1) * t2pb(vi+2) * int
@@ -1347,10 +1357,701 @@ module Hamiltonian
 !-----------------------------------------------------------------------
 !> integration of two-electron repulsion potential in Cartesian coordinate
 !!
+!! scheme: Obara-Saika
+!!
 !! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
 !! xA  xB
 !! Li > Lj, Lk > Ll
-  real(dp) pure function Integral_V_2e(&
+  real(dp) pure function Integral_V_2e_OS(&
+  faci,facj,fack,facl,ai,aj,ak,al,codi,codj,codk,codl) result(int)
+    implicit none
+    integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
+    real(dp),intent(in) :: ai, aj, ak, al
+    real(dp),intent(in) :: codi(3), codj(3), codk(3), codl(3)
+    ! composite parameters, ref 10.1002/jcc.540040206
+    real(dp)            :: codA(3), codB(3), A, B, rou
+    real(dp)            :: D(3), X, G(3)
+    integer             :: nt             ! number of polyfactor
+    real(dp)            :: Gim(3)
+    real(dp)            :: f0, f1, f2, f3, f4
+    real(dp)            :: coe1A(3),coe1B(3),coe2A,coe2B,coe2AB,coe3A,coe3B
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Gnm
+    real(dp)            :: Gnm(9,9,20,3)
+    ! ni transfer to nj, nk tranfer to nl
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Itrans,I,PL
+    real(dp)            :: Itrans(5,20,3), I(20,3), PL(24)
+    real(dp)            :: int_mic, int_mic_, int_mic__
+    real(dp)            :: supp1, supp2, supp3, supp4
+    integer             :: facij1(3), fackl1(3)
+    integer             :: tayeps  ! Taylor expansion series of integral at X=0
+    ! direct integration (X > xts); Taylor expansion integration (X <= xts)
+    real(dp)            :: xts
+    integer             :: ri, rj, rk, ii  ! loop variables for Integral_V_2e_OS
+    ! Gaussian product
+    codA(:) = (ai*codi(:)+aj*codj(:)) / (ai+aj)
+    codB(:) = (ak*codk(:)+al*codl(:)) / (ak+al)
+    A = ai + aj
+    B = ak + al
+    rou = A*B / (A+B)
+    D(:) = rou * (codA(:)-codB(:))**2
+    X = sum(D)
+    ! for non-normalized inputs, do not consider Gx, Gy, and Gz.
+    G(:) = (ai*aj/(ai+aj)) * (codi(:)-codj(:))**2 + &
+    (ak*al/(ak+al)) * (codk(:)-codl(:))**2
+    Gim(:) = pi / dsqrt(A*B) * exp(-G(:))
+    coe1A(:) = (A*(codA(:)-codB(:))/(A+B))
+    coe1B(:) = (B*(codB(:)-codA(:))/(A+B))
+    coe2A = 1.0_dp/(2.0_dp*A)
+    coe2B = 1.0_dp/(2.0_dp*B)
+    coe2AB = 1.0_dp/(2.0_dp*(A+B))
+    coe3A = A/(2.0_dp*B*(A+B))
+    coe3B = B/(2.0_dp*A*(A+B))
+    ! change the definitions of codA and codB for ease of computation
+    codA = codA - codi
+    codB = codB - codk
+    nt = sum(faci) + sum(facj) + sum(fack) + sum(facl)
+    facij1 = faci + facj + 1
+    fackl1 = fack + facl + 1
+    
+    !=============================================================
+    ! direct integral for high angular momentum Gaussian functions
+    ! Ix(ni+nj,0,nk+nl,0,u)
+    select case (2*(nt+6)-2)
+    case(0:5)
+      tayeps = 5
+      xts = 0.01
+    case(6:10)
+      tayeps = 12
+      xts = 0.2
+    case(11:15)
+      tayeps = 15
+      xts = 0.5
+    case(16:20)
+      tayeps = 20
+      xts = 1.0
+    case(21:25)
+      tayeps = 25
+      xts = 2.0
+    case(26:30)
+      tayeps = 30
+      xts = 3.0
+    case(31:40)
+      tayeps = 35
+      xts = 4.0
+    case(41:50)
+      tayeps = 45
+      xts = 5.0
+    end select
+    Gnm = 0.0_dp
+    !---------------------------------------------------------------------
+    ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
+    do ii = 1, 3
+      Gnm(1,1,1,ii) = Gim(ii)
+      do ri = 2, facij1(ii)
+        if (ri == 2) then
+          Gnm(2,1,1,ii) = Gnm(2,1,1,ii) + &
+          Gnm(1,1,1,ii)*codA(ii)
+          Gnm(2,1,2,ii) = Gnm(2,1,2,ii) + &
+          Gnm(1,1,1,ii)*coe1B(ii)
+        else
+          do rj = 1, ri - 1
+            Gnm(ri  ,1,rj  ,ii) = Gnm(ri,1,rj,ii) + &
+            Gnm(ri-2,1,rj  ,ii) * real(ri-2)*coe2A + &
+            Gnm(ri-1,1,rj  ,ii) * codA(ii)
+            Gnm(ri  ,1,rj+1,ii) = Gnm(ri,1,rj+1,ii) - &
+            Gnm(ri-2,1,rj  ,ii) * real(ri-2)*coe3B + &
+            Gnm(ri-1,1,rj  ,ii) * coe1B(ii)
+          end do
+        end if
+      end do
+      do ri = 2, fackl1(ii)
+        if (ri == 2) then
+          Gnm(1,2,1,ii) = Gnm(1,2,1,ii) + &
+          Gnm(1,1,1,ii)*codB(ii)
+          Gnm(1,2,2,ii) = Gnm(1,2,2,ii) + &
+          Gnm(1,1,1,ii)*coe1A(ii)
+        else
+          do rj = 1, ri - 1
+            Gnm(1,ri  ,rj  ,ii) = Gnm(1,ri,rj,ii) + &
+            Gnm(1,ri-2,rj  ,ii) * real(ri-2)*coe2B + &
+            Gnm(1,ri-1,rj  ,ii) * codB(ii)
+            Gnm(1,ri  ,rj+1,ii) = Gnm(1,ri,rj+1,ii) - &
+            Gnm(1,ri-2,rj  ,ii) * real(ri-2)*coe3A + &
+            Gnm(1,ri-1,rj  ,ii) * coe1A(ii)
+          end do
+        end if
+      end do
+      !---------------------------------------------------------------------
+      ! use G(n+1,m) recursion only, codA and codB are asymmetric
+      do rk = 2, fackl1(ii)
+        do ri = 2, facij1(ii)
+          if (ri == 2) then
+            do rj = 1, rk
+              Gnm(2,rk  ,rj  ,ii) = Gnm(2,rk,rj,ii) + &
+              Gnm(1,rk  ,rj  ,ii) * codA(ii)
+              Gnm(2,rk  ,rj+1,ii) = Gnm(2,rk,rj+1,ii) + &
+              Gnm(1,rk  ,rj  ,ii) * coe1B(ii) + &
+              Gnm(1,rk-1,rj  ,ii) * real(rk-1)*coe2AB
+            end do
+          else
+            do rj = 1, ri + rk - 2
+              Gnm(ri  ,rk  ,rj  ,ii) = &
+              Gnm(ri  ,rk  ,rj  ,ii) + &
+              Gnm(ri-2,rk  ,rj  ,ii) * real(ri-2)*coe2A +&
+              Gnm(ri-1,rk  ,rj  ,ii) * codA(ii)
+              Gnm(ri  ,rk  ,rj+1,ii) = &
+              Gnm(ri  ,rk  ,rj+1,ii) - &
+              Gnm(ri-2,rk  ,rj  ,ii) * real(ri-2)*coe3B +&
+              Gnm(ri-1,rk  ,rj  ,ii) * coe1B(ii) + &
+              Gnm(ri-1,rk-1,rj  ,ii) * real(rk-1)*coe2AB
+            end do
+          end if
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! transfer from codi to codj, codk to codl
+    Itrans = 0.0_dp
+    I = 0.0_dp
+    do ii = 1, 3
+      do rk = 1, facl(ii) + 1
+        do ri = 0, facj(ii)
+          do rj = 1, facij1(ii) + fackl1(ii)
+            Itrans(rk,rj,ii) = Itrans(rk,rj,ii) + &
+            binom(facj(ii),ri) * (codi(ii)-codj(ii))**(ri) * &
+            Gnm(facij1(ii)-ri, fackl1(ii)-(rk-1),rj,ii)
+          end do
+        end do
+      end do
+      do ri = 0, facl(ii)
+        do rj = 1, facij1(ii) + fackl1(ii)
+          I(rj,ii) = I(rj,ii) + binom(facl(ii),ri) * &
+          (codk(ii)-codl(ii))**(ri) * Itrans(ri+1,rj,ii)
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! product to PL
+    PL = 0.0_dp
+    do ri = 0, facij1(1)+fackl1(1)-1
+      do rj = 0, facij1(2)+fackl1(2)-1
+        do rk = 0, facij1(3)+fackl1(3)-1
+          PL(ri+rj+rk+1) = PL(ri+rj+rk+1) + &
+          I(ri+1,1) * I(rj+1,2) * I(rk+1,3)
+        end do
+      end do
+    end do
+    PL = PL * 2.0_dp * dsqrt(rou/pi)
+    !---------------------------------------------------------------------
+    ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
+    int = 0.0_dp
+    if (abs(X) < 1E-13) then 
+      do ri = 1, nt+6
+        int_mic = 1.0_dp / (real(2*ri-2)+1.0_dp)
+        int = int + PL(ri) * int_mic
+      end do
+    else if (abs(X) <= xts) then
+      do ri = 1, nt+6
+        int_mic = 0.0_dp
+        if (2*ri-2 == 0) then
+          do rk = 1, tayeps
+            int_mic = int_mic + X**(rk-1)*intTaycoe(rk,1)
+          end do
+        else if (2*ri-2 == 1) then
+          do rk = 1, tayeps
+            int_mic = int_mic + X**(rk-1)*intTaycoe(rk,2)
+          end do
+        else
+          do rk = 1, tayeps
+            int_mic = int_mic + X**(rk-1)*intTaycoe(rk,2*ri-1)
+          end do
+        end if
+        int = int + PL(ri) * int_mic
+      end do
+    else
+      supp1 = dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
+      supp3 = 1.0_dp / (2.0_dp*X)
+      supp4 = -exp(-X)
+      supp2 = (1.0_dp+supp4) * supp3
+      do ri = 1, nt+6
+        do rj = 0, 2*ri - 2
+          if (rj == 0) then
+            int_mic = supp1
+          else if(rj == 1) then
+            int_mic_ = int_mic
+            int_mic = supp2
+          else
+            int_mic__ = int_mic_
+            int_mic_ = int_mic
+            int_mic = (supp4+real(rj-1)*int_mic__) * supp3
+          end if
+        end do
+        int = int + PL(ri) * int_mic
+      end do
+    end if
+  end function Integral_V_2e_OS
+
+!-----------------------------------------------------------------------
+!> integration of two-electron repulsion potential in Cartesian coordinate
+!!
+!! scheme: Obara-Saika
+!!
+!! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
+!! xA  xB
+!! Li > Lj, Lk > Ll
+!! 
+!! it's compatible with PRISM
+  real(dp) pure function Integral_V_2e_OS_PRISM(codi, codj, codk, codl, &
+  codA, codB, A, B, G, Gim, faci, facj, fack, facl) result(int)
+  !$omp declare simd(Integral_V_2e_OS_PRISM)
+    implicit none
+    real(dp),intent(in) :: codi(3), codj(3), codk(3), codl(3), codA(3), codB(3)
+    real(dp),intent(in) :: A, B, G(3), Gim(3)
+    integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
+    ! composite parameters, ref 10.1002/jcc.540040206
+    real(dp)            :: rou, D(3), X
+    real(dp)            :: codAi(3), codBk(3)
+    real(dp)            :: coe1A(3),coe1B(3),coe2A,coe2B,coe2AB,coe3A,coe3B
+    integer             :: facij1(3), fackl1(3), nt
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Gnm
+    real(dp)            :: Gnm(3,9,9,20)
+    ! ni transfer to nj, nk tranfer to nl
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Itrans,I,PL
+    real(dp)            :: Itrans(3,5,20), I(3,20), PL(24)
+    real(dp)            :: int_mic, int_mic_, int_mic__
+    real(dp)            :: supp1, supp2, supp3, supp4
+    integer             :: tayeps  ! Taylor expansion series of integral at X=0
+    ! direct integration (X > xts); Taylor expansion integration (X <= xts)
+    real(dp)            :: xts
+    integer             :: ri, rj, rk, ii  ! loop variables for Integral_V_2e_OS
+    rou      = A*B / (A+B)                                                                        !1627-1642有大问题
+    D(:)     = rou * (codA(:)-codB(:))**2
+    X        = sum(D)
+    ! for non-normalized inputs, do not consider Gx, Gy, and Gz.
+    codAi    = codA - codi
+    codBk    = codB - codk
+    coe1A(:) = (A*(codA(:)-codB(:))/(A+B))
+    coe1B(:) = (B*(codB(:)-codA(:))/(A+B))
+    coe2A    = 1.0_dp/(2.0_dp*A)
+    coe2B    = 1.0_dp/(2.0_dp*B)
+    coe2AB   = 1.0_dp/(2.0_dp*(A+B))
+    coe3A    = A/(2.0_dp*B*(A+B))
+    coe3B    = B/(2.0_dp*A*(A+B))
+    nt       = sum(faci) + sum(facj) + sum(fack) + sum(facl)
+    facij1   = faci + facj + 1
+    fackl1   = fack + facl + 1
+
+    !=============================================================
+    ! Obara-Saika scheme for high angular momentum Gaussian functions
+    ! Ix(ni+nj,0,nk+nl,0,u)
+    select case (2*(nt+6)-2)
+    case(0:5)
+      tayeps = 5
+      xts = 0.01
+    case(6:10)
+      tayeps = 12
+      xts = 0.2
+    case(11:15)
+      tayeps = 15
+      xts = 0.5
+    case(16:20)
+      tayeps = 20
+      xts = 1.0
+    case(21:25)
+      tayeps = 25
+      xts = 2.0
+    case(26:30)
+      tayeps = 30
+      xts = 3.0
+    case(31:40)
+      tayeps = 35
+      xts = 4.0
+    case(41:50)
+      tayeps = 45
+      xts = 5.0
+    end select
+    Gnm = 0.0_dp
+    !---------------------------------------------------------------------
+    ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
+    Gnm(:,1,1,1) = Gim(:)                                                              !有大问题
+    do ii = 1, 3
+      if (facij1(ii) >= 2) then
+        Gnm(ii,2,1,1) = Gnm(ii,2,1,1) + Gnm(ii,1,1,1)*codAi(ii)
+        Gnm(ii,2,1,2) = Gnm(ii,2,1,2) + Gnm(ii,1,1,1)*coe1B(ii)
+      end if
+      do ri = 3, facij1(ii)
+        do rj = 1, ri - 1
+          Gnm(ii,ri  ,1,rj  ) = Gnm(ii,ri,1,rj)     + &
+          Gnm(ii,ri-2,1,rj  ) * real(ri-2,dp)*coe2A + &
+          Gnm(ii,ri-1,1,rj  ) * codAi(ii)
+          Gnm(ii,ri  ,1,rj+1) = Gnm(ii,ri,1,rj+1)   - &
+          Gnm(ii,ri-2,1,rj  ) * real(ri-2,dp)*coe3B + &
+          Gnm(ii,ri-1,1,rj  ) * coe1B(ii)
+        end do
+      end do
+      if (fackl1(ii) >= 2) then
+        Gnm(ii,1,2,1) = Gnm(ii,1,2,1) + Gnm(ii,1,1,1)*codBk(ii)
+        Gnm(ii,1,2,2) = Gnm(ii,1,2,2) + Gnm(ii,1,1,1)*coe1A(ii)
+      end if
+      do ri = 3, fackl1(ii)
+        do rj = 1, ri - 1
+          Gnm(ii,1,ri  ,rj  ) = Gnm(ii,1,ri,rj)     + &
+          Gnm(ii,1,ri-2,rj  ) * real(ri-2,dp)*coe2B + &
+          Gnm(ii,1,ri-1,rj  ) * codBk(ii)
+          Gnm(ii,1,ri  ,rj+1) = Gnm(ii,1,ri,rj+1)   - &
+          Gnm(ii,1,ri-2,rj  ) * real(ri-2,dp)*coe3A + &
+          Gnm(ii,1,ri-1,rj  ) * coe1A(ii)
+        end do
+      end do
+      !---------------------------------------------------------------------
+      ! use G(n+1,m) recursion only, codAi and codBk are asymmetric
+      do rk = 2, fackl1(ii)
+        if (facij1(ii) >= 2) then
+          do rj = 1, rk
+            Gnm(ii,2,rk  ,rj  ) = Gnm(ii,2,rk,rj)     + &
+            Gnm(ii,1,rk  ,rj  ) * codAi(ii)
+            Gnm(ii,2,rk  ,rj+1) = Gnm(ii,2,rk,rj+1)   + &
+            Gnm(ii,1,rk  ,rj  ) * coe1B(ii)           + &
+            Gnm(ii,1,rk-1,rj  ) * real(rk-1,dp)*coe2AB
+          end do
+        end if
+        do ri = 3, facij1(ii)
+          do rj = 1, ri + rk - 2
+            Gnm(ii,ri  ,rk  ,rj  ) = &
+            Gnm(ii,ri  ,rk  ,rj  ) + &
+            Gnm(ii,ri-2,rk  ,rj  ) * real(ri-2,dp)*coe2A +&
+            Gnm(ii,ri-1,rk  ,rj  ) * codAi(ii)
+            Gnm(ii,ri  ,rk  ,rj+1) = &
+            Gnm(ii,ri  ,rk  ,rj+1) - &
+            Gnm(ii,ri-2,rk  ,rj  ) * real(ri-2,dp)*coe3B +&
+            Gnm(ii,ri-1,rk  ,rj  ) * coe1B(ii) + &
+            Gnm(ii,ri-1,rk-1,rj  ) * real(rk-1,dp)*coe2AB
+          end do
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! transfer from codi to codj, codk to codl
+    Itrans = 0.0_dp
+    I = 0.0_dp
+    do ii = 1, 3
+      do rk = 1, facl(ii) + 1
+        do ri = 0, facj(ii)
+          do rj = 1, facij1(ii) + fackl1(ii)
+            Itrans(ii,rk,rj) = Itrans(ii,rk,rj) + &
+            binom(facj(ii),ri) * &
+            (codi(ii)-codj(ii))**(ri)*Gnm(ii,facij1(ii)-ri,fackl1(ii)-(rk-1),rj)
+          end do
+        end do
+      end do
+      do ri = 0, facl(ii)
+        do rj = 1, facij1(ii) + fackl1(ii)
+          I(ii,rj) = I(ii,rj) + &
+          binom(facl(ii),ri) * &
+          (codk(ii)-codl(ii))**(ri) * Itrans(ii,ri+1,rj)
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! product to PL
+    PL = 0.0_dp
+    do ri = 0, facij1(1)+fackl1(1)-1
+      do rj = 0, facij1(2)+fackl1(2)-1
+        do rk = 0, facij1(3)+fackl1(3)-1
+          PL(ri+rj+rk+1) = PL(ri+rj+rk+1) + &
+          I(1,ri+1) * I(2,rj+1) * I(3,rk+1)
+        end do
+      end do
+    end do
+    PL = PL * 2.0_dp * dsqrt(rou/pi)                                                  !有大问题
+    !---------------------------------------------------------------------
+    ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
+    int = 0.0_dp
+    if (abs(X) < 1E-13) then 
+      do ri = 1, nt+6
+        int = int + PL(ri) * 1.0_dp / real(2*ri-1,dp)
+      end do
+    else if (abs(X) <= xts) then
+      ! 2*ri-2 == 0
+      int_mic = 0.0_dp
+      do rk = 1, tayeps
+        int_mic = int_mic + X**(rk-1)*intTaycoe(rk,1)                                
+      end do
+      int = PL(1) * int_mic
+      ! 2*ri-2 > 0
+      do ri = 2, nt+6
+        int_mic = 0.0_dp
+        do rk = 1, tayeps
+          int_mic = int_mic + X**(rk-1)*intTaycoe(rk,2*ri-1)
+        end do
+        int = int + PL(ri) * int_mic
+      end do
+    else
+      supp1 = dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
+      supp3 = 1.0_dp / (2.0_dp*X)
+      supp4 = -exp(-X)
+      supp2 = (1.0_dp+supp4) * supp3
+      do ri = 1, nt+6
+        int_mic = supp1
+        if (2*ri - 2 >= 1) then
+          int_mic_ = int_mic
+          int_mic = supp2
+        end if
+        do rj = 2, 2*ri - 2
+          int_mic__ = int_mic_
+          int_mic_ = int_mic
+          int_mic = (supp4+real(rj-1,dp)*int_mic__) * supp3
+        end do
+        int = int + PL(ri) * int_mic
+      end do
+    end if
+  end function Integral_V_2e_OS_PRISM
+
+!-----------------------------------------------------------------------
+!> integration of two-electron repulsion potential in Cartesian coordinate
+!!
+!! scheme: Obara-Saika
+!!
+!! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
+!! xA  xB
+!! Li > Lj, Lk > Ll
+!! 
+!! it's compatible with PRISM and vectorization
+  real(dp) pure function Integral_V_2e_OS_vec(contr, coe, codi, codj, codk, codl, &
+  codA, codB, A, B, G, Gim, faci, facj, fack, facl) result(sumint)
+    implicit none
+    integer,intent(in)  :: contr
+    real(dp),intent(in) :: coe(contr), codi(3), codj(3), codk(3), codl(3)
+    real(dp),intent(in) :: codA(contr,3), codB(contr,3)
+    real(dp),intent(in) :: A(contr), B(contr), G(contr,3), Gim(contr,3)
+    integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
+    ! composite parameters, ref 10.1002/jcc.540040206
+    real(dp)            :: rou(contr), D(contr,3), X(contr)
+    real(dp)            :: codAi(contr,3), codBk(contr,3)
+    real(dp)            :: coe1A(contr,3),coe1B(contr,3),coe2A(contr)
+    real(dp)            :: coe2B(contr),coe2AB(contr),coe3A(contr),coe3B(contr)
+    integer             :: facij1(3), fackl1(3), nt
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Gnm
+    real(dp)            :: Gnm(contr,3,9,9,20)
+    ! ni transfer to nj, nk tranfer to nl
+    !DIR$ ATTRIBUTES ALIGN:align_size :: Itrans,I,PL
+    real(dp)            :: Itrans(contr,3,5,20), I(contr,3,20), PL(contr,24)
+    real(dp)            :: int_mic, int_mic_, int_mic__
+    real(dp)            :: supp1,supp2,supp3,supp4
+    integer             :: tayeps  ! Taylor expansion series of integral at X=0
+    ! direct integration (X > xts); Taylor expansion integration (X <= xts)
+    real(dp)            :: xts
+    integer             :: ri, rj, rk, ii  ! loop variables for Integral_V_2e_OS
+    real(dp)            :: integral
+    rou = A*B / (A+B)
+    D(:,1) = rou(:) * (codA(:,1)-codB(:,1))**2
+    D(:,2) = rou(:) * (codA(:,2)-codB(:,2))**2
+    D(:,3) = rou(:) * (codA(:,3)-codB(:,3))**2
+    X(:)   = sum(D(:,:),dim=2)
+    ! for non-normalized inputs, do not consider Gx, Gy, and Gz.
+    codAi(:,1)  = codA(:,1) - codi(1)
+    codAi(:,2)  = codA(:,2) - codi(2)
+    codAi(:,3)  = codA(:,3) - codi(3)
+    codBk(:,1)  = codB(:,1) - codk(1)
+    codBk(:,2)  = codB(:,2) - codk(2)
+    codBk(:,3)  = codB(:,3) - codk(3)
+    coe1A(:,1) = (A(:)*(codA(:,1)-codB(:,1))/(A(:)+B(:)))
+    coe1A(:,2) = (A(:)*(codA(:,2)-codB(:,2))/(A(:)+B(:)))
+    coe1A(:,3) = (A(:)*(codA(:,3)-codB(:,3))/(A(:)+B(:)))
+    coe1B(:,1) = (B(:)*(codB(:,1)-codA(:,1))/(A(:)+B(:)))
+    coe1B(:,2) = (B(:)*(codB(:,2)-codA(:,2))/(A(:)+B(:)))
+    coe1B(:,3) = (B(:)*(codB(:,3)-codA(:,3))/(A(:)+B(:)))
+    coe2A    = 1.0_dp/(2.0_dp*A)
+    coe2B    = 1.0_dp/(2.0_dp*B)
+    coe2AB   = 1.0_dp/(2.0_dp*(A+B))
+    coe3A    = A/(2.0_dp*B*(A+B))
+    coe3B    = B/(2.0_dp*A*(A+B))
+    nt       = sum(faci) + sum(facj) + sum(fack) + sum(facl)
+    facij1   = faci + facj + 1
+    fackl1   = fack + facl + 1
+
+    !=============================================================
+    ! Obara-Saika scheme for high angular momentum Gaussian functions
+    ! Ix(ni+nj,0,nk+nl,0,u)
+    select case (2*(nt+6)-2)
+    case(0:5)
+      tayeps = 5
+      xts = 0.01
+    case(6:10)
+      tayeps = 12
+      xts = 0.2
+    case(11:15)
+      tayeps = 15
+      xts = 0.5
+    case(16:20)
+      tayeps = 20
+      xts = 1.0
+    case(21:25)
+      tayeps = 25
+      xts = 2.0
+    case(26:30)
+      tayeps = 30
+      xts = 3.0
+    case(31:40)
+      tayeps = 35
+      xts = 4.0
+    case(41:50)
+      tayeps = 45
+      xts = 5.0
+    end select
+    Gnm = 0.0_dp
+    !---------------------------------------------------------------------
+    ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
+    do ii = 1, 3
+      Gnm(:,ii,1,1,1) = Gim(:,ii)
+      if (facij1(ii) >= 2) then
+        Gnm(:,ii,2,1,1) = Gnm(:,ii,2,1,1) + Gnm(:,ii,1,1,1)*codAi(:,ii)
+        Gnm(:,ii,2,1,2) = Gnm(:,ii,2,1,2) + Gnm(:,ii,1,1,1)*coe1B(:,ii)
+      end if
+      do ri = 3, facij1(ii)
+        do rj = 1, ri - 1
+          Gnm(:,ii,ri  ,1,rj  ) = Gnm(:,ii,ri,1,rj)     + &
+          Gnm(:,ii,ri-2,1,rj  ) * real(ri-2,dp)*coe2A(:) + &
+          Gnm(:,ii,ri-1,1,rj  ) * codAi(:,ii)
+          Gnm(:,ii,ri  ,1,rj+1) = Gnm(:,ii,ri,1,rj+1)   - &
+          Gnm(:,ii,ri-2,1,rj  ) * real(ri-2,dp)*coe3B(:) + &
+          Gnm(:,ii,ri-1,1,rj  ) * coe1B(:,ii)
+        end do
+      end do
+      if (fackl1(ii) >= 2) then
+        Gnm(:,ii,1,2,1) = Gnm(:,ii,1,2,1) + Gnm(:,ii,1,1,1)*codBk(:,ii)
+        Gnm(:,ii,1,2,2) = Gnm(:,ii,1,2,2) + Gnm(:,ii,1,1,1)*coe1A(:,ii)
+      end if
+      do ri = 3, fackl1(ii)
+        do rj = 1, ri - 1
+          Gnm(:,ii,1,ri  ,rj  ) = Gnm(:,ii,1,ri,rj)     + &
+          Gnm(:,ii,1,ri-2,rj  ) * real(ri-2,dp)*coe2B(:) + &
+          Gnm(:,ii,1,ri-1,rj  ) * codBk(:,ii)
+          Gnm(:,ii,1,ri  ,rj+1) = Gnm(:,ii,1,ri,rj+1)   - &
+          Gnm(:,ii,1,ri-2,rj  ) * real(ri-2,dp)*coe3A(:) + &
+          Gnm(:,ii,1,ri-1,rj  ) * coe1A(:,ii)
+        end do
+      end do
+      !---------------------------------------------------------------------
+      ! use G(n+1,m) recursion only, codAi and codBk are asymmetric
+      do rk = 2, fackl1(ii)
+        if (facij1(ii) >= 2) then
+          do rj = 1, rk
+            Gnm(:,ii,2,rk  ,rj  ) = Gnm(:,ii,2,rk,rj)     + &
+            Gnm(:,ii,1,rk  ,rj  ) * codAi(:,ii)
+            Gnm(:,ii,2,rk  ,rj+1) = Gnm(:,ii,2,rk,rj+1)   + &
+            Gnm(:,ii,1,rk  ,rj  ) * coe1B(:,ii)           + &
+            Gnm(:,ii,1,rk-1,rj  ) * real(rk-1,dp)*coe2AB(:)
+          end do
+        end if
+        do ri = 3, facij1(ii)
+          do rj = 1, ri + rk - 2
+            Gnm(:,ii,ri  ,rk  ,rj  ) = &
+            Gnm(:,ii,ri  ,rk  ,rj  ) + &
+            Gnm(:,ii,ri-2,rk  ,rj  ) * real(ri-2,dp)*coe2A(:) +&
+            Gnm(:,ii,ri-1,rk  ,rj  ) * codAi(:,ii)
+            Gnm(:,ii,ri  ,rk  ,rj+1) = &
+            Gnm(:,ii,ri  ,rk  ,rj+1) - &
+            Gnm(:,ii,ri-2,rk  ,rj  ) * real(ri-2,dp)*coe3B(:) +&
+            Gnm(:,ii,ri-1,rk  ,rj  ) * coe1B(:,ii) + &
+            Gnm(:,ii,ri-1,rk-1,rj  ) * real(rk-1,dp)*coe2AB(:)
+          end do
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! transfer from codi to codj, codk to codl
+    Itrans = 0.0_dp
+    I = 0.0_dp
+    do ii = 1, 3
+      do rk = 1, facl(ii) + 1
+        do ri = 0, facj(ii)
+          do rj = 1, facij1(ii) + fackl1(ii)
+            Itrans(:,ii,rk,rj) = Itrans(:,ii,rk,rj) + &
+            binom(facj(ii),ri)*(codi(ii)-codj(ii))**(ri) * &
+            Gnm(:,ii,facij1(ii)-ri,fackl1(ii)-(rk-1),rj)
+          end do
+        end do
+      end do
+      do ri = 0, facl(ii)
+        do rj = 1, facij1(ii) + fackl1(ii)
+          I(:,ii,rj) = I(:,ii,rj) + &
+          binom(facl(ii),ri)*(codk(ii)-codl(ii))**(ri) * &
+          Itrans(:,ii,ri+1,rj)
+        end do
+      end do
+    end do
+    !---------------------------------------------------------------------
+    ! product to PL
+    PL = 0.0_dp
+    do ri = 0, facij1(1)+fackl1(1)-1
+      do rj = 0, facij1(2)+fackl1(2)-1
+        do rk = 0, facij1(3)+fackl1(3)-1
+          PL(:,ri+rj+rk+1) = PL(:,ri+rj+rk+1) + &
+          I(:,1,ri+1) * I(:,2,rj+1) * I(:,3,rk+1)
+        end do
+      end do
+    end do
+    do ri = 1, nt+6
+      PL(:,ri) = PL(:,ri) * 2.0_dp * dsqrt(rou(:)/pi)
+    end do
+    !---------------------------------------------------------------------
+    !并行化
+    ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
+    sumint = 0.0_dp
+    do ii = 1, contr
+      integral = 0.0_dp
+      if (abs(X(ii)) < 1E-13) then 
+        do ri = 1, nt+6
+          integral = integral + PL(ii,ri) * 1.0_dp / real(2*ri-1,dp)
+        end do
+      else if (abs(X(ii)) <= xts) then
+        ! 2*ri-2 == 0
+        int_mic = 0.0_dp
+        do rk = 1, tayeps
+          int_mic = int_mic + X(ii)**(rk-1)*intTaycoe(rk,1)
+        end do
+        integral = PL(ii,1) * int_mic
+        ! 2*ri-2 > 0
+        do ri = 2, nt+6
+          int_mic = 0.0_dp
+          do rk = 1, tayeps
+            int_mic = int_mic + X(ii)**(rk-1)*intTaycoe(rk,2*ri-1)
+          end do
+          integral = integral + PL(ii,ri) * int_mic
+        end do
+      else
+        supp1 = dsqrt(pi/X(ii)) * erf(dsqrt(X(ii))) / 2.0_dp
+        supp3 = 1.0_dp / (2.0_dp*X(ii))
+        supp4 = -exp(-X(ii))
+        supp2 = (1.0_dp+supp4) * supp3
+        do ri = 1, nt+6
+          int_mic = supp1
+          if (2*ri - 2 >= 1) then
+            int_mic_ = int_mic
+            int_mic = supp2
+          end if
+          do rj = 2, 2*ri - 2
+            int_mic__ = int_mic_
+            int_mic_ = int_mic
+            int_mic = (supp4+real(rj-1,dp)*int_mic__) * supp3
+          end do
+          integral = integral + PL(ii,ri) * int_mic
+        end do
+      end if
+      sumint = sumint + coe(ii)*integral
+    end do
+  end function Integral_V_2e_OS_vec
+
+!-----------------------------------------------------------------------
+!> integration of two-electron repulsion potential in Cartesian coordinate
+!!
+!! scheme: Rys quadrature
+!!
+!! EXPRESS: |AOi>:(x1 - xi), |AOj>:(x1 - xj), |AOk>:(x2 - xk), |AOl>:(x2 - xl)
+!! xA  xB
+!! Li > Lj, Lk > Ll
+  real(dp) pure function Integral_V_2e_Rys(&
   faci,facj,fack,facl,ai,aj,ak,al,codi,codj,codk,codl) result(int)
     implicit none
     integer,intent(in)  :: faci(3), facj(3), fack(3), facl(3)
@@ -1371,13 +2072,8 @@ module Hamiltonian
     ! ni transfer to nj, nk tranfer to nl
     !DIR$ ATTRIBUTES ALIGN:align_size :: Itrans,I,PL
     real(dp)            :: Itrans(5,20,3), I(20,3), PL(24)
-    real(dp)            :: int_mic, int_mic_, int_mic__
-    real(dp)            :: supp1, supp2, supp3, supp4
     integer             :: facij1(3), fackl1(3)
-    integer             :: tayeps  ! Taylor expansion series of integral at X=0
-    ! direct integration (X > xts); Taylor expansion integration (X <= xts)
-    real(dp)            :: xts
-    integer             :: ri, rj, rk, ii  ! loop variables for Integral_V_2e
+    integer             :: ri, rj, rk, ii  ! loop variables for Integral_V_2e_OS
     ! Gaussian product
     codA(:) = (ai*codi(:)+aj*codj(:)) / (ai+aj)
     codB(:) = (ak*codk(:)+al*codl(:)) / (ak+al)
@@ -1406,291 +2102,79 @@ module Hamiltonian
     fackl1 = fack + facl + 1
     !=============================================================
     ! Rys quadrature for low angular momentum Gaussian functions
-    if (.false.) then       !int(real(nt)/1.99) + 1 <= 5
-      nroots = int(real(nt)/1.99) + 1
-      ! call rys_roots(from LibCInt), GRysroots(from GAMESS)
-      call Grysroots(nroots, X, u, w)
-      int = 0.0_dp
-      do ri = 1, nroots
-        !t2 = u(ri) / (rou+u(ri))             ! for rys_roots
-        t2 = u(ri)                           ! for GRysroots
-        f0 = coe2AB*t2
-        f3 = coe2A-coe3B*t2
-        f4 = coe2B-coe3A*t2
-        !---------------------------Gnm---------------------------
-        Gnm = 0.0_dp
-        do ii = 1, 3
-          f1 = codA(ii)+coe1B(ii)*t2
-          f2 = codB(ii)+coe1A(ii)*t2
-          Gnm(1,1,1,ii) = Gim(ii)
-          do rj = 2, facij1(ii)
-            if (rj == 2) then
-              Gnm(2,1,1,ii) = Gnm(2,1,1,ii) + &
-              Gnm(1,1,1,ii)*f1
-            else
-              Gnm(rj,1,1,ii) = Gnm(rj,1,1,ii) + &
-              Gnm(rj-2,1,1,ii)*real(rj-2)*f3 + &
-              Gnm(rj-1,1,1,ii)*f1
-            end if
-          end do
-          do rj = 2, fackl1(ii)
-            if (rj == 2) then
-              Gnm(1,2,1,ii) = Gnm(1,2,1,ii) + &
-              Gnm(1,1,1,ii)*f2
-            else
-              Gnm(1,rj,1,ii) = Gnm(1,rj,1,ii) + &
-              Gnm(1,rj-2,1,ii)*real(rj-2)*f4 + &
-              Gnm(1,rj-1,1,ii)*f2
-            end if
-          end do
-          do rj = 2, fackl1(ii)
-            do rk = 2, facij1(ii)
-              if (rk == 2) then
-                Gnm(2,rj,1,ii) = Gnm(2,rj,1,ii) + &
-                Gnm(1,rj,1,ii)*f1 + &
-                Gnm(1,rj-1,1,ii)*real(rj-1)*f0
-              else
-                Gnm(rk,rj,1,ii) = Gnm(rk,rj,1,ii) + &
-                Gnm(rk-2,rj,1,ii)*real(rk-2)*f3 + &
-                Gnm(rk-1,rj,1,ii)*f1 + &
-                Gnm(rk-1,rj-1,1,ii)*real(rj-1)*f0
-              end if
-            end do
-          end do
-        end do
-        !---------------------------I---------------------------
-        Itrans = 0.0_dp
-        I = 0.0_dp
-        do ii = 1, 3
-          do rk = 1, facl(ii)+1
-            do rj = 0, facj(ii)
-              Itrans(rk,1,ii) = Itrans(rk,1,ii) + &
-              binomialcoe(facj(ii),rj)*(codi(ii)-codj(ii))**rj*&
-              Gnm(facij1(ii)-rj,fackl1(ii)+1-rk,1,ii)
-            end do
-          end do
-          do rj = 0, facl(ii)
-            I(1,ii) = I(1,ii) + &
-            binomialcoe(facl(ii),rj)*(codk(ii)-codl(ii))**(rj)*&
-            Itrans(rj+1,1,ii)
-          end do
-        end do
-        !---------------------------PL---------------------------
-        PL(1) = I(1,1) * I(1,2) * I(1,3)
-        int = int + w(ri)*PL(1)
-      end do
-      int = int * 2.0_dp * dsqrt(rou/pi)
-    !=============================================================
-    ! direct integral for high angular momentum Gaussian functions
-    else
-      ! Ix(ni+nj,0,nk+nl,0,u)
-      select case (2*(nt+6)-2)
-      case(0:5)
-        tayeps = 5
-        xts = 0.01
-      case(6:10)
-        tayeps = 12
-        xts = 0.2
-      case(11:15)
-        tayeps = 15
-        xts = 0.5
-      case(16:20)
-        tayeps = 20
-        xts = 1.0
-      case(21:25)
-        tayeps = 25
-        xts = 2.0
-      case(26:30)
-        tayeps = 30
-        xts = 3.0
-      case(31:40)
-        tayeps = 35
-        xts = 4.0
-      case(41:50)
-        tayeps = 45
-        xts = 5.0
-      end select
+    nroots = int(real(nt)/1.99) + 1
+    ! call rys_roots(from LibCInt), GRysroots(from GAMESS)
+    call Grysroots(nroots, X, u, w)
+    int = 0.0_dp
+    do ri = 1, nroots
+      !t2 = u(ri) / (rou+u(ri))             ! for rys_roots
+      t2 = u(ri)                           ! for GRysroots
+      f0 = coe2AB*t2
+      f3 = coe2A-coe3B*t2
+      f4 = coe2B-coe3A*t2
+      !---------------------------Gnm---------------------------
       Gnm = 0.0_dp
-      !---------------------------------------------------------------------
-      ! reduce the factor (1-t^2)^(1/2)*exp(-Dx*t^2)
       do ii = 1, 3
+        f1 = codA(ii)+coe1B(ii)*t2
+        f2 = codB(ii)+coe1A(ii)*t2
         Gnm(1,1,1,ii) = Gim(ii)
-        do ri = 2, facij1(ii)
-          if (ri == 2) then
+        do rj = 2, facij1(ii)
+          if (rj == 2) then
             Gnm(2,1,1,ii) = Gnm(2,1,1,ii) + &
-            Gnm(1,1,1,ii)*codA(ii)
-            Gnm(2,1,2,ii) = Gnm(2,1,2,ii) + &
-            Gnm(1,1,1,ii)*coe1B(ii)
+            Gnm(1,1,1,ii)*f1
           else
-            do rj = 1, ri - 1
-              Gnm(ri  ,1,rj  ,ii) = Gnm(ri,1,rj,ii) + &
-              Gnm(ri-2,1,rj  ,ii) * real(ri-2)*coe2A + &
-              Gnm(ri-1,1,rj  ,ii) * codA(ii)
-              Gnm(ri  ,1,rj+1,ii) = Gnm(ri,1,rj+1,ii) - &
-              Gnm(ri-2,1,rj  ,ii) * real(ri-2)*coe3B + &
-              Gnm(ri-1,1,rj  ,ii) * coe1B(ii)
-            end do
+            Gnm(rj,1,1,ii) = Gnm(rj,1,1,ii) + &
+            Gnm(rj-2,1,1,ii)*real(rj-2)*f3 + &
+            Gnm(rj-1,1,1,ii)*f1
           end if
         end do
-        do ri = 2, fackl1(ii)
-          if (ri == 2) then
+        do rj = 2, fackl1(ii)
+          if (rj == 2) then
             Gnm(1,2,1,ii) = Gnm(1,2,1,ii) + &
-            Gnm(1,1,1,ii)*codB(ii)
-            Gnm(1,2,2,ii) = Gnm(1,2,2,ii) + &
-            Gnm(1,1,1,ii)*coe1A(ii)
+            Gnm(1,1,1,ii)*f2
           else
-            do rj = 1, ri - 1
-              Gnm(1,ri  ,rj  ,ii) = Gnm(1,ri,rj,ii) + &
-              Gnm(1,ri-2,rj  ,ii) * real(ri-2)*coe2B + &
-              Gnm(1,ri-1,rj  ,ii) * codB(ii)
-              Gnm(1,ri  ,rj+1,ii) = Gnm(1,ri,rj+1,ii) - &
-              Gnm(1,ri-2,rj  ,ii) * real(ri-2)*coe3A + &
-              Gnm(1,ri-1,rj  ,ii) * coe1A(ii)
-            end do
+            Gnm(1,rj,1,ii) = Gnm(1,rj,1,ii) + &
+            Gnm(1,rj-2,1,ii)*real(rj-2)*f4 + &
+            Gnm(1,rj-1,1,ii)*f2
           end if
         end do
-        !---------------------------------------------------------------------
-        ! use G(n+1,m) recursion only, codA and codB are asymmetric
-        do rk = 2, fackl1(ii)
-          do ri = 2, facij1(ii)
-            if (ri == 2) then
-              do rj = 1, rk
-                Gnm(2,rk  ,rj  ,ii) = Gnm(2,rk,rj,ii) + &
-                Gnm(1,rk  ,rj  ,ii) * codA(ii)
-                Gnm(2,rk  ,rj+1,ii) = Gnm(2,rk,rj+1,ii) + &
-                Gnm(1,rk  ,rj  ,ii) * coe1B(ii) + &
-                Gnm(1,rk-1,rj  ,ii) * real(rk-1)*coe2AB
-              end do
+        do rj = 2, fackl1(ii)
+          do rk = 2, facij1(ii)
+            if (rk == 2) then
+              Gnm(2,rj,1,ii) = Gnm(2,rj,1,ii) + &
+              Gnm(1,rj,1,ii)*f1 + &
+              Gnm(1,rj-1,1,ii)*real(rj-1)*f0
             else
-              do rj = 1, ri + rk - 2
-                Gnm(ri  ,rk  ,rj  ,ii) = &
-                Gnm(ri  ,rk  ,rj  ,ii) + &
-                Gnm(ri-2,rk  ,rj  ,ii) * real(ri-2)*coe2A +&
-                Gnm(ri-1,rk  ,rj  ,ii) * codA(ii)
-                Gnm(ri  ,rk  ,rj+1,ii) = &
-                Gnm(ri  ,rk  ,rj+1,ii) - &
-                Gnm(ri-2,rk  ,rj  ,ii) * real(ri-2)*coe3B +&
-                Gnm(ri-1,rk  ,rj  ,ii) * coe1B(ii) + &
-                Gnm(ri-1,rk-1,rj  ,ii) * real(rk-1)*coe2AB
-              end do
+              Gnm(rk,rj,1,ii) = Gnm(rk,rj,1,ii) + &
+              Gnm(rk-2,rj,1,ii)*real(rk-2)*f3 + &
+              Gnm(rk-1,rj,1,ii)*f1 + &
+              Gnm(rk-1,rj-1,1,ii)*real(rj-1)*f0
             end if
           end do
         end do
       end do
-      !---------------------------------------------------------------------
-      ! transfer from codi to codj, codk to codl
+      !---------------------------I---------------------------
       Itrans = 0.0_dp
       I = 0.0_dp
       do ii = 1, 3
-        do rk = 1, facl(ii) + 1
-          do ri = 0, facj(ii)
-            do rj = 1, facij1(ii) + fackl1(ii)
-              Itrans(rk,rj,ii) = Itrans(rk,rj,ii) + &
-              binomialcoe(facj(ii),ri) * (codi(ii)-codj(ii))**(ri) * &
-              Gnm(facij1(ii)-ri, fackl1(ii)-(rk-1),rj,ii)
-            end do
+        do rk = 1, facl(ii)+1
+          do rj = 0, facj(ii)
+            Itrans(rk,1,ii) = Itrans(rk,1,ii) + &
+            binom(facj(ii),rj)*(codi(ii)-codj(ii))**rj*&
+            Gnm(facij1(ii)-rj,fackl1(ii)+1-rk,1,ii)
           end do
         end do
-        do ri = 0, facl(ii)
-          do rj = 1, facij1(ii) + fackl1(ii)
-            I(rj,ii) = I(rj,ii) + binomialcoe(facl(ii),ri) * &
-            (codk(ii)-codl(ii))**(ri) * Itrans(ri+1,rj,ii)
-          end do
+        do rj = 0, facl(ii)
+          I(1,ii) = I(1,ii) + &
+          binom(facl(ii),rj)*(codk(ii)-codl(ii))**(rj)*&
+          Itrans(rj+1,1,ii)
         end do
       end do
-      !---------------------------------------------------------------------
-      ! product to PL
-      PL = 0.0_dp
-      do ri = 0, facij1(1)+fackl1(1)-1
-        do rj = 0, facij1(2)+fackl1(2)-1
-          do rk = 0, facij1(3)+fackl1(3)-1
-            PL(ri+rj+rk+1) = PL(ri+rj+rk+1) + &
-            I(ri+1,1) * I(rj+1,2) * I(rk+1,3)
-          end do
-        end do
-      end do
-      PL = PL * 2.0_dp * dsqrt(rou/pi)
-      !---------------------------------------------------------------------
-      ! integral of t exp(-X*t^2)*PL(t^2), 0 -> 1
-      int = 0.0_dp
-      if (abs(X) < 1E-13) then 
-        do ri = 1, nt+6
-          int_mic = 1.0_dp / (real(2*ri-2)+1.0_dp)
-          int = int + PL(ri) * int_mic
-        end do
-      else if (abs(X) <= xts) then
-        do ri = 1, nt+6
-          int_mic = 0.0_dp
-          if (2*ri-2 == 0) then
-            do rk = 1, tayeps
-              int_mic = int_mic + X**(rk-1)*intTaycoe(rk,1)
-            end do
-          else if (2*ri-2 == 1) then
-            do rk = 1, tayeps
-              int_mic = int_mic + X**(rk-1)*intTaycoe(rk,2)
-            end do
-          else
-            do rk = 1, tayeps
-              int_mic = int_mic + X**(rk-1)*intTaycoe(rk,2*ri-1)
-            end do
-          end if
-          int = int + PL(ri) * int_mic
-        end do
-      else
-        supp1 = dsqrt(pi/X) * erf(dsqrt(X)) / 2.0_dp
-        supp3 = 1.0_dp / (2.0_dp*X)
-        supp4 = -exp(-X)
-        supp2 = (1.0_dp+supp4) * supp3
-        do ri = 1, nt+6
-          do rj = 0, 2*ri - 2
-            if (rj == 0) then
-              int_mic = supp1
-            else if(rj == 1) then
-              int_mic_ = int_mic
-              int_mic = supp2
-            else
-              int_mic__ = int_mic_
-              int_mic_ = int_mic
-              int_mic = (supp4+real(rj-1)*int_mic__) * supp3
-            end if
-          end do
-          int = int + PL(ri) * int_mic
-        end do
-      end if
-    end if
-    return
-  end function Integral_V_2e
-
-!------------------------------------------------------------
-!> initialising Integral_V_1e and Integral_V_2e
-  subroutine Integral_V_init()
-    implicit none
-    integer             :: ii, jj
-    real(dp)            :: expTaycoe(64)
-    real(dp)            :: erfTaycoe(64)
-    expTaycoe = 0.0_dp     ! Taylor expansion coefficients for exp(-x)
-    erfTaycoe = 0.0_dp     ! Taylor expansion coefficients for I_0
-    do jj = 1, 64
-      expTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/factorial(jj-1))
-      erfTaycoe(jj) = (-1.0_dp)**(jj-1)*(1.0_dp/(real(2*jj-1)*factorial(jj-1)))
+      !---------------------------PL---------------------------
+      PL(1) = I(1,1) * I(1,2) * I(1,3)
+      int = int + w(ri)*PL(1)
     end do
-    intTaycoe = 0.0_dp
-    do ii = 0, 42
-      if (ii == 0) then     ! Taycoes for I_0, GNC^1*[1 + (GNC*br2)^2 + ...]
-        do jj = 1, 64
-          intTaycoe(jj,1) = erfTaycoe(jj)
-        end do
-      else if(ii == 1) then ! Taycoes for I_1, GNC^2*[1 + (GNC*br2)^2 + ...]
-        do jj = 1, 63
-          intTaycoe(jj,2) = -0.5_dp*expTaycoe(jj+1)
-        end do
-      else                  ! Taycoes for I_n, GNC^(n+1)*[1 + (GNC*br2)^2 + ...]
-        do jj = 1, 64-int(real(ii)/1.99)-mod(ii,2)
-          intTaycoe(jj,ii+1) = 0.5_dp*(real(ii-1,dp)*intTaycoe(jj+1,ii-1) - &
-                                       expTaycoe(jj+1))
-        end do
-      end if
-    end do
-  end subroutine Integral_V_init
+    int = int * 2.0_dp * dsqrt(rou/pi)
+  end function Integral_V_2e_Rys
   
 end module Hamiltonian

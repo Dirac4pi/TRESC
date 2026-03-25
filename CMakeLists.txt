@@ -315,7 +315,7 @@ elseif(UNIX)
     "-threads "
     "-assume byterecl "
     "-qopenmp "
-    "-xCORE-AVX2 "    # -xHost only works on intel processors
+    "-xHost "    # -xHost CORE-AVX2 only works on intel processors
     "-fma "
   )
   set(CMAKE_Fortran_FLAGS "${COMPILE_STR}")
@@ -332,7 +332,10 @@ elseif(UNIX)
   # release compile options
   string(CONCAT RELEASE_STR
     "-O3 "
-    "-ipo "
+    #"-ipo "
+    "-qopt-report=3 "
+    "-qopt-report-phase=vec "
+    "-qopt-report-file=stdout "
     #"-fp-model precise "   # I want more precession
     #"-fp-model fast=2 "    # I want more efficiency
   )

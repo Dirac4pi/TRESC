@@ -12,6 +12,43 @@ module Fundamentals
   use IFPORT
   use LAPACK95
   
+  integer, parameter, dimension(0:16, 0:16) :: binom = reshape([ &
+  ! n = 0
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 1
+  1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 2
+  1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 3
+  1, 3, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 4
+  1, 4, 6, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 5
+  1, 5, 10, 10, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 6
+  1, 6, 15, 20, 15, 6, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 7
+  1, 7, 21, 35, 35, 21, 7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 8
+  1, 8, 28, 56, 70, 56, 28, 8, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 9
+  1, 9, 36, 84, 126, 126, 84, 36, 9, 1, 0, 0, 0, 0, 0, 0, 0, &
+  ! n = 10
+  1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1, 0, 0, 0, 0, 0, 0, &
+  ! n = 11
+  1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1, 0, 0, 0, 0, 0, &
+  ! n = 12
+  1, 12, 66, 220, 495, 792, 924, 792, 495, 220, 66, 12, 1, 0, 0, 0, 0, &
+  ! n = 13
+  1, 13, 78, 286, 715, 1287, 1716, 1716, 1287, 715, 286, 78, 13, 1, 0, 0, 0, &
+  ! n = 14
+  1, 14, 91, 364, 1001, 2002, 3003, 3432, 3003, 2002, 1001, 364, 91, 14, 1, 0, 0, &
+  ! n = 15
+  1, 15, 105, 455, 1365, 3003, 5005, 6435, 6435, 5005, 3003, 1365, 455, 105, 15, 1, 0, &
+  ! n = 16
+  1, 16, 120, 560, 1820, 4368, 8008, 11440, 12870, 11440, 8008, 4368, 1820, 560, 120, 16, 1  &
+  ], shape(binom), order=[2,1])
+
 !-----------------------------------------------------------------------
 ! definitions for programming
   integer             :: ios                        ! universal operating status
@@ -157,7 +194,7 @@ module Fundamentals
   private :: real_sort, cmplx_sort
   public  :: dump_matrix, load_matrix, generate_output, terminate
   public  :: matmul, norm, lowercase, is_alpha, diag, inverse
-  public  :: can_orth, symm_orth, atnz2block, Wigner_d, binomialcoe
+  public  :: can_orth, symm_orth, atnz2block, Wigner_d
   public  :: factorial, det, Hermite_poly, swap, quicksort, sort, Identity
 
   contains
@@ -1250,6 +1287,7 @@ module Fundamentals
 !-----------------------------------------------------------------------
 !> fast factorial of given a
   pure elemental real(dp) function factorial(a)
+  !$omp declare simd(factorial)
     implicit none
     integer,intent(in) :: a
     integer            :: na
@@ -1299,85 +1337,6 @@ module Fundamentals
     end if
     return
   end function factorial
-  
-!-----------------------------------------------------------------------
-!> fast bionomial coefficient of given N, M (C_N^M)
-!!
-!! M <= 9: return
-!!
-!! 9 < M <= 13: recursive
-!!
-!! M > 13: direct
-  pure recursive real(dp) function binomialcoe(N,M) result(bicoe)
-    implicit none
-    integer,intent(in) :: N,M
-    integer            :: fi, numerator, denominator
-    if (M == 0 .or. N == 0 .or. M == N) then
-      bicoe = 1.0
-      return
-    else if (M == 1) then
-      bicoe = real(N,dp)
-      return
-    else if (2*M > N) then
-      bicoe = binomialcoe(N,N-M)
-      return
-    end if
-    select case (N)
-    case (4)
-      bicoe = 6.0_dp
-    case (5)
-      bicoe = 10.0_dp
-    case (6)
-      select case (M)
-      case (2)
-        bicoe = 15.0_dp
-      case (3)
-        bicoe = 20.0_dp
-      end select
-    case (7)
-      select case (M)
-      case (2)
-        bicoe = 21.0_dp
-      case (3)
-        bicoe = 35.0_dp
-      end select
-    case (8)
-      select case (M)
-      case (2)
-        bicoe = 28.0_dp
-      case (3)
-        bicoe = 56.0_dp
-      case (4)
-        bicoe = 70.0_dp
-      end select
-    case (9)
-      select case (M)
-      case (2)
-        bicoe = 36.0_dp
-      case (3)
-        bicoe = 84.0_dp
-      case (4)
-        bicoe = 126.0_dp
-      end select
-    end select
-    if (N <= 9) then
-      return
-    else if (N <= 13) then
-      bicoe = binomialcoe(N-1,M) + binomialcoe(N-1,M-1)
-      return
-    else
-      bicoe = 1.0
-      numerator = 1
-      fi = N
-      do while(fi > M)
-        numerator = numerator * fi
-        fi = fi - 1
-      end do
-      denominator = factorial(N - M)
-      bicoe = real(numerator) / real(denominator)
-      return
-    end if
-  end function binomialcoe
 
 !-----------------------------------------------------------------------
 !> fast Hermite polynomials of given n, x (H_n(x))

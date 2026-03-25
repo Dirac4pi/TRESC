@@ -2112,47 +2112,58 @@ end function Check_SCF_Conv
 !! should be called before Assign_Fock_V2e and Assign_Fock_AVA2e
   subroutine Assign_Schwarz_V2e()
     implicit none
-    integer  :: ui, uj              ! loop variables for Assign_Schwarz_V2e
-    !----------------------------------
-    integer  :: contri              ! contr of atomi, shelli
-    integer  :: Li                  ! angular quantum number of |AOi>
-    integer  :: Mi                  ! magnetic quantum number of |AOi>
-    !----------------------------------
-    integer  :: contrj              ! contr of atomj, shellj
-    integer  :: Lj                  ! angular quantum number of |AOj>
-    integer  :: Mj                  ! magnetic quantum number of |AOj>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, coei, coej
-    real(dp) :: expi(20)            ! expo of |AOi>
-    real(dp) :: expj(20)            ! expo of |AOj>
-    real(dp) :: coei(20)            ! coefficient of |AOi>
-    real(dp) :: coej(20)            ! coefficient of |AOj>
-    real(dp) :: codi(3)             ! coordinate of center of |AOi>
-    real(dp) :: codj(3)             ! coordinate of center of |AOj>
+    integer     :: ui, uj              ! loop variables for Assign_Schwarz_V2e
+    !----------PRISM parameters of <AOi|AOj>----------
+    integer     :: contri              ! contr of atom_i, shell_i
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
+    integer     :: contrj              ! contr of atom_j, shell_j
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, Gii, Gimii, codA
+    real(dp)    :: A(20,20)            ! PRISM parameters
+    real(dp)    :: Gii(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimii(3,20,20)      ! PRISM parameters
+    real(dp)    :: codA(3,20,20)       ! PRISM parameters
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, Gjj, Gimjj, codB, coei, coej
+    real(dp)    :: B(20,20)            ! PRISM parameters
+    real(dp)    :: Gjj(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimjj(3,20,20)      ! PRISM parameters
+    real(dp)    :: codB(3,20,20)       ! PRISM parameters
+    real(dp)    :: coei(20)            ! coefficient of |AOi>
+    real(dp)    :: coej(20)            ! coefficient of |AOj>
     if (allocated(iijj_V)) return
     write(60,'(A)') '  -- calculate Schwarz matrix <ij|V|ij>'
     allocate(iijj_V(cbdm,cbdm), source=0.0_dp)
     do ui = 1, cbdm
       contri = cbdata(ui) % contr
-      Li     = cbdata(ui) % L
-      Mi     = cbdata(ui) % M
-      expi(1:contri) = cbdata(ui) % expo(1:contri)
+      faci   = cbdata(ui) % fac
       coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
-      codi = cbdata(ui) % pos
+      codi   = cbdata(ui) % pos
+      A(1:contri,1:contri) = AOpair(ui,ui) % sumexpo
+      Gii(:,1:contri,1:contri) = AOpair(ui,ui) % Gij
+      Gimii(:,1:contri,1:contri) = AOpair(ui,ui) % Gimij
+      codA(:,1:contri,1:contri) = AOpair(ui,ui) % cod
       do uj = ui, cbdm
         contrj = cbdata(uj) % contr
-        Lj     = cbdata(uj) % L
-        Mj     = cbdata(uj) % M
-        expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+        facj   = cbdata(uj) % fac
         coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
-        codj = cbdata(uj) % pos
+        codj   = cbdata(uj) % pos
+        B(1:contrj,1:contrj) = AOpair(uj,uj) % sumexpo
+        Gjj(:,1:contrj,1:contrj) = AOpair(uj,uj) % Gij
+        Gimjj(:,1:contrj,1:contrj) = AOpair(uj,uj) % Gimij
+        codB(:,1:contrj,1:contrj) = AOpair(uj,uj) % cod
         !---------------------------------
         ! <ij|V|ij> = (ii|V|jj)
-        iijj_V(ui,uj) = iijj_V(ui,uj) + Calc_V_2e(&
+        iijj_V(ui,uj) = Calc_V_2e(&
         contri,contri,contrj,contrj,&
-        coei,coei,coej,coej,&
-        AO_fac(:,Li,Mi),AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),AO_fac(:,Lj,Mj),&
-        expi,expi,expj,expj,&
-        codi,codi,codj,codj)
+        coei(1:contri),coei(1:contri),coej(1:contrj),coej(1:contrj),&
+        codi,codi,codj,codj,&
+        codA(:,1:contri,1:contri),codB(:,1:contrj,1:contrj),&
+        A(1:contri,1:contri),B(1:contrj,1:contrj),&
+        Gii(:,1:contri,1:contri),Gjj(:,1:contrj,1:contrj),&
+        Gimii(:,1:contri,1:contri),Gimjj(:,1:contrj,1:contrj),&
+        faci,faci,facj,facj)
         iijj_V(uj,ui) = iijj_V(ui,uj)
       end do
     end do
@@ -2172,33 +2183,42 @@ end function Check_SCF_Conv
 !! should be called before Assign_Fock_ARVRA2e
   subroutine Assign_Schwarz_pVp2e()
     implicit none
-    integer          :: ui, uj               ! loop var for Assign_Schwarz_pVp2e
-    integer          :: um, un
-    integer          :: uo, up
-    integer          :: ii, ii2, numi
-    !----------------------------------
-    integer          :: contri               ! contr of atomi, shelli
-    integer          :: Li                   ! angular quantum number of |AOi>
-    integer          :: Mi                   ! magnetic quantum number of |AOi>
-    !----------------------------------
-    integer          :: contrj               ! contr of atomj, shellj
-    integer          :: Lj                   ! angular quantum number of |AOj>
-    integer          :: Mj                   ! magnetic quantum number of |AOj>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, coei, coej
-    real(dp)         :: expi(20)             ! expo of |AOi>
-    real(dp)         :: expj(20)             ! expo of |AOj>
-    real(dp)         :: coei(20)             ! coefficient of |AOi>
-    real(dp)         :: coej(20)             ! coefficient of |AOj>
-    real(dp)         :: codi(3)              ! coordinate of center of |AOi>
-    real(dp)         :: codj(3)              ! coordinate of center of |AOj>
-    integer          :: i                    ! openMP parallel variable
+    integer     :: i                   ! openMP parallel variable
+    integer     :: ui, uj              ! loop variables
+    integer     :: um, un
+    integer     :: uo, up
+    integer     :: ii, ii2, numi
+    !----------PRISM parameters of <AOi|AOj>----------
+    integer     :: contri              ! contr of atom_i, shell_i
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
     !DIR$ ATTRIBUTES ALIGN:align_size :: coedx_i, coedy_i, coedz_i
-    real(dp)         :: coedx_i(32)          ! coefficient.derivative x.|AOi>
-    real(dp)         :: coedy_i(32)          ! coefficient.derivative y.|AOi>
-    real(dp)         :: coedz_i(32)          ! coefficient.derivative z.|AOi>
-    integer          :: facdx_i(3,2)         ! x,y,z factor.derivative x.|AOi>
-    integer          :: facdy_i(3,2)         ! x,y,z factor.derivative y.|AOi>
-    integer          :: facdz_i(3,2)         ! x,y,z factor.derivative z.|AOi>
+    real(dp)    :: coedx_i(32)         ! coefficient.derivative x.|AOi>
+    real(dp)    :: coedy_i(32)         ! coefficient.derivative y.|AOi>
+    real(dp)    :: coedz_i(32)         ! coefficient.derivative z.|AOi>
+    integer     :: facdx_i(3,2)        ! x,y,z factor.derivative x.|AOi>
+    integer     :: facdy_i(3,2)        ! x,y,z factor.derivative y.|AOi>
+    integer     :: facdz_i(3,2)        ! x,y,z factor.derivative z.|AOi>
+    integer     :: contrj              ! contr of atom_j, shell_j
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, Gii, Gimii, codA, coei, coej
+    real(dp)    :: A(20,20)            ! PRISM parameters
+    real(dp)    :: Gii(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimii(3,20,20)      ! PRISM parameters
+    real(dp)    :: codA(3,20,20)       ! PRISM parameters
+    real(dp)    :: coei(20)            ! coefficient of |AOi>
+    real(dp)    :: coej(20)            ! coefficient of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, Gjj, Gimjj, codB
+    real(dp)    :: B(20,20)            ! PRISM parameters
+    real(dp)    :: Gjj(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimjj(3,20,20)      ! PRISM parameters
+    real(dp)    :: codB(3,20,20)       ! PRISM parameters
+    !DIR$ ATTRIBUTES ALIGN:align_size :: AB, Gij, Gimij, codAB
+    real(dp)    :: AB(20,20)           ! PRISM parameters
+    real(dp)    :: Gij(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimij(3,20,20)      ! PRISM parameters
+    real(dp)    :: codAB(3,20,20)      ! PRISM parameters
     type threadlocal    ! thread-local storage to avoid thread-sync overhead
       real(dp),allocatable :: iijj_V(:,:), iijj_pxVpx(:,:)
       real(dp),allocatable :: iijj_pyVpy(:,:), iijj_pzVpz(:,:)
@@ -2215,9 +2235,9 @@ end function Check_SCF_Conv
     allocate(ijij_pxVpx(cbdm,cbdm), ijij_pyVpy(cbdm,cbdm), source=0.0_dp)
     allocate(ijij_pzVpz(cbdm,cbdm), source=0.0_dp)
     !$omp parallel num_threads(threads) default(shared) private(i,ui,numi,  &
-    !$omp& uj,um,un,uo,up,ii,ii2,contri,Li,Mi,contrj,Lj,Mj,expi,expj,coei,coej,&
-    !$omp& codi,codj,facdx_i,facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,tl)  &
-    !$omp& if(threads < nproc)
+    !$omp& uj,um,un,uo,up,ii,ii2,contri,coei,faci,codi,contrj,coej,facj,codj,&
+    !$omp& A,Gii,Gimii,codA,B,Gjj,Gimjj,codB,AB,Gij,Gimij,codAB,facdx_i,&
+    !$omp& facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,tl) if(threads < nproc)
     allocate(tl%iijj_V(cbdm,cbdm), tl%iijj_pxVpx(cbdm,cbdm), source=0.0_dp)
     allocate(tl%iijj_pyVpy(cbdm,cbdm), tl%iijj_pzVpz(cbdm,cbdm), source=0.0_dp)
     allocate(tl%ijij_pxVpx(cbdm,cbdm), tl%ijij_pyVpy(cbdm,cbdm), source=0.0_dp)
@@ -2226,101 +2246,110 @@ end function Check_SCF_Conv
     do i = 1, cbdm
       ui = i
       contri = cbdata(ui) % contr
-      Li     = cbdata(ui) % L
-      Mi     = cbdata(ui) % M
-      expi(1:contri) = cbdata(ui) % expo(1:contri)
+      faci   = cbdata(ui) % fac
       coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
-      codi = cbdata(ui) % pos
-      !---------------------------------------
-      ! factor of x^m*d(exp)
-      facdx_i(:,1) = AO_fac(:,Li,Mi)
-      facdx_i(1,1) = facdx_i(1,1) + 1
-      facdy_i(:,1) = AO_fac(:,Li,Mi)
-      facdy_i(2,1) = facdy_i(2,1) + 1
-      facdz_i(:,1) = AO_fac(:,Li,Mi)
-      facdz_i(3,1) = facdz_i(3,1) + 1
-      !-------------------------------
-      ! factor of d(x^m)*exp
-      facdx_i(:,2) = AO_fac(:,Li,Mi)
-      facdx_i(1,2) = max(facdx_i(1,2)-1,0)
-      facdy_i(:,2) = AO_fac(:,Li,Mi)
-      facdy_i(2,2) = max(facdy_i(2,2)-1,0)
-      facdz_i(:,2) = AO_fac(:,Li,Mi)
-      facdz_i(3,2) = max(facdz_i(3,2)-1,0)
-      !---------------------------------------
-      ! coefficient of x^m*d(exp)
-      coedx_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-      coedy_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-      coedz_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-      !---------------------------------
-      ! coefficient of d(x^m)*exp
-      coedx_i(contri+1:2*contri) = AO_fac(1,Li,Mi) * coei(1:contri)
-      coedy_i(contri+1:2*contri) = AO_fac(2,Li,Mi) * coei(1:contri)
-      coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
+      codi    = cbdata(ui) % pos
+      facdx_i = cbdata(ui) % facdx
+      facdy_i = cbdata(ui) % facdy
+      facdz_i = cbdata(ui) % facdz
+      coedx_i(1:2*contri) = cbdata(ui) % coedx(1:2*contri)
+      coedy_i(1:2*contri) = cbdata(ui) % coedy(1:2*contri)
+      coedz_i(1:2*contri) = cbdata(ui) % coedz(1:2*contri)
+      A(1:contri,1:contri) = AOpair(ui,ui) % sumexpo
+      Gij(:,1:contri,1:contri) = AOpair(ui,ui) % Gij
+      Gimij(:,1:contri,1:contri) = AOpair(ui,ui) % Gimij
+      codA(:,1:contri,1:contri) = AOpair(ui,ui) % cod
       do uj = 1, cbdm
         ! no need to differentiate |AOj>
         contrj = cbdata(uj) % contr
-        Lj     = cbdata(uj) % L
-        Mj     = cbdata(uj) % M
-        expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+        facj   = cbdata(uj) % fac
         coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
         codj = cbdata(uj) % pos
+        B(1:contrj,1:contrj) = AOpair(uj,uj) % sumexpo
+        Gjj(:,1:contrj,1:contrj) = AOpair(uj,uj) % Gij
+        Gimjj(:,1:contrj,1:contrj) = AOpair(uj,uj) % Gimij
+        codB(:,1:contrj,1:contrj) = AOpair(uj,uj) % cod
+        AB(1:contri,1:contrj) = AOpair(ui,uj) % sumexpo
+        Gij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gij
+        Gimij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gimij
+        codAB(:,1:contri,1:contrj) = AOpair(ui,uj) % cod
         !---------------------------------
         ! <ij|V|ij> = (ii|V|jj)
         tl%iijj_V(ui,uj) = Calc_V_2e(&
         contri,contri,contrj,contrj,&
         coei(1:contri),coei(1:contri),coej(1:contrj),coej(1:contrj),&
-        AO_fac(:,Li,Mi),AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),AO_fac(:,Lj,Mj),&
-        expi(1:contri),expi(1:contri),expj(1:contrj),expj(1:contrj),&
-        codi,codi,codj,codj)
+        codi,codi,codj,codj,&
+        codA(:,1:contri,1:contri),codB(:,1:contrj,1:contrj),&
+        A(1:contri,1:contri),B(1:contrj,1:contrj),&
+        Gii(:,1:contri,1:contri),Gjj(:,1:contrj,1:contrj),&
+        Gimii(:,1:contri,1:contri),Gimjj(:,1:contrj,1:contrj),&
+        faci,faci,facj,facj)
         !---------------------------------
         ! <ij|pxVpx|ij> = (pxipxi|V|jj)
         tl%iijj_pxVpx(ui,uj) = Calc_pVp_2eij(&
-        AO_fac(1,Li,Mi),AO_fac(1,Li,Mi),contri,contri,contrj,contrj,&
+        faci(1),faci(1),contri,contri,contrj,contrj,&
         coedx_i(1:2*contri),coedx_i(1:2*contri),coej(1:contrj),coej(1:contrj),&
-        facdx_i,facdx_i,AO_fac(:,Lj,Mj),AO_fac(:,Lj,Mj),&
-        expi(1:contri),expi(1:contri),expj(1:contrj),expj(1:contrj),&
-        codi,codi,codj,codj)
+        codi,codi,codj,codj,&
+        codA(:,1:contri,1:contri),codB(:,1:contrj,1:contrj),&
+        A(1:contri,1:contri),B(1:contrj,1:contrj),&
+        Gii(:,1:contri,1:contri),Gjj(:,1:contrj,1:contrj),&
+        Gimii(:,1:contri,1:contri),Gimjj(:,1:contrj,1:contrj),&
+        facdx_i,facdx_i,facj,facj)
         !---------------------------------
         ! <ij|pyVpy|ij> = (pyipyi|V|jj)
         tl%iijj_pyVpy(ui,uj) = Calc_pVp_2eij(&
-        AO_fac(2,Li,Mi),AO_fac(2,Li,Mi),contri,contri,contrj,contrj,&
+        faci(2),faci(2),contri,contri,contrj,contrj,&
         coedy_i(1:2*contri),coedy_i(1:2*contri),coej(1:contrj),coej(1:contrj),&
-        facdy_i,facdy_i,AO_fac(:,Lj,Mj),AO_fac(:,Lj,Mj),&
-        expi(1:contri),expi(1:contri),expj(1:contrj),expj(1:contrj),&
-        codi,codi,codj,codj)
+        codi,codi,codj,codj,&
+        codA(:,1:contri,1:contri),codB(:,1:contrj,1:contrj),&
+        A(1:contri,1:contri),B(1:contrj,1:contrj),&
+        Gii(:,1:contri,1:contri),Gjj(:,1:contrj,1:contrj),&
+        Gimii(:,1:contri,1:contri),Gimjj(:,1:contrj,1:contrj),&
+        facdy_i,facdy_i,facj,facj)
         !---------------------------------
         ! <ij|pzVpz|ij> = (pzipzi|V|jj)
         tl%iijj_pzVpz(ui,uj) = Calc_pVp_2eij(&
-        AO_fac(3,Li,Mi),AO_fac(3,Li,Mi),contri,contri,contrj,contrj,&
+        faci(3),faci(3),contri,contri,contrj,contrj,&
         coedz_i(1:2*contri),coedz_i(1:2*contri),coej(1:contrj),coej(1:contrj),&
-        facdz_i,facdz_i,AO_fac(:,Lj,Mj),AO_fac(:,Lj,Mj),&
-        expi(1:contri),expi(1:contri),expj(1:contrj),expj(1:contrj),&
-        codi,codi,codj,codj)
+        codi,codi,codj,codj,&
+        codA(:,1:contri,1:contri),codB(:,1:contrj,1:contrj),&
+        A(1:contri,1:contri),B(1:contrj,1:contrj),&
+        Gii(:,1:contri,1:contri),Gjj(:,1:contrj,1:contrj),&
+        Gimii(:,1:contri,1:contri),Gimjj(:,1:contrj,1:contrj),&
+        facdz_i,facdz_i,facj,facj)
         !---------------------------------
         ! <ii|pxVpx|jj> = (pxij|V|pxij)
         tl%ijij_pxVpx(ui,uj) = Calc_pVp_2eik(&
-        AO_fac(1,Li,Mi),AO_fac(1,Li,Mi),contri,contrj,contri,contrj,&
+        faci(1),faci(1),contri,contrj,contri,contrj,&
         coedx_i(1:2*contri),coej(1:contrj),coedx_i(1:2*contri),coej(1:contrj),&
-        facdx_i,AO_fac(:,Lj,Mj),facdx_i,AO_fac(:,Lj,Mj),&
-        expi(1:contri),expj(1:contrj),expi(1:contri),expj(1:contrj),&
-        codi,codj,codi,codj)
+        codi,codj,codi,codj,&
+        codAB(:,1:contri,1:contrj),codAB(:,1:contri,1:contrj),&
+        AB(1:contri,1:contrj),AB(1:contri,1:contrj),&
+        Gij(:,1:contri,1:contrj),Gij(:,1:contri,1:contrj),&
+        Gimij(:,1:contri,1:contrj),Gimij(:,1:contri,1:contrj),&
+        facdx_i,facj,facdx_i,facj)
         !---------------------------------
         ! <ii|pyVpy|jj> = (pyij|V|pyij)
         tl%ijij_pyVpy(ui,uj) = Calc_pVp_2eik(&
-        AO_fac(2,Li,Mi),AO_fac(2,Li,Mi),contri,contrj,contri,contrj,&
+        faci(2),faci(2),contri,contrj,contri,contrj,&
         coedy_i(1:2*contri),coej(1:contrj),coedy_i(1:2*contri),coej(1:contrj),&
-        facdy_i,AO_fac(:,Lj,Mj),facdy_i,AO_fac(:,Lj,Mj),&
-        expi(1:contri),expj(1:contrj),expi(1:contri),expj(1:contrj),&
-        codi,codj,codi,codj)
+        codi,codj,codi,codj,&
+        codAB(:,1:contri,1:contrj),codAB(:,1:contri,1:contrj),&
+        AB(1:contri,1:contrj),AB(1:contri,1:contrj),&
+        Gij(:,1:contri,1:contrj),Gij(:,1:contri,1:contrj),&
+        Gimij(:,1:contri,1:contrj),Gimij(:,1:contri,1:contrj),&
+        facdy_i,facj,facdy_i,facj)
         !---------------------------------
         ! <ii|pzVpz|jj> = (pzij|V|pzij)
         tl%ijij_pzVpz(ui,uj) = Calc_pVp_2eik(&
-        AO_fac(3,Li,Mi),AO_fac(3,Li,Mi),contri,contrj,contri,contrj,&
+        faci(3),faci(3),contri,contrj,contri,contrj,&
         coedz_i(1:2*contri),coej(1:contrj),coedz_i(1:2*contri),coej(1:contrj),&
-        facdz_i,AO_fac(:,Lj,Mj),facdz_i,AO_fac(:,Lj,Mj),&
-        expi(1:contri),expj(1:contrj),expi(1:contri),expj(1:contrj),&
-        codi,codj,codi,codj)
+        codi,codj,codi,codj,&
+        codAB(:,1:contri,1:contrj),codAB(:,1:contri,1:contrj),&
+        AB(1:contri,1:contrj),AB(1:contri,1:contrj),&
+        Gij(:,1:contri,1:contrj),Gij(:,1:contri,1:contrj),&
+        Gimij(:,1:contri,1:contrj),Gimij(:,1:contri,1:contrj),&
+        facdz_i,facj,facdz_i,facj)
       end do
     end do
     !$omp end do
@@ -2355,40 +2384,37 @@ end function Check_SCF_Conv
   subroutine Assign_Fock_V2e()
     implicit none
     integer     :: i, j                ! for parallel computation, ui=i, uk=j
-    integer     :: ui, uj              ! loop variables for Assign_Fock_V2e
-    integer     :: uk, ul
+    integer     :: ui, uj, uk, ul      ! loop variables for Assign_Fock_V2e
     real(dp)    :: intV                ! scalar integral
     real(dp)    :: DMcoe               ! DM coefficient for Schwarz screening
-    !----------------------------------
+    !----------PRISM parameters of <AOi|AOj>----------
     integer     :: contri              ! contr of atom_i, shell_i
-    integer     :: Li                  ! angular quantum number of |AOi>
-    integer     :: Mi                  ! magnetic quantum number of |AOi>
-    !----------------------------------
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
     integer     :: contrj              ! contr of atom_j, shell_j
-    integer     :: Lj                  ! angular quantum number of |AOj>
-    integer     :: Mj                  ! magnetic quantum number of |AOj>
-    !----------------------------------
-    integer     :: contrk              ! contr of atom_k, shell_k
-    integer     :: Lk                  ! angular quantum number of |AOk>
-    integer     :: Mk                  ! magnetic quantum number of |AOk>
-    !----------------------------------
-    integer     :: contrl              ! contr of atom_l, shell_l
-    integer     :: Ll                  ! angular quantum number of |AOl>
-    integer     :: Ml                  ! magnetic quantum number of |AOl>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, expk, expl
-    !DIR$ ATTRIBUTES ALIGN:align_size :: coei, coej, coek, coel
-    real(dp)    :: expi(20)            ! expo of |AOi>
-    real(dp)    :: expj(20)            ! expo of |AOj>
-    real(dp)    :: expk(20)            ! expo of |AOk>
-    real(dp)    :: expl(20)            ! expo of |AOl>
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, Gij, Gimij, codA, coei, coej
+    real(dp)    :: A(20,20)            ! PRISM parameters
+    real(dp)    :: Gij(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimij(3,20,20)      ! PRISM parameters
+    real(dp)    :: codA(3,20,20)       ! PRISM parameters
     real(dp)    :: coei(20)            ! coefficient of |AOi>
     real(dp)    :: coej(20)            ! coefficient of |AOj>
+    !----------PRISM parameters of <AOk|AOl>----------
+    integer     :: contrk              ! contr of atom_k, shell_k
+    integer     :: fack(3)             ! xyz factor of |AOk>
+    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
+    integer     :: contrl              ! contr of atom_l, shell_l
+    integer     :: facl(3)             ! xyz factor of |AOl>
+    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, Gkl, Gimkl, codB, coek, coel
+    real(dp)    :: B(20,20)            ! PRISM parameters
+    real(dp)    :: Gkl(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimkl(3,20,20)      ! PRISM parameters
+    real(dp)    :: codB(3,20,20)       ! PRISM parameters
     real(dp)    :: coek(20)            ! coefficient of |AOk>
     real(dp)    :: coel(20)            ! coefficient of |AOl>
-    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
-    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
-    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
-    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
     !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic, supp, cAO2MO
     complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
@@ -2404,8 +2430,8 @@ end function Check_SCF_Conv
     allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
-    !$omp& ul,intV,contri,Li,Mi,contrj,Lj,Mj,contrk,Lk,Mk,contrl,Ll,Ml,&
-    !$omp& expi,expj,expk,expl,coei,coej,coek,coel,codi,codj,codk,codl,&
+    !$omp& ul,intV,contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,&
+    !$omp& fack,codk,contrl,coel,facl,codl,A,B,Gij,Gkl,Gimij,Gimkl,codA,codB,&
     !$omp& HFcol_mic,HFexc_mic,DMcoe) if(threads < nproc)
     HFcol_mic = c0
     HFexc_mic = c0
@@ -2417,27 +2443,25 @@ end function Check_SCF_Conv
         !------------------------------<ui>---------------------------------
         ui     = i
         contri = cbdata(ui) % contr
-        Li     = cbdata(ui) % L
-        Mi     = cbdata(ui) % M
-        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        faci   = cbdata(ui) % fac
         coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
-        codi = cbdata(ui) % pos
+        codi   = cbdata(ui) % pos
         !------------------------------<uk>---------------------------------
         uk     = j
         contrk = cbdata(uk) % contr
-        Lk     = cbdata(uk) % L
-        Mk     = cbdata(uk) % M
-        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        fack   = cbdata(uk) % fac
         coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
-        codk = cbdata(uk) % pos
+        codk   = cbdata(uk) % pos
         !------------------------------<uj>---------------------------------
         do uj = ui, 1, -1
           contrj = cbdata(uj) % contr
-          Lj     = cbdata(uj) % L
-          Mj     = cbdata(uj) % M
-          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          facj   = cbdata(uj) % fac
           coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
-          codj = cbdata(uj) % pos
+          codj   = cbdata(uj) % pos
+          A(1:contri,1:contrj) = AOpair(ui,uj) % sumexpo
+          Gij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gij
+          Gimij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gimij
+          codA(:,1:contri,1:contrj) = AOpair(ui,uj) % cod
           !----------------------------<ul>---------------------------------
           do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |(ij|kl)| <= dsqrt( (ii|kk)*(jj|ll) )
@@ -2449,18 +2473,22 @@ end function Check_SCF_Conv
             end if
             if (DMcoe*dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) < schwarz) cycle
             contrl = cbdata(ul) % contr
-            Ll     = cbdata(ul) % L
-            Ml     = cbdata(ul) % M
-            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            facl   = cbdata(ul) % fac
             coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
-            codl = cbdata(ul) % pos
+            codl   = cbdata(ul) % pos
+            B(1:contrk,1:contrl) = AOpair(uk,ul) % sumexpo
+            Gkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gij
+            Gimkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gimij
+            codB(:,1:contrk,1:contrl) = AOpair(uk,ul) % cod
             !===========================(ij|kl)===============================
-            intV = calc_V_2e(&
-            contri,contrj,contrk,contrl,&
+            intV = calc_V_2e(contri,contrj,contrk,contrl,&
             coei(1:contri),coej(1:contrj),coek(1:contrk),coel(1:contrl),&
-            AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-            expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-            codi,codj,codk,codl)
+            codi,codj,codk,codl,&
+            codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+            A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+            Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+            Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+            faci,facj,fack,facl)
             ! assign two-electron Fock matrices
             !------------------------<COULOMB>------------------------
             call Assign_Coulomb(HFcol_mic,rho_m,intV,ui,uj,uk,ul)
@@ -2497,7 +2525,174 @@ end function Check_SCF_Conv
     call cfgo(mHFcol)
     call cfgo(mHFexc)
   end subroutine Assign_Fock_V2e
-  
+
+!------------------------------------------------------------
+!> construct non-relativistic 2-electron Fock matrices
+!!
+!! (mHFcol, mHFexc, mKSexc, mKScor, mKSexccor)
+!!
+!! "direct" calculation to avoid memory overflow and disk r&w
+!!
+!! should be called in each SCF iteration
+  subroutine Assign_Fock_V2e_vec()
+    implicit none
+    integer     :: i, j                ! for parallel computation, ui=i, uk=j
+    integer     :: ui, uj, uk, ul      ! loop variables
+    integer     :: um, un, uo, up
+    real(dp)    :: intV                ! scalar integral
+    real(dp)    :: DMcoe               ! DM coefficient for Schwarz screening
+    !----------PRISM parameters of <AOi|AOj>----------
+    integer     :: contri              ! contr of atom_i, shell_i
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
+    integer     :: contrj              ! contr of atom_j, shell_j
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, codA
+    real(dp)    :: A(160000)           ! PRISM parameters
+    real(dp)    :: codA(160000,3)      ! PRISM parameters
+    !----------PRISM parameters of <AOk|AOl>----------
+    integer     :: contrk              ! contr of atom_k, shell_k
+    integer     :: fack(3)             ! xyz factor of |AOk>
+    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
+    integer     :: contrl              ! contr of atom_l, shell_l
+    integer     :: facl(3)             ! xyz factor of |AOl>
+    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, G, Gim, codB, coe
+    real(dp)    :: B(160000)           ! PRISM parameters
+    real(dp)    :: G(160000,3)         ! PRISM parameters
+    real(dp)    :: Gim(160000,3)       ! PRISM parameters
+    real(dp)    :: codB(160000,3)      ! PRISM parameters
+    real(dp)    :: coe(160000)         ! coefficient
+    !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic, supp, cAO2MO
+    integer     :: contr
+    complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
+    complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
+    complex(dp) :: supp(2*sbdm,2*cbdm)
+    complex(dp) :: cAO2MO(2*cbdm,2*fbdm)     ! Cartesian AO to MO coeff
+    real(dp)    :: maxrho(cbdm,cbdm)         ! max elements in density matrix
+    ! transform rho_m to Cartesian basis
+    call scgo(rho_m)
+    call Find_maxDM(rho_m, maxrho)
+    if (allocated(mHFcol)) deallocate(mHFcol)
+    allocate(mHFcol(2*cbdm,2*cbdm), source=c0)
+    if (allocated(mHFexc)) deallocate(mHFexc)
+    allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
+    ! parallel zone, running results consistent with serial
+    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp& ul,um,un,uo,up,intV,contri,faci,codi,contrj,facj,codj,contrk,&
+    !$omp& fack,codk,contrl,coe,facl,codl,A,B,G,Gim,codA,codB,contr,&
+    !$omp& HFcol_mic,HFexc_mic,DMcoe) if(threads < nproc)
+    HFcol_mic = c0
+    HFexc_mic = c0
+    !$omp do schedule(dynamic,5) collapse(2)
+    ! utilizing permutation symmetry:(11|22)
+    ! (ij|kl)=(ji|kl)=(ij|lk)=(ji|lk)=(kl|ij)=(kl|ji)=(lk|ij)=(lk|ji)
+    do i = cbdm, 1, -1
+      do j = cbdm, 1, -1
+        !------------------------------<ui>---------------------------------
+        ui     = i
+        contri = cbdata(ui) % contr
+        faci   = cbdata(ui) % fac
+        codi   = cbdata(ui) % pos
+        !------------------------------<uk>---------------------------------
+        uk     = j
+        contrk = cbdata(uk) % contr
+        fack   = cbdata(uk) % fac
+        codk   = cbdata(uk) % pos
+        !------------------------------<uj>---------------------------------
+        do uj = ui, 1, -1
+          contrj = cbdata(uj) % contr
+          facj   = cbdata(uj) % fac
+          codj   = cbdata(uj) % pos
+          !----------------------------<ul>---------------------------------
+          do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
+            ! Schwarz screening, |(ij|kl)| <= dsqrt( (ii|kk)*(jj|ll) )
+            if (RMSDP < DMschwarz) then
+              DMcoe = max(maxrho(ui,uj), maxrho(ui,uk), maxrho(ui,ul), &
+                          maxrho(uj,uk), maxrho(uj,ul), maxrho(uk,ul))
+            else
+              DMcoe = 1.0_dp
+            end if
+            if (DMcoe*dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) < schwarz) cycle
+            contrl = cbdata(ul) % contr
+            facl   = cbdata(ul) % fac
+            codl   = cbdata(ul) % pos
+            !===========================(ij|kl)===============================
+            contr = 1
+            do um = 1, contri
+              do un = 1, contrj
+                do uo = 1, contrk
+                  do up = 1, contrl
+                    coe(contr)    = cbdata(ui)%Ncoe(um)*cbdata(uj)%Ncoe(un)*&
+                                    cbdata(uk)%Ncoe(uo)*cbdata(ul)%Ncoe(up)
+                    A(contr)      = AOpair(ui,uj)%sumexpo(um,un)
+                    B(contr)      = AOpair(uk,ul)%sumexpo(uo,up)
+                    codA(contr,:) = AOpair(ui,uj)%cod(:,um,un)
+                    codB(contr,:) = AOpair(uk,ul)%cod(:,uo,up)
+                    G(contr,:)    = AOpair(ui,uj)%Gij(:,um,un) + &
+                                    AOpair(uk,ul)%Gij(:,uo,up)
+                    Gim(contr,:)  = AOpair(ui,uj)%Gimij(:,um,un) * &
+                                    AOpair(uk,ul)%Gimij(:,uo,up)
+                    contr = contr + 1
+                  end do
+                end do
+              end do
+            end do
+            contr = contr - 1
+            intV = 0.0_dp
+            do um = 1, contr, 256
+              if (um+255 >= contr) then
+                intV = intV + Integral_V_2e_OS_vec(&
+                  contr-um+1, coe(um:contr), codi, codj, codk, codl, &
+                  codA(um:contr,:), codB(um:contr,:), &
+                  A(um:contr), B(um:contr), G(um:contr,:), Gim(um:contr,:),&
+                  faci, facj, fack, facl)
+              else
+                intV = intV + Integral_V_2e_OS_vec(&
+                  256, coe(um:um+255), codi, codj, codk, codl, &
+                  codA(um:um+255,:), codB(um:um+255,:), &
+                  A(um:um+255), B(um:um+255), G(um:um+255,:), Gim(um:um+255,:),&
+                  faci, facj, fack, facl)
+              end if
+            end do
+            ! assign two-electron Fock matrices
+            !------------------------<COULOMB>------------------------
+            call Assign_Coulomb(HFcol_mic,rho_m,intV,ui,uj,uk,ul)
+            !------------------------<EXCHANGE>------------------------
+            call Assign_Exchange(HFexc_mic,rho_m,intV,ui,uj,uk,ul)
+          end do
+        end do
+      end do
+    end do
+    !$omp end do
+    !-------------<thread sync>-------------
+    !$omp critical
+    mHFcol = mHFcol + HFcol_mic
+    mHFexc = mHFexc + HFexc_mic
+    !$omp end critical
+    !$omp end parallel
+    ! assign Kohn-Sham matrices
+    if (fx_id /= -1) then
+      if (allocated(mKSexc)) deallocate(mKSexc)
+      allocate(mKSexc(2*cbdm, 2*cbdm))
+      if (allocated(mKScor)) deallocate(mKScor)
+      allocate(mKScor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XandC(rho_m, cAO2MO, KSexc, KScor, mKSexc, mKScor)
+      call cfgo(mKSexc)
+      call cfgo(mKScor)
+    else if (fxc_id /= -1) then
+      if (allocated(mKSexccor)) deallocate(mKSexccor)
+      allocate(mKSexccor(2*cbdm, 2*cbdm))
+      call matmul('N', 'N', exc2s, AO2MO, cAO2MO)
+      call Basis2real_Becke_XC(rho_m, cAO2MO, KSexccor, mKSexccor)
+      call cfgo(mKSexccor)
+    end if
+    call cfgo(mHFcol)
+    call cfgo(mHFexc)
+  end subroutine Assign_Fock_V2e_vec
+
 !------------------------------------------------------------
 !> construct DKH2 scalar 2-electron Fock matrices
 !!
@@ -2509,40 +2704,37 @@ end function Check_SCF_Conv
   subroutine Assign_Fock_AVA2e()
     implicit none
     integer     :: i, j                ! for parallel computation, ui=i, uk=j
-    integer     :: ui, uj              ! loop variables for Assign_Fock_ARVRA2e
-    integer     :: uk, ul
+    integer     :: ui, uj, uk, ul      ! loop variables for Assign_Fock_V2e
     real(dp)    :: intV                ! scalar integral
     real(dp)    :: DMcoe               ! DM coefficient for Schwarz screening
-    !----------------------------------
+    !----------PRISM parameters of <AOi|AOj>----------
     integer     :: contri              ! contr of atom_i, shell_i
-    integer     :: Li                  ! angular quantum number of |AOi>
-    integer     :: Mi                  ! magnetic quantum number of |AOi>
-    !----------------------------------
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
     integer     :: contrj              ! contr of atom_j, shell_j
-    integer     :: Lj                  ! angular quantum number of |AOj>
-    integer     :: Mj                  ! magnetic quantum number of |AOj>
-    !----------------------------------
-    integer     :: contrk              ! contr of atom_k, shell_k
-    integer     :: Lk                  ! angular quantum number of |AOk>
-    integer     :: Mk                  ! magnetic quantum number of |AOk>
-    !----------------------------------
-    integer     :: contrl              ! contr of atom_l, shell_l
-    integer     :: Ll                  ! angular quantum number of |AOl>
-    integer     :: Ml                  ! magnetic quantum number of |AOl>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, expk, expl
-    !DIR$ ATTRIBUTES ALIGN:align_size :: coei, coej, coek, coel
-    real(dp)    :: expi(20)            ! expo of |AOi>
-    real(dp)    :: expj(20)            ! expo of |AOj>
-    real(dp)    :: expk(20)            ! expo of |AOk>
-    real(dp)    :: expl(20)            ! expo of |AOl>
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, Gij, Gimij, codA, coei, coej
+    real(dp)    :: A(20,20)            ! PRISM parameters
+    real(dp)    :: Gij(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimij(3,20,20)      ! PRISM parameters
+    real(dp)    :: codA(3,20,20)       ! PRISM parameters
     real(dp)    :: coei(20)            ! coefficient of |AOi>
     real(dp)    :: coej(20)            ! coefficient of |AOj>
+    !----------PRISM parameters of <AOk|AOl>----------
+    integer     :: contrk              ! contr of atom_k, shell_k
+    integer     :: fack(3)             ! xyz factor of |AOk>
+    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
+    integer     :: contrl              ! contr of atom_l, shell_l
+    integer     :: facl(3)             ! xyz factor of |AOl>
+    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, Gkl, Gimkl, codB, coek, coel
+    real(dp)    :: B(20,20)            ! PRISM parameters
+    real(dp)    :: Gkl(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimkl(3,20,20)      ! PRISM parameters
+    real(dp)    :: codB(3,20,20)       ! PRISM parameters
     real(dp)    :: coek(20)            ! coefficient of |AOk>
     real(dp)    :: coel(20)            ! coefficient of |AOl>
-    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
-    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
-    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
-    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
     !DIR$ ATTRIBUTES ALIGN:align_size :: Vcol_mic, Vexc_mic
     complex(dp) :: Vcol_mic(2*cbdm,2*cbdm)     ! micro ApVAp Coulomb matrix
     complex(dp) :: Vexc_mic(2*cbdm,2*cbdm)     ! micro ApVAp Exchange matrix
@@ -2576,17 +2768,15 @@ end function Check_SCF_Conv
     call Find_maxDM(rho_Ap, maxrhoAp)
     ! transform rho_m to Cartesian basis with rho_m
     call scgo(rho_m)
-
     ! initialize 2e Fock matrices
     if (allocated(mHFcol)) deallocate(mHFcol)
     allocate(mHFcol(2*cbdm,2*cbdm), source=c0)
     if (allocated(mHFexc)) deallocate(mHFexc)
     allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
-
     ! parallel zone, running results consistent with serial
     !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
-    !$omp& ul,intV,contri,Li,Mi,contrj,Lj,Mj,contrk,Lk,Mk,contrl,Ll,Ml,&
-    !$omp& expi,expj,expk,expl,coei,coej,coek,coel,codi,codj,codk,codl,&
+    !$omp& ul,intV,contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,&
+    !$omp& fack,codk,contrl,coel,facl,codl,A,B,Gij,Gkl,Gimij,Gimkl,codA,codB,&
     !$omp& Vcol_mic,Vexc_mic,DMcoe) if(threads < nproc)
     Vcol_mic = c0
     Vexc_mic = c0
@@ -2598,27 +2788,25 @@ end function Check_SCF_Conv
         !------------------------------<ui>---------------------------------
         ui     = i
         contri = cbdata(ui) % contr
-        Li     = cbdata(ui) % L
-        Mi     = cbdata(ui) % M
-        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        faci   = cbdata(ui) % fac
         coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
-        codi = cbdata(ui) % pos
+        codi   = cbdata(ui) % pos
         !------------------------------<uk>---------------------------------
         uk     = j
         contrk = cbdata(uk) % contr
-        Lk     = cbdata(uk) % L
-        Mk     = cbdata(uk) % M
-        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        fack   = cbdata(uk) % fac
         coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
-        codk = cbdata(uk) % pos
+        codk   = cbdata(uk) % pos
         !------------------------------<uj>---------------------------------
         do uj = ui, 1, -1
           contrj = cbdata(uj) % contr
-          Lj     = cbdata(uj) % L
-          Mj     = cbdata(uj) % M
-          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          facj   = cbdata(uj) % fac
           coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
-          codj = cbdata(uj) % pos
+          codj   = cbdata(uj) % pos
+          A(1:contri,1:contrj) = AOpair(ui,uj) % sumexpo
+          Gij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gij
+          Gimij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gimij
+          codA(:,1:contri,1:contrj) = AOpair(ui,uj) % cod
           !----------------------------<ul>---------------------------------
           do ul = min(uk,uj+(ui*(ui-1)-uk*(uk-1))/2), 1, -1
             ! Schwarz screening, |(ij|kl)| <= dsqrt( (ii|kk)*(jj|ll) )
@@ -2630,18 +2818,22 @@ end function Check_SCF_Conv
             end if
             if (DMcoe*dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) < schwarz) cycle
             contrl = cbdata(ul) % contr
-            Ll     = cbdata(ul) % L
-            Ml     = cbdata(ul) % M
-            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            facl   = cbdata(ul) % fac
             coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
-            codl = cbdata(ul) % pos
+            codl   = cbdata(ul) % pos
+            B(1:contrk,1:contrl) = AOpair(uk,ul) % sumexpo
+            Gkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gij
+            Gimkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gimij
+            codB(:,1:contrk,1:contrl) = AOpair(uk,ul) % cod
             !===========================(ij|kl)===============================
-            intV = calc_V_2e(&
-            contri,contrj,contrk,contrl,&
+            intV = calc_V_2e(contri,contrj,contrk,contrl,&
             coei(1:contri),coej(1:contrj),coek(1:contrk),coel(1:contrl),&
-            AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-            expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-            codi,codj,codk,codl)
+            codi,codj,codk,codl,&
+            codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+            A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+            Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+            Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+            faci,facj,fack,facl)
             ! assign two-electron Fock matrices
             !------------------------<COULOMB>------------------------
             call Assign_Coulomb(Vcol_mic,rho_Ap,intV,ui,uj,uk,ul)
@@ -2679,6 +2871,7 @@ end function Check_SCF_Conv
     end if
     deallocate(rho_Ap)
   end subroutine Assign_Fock_AVA2e
+
 !------------------------------------------------------------
 !> construct DKH2 spinor 2-electron Fock matrices
 !!
@@ -2702,10 +2895,10 @@ end function Check_SCF_Conv
     real(dp)    :: intXpyVpy, intXpzVpz
     real(dp)    :: intXpxVpy, intXpxVpz
     real(dp)    :: intXpyVpz
-    !----------------------------------
+    !----------PRISM parameters of <AOi|AOj>----------
     integer     :: contri              ! contr of atom_i, shell_i
-    integer     :: Li                  ! angular quantum number of |AOi>
-    integer     :: Mi                  ! magnetic quantum number of |AOi>
+    integer     :: faci(3)             ! xyz factor of |AOi>
+    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
     !DIR$ ATTRIBUTES ALIGN:align_size :: coedx_i, coedy_i, coedz_i
     real(dp)    :: coedx_i(32)         ! coefficient.derivative x.|AOi>
     real(dp)    :: coedy_i(32)         ! coefficient.derivative y.|AOi>
@@ -2713,10 +2906,9 @@ end function Check_SCF_Conv
     integer     :: facdx_i(3,2)        ! x,y,z factor.derivative x.|AOi>
     integer     :: facdy_i(3,2)        ! x,y,z factor.derivative y.|AOi>
     integer     :: facdz_i(3,2)        ! x,y,z factor.derivative z.|AOi>
-    !----------------------------------
     integer     :: contrj              ! contr of atom_j, shell_j
-    integer     :: Lj                  ! angular quantum number of |AOj>
-    integer     :: Mj                  ! magnetic quantum number of |AOj>
+    integer     :: facj(3)             ! xyz factor of |AOj>
+    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
     !DIR$ ATTRIBUTES ALIGN:align_size :: coedx_j, coedy_j, coedz_j
     real(dp)    :: coedx_j(32)         ! coefficient.derivative x.|AOj>
     real(dp)    :: coedy_j(32)         ! coefficient.derivative y.|AOj>
@@ -2724,10 +2916,17 @@ end function Check_SCF_Conv
     integer     :: facdx_j(3,2)        ! x,y,z factor.derivative x.|AOj>
     integer     :: facdy_j(3,2)        ! x,y,z factor.derivative y.|AOj>
     integer     :: facdz_j(3,2)        ! x,y,z factor.derivative z.|AOj>
-    !----------------------------------
+    !DIR$ ATTRIBUTES ALIGN:align_size :: A, Gij, Gimij, codA, coei, coej
+    real(dp)    :: A(20,20)            ! PRISM parameters
+    real(dp)    :: Gij(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimij(3,20,20)      ! PRISM parameters
+    real(dp)    :: codA(3,20,20)       ! PRISM parameters
+    real(dp)    :: coei(20)            ! coefficient of |AOi>
+    real(dp)    :: coej(20)            ! coefficient of |AOj>
+    !----------PRISM parameters of <AOk|AOl>----------
     integer     :: contrk              ! contr of atom_k, shell_k
-    integer     :: Lk                  ! angular quantum number of |AOk>
-    integer     :: Mk                  ! magnetic quantum number of |AOk>
+    integer     :: fack(3)             ! xyz factor of |AOk>
+    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
     !DIR$ ATTRIBUTES ALIGN:align_size :: coedx_k, coedy_k, coedz_k
     real(dp)    :: coedx_k(32)         ! coefficient.derivative x.|AOk>
     real(dp)    :: coedy_k(32)         ! coefficient.derivative y.|AOk>
@@ -2735,24 +2934,16 @@ end function Check_SCF_Conv
     integer     :: facdx_k(3,2)        ! x,y,z factor.derivative x.|AOk>
     integer     :: facdy_k(3,2)        ! x,y,z factor.derivative y.|AOk>
     integer     :: facdz_k(3,2)        ! x,y,z factor.derivative z.|AOk>
-    !----------------------------------
     integer     :: contrl              ! contr of atom_l, shell_l
-    integer     :: Ll                  ! angular quantum number of |AOl>
-    integer     :: Ml                  ! magnetic quantum number of |AOl>
-    !DIR$ ATTRIBUTES ALIGN:align_size :: expi, expj, expk, expl
-    !DIR$ ATTRIBUTES ALIGN:align_size :: coei, coej, coek, coel
-    real(dp)    :: expi(20)            ! expo of |AOi>
-    real(dp)    :: expj(20)            ! expo of |AOj>
-    real(dp)    :: expk(20)            ! expo of |AOk>
-    real(dp)    :: expl(20)            ! expo of |AOl>
-    real(dp)    :: coei(20)            ! coefficient of |AOi>
-    real(dp)    :: coej(20)            ! coefficient of |AOj>
+    integer     :: facl(3)             ! xyz factor of |AOl>
+    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
+    !DIR$ ATTRIBUTES ALIGN:align_size :: B, Gkl, Gimkl, codB, coek, coel
+    real(dp)    :: B(20,20)            ! PRISM parameters
+    real(dp)    :: Gkl(3,20,20)        ! PRISM parameters
+    real(dp)    :: Gimkl(3,20,20)      ! PRISM parameters
+    real(dp)    :: codB(3,20,20)       ! PRISM parameters
     real(dp)    :: coek(20)            ! coefficient of |AOk>
     real(dp)    :: coel(20)            ! coefficient of |AOl>
-    real(dp)    :: codi(3)             ! coordinate of center of |AOi>
-    real(dp)    :: codj(3)             ! coordinate of center of |AOj>
-    real(dp)    :: codk(3)             ! coordinate of center of |AOk>
-    real(dp)    :: codl(3)             ! coordinate of center of |AOl>
     !DIR$ ATTRIBUTES ALIGN:align_size :: Vcol_mic, Vexc_mic
     !DIR$ ATTRIBUTES ALIGN:align_size :: R1VR1col_mic, R1VR1exc_mic
     !DIR$ ATTRIBUTES ALIGN:align_size :: R2VR2col_mic, R2VR2exc_mic
@@ -2825,12 +3016,12 @@ end function Check_SCF_Conv
     !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
     !$omp& ul,intV,intCpxVpx,intCpyVpy,intCpzVpz,intCpxVpy,intCpxVpz,intCpyVpz,&
     !$omp& intXpxVpx,intXpyVpy,intXpzVpz,intXpxVpy,intXpxVpz,intXpyVpz,&
-    !$omp& contri,Li,Mi,contrj,Lj,Mj,contrk,Lk,Mk,contrl,Ll,Ml,&
-    !$omp& expi,expj,expk,expl,coei,coej,coek,coel,codi,codj,codk,codl,&
-    !$omp& coedx_i,coedy_i,coedz_i,facdx_i,facdy_i,facdz_i,coedx_j,coedy_j,&
-    !$omp& coedz_j,facdx_j,facdy_j,facdz_j,coedx_k,coedy_k,coedz_k,facdx_k,&
-    !$omp& facdy_k,facdz_k,Vcol_mic,Vexc_mic,R1VR1col_mic,R1VR1exc_mic,&
-    !$omp& R2VR2col_mic,R2VR2exc_mic,DMApcoe,DMApRpcoe) if(threads < nproc)
+    !$omp& contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,fack,codk,&
+    !$omp& contrl,coel,facl,codl,A,B,Gij,Gkl,Gimij,Gimkl,codA,codB,coedx_i,&
+    !$omp& coedy_i,coedz_i,facdx_i,facdy_i,facdz_i,coedx_j,coedy_j,coedz_j,&
+    !$omp& facdx_j,facdy_j,facdz_j,coedx_k,coedy_k,coedz_k,facdx_k,facdy_k,&
+    !$omp& facdz_k,Vcol_mic,Vexc_mic,R1VR1col_mic,R1VR1exc_mic,R2VR2col_mic,&
+    !$omp& R2VR2exc_mic,DMApcoe,DMApRpcoe) if(threads < nproc)
     Vcol_mic = c0
     Vexc_mic = c0
     R1VR1col_mic = c0
@@ -2844,113 +3035,53 @@ end function Check_SCF_Conv
         !------------------------------<ui>---------------------------------
         ui     = i
         contri = cbdata(ui) % contr
-        Li     = cbdata(ui) % L
-        Mi     = cbdata(ui) % M
-        expi(1:contri) = cbdata(ui) % expo(1:contri)
+        faci   = cbdata(ui) % fac
         coei(1:contri) = cbdata(ui) % Ncoe(1:contri)
-        codi = cbdata(ui) % pos
-        !---------------------------------------
-        ! factor of x^m*d(exp)
-        facdx_i(:,1) = AO_fac(:,Li,Mi)
-        facdx_i(1,1) = facdx_i(1,1) + 1
-        facdy_i(:,1) = AO_fac(:,Li,Mi)
-        facdy_i(2,1) = facdy_i(2,1) + 1
-        facdz_i(:,1) = AO_fac(:,Li,Mi)
-        facdz_i(3,1) = facdz_i(3,1) + 1
-        !-------------------------------
-        ! factor of d(x^m)*exp
-        facdx_i(:,2) = AO_fac(:,Li,Mi)
-        facdx_i(1,2) = max(facdx_i(1,2)-1,0)
-        facdy_i(:,2) = AO_fac(:,Li,Mi)
-        facdy_i(2,2) = max(facdy_i(2,2)-1,0)
-        facdz_i(:,2) = AO_fac(:,Li,Mi)
-        facdz_i(3,2) = max(facdz_i(3,2)-1,0)
-        !---------------------------------------
-        ! coefficient of x^m*d(exp)
-        coedx_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        coedy_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        coedz_i(1:contri) = -2.0_dp * coei(1:contri) * expi(1:contri)
-        !---------------------------------
-        ! coefficient of d(x^m)*exp
-        coedx_i(contri+1:2*contri) = AO_fac(1,Li,Mi) * coei(1:contri)
-        coedy_i(contri+1:2*contri) = AO_fac(2,Li,Mi) * coei(1:contri)
-        coedz_i(contri+1:2*contri) = AO_fac(3,Li,Mi) * coei(1:contri)
+        codi    = cbdata(ui) % pos
+        facdx_i = cbdata(ui) % facdx
+        facdy_i = cbdata(ui) % facdy
+        facdz_i = cbdata(ui) % facdz
+        coedx_i(1:2*contri) = cbdata(ui) % coedx(1:2*contri)
+        coedy_i(1:2*contri) = cbdata(ui) % coedy(1:2*contri)
+        coedz_i(1:2*contri) = cbdata(ui) % coedz(1:2*contri)
         !------------------------------<uk>---------------------------------
         uk     = j
         contrk = cbdata(uk) % contr
-        Lk     = cbdata(uk) % L
-        Mk     = cbdata(uk) % M
-        expk(1:contrk) = cbdata(uk) % expo(1:contrk)
+        fack   = cbdata(uk) % fac
         coek(1:contrk) = cbdata(uk) % Ncoe(1:contrk)
-        codk = cbdata(uk) % pos
-        !---------------------------------------
-        ! factor of x^m*d(exp)
-        facdx_k(:,1) = AO_fac(:,Lk,Mk)
-        facdx_k(1,1) = facdx_k(1,1) + 1
-        facdy_k(:,1) = AO_fac(:,Lk,Mk)
-        facdy_k(2,1) = facdy_k(2,1) + 1
-        facdz_k(:,1) = AO_fac(:,Lk,Mk)
-        facdz_k(3,1) = facdz_k(3,1) + 1
-        !-------------------------------
-        ! factor of d(x^m)*exp
-        facdx_k(:,2) = AO_fac(:,Lk,Mk)
-        facdx_k(1,2) = max(facdx_k(1,2)-1,0)
-        facdy_k(:,2) = AO_fac(:,Lk,Mk)
-        facdy_k(2,2) = max(facdy_k(2,2)-1,0)
-        facdz_k(:,2) = AO_fac(:,Lk,Mk)
-        facdz_k(3,2) = max(facdz_k(3,2)-1,0)
-        !---------------------------------------
-        ! coefficient of x^m*d(exp)
-        coedx_k(1:contrk) = -2.0_dp * coek(1:contrk) * expk(1:contrk)
-        coedy_k(1:contrk) = -2.0_dp * coek(1:contrk) * expk(1:contrk)
-        coedz_k(1:contrk) = -2.0_dp * coek(1:contrk) * expk(1:contrk)
-        !---------------------------------
-        ! coefficient of d(x^m)*exp
-        coedx_k(contrk+1:2*contrk) = AO_fac(1,Lk,Mk) * coek(1:contrk)
-        coedy_k(contrk+1:2*contrk) = AO_fac(2,Lk,Mk) * coek(1:contrk)
-        coedz_k(contrk+1:2*contrk) = AO_fac(3,Lk,Mk) * coek(1:contrk)
+        codk    = cbdata(uk) % pos
+        facdx_k = cbdata(uk) % facdx
+        facdy_k = cbdata(uk) % facdy
+        facdz_k = cbdata(uk) % facdz
+        coedx_k(1:2*contrk) = cbdata(uk) % coedx(1:2*contrk)
+        coedy_k(1:2*contrk) = cbdata(uk) % coedy(1:2*contrk)
+        coedz_k(1:2*contrk) = cbdata(uk) % coedz(1:2*contrk)
         !------------------------------<uj>---------------------------------
         do uj = 1, cbdm
           contrj = cbdata(uj) % contr
-          Lj     = cbdata(uj) % L
-          Mj     = cbdata(uj) % M
-          expj(1:contrj) = cbdata(uj) % expo(1:contrj)
+          facj   = cbdata(uj) % fac
           coej(1:contrj) = cbdata(uj) % Ncoe(1:contrj)
-          codj = cbdata(uj) % pos
-          !---------------------------------------
-          ! factor of x^m*d(exp)
-          facdx_j(:,1) = AO_fac(:,Lj,Mj)
-          facdx_j(1,1) = facdx_j(1,1) + 1
-          facdy_j(:,1) = AO_fac(:,Lj,Mj)
-          facdy_j(2,1) = facdy_j(2,1) + 1
-          facdz_j(:,1) = AO_fac(:,Lj,Mj)
-          facdz_j(3,1) = facdz_j(3,1) + 1
-          !-------------------------------
-          ! factor of d(x^m)*exp
-          facdx_j(:,2) = AO_fac(:,Lj,Mj)
-          facdx_j(1,2) = max(facdx_j(1,2)-1,0)
-          facdy_j(:,2) = AO_fac(:,Lj,Mj)
-          facdy_j(2,2) = max(facdy_j(2,2)-1,0)
-          facdz_j(:,2) = AO_fac(:,Lj,Mj)
-          facdz_j(3,2) = max(facdz_j(3,2)-1,0)
-          !---------------------------------------
-          ! coefficient of x^m*d(exp)
-          coedx_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-          coedy_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-          coedz_j(1:contrj) = -2.0_dp * coej(1:contrj) * expj(1:contrj)
-          !---------------------------------
-          ! coefficient of d(x^m)*exp
-          coedx_j(contrj+1:2*contrj) = AO_fac(1,Lj,Mj) * coej(1:contrj)
-          coedy_j(contrj+1:2*contrj) = AO_fac(2,Lj,Mj) * coej(1:contrj)
-          coedz_j(contrj+1:2*contrj) = AO_fac(3,Lj,Mj) * coej(1:contrj)
+          codj    = cbdata(uj) % pos
+          facdx_j = cbdata(uj) % facdx
+          facdy_j = cbdata(uj) % facdy
+          facdz_j = cbdata(uj) % facdz
+          coedx_j(1:2*contrj) = cbdata(uj) % coedx(1:2*contrj)
+          coedy_j(1:2*contrj) = cbdata(uj) % coedy(1:2*contrj)
+          coedz_j(1:2*contrj) = cbdata(uj) % coedz(1:2*contrj)
+          A(1:contri,1:contrj) = AOpair(ui,uj) % sumexpo
+          Gij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gij
+          Gimij(:,1:contri,1:contrj) = AOpair(ui,uj) % Gimij
+          codA(:,1:contri,1:contrj) = AOpair(ui,uj) % cod
           !----------------------------<ul>---------------------------------
           do ul = 1, cbdm
             contrl = cbdata(ul) % contr
-            Ll     = cbdata(ul) % L
-            Ml     = cbdata(ul) % M
-            expl(1:contrl) = cbdata(ul) % expo(1:contrl)
+            facl   = cbdata(ul) % fac
             coel(1:contrl) = cbdata(ul) % Ncoe(1:contrl)
             codl = cbdata(ul) % pos
+            B(1:contrk,1:contrl) = AOpair(uk,ul) % sumexpo
+            Gkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gij
+            Gimkl(:,1:contrk,1:contrl) = AOpair(uk,ul) % Gimij
+            codB(:,1:contrk,1:contrl) = AOpair(uk,ul) % cod
             !===========================(ij|kl)===========================
             if (RMSDP < DMschwarz) then
               DMApcoe = max(maxrhoAp(ui,uj), maxrhoAp(ui,uk), maxrhoAp(ui,ul), &
@@ -2967,13 +3098,14 @@ end function Check_SCF_Conv
             end if
             if (uj<=ui .and. ul<=uk .and. ul-uj<=(ui*(ui-1)-uk*(uk-1))/2) then
               if (DMApcoe*dsqrt(iijj_V(ui,uk)*iijj_V(uj,ul)) > schwarz) then
-                intV = calc_V_2e(&
-                contri,contrj,contrk,contrl,&
+                intV = calc_V_2e(contri,contrj,contrk,contrl,&
                 coei(1:contri),coej(1:contrj),coek(1:contrk),coel(1:contrl),&
-                AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),&
-                AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                faci,facj,fack,facl)
                 !------------------------<V-COULOMB>------------------------
                 call Assign_Coulomb(Vcol_mic,rho_Ap,intV,ui,uj,uk,ul)
                 !------------------------<V-EXCHANGE>------------------------
@@ -2986,12 +3118,15 @@ end function Check_SCF_Conv
                 if (DMApRpcoe*dsqrt(iijj_pxVpx(ui,uk)*iijj_pxVpx(uj,ul)) > &
                 schwarz)then
                   intCpxVpx = Calc_pVp_2eij(&
-                  AO_fac(1,Li,Mi),AO_fac(1,Lj,Mj),contri,contrj,contrk,contrl,&
+                  faci(1),facj(1),contri,contrj,contrk,contrl,&
                   coedx_i(1:2*contri),coedx_j(1:2*contrj),&
                   coek(1:contrk),coel(1:contrl),&
-                  facdx_i,facdx_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                  expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                  codi,codj,codk,codl)
+                  codi,codj,codk,codl,&
+                  codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                  A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                  Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                  Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                  facdx_i,facdx_j,fack,facl)
                   !----------------------<RVR-COULOMB>----------------------
                   call Assign_Sigma_Col(1,1,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                   rho_ApRp,intCpxVpx,ui,uj,uk,ul)
@@ -3000,12 +3135,15 @@ end function Check_SCF_Conv
                 if (DMApRpcoe*dsqrt(iijj_pyVpy(ui,uk)*iijj_pyVpy(uj,ul)) > &
                 schwarz)then
                   intCpyVpy = Calc_pVp_2eij(&
-                  AO_fac(2,Li,Mi),AO_fac(2,Lj,Mj),contri,contrj,contrk,contrl,&
+                  faci(2),facj(2),contri,contrj,contrk,contrl,&
                   coedy_i(1:2*contri),coedy_j(1:2*contrj),&
                   coek(1:contrk),coel(1:contrl),&
-                  facdy_i,facdy_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                  expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                  codi,codj,codk,codl)
+                  codi,codj,codk,codl,&
+                  codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                  A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                  Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                  Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                  facdy_i,facdy_j,fack,facl)
                   !----------------------<RVR-COULOMB>----------------------
                   call Assign_Sigma_Col(2,2,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                   rho_ApRp,intCpyVpy,ui,uj,uk,ul)
@@ -3014,12 +3152,15 @@ end function Check_SCF_Conv
                 if (DMApRpcoe*dsqrt(iijj_pzVpz(ui,uk)*iijj_pzVpz(uj,ul)) > &
                 schwarz)then
                   intCpzVpz = Calc_pVp_2eij(&
-                  AO_fac(3,Li,Mi),AO_fac(3,Lj,Mj),contri,contrj,contrk,contrl,&
+                  faci(3),facj(3),contri,contrj,contrk,contrl,&
                   coedz_i(1:2*contri),coedz_j(1:2*contrj),&
                   coek(1:contrk),coel(1:contrl),&
-                  facdz_i,facdz_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                  expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                  codi,codj,codk,codl)
+                  codi,codj,codk,codl,&
+                  codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                  A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                  Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                  Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                  facdz_i,facdz_j,fack,facl)
                   !----------------------<RVR-COULOMB>----------------------
                   call Assign_Sigma_Col(3,3,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                   rho_ApRp,intCpzVpz,ui,uj,uk,ul)
@@ -3029,12 +3170,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(iijj_pxVpx(ui,uk)*iijj_pyVpy(uj,ul)) > &
               schwarz) then
                 intCpxVpy = Calc_pVp_2eij(&
-                AO_fac(1,Li,Mi),AO_fac(2,Lj,Mj),contri,contrj,contrk,contrl,&
+                faci(1),facj(2),contri,contrj,contrk,contrl,&
                 coedx_i(1:2*contri),coedy_j(1:2*contrj),&
                 coek(1:contrk),coel(1:contrl),&
-                facdx_i,facdy_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdx_i,facdy_j,fack,facl)
                 !----------------------<RVR-COULOMB>----------------------
                 call Assign_Sigma_Col(1,2,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                 rho_ApRp,intCpxVpy,ui,uj,uk,ul)
@@ -3043,12 +3187,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(iijj_pxVpx(ui,uk)*iijj_pzVpz(uj,ul)) > &
               schwarz) then
                 intCpxVpz = Calc_pVp_2eij(&
-                AO_fac(1,Li,Mi),AO_fac(3,Lj,Mj),contri,contrj,contrk,contrl,&
+                faci(1),facj(3),contri,contrj,contrk,contrl,&
                 coedx_i(1:2*contri),coedz_j(1:2*contrj),&
                 coek(1:contrk),coel(1:contrl),&
-                facdx_i,facdz_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdx_i,facdz_j,fack,facl)
                 !----------------------<RVR-COULOMB>----------------------
                 call Assign_Sigma_Col(1,3,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                 rho_ApRp,intCpxVpz,ui,uj,uk,ul)
@@ -3057,12 +3204,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(iijj_pyVpy(ui,uk)*iijj_pzVpz(uj,ul)) > &
               schwarz) then
                 intCpyVpz = Calc_pVp_2eij(&
-                AO_fac(2,Li,Mi),AO_fac(3,Lj,Mj),contri,contrj,contrk,contrl,&
+                faci(2),facj(3),contri,contrj,contrk,contrl,&
                 coedy_i(1:2*contri),coedz_j(1:2*contrj),&
                 coek(1:contrk),coel(1:contrl),&
-                facdy_i,facdz_j,AO_fac(:,Lk,Mk),AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdy_i,facdz_j,fack,facl)
                 !----------------------<RVR-COULOMB>----------------------
                 call Assign_Sigma_Col(2,3,R1VR1col_mic,R2VR2col_mic,rho_Ap,&
                 rho_ApRp,intCpyVpz,ui,uj,uk,ul)
@@ -3073,12 +3223,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(ijij_pxVpx(ui,uj)*ijij_pxVpx(uk,ul)) > &
               schwarz) then
                 intXpxVpx = Calc_pVp_2eik(&
-                AO_fac(1,Li,Mi),AO_fac(1,Lk,Mk),contri,contrj,contrk,contrl,&
+                faci(1),fack(1),contri,contrj,contrk,contrl,&
                 coedx_i(1:2*contri),coej(1:contrj),&
                 coedx_k(1:2*contrk),coel(1:contrl),&
-                facdx_i,AO_fac(:,Lj,Mj),facdx_k,AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdx_i,facj,facdx_k,facl)
                 !----------------------<RVR-EXCHANGE>----------------------
                 call Assign_Sigma_Exc(1,1,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
                 rho_ApRp,intXpxVpx,ui,uj,uk,ul)
@@ -3087,12 +3240,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(ijij_pyVpy(ui,uj)*ijij_pyVpy(uk,ul)) > &
               schwarz) then
                 intXpyVpy = Calc_pVp_2eik(&
-                AO_fac(2,Li,Mi),AO_fac(2,Lk,Mk),contri,contrj,contrk,contrl,&
+                faci(2),fack(2),contri,contrj,contrk,contrl,&
                 coedy_i(1:2*contri),coej(1:contrj),&
                 coedy_k(1:2*contrk),coel(1:contrl),&
-                facdy_i,AO_fac(:,Lj,Mj),facdy_k,AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdy_i,facj,facdy_k,facl)
                 !----------------------<RVR-EXCHANGE>----------------------
                 call Assign_Sigma_Exc(2,2,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
                 rho_ApRp,intXpyVpy,ui,uj,uk,ul)
@@ -3101,12 +3257,15 @@ end function Check_SCF_Conv
               if (DMApRpcoe*dsqrt(ijij_pzVpz(ui,uj)*ijij_pzVpz(uk,ul)) > &
               schwarz) then
                 intXpzVpz = Calc_pVp_2eik(&
-                AO_fac(3,Li,Mi),AO_fac(3,Lk,Mk),contri,contrj,contrk,contrl,&
+                faci(3),fack(3),contri,contrj,contrk,contrl,&
                 coedz_i(1:2*contri),coej(1:contrj),&
                 coedz_k(1:2*contrk),coel(1:contrl),&
-                facdz_i,AO_fac(:,Lj,Mj),facdz_k,AO_fac(:,Ll,Ml),&
-                expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-                codi,codj,codk,codl)
+                codi,codj,codk,codl,&
+                codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+                A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+                Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+                Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+                facdz_i,facj,facdz_k,facl)
                 !----------------------<RVR-EXCHANGE>----------------------
                 call Assign_Sigma_Exc(3,3,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
                 rho_ApRp,intXpzVpz,ui,uj,uk,ul)
@@ -3116,12 +3275,15 @@ end function Check_SCF_Conv
             if (DMApRpcoe*dsqrt(ijij_pxVpx(ui,uj)*ijij_pyVpy(uk,ul)) > &
             schwarz) then
               intXpxVpy = Calc_pVp_2eik(&
-              AO_fac(1,Li,Mi),AO_fac(2,Lk,Mk),contri,contrj,contrk,contrl,&
+              faci(1),fack(2),contri,contrj,contrk,contrl,&
               coedx_i(1:2*contri),coej(1:contrj),&
               coedy_k(1:2*contrk),coel(1:contrl),&
-              facdx_i,AO_fac(:,Lj,Mj),facdy_k,AO_fac(:,Ll,Ml),&
-              expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-              codi,codj,codk,codl)
+              codi,codj,codk,codl,&
+              codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+              A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+              Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+              Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+              facdx_i,facj,facdy_k,facl)
               !----------------------<RVR-EXCHANGE>----------------------
               call Assign_Sigma_Exc(1,2,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
               rho_ApRp,intXpxVpy,ui,uj,uk,ul)
@@ -3130,12 +3292,15 @@ end function Check_SCF_Conv
             if (DMApRpcoe*dsqrt(ijij_pxVpx(ui,uj)*ijij_pzVpz(uk,ul)) > &
             schwarz) then
               intXpxVpz = Calc_pVp_2eik(&
-              AO_fac(1,Li,Mi),AO_fac(3,Lk,Mk),contri,contrj,contrk,contrl,&
+              faci(1),fack(3),contri,contrj,contrk,contrl,&
               coedx_i(1:2*contri),coej(1:contrj),&
               coedz_k(1:2*contrk),coel(1:contrl),&
-              facdx_i,AO_fac(:,Lj,Mj),facdz_k,AO_fac(:,Ll,Ml),&
-              expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-              codi,codj,codk,codl)
+              codi,codj,codk,codl,&
+              codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+              A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+              Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+              Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+              facdx_i,facj,facdz_k,facl)
               !----------------------<RVR-EXCHANGE>----------------------
               call Assign_Sigma_Exc(1,3,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
               rho_ApRp,intXpxVpz,ui,uj,uk,ul)
@@ -3144,12 +3309,15 @@ end function Check_SCF_Conv
             if (DMApRpcoe*dsqrt(ijij_pyVpy(ui,uj)*ijij_pzVpz(uk,ul)) > &
             schwarz) then
               intXpyVpz = Calc_pVp_2eik(&
-              AO_fac(2,Li,Mi),AO_fac(3,Lk,Mk),contri,contrj,contrk,contrl,&
+              faci(2),fack(3),contri,contrj,contrk,contrl,&
               coedy_i(1:2*contri),coej(1:contrj),&
               coedz_k(1:2*contrk),coel(1:contrl),&
-              facdy_i,AO_fac(:,Lj,Mj),facdz_k,AO_fac(:,Ll,Ml),&
-              expi(1:contri),expj(1:contrj),expk(1:contrk),expl(1:contrl),&
-              codi,codj,codk,codl)
+              codi,codj,codk,codl,&
+              codA(:,1:contri,1:contrj),codB(:,1:contrk,1:contrl),&
+              A(1:contri,1:contrj),B(1:contrk,1:contrl),&
+              Gij(:,1:contri,1:contrj),Gkl(:,1:contrk,1:contrl),&
+              Gimij(:,1:contri,1:contrj),Gimkl(:,1:contrk,1:contrl),&
+              facdy_i,facj,facdz_k,facl)
               !----------------------<RVR-EXCHANGE>----------------------
               call Assign_Sigma_Exc(2,3,R1VR1exc_mic,R2VR2exc_mic,rho_Ap,&
               rho_ApRp,intXpyVpz,ui,uj,uk,ul)
@@ -3884,8 +4052,7 @@ end function DFTD4
     real(dp),intent(out) :: cB(sbdm, M_sbdm)
     integer              :: ii, jj, kk, mm
     integer              :: contri, contrj
-    integer              :: Li, Lj
-    integer              :: Mi, Mj
+    integer              :: faci(3), facj(3)
     real(dp)             :: expi(16), expj(16)
     real(dp)             :: coei(16), coej(16)
     real(dp)             :: codi(3), codj(3)
@@ -3897,15 +4064,13 @@ end function DFTD4
       allocate(M_i_j(cbdm,M_cbdm), source=0.0_dp)
       do ii = 1, cbdm
         contri = cbdata(ii) % contr
-        Li     = cbdata(ii) % L
-        Mi     = cbdata(ii) % M
+        faci   = cbdata(ii) % fac
         expi(1:contri) = cbdata(ii) % expo(1:contri)
         coei(1:contri) = cbdata(ii) % Ncoe(1:contri)
         codi = cbdata(ii) % pos
         do jj = 1, M_cbdm
           contrj = M_cbdata(jj) % contr
-          Lj     = M_cbdata(jj) % L
-          Mj     = M_cbdata(jj) % M
+          facj   = M_cbdata(jj) % fac
           expj(1:contrj) = M_cbdata(jj) % expo(1:contrj)
           coej(1:contrj) = M_cbdata(jj) % Ncoe(1:contrj)
           codj = M_cbdata(jj) % pos
@@ -3913,8 +4078,7 @@ end function DFTD4
             do mm = 1, contrj
               M_i_j(ii,jj) = M_i_j(ii,jj) + &
               Integral_S_1e(coei(kk)*coej(mm),&
-              AO_fac(:,Li,Mi),AO_fac(:,Lj,Mj),&
-              expi(kk),expj(mm),codi,codj)
+              faci,facj,expi(kk),expj(mm),codi,codj)
             end do
           end do
         end do

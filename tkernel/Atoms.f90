@@ -166,7 +166,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
 
   !DIR$ ATTRIBUTES ALIGN:align_size :: c2s, exc2s, s2c, exs2c, f2s, exf2s
   !DIR$ ATTRIBUTES ALIGN:align_size :: M_c2s, M_exc2s, s2f, exs2f, c2f, exc2f
-  real(dp),allocatable    :: c2s(:,:)  ! convert Cartesian to spher-harmo
+  real(dp),allocatable    :: c2s(:,:)    ! convert Cartesian to spher-harmo
   complex(dp),allocatable :: exc2s(:,:)
   real(dp),allocatable    :: M_c2s(:,:)  ! convert Cartesian to spher-harmo
   complex(dp),allocatable :: M_exc2s(:,:)
@@ -221,15 +221,33 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     integer  :: shell                  ! shell number
     integer  :: L                      ! angular quantum number, S:1, P:2 ...
     integer  :: M                      ! magnetic quantum number
+    integer  :: fac(3)                 ! (x,y,z) fac of |AO>
+    integer  :: facdx(3,2)             ! (x,y,z) fac of dx|AO>
+    integer  :: facdy(3,2)             ! (x,y,z) fac of dy|AO>
+    integer  :: facdz(3,2)             ! (x,y,z) fac of dz|AO>
     real(dp) :: pos(3)                 ! position of each atom, (x,y,z)
     integer  :: contr                  ! contr of basis shell
-    real(dp) :: expo(16)               ! expo of primitive shell
-    real(dp) :: coe(16)                ! coeff of primitive shell
-    real(dp) :: Ncoe(16)               ! normalized coeff of primitive shell
+    real(dp) :: expo(16)               ! expo of |AO>
+    real(dp) :: coe(16)                ! coeff of |AO>
+    real(dp) :: Ncoe(16)               ! normalized coeff of |AO>
+    real(dp) :: coedx(32)              ! coeff of dx|AO>
+    real(dp) :: coedy(32)              ! coeff of dy|AO>
+    real(dp) :: coedz(32)              ! coeff of dz|AO>
   end type basis_data
-  type(basis_data), allocatable :: cbdata(:)  ! Cartesian basis data
+  type(basis_data), allocatable :: cbdata(:)  ! data of |AO>
   type(basis_data), allocatable :: sbdata(:)  ! Spherical-harmonic basis data
-  type(basis_data), allocatable :: M_cbdata(:)! Cartesian basis data (MOLDEN)
+  type(basis_data), allocatable :: M_cbdata(:)! data of |AO> in MOLDEN
+
+  ! PRISM data <AOi|AOj>for Gaussian integrals
+  type PRISM_data
+    integer              :: contri, contrj    ! contraction of AOi, AOj
+    real(dp),allocatable :: cod(:,:,:)        ! coordinate of pair center
+    real(dp),allocatable :: sumexpo(:,:)      ! expo_i + expo_j
+    real(dp),allocatable :: Gij(:,:,:)        ! G = sum(Gij)
+    real(dp),allocatable :: Gimij(:,:,:)      ! Gim = prod(Gimij)
+  end type PRISM_data
+  ! data in AOpair can also be used for <AOi|\hat{p}|\hat{p}|AOj>
+  type(PRISM_data),allocatable :: AOpair(:,:) ! <AOi|AOj>
 
 !-----------------------------------------------------------------------
 ! molecular definations
@@ -478,6 +496,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
         M_cbdata(ai)%M     = ak
         M_cbdata(ai)%contr = a
         M_cbdata(ai)%atom  = aj
+        M_cbdata(ai)%fac   = AO_fac(:,b,ak)
         !!!!!! this is very important !!!!!!
         ! mol: the wave-function is projected to the current molecule (geometry)
         ! M_mol: keep the original wave-function
@@ -780,6 +799,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       cbdata(ai)%contr = atom_basis(mol(atom)%basis_number+shell-1)%contr
       cbdata(ai)%expo  = atom_basis(mol(atom)%basis_number+shell-1)%expo
       cbdata(ai)%coe   = atom_basis(mol(atom)%basis_number+shell-1)%coe
+      cbdata(ai)%fac   = AO_fac(:,L,M)
       ai = ai + 1
       if (ai-shell_start >= (L+1)*L/2) then
         shell = shell + 1

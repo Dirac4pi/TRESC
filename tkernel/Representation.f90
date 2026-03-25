@@ -421,7 +421,7 @@ module Representation
       xx = minx + (ii-1) * grid
       do jj = 1, cbdm
         vec(jj) = xx - cbdata(jj)%pos(1)
-        fac(:) = AO_fac(:, cbdata(jj)%L, cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         facx(ii,jj) = vec(jj) ** fac(1)
         do kk = 1, cbdata(jj)%contr
           expx(ii,jj,kk) = dexp(-cbdata(jj)%expo(kk)*vec(jj)*vec(jj))
@@ -432,7 +432,7 @@ module Representation
       yy = miny + (ii-1) * grid
       do jj = 1, cbdm
         vec(jj) = yy - cbdata(jj)%pos(2)
-        fac(:) = AO_fac(:, cbdata(jj)%L, cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         facy(ii,jj) = vec(jj) ** fac(2)
         do kk = 1, cbdata(jj)%contr
           expy(ii,jj,kk) = dexp(-cbdata(jj)%expo(kk)*vec(jj)*vec(jj))
@@ -443,7 +443,7 @@ module Representation
       zz = minz + (ii-1) * grid
       do jj = 1, cbdm
         vec(jj) = zz - cbdata(jj)%pos(3)
-        fac(:) = AO_fac(:, cbdata(jj)%L, cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         facz(ii,jj) = vec(jj) ** fac(3)
         do kk = 1, cbdata(jj)%contr
           expz(ii,jj,kk) = dexp(-cbdata(jj)%expo(kk)*vec(jj)*vec(jj))
@@ -781,7 +781,7 @@ module Representation
       px = minx + (ii-1) * grid
       do jj = 1, cbdm
         expo   = cbdata(jj)%expo
-        fac(:) = AO_fac(:,cbdata(jj)%L,cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         do kk = 1, cbdata(jj)%contr
           Hermitex(ii,jj,kk) = exp(-px*px/(4.0_dp*expo(kk))) * &
                                 Hermite_poly(fac(1),px*inv2sqrtb(jj,kk))
@@ -792,7 +792,7 @@ module Representation
       py = miny + (ii-1) * grid
       do jj = 1, cbdm
         expo   = cbdata(jj)%expo
-        fac(:) = AO_fac(:,cbdata(jj)%L,cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         do kk = 1, cbdata(jj)%contr
           Hermitey(ii,jj,kk) = exp(-py*py/(4.0_dp*expo(kk))) * &
                                 Hermite_poly(fac(2),py*inv2sqrtb(jj,kk))
@@ -803,7 +803,7 @@ module Representation
       pz = minz + (ii-1) * grid
       do jj = 1, cbdm
         expo   = cbdata(jj)%expo
-        fac(:) = AO_fac(:,cbdata(jj)%L,cbdata(jj)%M)
+        fac(:) = cbdata(jj)%fac
         do kk = 1, cbdata(jj)%contr
           Hermitez(ii,jj,kk) = exp(-pz*pz/(4.0_dp*expo(kk))) * &
                                 Hermite_poly(fac(3),pz*inv2sqrtb(jj,kk))
@@ -930,7 +930,7 @@ module Representation
     !$omp& if(threads < nproc)
     !$omp do schedule(dynamic, 1)
     do i = 1, atom_count
-      ! integral precision equivalent to 'int=ultrafine' in Gaussian program
+      ! grid precision equal to 'int=ultrafine' in Gaussian program
       if (mol(i)%atom_number <= 2) then
         nr = 50
         nl = 590
@@ -1215,9 +1215,7 @@ module Representation
       vec(:,3) = points(:,3) - cbdata(kk) % pos(3)
       vecsum(:) = sum(vec(:,:)**2,dim=2)
       contr    = cbdata(kk) % contr
-      L        = cbdata(kk) % L
-      M        = cbdata(kk) % M
-      fac(:)   = AO_fac(:,L,M)
+      fac(:)   = cbdata(kk) % fac
       do jj = 1, contr
         expo   = cbdata(kk) % expo(jj)
         coeff  = cbdata(kk) % Ncoe(jj)
@@ -1288,7 +1286,7 @@ module Representation
         val = c0
         contr  = cbdata(kk)%contr
         expo   = cbdata(kk)%expo
-        fac(:) = AO_fac(:,cbdata(kk)%L,cbdata(kk)%M)
+        fac(:) = cbdata(kk)%fac
         rx     = cbdata(kk)%pos(1)
         ry     = cbdata(kk)%pos(2)
         rz     = cbdata(kk)%pos(3)
@@ -1342,7 +1340,6 @@ module Representation
     integer                 :: ii, jj, kk
     integer                 :: contr
     real(dp)                :: vec(n, 3)
-    integer                 :: L, M
     integer                 :: fac(3)
     real(dp)                :: coeff
     real(dp)                :: expo
@@ -1364,9 +1361,7 @@ module Representation
       vec(:,2) = points(:,2) - cbdata(kk) % pos(2)
       vec(:,3) = points(:,3) - cbdata(kk) % pos(3)
       contr    = cbdata(kk) % contr
-      L        = cbdata(kk) % L
-      M        = cbdata(kk) % M
-      fac(:)   = AO_fac(:,L,M)
+      fac(:)   = cbdata(kk) % fac
       do jj = 1, contr
         expo   = cbdata(kk) % expo(jj)
         coeff  = cbdata(kk) % Ncoe(jj)

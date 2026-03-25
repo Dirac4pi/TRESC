@@ -36,7 +36,6 @@ module functional
     integer                :: ii, jj
     integer                :: contr
     real(dp)               :: vec(n, 3)
-    integer                :: L, M
     integer                :: fac(3)
     real(dp)               :: coeff
     real(dp)               :: b
@@ -45,9 +44,7 @@ module functional
     do ii = 1, cbdm
       val = 0.0_dp
       contr = cbdata(ii) % contr
-      L     = cbdata(ii) % L
-      M     = cbdata(ii) % M
-      fac = AO_fac(:,L,M)
+      fac   = cbdata(ii) % fac
       vec(:,1) = point(:,1) - cbdata(ii) % pos(1)
       vec(:,2) = point(:,2) - cbdata(ii) % pos(2)
       vec(:,3) = point(:,3) - cbdata(ii) % pos(3)
@@ -91,7 +88,6 @@ module functional
     integer                  :: ii, jj
     integer                  :: contr
     real(dp)                 :: vec(n, 3)
-    integer                  :: L, M
     integer                  :: fac(3)
     real(dp)                 :: coeff
     real(dp)                 :: b
@@ -103,9 +99,7 @@ module functional
       valdy = 0.0_dp
       valdz = 0.0_dp
       contr = cbdata(ii) % contr
-      L     = cbdata(ii) % L
-      M     = cbdata(ii) % M
-      fac = AO_fac(:,L,M)
+      fac   = cbdata(ii) % fac
       vec(:,1) = point(:,1) - cbdata(ii) % pos(1)
       vec(:,2) = point(:,2) - cbdata(ii) % pos(2)
       vec(:,3) = point(:,3) - cbdata(ii) % pos(3)
@@ -204,7 +198,6 @@ module functional
     integer                  :: ii, jj
     integer                  :: contr
     real(dp)                 :: vec(n, 3)
-    integer                  :: L, M
     integer                  :: fac(3)
     real(dp)                 :: coeff
     real(dp)                 :: b
@@ -220,9 +213,7 @@ module functional
       vlaply = 0.0_dp
       vlaplz = 0.0_dp
       contr = cbdata(ii) % contr
-      L     = cbdata(ii) % L
-      M     = cbdata(ii) % M
-      fac = AO_fac(:,L,M)
+      fac   = cbdata(ii) % fac
       vec(:,1) = point(:,1) - cbdata(ii) % pos(1)
       vec(:,2) = point(:,2) - cbdata(ii) % pos(2)
       vec(:,3) = point(:,3) - cbdata(ii) % pos(3)
@@ -384,7 +375,6 @@ module functional
     integer                  :: ii, jj
     integer                  :: contr
     real(dp)                 :: vec(n, 3)
-    integer                  :: L, M
     integer                  :: fac(3)
     real(dp)                 :: coeff
     real(dp)                 :: b
@@ -396,9 +386,7 @@ module functional
       valdy = 0.0_dp
       valdz = 0.0_dp
       contr = cbdata(ii) % contr
-      L     = cbdata(ii) % L
-      M     = cbdata(ii) % M
-      fac   = AO_fac(:,L,M)
+      fac   = cbdata(ii) % fac
       vec(:,1) = point(:,1) - cbdata(ii) % pos(1)
       vec(:,2) = point(:,2) - cbdata(ii) % pos(2)
       vec(:,3) = point(:,3) - cbdata(ii) % pos(3)
