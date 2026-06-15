@@ -1,6 +1,7 @@
+#!/home/lky/miniconda3/envs/vis2c/bin/python
 '''
 visualization of complex spinor orbital with unstructured grid data
-coding:UTF-8
+author:Dirac4pi
 env:vis2c
 '''
 
@@ -29,12 +30,19 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   '''
   global spin_phase
   isovalue = float(isovalue)
-  if not moldendir.endswith('.molden.d'):
+  if not moldendir.endswith('.molden.d') and \
+     not moldendir.endswith('.molden.dir') and \
+     not moldendir.endswith('.molden.d/') and \
+     not moldendir.endswith('.molden.dir/'):
     raise RuntimeError(f'moldendir should be xxx.molden.d')
   else:
-    basename = moldendir.strip('.molden.d')
+    basename = moldendir.split('.molden')[0]
   if not path.exists(moldendir):
     raise RuntimeError(f"can't find dir {moldendir}")
+  if int(index) <= 0:
+    raise RuntimeError(f'index should be a positive integer')
+  if float(isovalue) <= 0:
+    raise RuntimeError(f'isovalue should be a positive float')
   print(f'spin_phase = {spin_phase}')
   # generate mog files
   print('calling TRESC:')
@@ -132,9 +140,15 @@ def mog2c(moldendir:str, index:int, isovalue:float=0.05)->None:
 #===============================================================================
 if __name__ == "__main__":
   from sys import argv
-  if len(argv) != 3:
-    print('mog2c source.molden.d orb_index (isovalue)')
-    print('e.g. mog2c C6H6.molden.d 30')
+  if len(argv) not in [3, 4]:
+    print('Usage: mog2c.py source.molden.d orb_index (isovalue)')
+    print('e.g. mog2c.py C6H6.molden.d 30')
   else:
-    mog2c(*argv[1:])
+    source_file = argv[1]
+    orb_index = argv[2]
+    if len(argv) == 4:
+      isovalue = float(argv[3])
+      mog2c(source_file, orb_index, isovalue)
+    else:
+      mog2c(source_file, orb_index)
 

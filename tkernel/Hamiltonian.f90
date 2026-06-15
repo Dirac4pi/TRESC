@@ -1775,7 +1775,7 @@ module Hamiltonian
       ! 2*ri-2 == 0
       int_mic = 0.0_dp
       do rk = 1, tayeps
-        int_mic = int_mic + X**(rk-1)*intTaycoe(rk,1)                                
+        int_mic = int_mic + X**(rk-1)*intTaycoe(rk,1)                                !有大问题
       end do
       int = PL(1) * int_mic
       ! 2*ri-2 > 0

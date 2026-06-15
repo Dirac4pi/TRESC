@@ -1,13 +1,15 @@
 
 # Introduction
 
-&nbsp;&nbsp;&nbsp;&nbsp;Thomas Relativistic Electronic Structure Calculation
-(TRESC) is developed to calculate the electronic structure of non-periodic
-polyatomic systems under the Born-Oppenheimer approximation, it supports
-Hartree-Fock/Kohn-Sham self-consistent field (HF/KS-SCF) calculation based on
-2-component DKH2 Hamiltonian (2c-Hamiltonian) of a given molecule.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The main part of the code is written in Fortran 2008
-free format.
+&nbsp;&nbsp;&nbsp;&nbsp;The Thomas Relativistic Electronic Structure Calculation
+(TRESC) package is designed to compute the electronic structure of non-periodic
+polyatomic systems within the Born-Oppenheimer approximation. It supports
+Hartree-Fock and Kohn-Sham self-consistent field (HF/KS-SCF) calculations based
+on a two-component (2c) second-order Douglas-Kroll-Hess (DKH2) Hamiltonian for a
+given structure.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;TRESC exhibits strong performance across both main-group
+molecules and transition metal complexes, see `/examples`. The core computational
+engine (called tkernel) is implemented in Fortran 2008 free format.
 
 # Algorithms
 
@@ -67,16 +69,15 @@ Grimme's group.
 
 ## A special Hamiltonian: SRTP
 
-&nbsp;&nbsp;&nbsp;&nbsp;Second Relativized Thomas Precession (SRTP) is to
-conbine the Lorentz vector feature of the spin 4-vector
-$$\left(0,\vec{s}\right)$$ and the Lorentz scalar feature of the magnitude of
-its spatial components ($$s=\hbar/2$$). 'Second Relativized' means the magnitude
-of spin vector is independent of the reference frame choice.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;To accomplish it, we start with a newly-defined
-reference frame transformation rule, which makes the observed $$\vec{s}/s$$
-from any frame identical with the observed $$\vec{s}/s$$ from corresponding
-frame under the Lorentz transformation rule, but magnitude $$s$$ always
-$$\hbar /2$$.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Second Relativized Thomas Precession (SRTP) combines the
+Lorentz vector feature of the spin 4-vector $$\left(0,\vec{s}\right)$$ with the
+Lorentz scalar feature of the magnitude of its spatial components
+($$s=\hbar/2$$). The term 'Second Relativized' signifies that the magnitude
+of spin vector remains strictly independent of the chosen reference frame. To
+achieve this, we introduce a newly-defined frame transformation rule, which
+ensures that the observed $$\vec{s}/s$$ in any frame is identical to that
+derived under standard Lorentz transformations while its magnitude $$s$$ is
+invariantly preserved as $$\hbar /2$$.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Assuming that frame O' is moving along the x-axis in
 frame O, the Lorentz transformation and the newly-defined transformation
 lead to different observation.<br>
@@ -126,11 +127,13 @@ $$
 \right) ^2 \right) ^{-1/2}
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;This newly-defined transformation is kinematic, but it
-will change the form of Thomas precession dynamically since Thomas precession is
-related to the intrinsic property of reference frame transformation.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;After some derivation, the contribution of the Thomas
-precession to electron energy at low speed can be represented as<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Although this newly proposed transformation is
+essentially kinematic, it dynamically alters the form of Thomas precession, as
+this precession is intrinsically linked to the properties of reference frame
+transformations.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Following detailed derivation, the contribution of
+Thomas precession to the electronic energy in the low-velocity limit can be
+expressed as<br>
 
 $$
 H_{\mathrm{SRTP}}=\frac{1}{2}\vec{s}_{\gamma}\cdot
@@ -154,17 +157,17 @@ $$
 \end{matrix} \right)
 $$
 
-&nbsp;&nbsp;&nbsp;&nbsp;This formular leads to the modified electron spinor
-wavefunction through DKH transformation.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;In addition, SRTP effect is of order $$c^{-4}$$, one
-have to consider other terms of order $$\geqslant c^{-4}$$ before it, including
-radiation effect. Moreover, the lowest order of SRTP still requires the
-computation of integrals like $$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, it has
-a small effect on results but will significantly increases the one-electron
-integral cost.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;SRTP is currently has no evidence support, if you're
-interested, try keyword `pppVp` in %Hamiltonian when performing DKH2
-calculation.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;This formula yields the modified electron spinor
+wavefunction through the DKH transformation. Furthermore, since the SRTP
+correction scales as $$\mathcal{O}(c^{-4})$$, one must first account for other
+terms up to this order, including radiation effects. Moreover, evaluating the
+lowest-order SRTP correction requires computing complex integrals such as
+$$\langle i|p_{x}^{3}V_{ij}p_y|j\rangle$$, while this yields only a minor impact
+on the final results, it significantly increases the computational cost of
+one-electron integrals.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Currently, SRTP lacks empirical support; however,
+interested users can explore this effect by adding the `pppVp` keyword to the
+`%Hamiltonian` block when performing DKH2 calculations.<br>
 
 ## Characterization of spinor states
 
@@ -181,9 +184,9 @@ R\left( \varOmega \right) |\varPsi \rangle
 $$
 
 &nbsp;&nbsp;&nbsp;&nbsp;where $$D_{MM}^{S}$$ is the Wigner D-matrix and $$R$$ is
-the SU(2) rotation matrix. TRESC will calculates the contribution of several
-spin-pure states to the converged spinor state, any possible spin-pure state
-is predicted by the Wigner-Eckart theorem.
+the SU(2) rotation matrix. TRESC calculates the contributions of several
+spin-pure states to the converged spinor state, with all permissible spin-pure
+states predicted by the Wigner-Eckart theorem.
 
 ### Measure of Time-Reversal Symmetry(TRS) breaking
 
@@ -197,77 +200,92 @@ M_{ij}&=\langle \phi _i|-i\sigma_y|\phi _j\rangle
 $$
 
 &nbsp;&nbsp;&nbsp;&nbsp;where $$N$$ is the number of electrons,
-$$|\phi_i\rangle$$ denotes the i-th occupied orbital.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The deviation of $$\kappa$$ from 0 reflects the degree
-of TRS breaking of the system. For scalar single-configuration wavefunction, the
-reference $$\kappa$$ is $$\sqrt{N_{\alpha}-N_{\beta}}$$; deviation from this
-value after 2c-Hamiltonian HF/KS-SCF calculation reflects the degree of TRS
-breaking caused by SOC, which is closely related to the zero-field splitting of
-the system.
+$$|\phi_i\rangle$$ denotes the i-th occupied orbital. The deviation of
+$$\kappa$$ from 0 reflects the degree of TRS breaking within the system. For a
+scalar single-configuration wavefunction, the reference $$\kappa$$ value is
+$$\sqrt{N_{\alpha}-N_{\beta}}$$; deviation from this reference following a
+2c-Hamiltonian HF/KS-SCF calculation indicates the extent of SOC-induced TRS
+breaking which is closely related to the zero-field splitting of the system.
 
 ## Visualisation of complex spinor MOs
 
-&nbsp;&nbsp;&nbsp;&nbsp;Vis2C is a Python package for visualising spinor
-(and scalar) molecular orbitals. It supports three visualization methods, which
-differ in terms of projection space and grid partitioning. All grid parameters
-of these methods can be set in `$TRESC/gridsettings.ini`.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Vis2c is a Python package designed to visualize scalar
+and spinor molecular orbitals, offering three visualization methods based on
+different projection spaces and grid partitioning strategies. Grid parameters of
+all these methods can be changed in `$TRESC/gridsettings.ini`.<br>
 
 ### 1. Structured grid data: cub1c/cub2c
 
 &nbsp;&nbsp;&nbsp;&nbsp;When TRESC finishes its HF/KS-SCF calculation, canonical
-orbitals will be dumped to `jobname.molden.d`. With it, one can use `cub2c`
-function to generate two GAUSSIAN cube format files (contain grid data of real
+orbitals will be dumped to `jobname.molden.d`. With it, users can execute the
+`cub2c.py` to generate two GAUSSIAN cube format files (contain grid data of real
 and imaginary part of alpha and beta components of the selected orbital) and
 then visualise the selected orbital based on the grid data automatically.
 The visualisation are as follows:<br>
 <p align="center">
-  <img src="docs/Ni-C2H4-3-AlphaHOMO-1.png"
-  alt="docs/Ni-C2H4-3-AlphaHOMO-1.png" width="500">
+  <img src="docs/Ni-C2H4-3_HOMO-3.png"
+  alt="docs/Ni-C2H4-3_HOMO-3.png" width="500">
   <br>
-  <em>Ni-C2H4-3-AlphaHOMO-1</em>
+  <em>HOMO-3 of triplet [Ni-C2H4], &lt;s^2&gt;=0.67 , &lt;s_z&gt;=-0.41</em>
 </p>
 
-&nbsp;&nbsp;&nbsp;&nbsp;The visualisation shows spin phase and orbital phase,
-variance in spin phase reflects the strength of spin-orbit coupling (SOC) of the
-selected orbital. Some frontier spinor orbitals in `examples/` shows the fact
-that orbital with more nodal surfaces in regions near heavy atoms exhibit
-stronger SOC and are more likely to spin flipping.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The visualization displays both the spin and orbital
+phases; the variance in the spin phase reflects the strength of the spin-orbit
+coupling (SOC) within the selected orbital. As demonstrated by the frontier
+spinor orbitals in the `examples/`, orbitals with more nodal surfaces near heavy
+atoms exhibit stronger SOC and are more susceptible to spin flipping.<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;Furthermore, executing `cub2c.py` with the `-slice` flag
+generates cross-sectional slices of both the orbital amplitude and the spin
+phase. These visualizations reveal that the amplitude slices are typically
+solid, whereas the spin-phase slices appear hollow, indicating that spin
+perturbations predominantly occur at the orbital phase boundaries.<br>
+<p align="center">
+  <img src="docs/Ni-C2H4-3_HOMO-3_spin-phase-slice.png"
+  alt="docs/Ni-C2H4-3_HOMO-3_spin-phase-slice.png" width="500">
+  <br>
+  <em>spin-phase slice of HOMO-3 of triplet [Ni-C2H4], a distinctive hollow,
+  umbrella-shaped pattern</em>
+</p>
 
 ### 2. Untructured grid data: mog2c
 
-&nbsp;&nbsp;&nbsp;&nbsp;Although structured grid data is efficient for
-post-processing and visualisation, it is necessary to use unstructured data for
-visualisation in the following three scenarios:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;While structured grid data facilitates efficient
+post-processing and visualization, unstructured grids become necessary in the
+following three scenarios:<br>
 
-1. A large molecule with a select orbital localised in the inner shell of a
-particular atom;
-2. The phase changes caused by SOC need to be illustrated in detail (these
-regions are located near to heavy nuclei);
-3. The frame-dragging effect of a high-speed moving molecule needs to be
-illustrated;
+1. Visualizing a specific orbital localized within the inner shell of a
+particular atom in a large molecule;
+2. Illustrating detailed phase changes induced by SOC in the vicinity of heavy
+nuclei;
+3. Capturing the frame-dragging effect of a rapidly moving molecule;
 
-&nbsp;&nbsp;&nbsp;&nbsp;Vis2C allows visualisation based on unstructured data
-(Becke's fuzzy grid). With the `jobname.molden.d` generated by TRESC, one can
-use `mog2c` function to generate a series of Becke grid data and then visualise
-the selected orbital automatically.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Vis2c supports visualization using unstructured data,
+specifically Becke's fuzzy grids. By utilizing the `jobname.molden.d` generated
+by TRESC, users can execute the `mog2c.py` to automatically generate the
+requisite Becke grid data and visualize the selected orbital.<br>
 
 ### 3. Replace phase with momentum: pro1c/pro2c
 
-&nbsp;&nbsp;&nbsp;&nbsp;Momentum space is the dual space of real space, where
-phase information in real space can be transformed into amplitude information
-in momentum space. Therefore, `pro2c` avoids plotting phases and instead uses
-the most intuitive isosurface representation to convey all orbital information.
-The visualisation are as follows:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Momentum space is the dual of real space, where spatial
+phase information is transformed into momentum amplitude. Consequently,
+`pro2c.py` avoids complex phase plotting and instead utilizes intuitive
+isosurface representations to convey all orbital information. The visualizations
+are as follows:<br>
 <p align="center">
-  <img src="docs/Ni-C2H4-3-AlphaHOMO.png"
-  alt="docs/Ni-C2H4-3-AlphaHOMO.png" width="500">
+  <img src="docs/Ni-C2H4-3_HOMO-3_pro2c.png"
+  alt="docs/Ni-C2H4-3_HOMO-3_pro2c.png" width="500">
   <br>
-  <em>Ni-C2H4-3-AlphaHOMO</em>
+  <em>HOMO-3 of triplet [Ni-C2H4], d-orbital in momentum space also has a
+  quatrefoil shape.</em>
 </p>
 
-&nbsp;&nbsp;&nbsp;&nbsp;Electrons are made particle-like by this method. For
-example, the phase-matching principle for bonding orbitals should be replaced by
-the momentum-matching principle.
+&nbsp;&nbsp;&nbsp;&nbsp;The momentum-space projection of a bound-state orbital
+is inherently centrally symmetric, exhibiting symmetry about the origin
+(indicated by the central black dot). Furthermore, mapping to momentum space
+emphasizes the particle-like nature of electrons; for instance, the conventional
+spatial phase-matching principle for bonding orbitals is effectively replaced by
+a momentum-matching principle.
 
 # Options
 
@@ -380,11 +398,21 @@ Change directory to TRESC root and build it by:<br>
 chmod +x release.sh && ./release.sh
 ```
 
-append to `~/.bashrc` when everything is done:<br>
+You need to create an environment with
+
+```Shell
+conda create --name vis2c python=3.10 numpy scipy matplotlib \
+qcelemental mayavi traits traitsui pyqt
+```
+
+grant all `.py` in `/vis2c` executable permissions and replace the shebangs with
+the path to the Python interpreter of env `vis2c`, it will enable you to use
+scripts in any scenario. Append to `~/.bashrc` when everything is done:<br>
 
 ```Shell
 export TRESC="/path/to/TRESC"
-export PATH="$TRESC/build:$PATH
+export PATH="$TRESC/build:$PATH"
+export PATH="$TRESC/vis2c:$PATH"
 alias TRESC='tshell.sh'
 alias tshell='tshell.sh'
 ```

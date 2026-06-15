@@ -1,18 +1,20 @@
+#!/home/lky/miniconda3/envs/vis2c/bin/python
 '''
 visualization of real scalar orbital with structured grid data
-coding:UTF-8
+author: Dirac4pi
 env:vis2c
 '''
 
 import viskit as vk
 import plot3d as p3
+import re
 from os import path
 from mayavi import mlab
 from traits.api import HasTraits, Float, observe
 from traitsui.api import View, Item
 
 #-------------------------------------------------------------------------------
-def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
+def cub1c(molden:str, index:str, isovalue:float=0.05, slice:bool=False)->None:
   '''
   visualization of real scalar orbital with structured grid data
   --
@@ -32,6 +34,11 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
       molden = molden + '.molden.input'
   if not path.exists(molden):
     raise RuntimeError(f"can't find {molden}")
+  check_index = lambda s: bool(re.fullmatch(r'[1-9]\d*[AB]', s, re.IGNORECASE))
+  if check_index(index) is False:
+    raise RuntimeError(f'index should be 24A, 25b, etc.')
+  if float(isovalue) <= 0:
+    raise RuntimeError(f'isovalue should be a positive float')
   # generate cube file
   print('calling TRESC:')
   vk.call_executable(['tshell.sh', '-cub1c', molden, index])
@@ -47,6 +54,9 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
   val = mat['value']
   # plot the real scalar orbital
   print('plotting...')
+  if slice:
+    p3.slice_cub(f"Orbit Isosurfase Slice", atoms, x, y, z,val, \
+                 'viridis', val.max(), val.min())
   isovl = p3.real_orb_plot_cub(index, atoms, val, x, y, z, isovalue)
   # UI regulation isovalue
   class IsoValueController(HasTraits):
@@ -70,8 +80,16 @@ def cub1c(molden:str, index:str, isovalue:float=0.05)->None:
 #===============================================================================
 if __name__ == "__main__":
   from sys import argv
-  if len(argv) != 3:
-    print('cub1c source.molden.input orb_index_with_spin (isovalue)')
-    print('e.g. cub1c C6H6.molden.input 15a')
+  if len(argv) not in [3, 4]:
+    print('Usage: cub1c.py source.molden.input orb_index_with_spin (-slice)')
+    print('e.g. cub1c.py C6H6.molden.input 15a -slice')
   else:
-    cub1c(*argv[1:])
+    source_file = argv[1]
+    orb_index = argv[2]
+    if len(argv) == 4:
+      if argv[3].lower() == '-slice':
+        cub1c(source_file, orb_index, isovalue=0.05, slice=True)
+      else:
+        exit(f'unkown arg: {argv[3]}')
+    else:
+      cub1c(source_file, orb_index, isovalue=0.05, slice=False)

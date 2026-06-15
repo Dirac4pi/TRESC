@@ -70,9 +70,14 @@ end program Tkernel
 !> print current version of TRESC
 subroutine Printversion()
   use Fundamentals
+  use omp_lib, only: omp_get_max_threads
+  use xc_f03_lib_m, only: xc_f03_version
   implicit none
   character(len=200) :: env_TRESC = ''
-  write(*,*) 'Thomas Relativistic Electronic Structure Calculation'
+  integer            :: max_threads
+  integer            :: vmajor, vminor, vmicro
+  write(*,*) '***Thomas Relativistic Electronic Structure Calculation***'
+  write(*,*) '        ***https://github.com/dirac4pi/TRESC***'
   write(*,*) 'tkernel version: '//trim(version)
   call getenv('TRESC',env_TRESC)
   if (env_TRESC == '') then
@@ -80,6 +85,16 @@ subroutine Printversion()
   else
     write(*,*) '$TRESC = '//trim(env_TRESC)
   end if
+  write(*,*) 'check dynamic link library compatibility'
+  write(*,*) 'OpenMP checking ...'
+  max_threads = omp_get_max_threads()
+  write(*,'(A,I0)') &
+  " [checked] OpenMP link succeeded, OpenMP max threads = ",max_threads
+  write(*,*) 'LibXC checking ...'
+  call xc_f03_version(vmajor, vminor, vmicro)
+  write(*,'(A,I0,A,I0,A,I0)') &
+  " [checked] LibXC link succeeded, LibXC version = ",&
+  vmajor, ".", vminor, ".", vmicro
 end subroutine Printversion
 
 !-----------------------------------------------------------------------

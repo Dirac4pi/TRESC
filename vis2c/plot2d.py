@@ -1,6 +1,7 @@
+#!/home/lky/miniconda3/envs/vis2c/bin/python
 '''
 plot 2D objects
-coding:UTF-8
+author:Dirac4pi
 env:vis2c
 '''
 
@@ -150,3 +151,7 @@ def scf_plot(filename:str) -> None:
   fig.tight_layout()
   plt.show()
 
+#===============================================================================
+if __name__ == '__main__':
+  print('plot2d.py is not designed to be run directly.')
+  print('Please import the functions in this module to plot your data.')

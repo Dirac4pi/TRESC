@@ -1,8 +1,9 @@
+#!/home/lky/miniconda3/envs/vis2c/bin/python
 '''
 visualization of complex spinor orbital with structured
 grid data in real space and momentum space, by the using
 of dual space as an alternative to phase descriptions.
-coding:UTF-8
+author:Dirac4pi
 env:vis2c
 '''
 
@@ -27,10 +28,17 @@ def pro2c(moldendir:str, index:int, isovalue:float=0.05)->None:
   Returns: None
   '''
   isovalue = float(isovalue)
-  if not moldendir.endswith('.molden.d'):
+  if not moldendir.endswith('.molden.d') and \
+     not moldendir.endswith('.molden.dir') and \
+     not moldendir.endswith('.molden.d/') and \
+     not moldendir.endswith('.molden.dir/'):
     raise RuntimeError(f'moldendir should be xxx.molden.d')
   if not path.exists(moldendir):
     raise RuntimeError(f"can't find dir {moldendir}")
+  if int(index) <= 0:
+    raise RuntimeError(f'index should be a positive integer')
+  if float(isovalue) <= 0:
+    raise RuntimeError(f'isovalue should be a positive float')
   # generate cube files (with real cube and momentum cube)
   print('calling TRESC:')
   vk.call_executable(['tshell.sh', '-pro2c', moldendir, str(index)])
@@ -129,8 +137,14 @@ def pro2c(moldendir:str, index:int, isovalue:float=0.05)->None:
 #===============================================================================
 if __name__ == "__main__":
   from sys import argv
-  if len(argv) != 3:
-    print('pro2c source.molden.d orb_index (isovalue)')
-    print('e.g. pro2c C6H6.molden.d 30')
+  if len(argv) not in [3, 4]:
+    print('Usage: pro2c.py source.molden.d orb_index [isovalue]')
+    print('e.g. pro2c.py C6H6.molden.d 30 (0.05)')
   else:
-    pro2c(*argv[1:])
+    source_file = argv[1]
+    orb_index = argv[2]
+    if len(argv) == 4:
+      isovalue = float(argv[3])
+      pro2c(source_file, orb_index, isovalue)
+    else:
+      pro2c(source_file, orb_index)
