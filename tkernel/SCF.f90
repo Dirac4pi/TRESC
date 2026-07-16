@@ -118,6 +118,12 @@ module SCF
   complex(dp),allocatable :: DIISmat(:,:)      ! A
   real(dp)                :: damp_coe          ! damp coeff of direct/DIIS SCF
   
+
+  !DIR$ ATTRIBUTES ALIGN:align_size :: KramersPairs, KramersSV
+  ! Kramers pairs and singular values
+  complex(dp),allocatable :: KramersPairs(:,:) ! MO coefficients of Kramers pairs
+  real(dp),allocatable    :: KramersSV(:)      ! Kramers singular values
+
   contains
 
 !------------------------------------------------------------
@@ -155,6 +161,7 @@ module SCF
     deallocate(AVA)
     if (pVp1e) then
       deallocate(expVp, AO2p2, evl_p2, Ap, ApRp, SRp, ARVRA, exAO2p2)
+      deallocate(KramersSV, KramersPairs)
       if (pppVp) deallocate(exSR)
     end if
     deallocate(cbdata)
@@ -561,7 +568,7 @@ end function Check_SCF_Conv
       write(60,'(A)') '  -- Note: there is little theoretical justification'
       write(60,'(A)') '  -- to calculate <S**2> in a DFT calculation.'
     end if
-    scf_kappa = Krammers()
+    scf_kappa = Kramers()
     write(60,'(A)') '  Time Reversal Symmetry (TRS) deviation parameter'
     write(60,'(A,E12.5)') '  -- kappa     =', scf_kappa
     write(60,'(A,E12.5)') '  -- ref kappa =', dsqrt(real(Nalpha-Nbeta,dp))
@@ -3958,39 +3965,48 @@ end subroutine RGI
 !-----------------------------------------------------------------------
 !> calculate molecule deviations from time-reversal symmetry
 !!
-!! (Krammers degeneration)
+!! (orbitals deviations from Kramers pairs)
 !!
-!! kappa = norm(k2.conjg(k2)+I)
-!!
-!! k2 = <MO_i|-i*sigma_y|MO_j>
-real(dp) function Krammers() result(kappa)
+!! Kramers mat = <activespace|-i*sigma_y*K|occspace>
+real(dp) function Kramers()
   implicit none
-  integer           :: ii            ! loop variables
-  complex(dp)       :: ci_j(fbdm, fbdm)
-  complex(dp)       :: k1(fbdm, electron_count)
-  complex(dp)       :: k1TR(fbdm, electron_count)
-  complex(dp)       :: supp(electron_count, electron_count)
-  complex(dp)       :: k2(electron_count, electron_count)
-  complex(dp)       :: conjgk2(electron_count, electron_count)
-  complex(dp)       :: k2k2pI(electron_count, electron_count)
-  kappa = 0.0_dp
-  ci_j = i_j * c1
-  k1 = oper3(1:fbdm,1:electron_count)
-  k1TR = -conjg(oper3(fbdm+1:2*fbdm,1:electron_count))
-  call matmul('C', 'N', k1, k1TR, supp)
-  k2 = supp
+  integer                 :: ii                           ! loop variable
+  complex(dp)             :: ci_j(2*fbdm, 2*fbdm)
+  complex(dp),allocatable :: active(:,:)                  ! active space
+  complex(dp)             :: occ(2*fbdm, electron_count)  ! occupied orbs
+  complex(dp)             :: occTR(2*fbdm, electron_count)! time-reversal occ
+  complex(dp),allocatable :: Kmat(:,:)          !Kramers overlap matrix
+  complex(dp),allocatable :: supp(:,:)
+  real(dp)                :: S(electron_count)
+  ! transfer matrix of active space
+  complex(dp),allocatable :: U(:,:)
+  ! transfer matrix of time-reversed occupied orbs
+  complex(dp)             :: VT(electron_count, electron_count)
 
-  k1 = oper3(fbdm+1:2*fbdm,1:electron_count)
-  k1TR = conjg(oper3(1:fbdm,1:electron_count))
-  call matmul('C', 'N', k1, k1TR, supp)
-  k2 = k2 + supp
+  ! prepare the Kramers pairs
+  allocate(Kmat(electron_count, electron_count))
+  allocate(supp(electron_count, 2*fbdm))
+  allocate(U(electron_count, electron_count))
+  occTR(1:fbdm,1:electron_count) = -conjg(oper3(fbdm+1:2*fbdm,1:electron_count))
+  occTR(fbdm+1:2*fbdm,1:electron_count) = conjg(oper3(1:fbdm,1:electron_count))
+  ci_j = c0
+  ci_j(1:fbdm,1:fbdm) = i_j * c0
+  ci_j(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = i_j * c0
+  occ(1:2*fbdm,1:electron_count) = oper3(1:2*fbdm,1:electron_count)
+  ! Kmat = active^dagger * ci_j * occTR
+  call matmul('C', 'N', occ, ci_j, supp)
+  call matmul('N', 'N', supp, occTR, Kmat)
+  ! perform SVD
+  call SVD(Kmat, S, U, VT)
+  allocate(KramersSV(electron_count))
+  KramersSV = S
+  allocate(KramersPairs(2*fbdm, electron_count))
+  call matmul('N', 'N', occ, U, KramersPairs)
 
-  conjgk2 = conjg(k2)
-  call matmul('N', 'N', k2, conjgk2, k2k2pI)
 
-  forall(ii=1:electron_count) k2k2pI(ii,ii) = k2k2pI(ii,ii) + c1
-  kappa = norm(k2k2pI)
-end function Krammers
+
+
+end function Kramers
 
 !-----------------------------------------------------------------------
 !> calculate dispersion correction by Grimme's DFT-D4

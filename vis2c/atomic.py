@@ -160,8 +160,8 @@ if __name__ == "__main__":
     file_path = sys.argv[1]
   elif sys.argv[1].endswith('.xyz'):
     file_path = sys.argv[1]
-  elif sys.argv[1].endswith('.pdb'):
-    print(f"this seems to be a .pdb file, will convert it to .xyzq")
+  elif sys.argv[1].endswith('.pdb') or sys.argv[1].endswith('.pqr'):
+    print(f"this seems to be a PDB file, will convert it to XYZQ")
     file_path = pdb2xyzq(sys.argv[1])
   else:
     print(f"unsupported file format: {sys.argv[1]}")

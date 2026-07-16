@@ -11,13 +11,13 @@ from os import path
 from mayavi import mlab
 from traits.api import HasTraits, Float, observe, Any
 from traitsui.api import View, Item
-from numpy import sqrt, square, arctan2
+from numpy import sqrt, square, arctan2, pi
 
 # True: alpha and beta visualization as phase, False: as components
 spin_phase = True
 
 #-------------------------------------------------------------------------------
-def cub2c(moldendir:str, index:int, isovalue:float=0.05,\
+def cub2c(moldendir:str, index:str, isovalue:float=0.05,\
           slice:bool=False)->None:
   '''
   visualization of complex spinor orbital with structured grid data
@@ -43,7 +43,7 @@ def cub2c(moldendir:str, index:int, isovalue:float=0.05,\
   print(f'spin_phase = {spin_phase}')
   # generate cube files
   print('calling TRESC:')
-  vk.call_executable(['tshell.sh', '-cub2c', moldendir, str(index)])
+  vk.call_executable(['tshell.sh', '-cub2c', moldendir, index])
   # load data from cube files
   alphareal = index+'-rar.cub'
   alphaimg  = index+'-rai.cub'
@@ -80,9 +80,9 @@ def cub2c(moldendir:str, index:int, isovalue:float=0.05,\
   mp = arctan2(mr, mi)
   if slice:
     p3.slice_cub(f"Spin-phase Slice", atoms, x, y, z, sp, \
-                 'viridis', sp.max(), sp.min())
+                 'viridis', pi, 0.0)
     p3.slice_cub(f"Orbit Isosurfase Slice", atoms, x, y, z, mod, \
-                 'viridis', mod.max(), mod.min())
+                 'CMRmap', mod.max(), mod.min())
   if spin_phase:
     isovla, figa = p3.cmplx_orb_plot_cub(\
     'Orbit Isosurfase with Spin-phase Mapping', atoms, mod, sp, x, y, z, isovalue)
