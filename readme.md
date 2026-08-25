@@ -158,9 +158,9 @@ approximation, the contribution of the SRTP correction at
 $`\mathcal{O}(c^{-2})`$ is given by the anticommutator:<br>
 
 $$
-\hat{H}_{\mathrm{SRTP}}^{(0)} = -\frac{1}{4m^2c^2} \left\{ \hat{\vec{S}} \cdot
-(\nabla V \times \hat{\vec{p}}), \, \frac{1}{s^2} \frac{\hat{\vec{p}} \cdot
-\mathbf{T} \cdot \hat{\vec{p}}}{\hat{p}^2} \right\}
+\hat{H}_{\mathrm{SRTP}}^{(0)} = -\frac{1}{4m^2c^2} \left\lbrace \hat{\vec{S}}
+\cdot (\nabla V \times \hat{\vec{p}}), \frac{1}{s^2} \frac{\hat{\vec{p}} \cdot
+\mathbf{T} \cdot \hat{\vec{p}}}{\hat{p}^2} \right\rbrace
 $$
 
 &nbsp;&nbsp;&nbsp;&nbsp;where the macroscopic spin-polarization tensor
