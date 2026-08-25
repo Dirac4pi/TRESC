@@ -131,8 +131,7 @@ module Representation
       if (ios /= 0 .or. len_trim(input_line) == 0) beta = 0.0
       write(*,*) "recieved..."
       beta2 = sum(beta(:)**2)
-      if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
-      beta2 should be in range [0,1)")
+      if (beta2 < 0.0_dp .or. beta2 >= 1.0_dp) call terminate('beta2 should be in range [0,1)')
       gamma = (1.0_dp-beta2)**(-0.5_dp)
       call Mol_real_Lorentztrafo()
       if (beta2 > 1E-6) then
@@ -925,9 +924,9 @@ module Representation
     ! Processes all the gird lattice points of an atom center at once,
     ! improving efficiency and avoiding stack overflows
 
-    !$omp parallel num_threads(min(threads,atom_count)) default(shared)&
+    !$omp parallel num_threads(min(max(1,threads),atom_count,nproc)) default(shared)&
     !$omp& private(i, nr, nl, Fockxmic, Fockcmic, exm, ecm, pos3w1)&
-    !$omp& if(threads < nproc)
+    !$omp& if(threads > 1 .and. atom_count > 1 .and. nproc > 1)
     !$omp do schedule(dynamic, 1)
     do i = 1, atom_count
       ! grid precision equal to 'int=ultrafine' in Gaussian program
@@ -954,14 +953,14 @@ module Representation
         call Fock_XandC_metaGGA(rho_m, cAO2MO, nr, nl, pos3w1, exm, ecm, &
                                 Fockxmic, Fockcmic)
       end select
+      !$omp critical
+      Fockx = Fockx + Fockxmic
+      ex = ex + exm
+      Fockc = Fockc + Fockcmic
+      ec = ec + ecm
+      !$omp end critical
     end do
     !$omp end do
-    !$omp critical
-    Fockx = Fockx + Fockxmic
-    ex = ex + exm
-    Fockc = Fockc + Fockcmic
-    ec = ec + ecm
-    !$omp end critical
     !$omp end parallel
   end subroutine Basis2real_Becke_XandC
 
@@ -988,9 +987,9 @@ module Representation
     ! Processes all the gird lattice points of an atom center at once,
     ! improving efficiency and avoiding stack overflows
 
-    !$omp parallel num_threads(min(threads,atom_count)) default(shared)&
+    !$omp parallel num_threads(min(max(1,threads),atom_count,nproc)) default(shared)&
     !$omp& private(i, nr, nl, Fockxcmic, excm, pos3w1)&
-    !$omp& if(threads < nproc)
+    !$omp& if(threads > 1 .and. atom_count > 1 .and. nproc > 1)
     !$omp do schedule(dynamic, 1)
     do i = 1, atom_count
       ! integral precision equivalent to 'int=ultrafine' in Gaussian program
@@ -1016,12 +1015,12 @@ module Representation
       case (XC_FAMILY_MGGA, XC_FAMILY_HYB_MGGA)
         call Fock_XC_metaGGA(rho_m, cAO2MO, nr, nl, pos3w1, excm, Fockxcmic)
       end select
+      !$omp critical
+      Fockxc = Fockxc + Fockxcmic
+      exc = exc + excm
+      !$omp end critical
     end do
     !$omp end do
-    !$omp critical
-    Fockxc = Fockxc + Fockxcmic
-    exc = exc + excm
-    !$omp end critical
     !$omp end parallel
   end subroutine Basis2real_Becke_XC
 
@@ -1328,6 +1327,9 @@ module Representation
 !!
 !! “simultaneous” in motion frame: x_rest = L(x_motion)|t_motion=0,
 !! in this case, x' = x_rest; x = x_motion
+!!
+!! this scaling only preserves S_z and Total Density for collinear
+!! visualization. Transverse phases are not rigorously mapped.
   pure subroutine Grid_real_Lorentztrafo(arr,n,points,trafopoints,datsa,datsb)
     implicit none
     complex(dp),intent(in)  :: arr(:)
@@ -1336,7 +1338,7 @@ module Representation
     real(dp),intent(out)    :: trafopoints(n, 3)
     complex(dp),intent(out) :: datsa(n), datsb(n)
     real(dp)                :: sz(n), trafosz(n), amp(n)
-    real(dp)                :: a2, b2
+    real(dp)                :: a2, b2, old_a2, old_b2
     integer                 :: ii, jj, kk
     integer                 :: contr
     real(dp)                :: vec(n, 3)
@@ -1374,18 +1376,35 @@ module Representation
       datsb  = datsb + val * arr(kk+cbdm)
     end do
 
-    ! Imitative transformation of s, causes s_z to away from +/- 1/2,
-    ! also means mixing of alpha and beta components
-    ! s' = (1-gamma/(gamma+1)*beta(3)**2)/(1-beta(3)**2)**0.5 * s
-    spincoe = (1.0_dp+codcoe*beta(3)**2) * (1.0_dp-beta(3)**2)**(-0.5_dp)
+    ! Isometric Spin Boost (ISB) transformation of s.
+    ! Strictly conserves spatial magnitude while tilting the quantization axis,
+    ! avoiding unphysical depolarization.
+    if (beta2 > 1.0e-12_dp) then
+      spincoe = (1.0_dp + ((gamma - 1.0_dp) / beta2) * beta(3)**2) / &
+                dsqrt(1.0_dp + (gamma * beta(3))**2)
+    else
+      spincoe = 1.0_dp
+    end if
     sz = real(datsa*conjg(datsa) - datsb*conjg(datsb))
     amp = real(datsa*conjg(datsa) + datsb*conjg(datsb))
     trafosz = spincoe * sz
     do ii = 1, n
-      a2 = 0.5_dp*(trafosz(ii)+amp(ii))
-      b2 = 0.5_dp*(amp(ii)-trafosz(ii))
-      datsa(ii) = datsa(ii) * a2/(datsa(ii)*conjg(datsa(ii)))
-      datsb(ii) = datsb(ii) * b2/(datsb(ii)*conjg(datsb(ii)))
+      ! Target probabilities for alpha and beta
+      a2 = 0.5_dp*(amp(ii) + trafosz(ii))
+      b2 = 0.5_dp*(amp(ii) - trafosz(ii))
+      ! Original probabilities
+      old_a2 = real(datsa(ii)*conjg(datsa(ii)))
+      old_b2 = real(datsb(ii)*conjg(datsb(ii)))
+      if (old_a2 > 1.0e-16_dp) then
+        datsa(ii) = datsa(ii) * dsqrt(max(0.0_dp, a2) / old_a2)
+      else
+        datsa(ii) = cmplx(dsqrt(max(0.0_dp, a2)), 0.0_dp, dp)
+      end if
+      if (old_b2 > 1.0e-16_dp) then
+        datsb(ii) = datsb(ii) * dsqrt(max(0.0_dp, b2) / old_b2)
+      else
+        datsb(ii) = cmplx(dsqrt(max(0.0_dp, b2)), 0.0_dp, dp)
+      end if
     end do
   end subroutine Grid_real_Lorentztrafo
 

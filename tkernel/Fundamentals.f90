@@ -97,7 +97,7 @@ module Fundamentals
   !-----------------<module Hamiltonian>-----------------
   logical(kind=4) :: pVp1e       = .false.! one-electron pVp potetial (spinor)
   logical(kind=4) :: pVp2e       = .false.! two-electron pVp potetial (spinor)
-  logical(kind=4) :: pppVp       = .false.! Second Relativized Thomas Precession
+  logical(kind=4) :: srtp        = .false.! Second Relativized Thomas Precession
   real(dp)        :: cutS        = 1E-7   ! threshold of evl(i_j)
   !--------------------<module Atoms>--------------------
   integer         :: charge      = 0      ! charge of the system
@@ -110,6 +110,7 @@ module Fundamentals
   real(dp)        :: DMschwarz   = safmin
   integer         :: maxiter     = 128    ! upper limit of convergence loops
   real(dp)        :: conver_tol  = 1E-6   ! convergence tolerence of energy
+  real(dp)        :: residual_tol = 1.0E-6_dp ! RMS generalized SCF residual tolerance (Eh)
   real(dp)        :: damp        = 0.0    ! dynamical damp (-(dE)^damp+1)
   real(dp)        :: damp_
   integer         :: nodiis      = 8      ! initial iteration steps without DIIS

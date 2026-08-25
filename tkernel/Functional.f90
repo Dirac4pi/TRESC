@@ -1094,7 +1094,8 @@ module functional
 !> standard initialize Libxc
   subroutine Libxc_init()
     implicit none
-    integer :: ii, vmajor, vminor, vmicro
+    integer :: vmajor, vminor, vmicro
+    integer :: x_family, c_family, xc_family
     ! print out the version  
     call xc_f03_version(vmajor, vminor, vmicro)
     write(60,'("  -- Libxc version: ",I1,".",I1,".",I1)') vmajor, vminor, vmicro
@@ -1102,12 +1103,16 @@ module functional
       ! check the kind of fx_id and fc_id
       call xc_f03_func_init(x_func, fx_id, XC_POLARIZED)
       x_info = xc_f03_func_get_info(x_func)
+      call Validate_xc_support(x_info, 'exchange functional', x_family)
       if (xc_f03_func_info_get_kind(x_info) == XC_EXCHANGE) then
         if (fc_id /= -1) then
           call xc_f03_func_init(c_func, fc_id, XC_POLARIZED)
           c_info = xc_f03_func_get_info(c_func)
+          call Validate_xc_support(c_info, 'correlation functional', c_family)
           if (xc_f03_func_info_get_kind(c_info) /= XC_CORRELATION) call &
           terminate('Libxc_init: fc_id seems not a correlation functional')
+          if (x_family /= c_family) call terminate(&
+          'Libxc_init: separate exchange and correlation functionals must use the same density family')
         else
           call terminate('Libxc_init: missing data for correlation functional')
         end if
@@ -1130,6 +1135,7 @@ module functional
       ! check the kind of fxc_id
       call xc_f03_func_init(xc_func, fxc_id, XC_POLARIZED)
       xc_info = xc_f03_func_get_info(xc_func)
+      call Validate_xc_support(xc_info, 'exchange-correlation functional', xc_family)
       if (xc_f03_func_info_get_kind(xc_info) /= XC_EXCHANGE_CORRELATION) then
         call terminate(&
         'Libxc_init: fxc_id seems not an exchange-correlation functional')
@@ -1146,6 +1152,41 @@ module functional
       write(60,'(A,E10.3)') "  -- x_HF = ", x_HF
     end if
   end subroutine Libxc_init
+
+!------------------------------------------------------------
+!> reject Libxc capabilities that are not evaluated by the current Fock builder
+  subroutine Validate_xc_support(info, label, base_family)
+    implicit none
+    type(xc_f03_func_info_t),intent(in) :: info
+    character(len=*),intent(in)         :: label
+    integer,intent(out)                 :: base_family
+    integer                             :: family, flags
+    family = xc_f03_func_info_get_family(info)
+    flags = xc_f03_func_info_get_flags(info)
+    select case (family)
+    case (XC_FAMILY_LDA, XC_FAMILY_HYB_LDA)
+      base_family = XC_FAMILY_LDA
+    case (XC_FAMILY_GGA, XC_FAMILY_HYB_GGA)
+      base_family = XC_FAMILY_GGA
+    case (XC_FAMILY_MGGA, XC_FAMILY_HYB_MGGA)
+      base_family = XC_FAMILY_MGGA
+    case default
+      call terminate('Libxc_init: unsupported family for '//trim(label))
+    end select
+    if (iand(flags,XC_FLAGS_3D) == 0) then
+      call terminate('Libxc_init: only three-dimensional functionals are supported')
+    end if
+    if (iand(flags,XC_FLAGS_HAVE_EXC) == 0 .or. iand(flags,XC_FLAGS_HAVE_VXC) == 0) then
+      call terminate('Libxc_init: the selected functional does not provide both Exc and Vxc')
+    end if
+    if (iand(flags,XC_FLAGS_HYB_CAM) /= 0 .or. iand(flags,XC_FLAGS_HYB_CAMY) /= 0 .or. &
+        iand(flags,XC_FLAGS_HYB_LC) /= 0 .or. iand(flags,XC_FLAGS_HYB_LCY) /= 0) then
+      call terminate('Libxc_init: range-separated hybrid functionals are not implemented')
+    end if
+    if (iand(flags,XC_FLAGS_VV10) /= 0) then
+      call terminate('Libxc_init: nonlocal VV10 correlation is not implemented')
+    end if
+  end subroutine Validate_xc_support
 
 !------------------------------------------------------------
 !> standard exit of Libxc
