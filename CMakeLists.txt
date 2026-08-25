@@ -48,7 +48,7 @@ set(
 set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
-set(CMAKE_Fortran_STANDARD 2018)
+set(CMAKE_Fortran_STANDARD 2008)
 set(CMAKE_Fortran_MODULE_DIR ${CMAKE_BINARY_DIR}/modules)
 file(MAKE_DIRECTORY ${CMAKE_Fortran_MODULE_DIR})
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -245,12 +245,12 @@ endif()
 target_include_directories(TRESC PRIVATE
   "${LIBXC_ROOT}/build"
   "${CMAKE_SOURCE_DIR}/tkernel"
-  "${ONEAPI_ROOT}/mkl/latest/include/mkl/intel64/ilp64"
+  "${ONEAPI_ROOT}/mkl/latest/include/mkl/intel64/lp64"
   "${ONEAPI_ROOT}/mpi/latest/include"
   "${ONEAPI_ROOT}/mpi/latest/include/mpi/ilp64"
 )
 set(MKL_INCLUDE_DIR
-  "${ONEAPI_ROOT}/mkl/latest/include/mkl/intel64/ilp64"
+  "${ONEAPI_ROOT}/mkl/latest/include/mkl/intel64/lp64"
 )
 target_compile_options(TRESC PRIVATE
   $<$<PLATFORM_ID:Windows>:/I${LIBXC_ROOT}/build>
@@ -282,8 +282,7 @@ if(WIN32)
     "/assume:byterecl "
     "/Qopenmp "
     "/Qmkl:parallel "
-    "/QxCORE-AVX2 "   # /QxHost only works on intel processors
-    "/Qfma "
+    "/fp:precise "
   )
   set(CMAKE_Fortran_FLAGS "${COMPILE_STR}")
   # debug compile options
@@ -301,8 +300,7 @@ if(WIN32)
   string(CONCAT RELEASE_STR
     "/O3 "
     "/Qipo "
-    #"/fp:precise "   # I want more precession
-    #"/fp:fast=2 "    # I want more efficiency
+    "/QxHost "
   )
   set(CMAKE_Fortran_FLAGS_RELEASE "${RELEASE_STR}")
 elseif(UNIX)
@@ -315,8 +313,7 @@ elseif(UNIX)
     "-threads "
     "-assume byterecl "
     "-qopenmp "
-    "-xHost "    # -xHost CORE-AVX2 only works on intel processors
-    "-fma "
+    "-fp-model precise "
   )
   set(CMAKE_Fortran_FLAGS "${COMPILE_STR}")
   # debug compile options
@@ -332,12 +329,11 @@ elseif(UNIX)
   # release compile options
   string(CONCAT RELEASE_STR
     "-O3 "
+    "-xHost "
     #"-ipo "
     "-qopt-report=3 "
     "-qopt-report-phase=vec "
     "-qopt-report-file=stdout "
-    #"-fp-model precise "   # I want more precession
-    #"-fp-model fast=2 "    # I want more efficiency
   )
   set(CMAKE_Fortran_FLAGS_RELEASE "${RELEASE_STR}")
 endif()
@@ -403,7 +399,6 @@ elseif(UNIX)
     string(CONCAT LINK_EXECUTABLE_STR
       "<CMAKE_Fortran_COMPILER> "
       "-nologo "
-      "-ipo "  # with -fuse-ld=lld
       "-qopenmp "
       "-qmkl=parallel "
       "<OBJECTS> "

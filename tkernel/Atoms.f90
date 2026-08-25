@@ -18,7 +18,7 @@ module Atoms
      'Li','Be',                         ' B',' C',' N',' O',' F','Ne', & ! 3-10
      'Na','Mg',                         'Al','Si',' P',' S','Cl','Ar', & ! 11-18
      ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga', & ! 19-31
-     'Ge','As','Sn','Br','Kr','Rb','Sr',' Y','Zr','Nb','Mo','Tc','Ru', & ! 32-44
+     'Ge','As','Se','Br','Kr','Rb','Sr',' Y','Zr','Nb','Mo','Tc','Ru', & ! 32-44
      'Rh','Pd','Ag','Cd','In','Sn','Sb','Te',' I','Xe','Cs','Ba'      /) ! 45-56
 
   integer,parameter :: element_massnumber(element_count) =            &
@@ -198,7 +198,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
   integer    :: fbdm                   ! final basis dimension
   integer    :: basis_count            ! number of basis in basis set
   ! number of shells in each element
-  integer    :: shell_in_element(50)
+  integer    :: shell_in_element(element_count)
 
   ! The arrays in mol, atom_basis and cbdata will not involved in
   ! arithmetic, but are read frequently, so they are stored as static arrays
@@ -352,6 +352,10 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
         atom_basis(aj) % contr  ! scale factor defaults to 1.00
         if (ios /= 0) call terminate(&
         'read basis file failed, may caused by incorrect formatting')
+        if (atom_basis(aj)%contr < 1 .or. &
+            atom_basis(aj)%contr > size(atom_basis(aj)%expo)) then
+          call terminate('basis file: contraction length exceeds supported storage')
+        end if
         if (basis_angular_name == 'S') then
           atom_basis(aj) % L = 0
         else if (basis_angular_name == 'P') then
@@ -402,12 +406,12 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     character(len=200) :: line
     logical            :: isopen
     character(len=2)   :: e
-    integer            :: a, b, ix, iy, iz
+    integer            :: a, b
     real(dp)           :: f1, f2, f3
-    integer            :: contr           ! contr of atom, shell
     real(dp)           :: expo(16)        ! expo of |AO>
-    real(dp)           :: coe(16)         ! coe of |AO>
     integer            :: ai, aj , ak, al ! loop variables Load_geombasis_MOLDEN
+    integer            :: required_size
+    type(basis_data),allocatable :: M_cbdata_tmp(:)
     inquire(unit=60, opened=isopen)
     open(14, file=address_MOLDEN, status="old", action="read", iostat=ios)
     if (ios /= 0) call terminate(&
@@ -445,6 +449,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     do
       read(14,*,iostat=ios) e, a, b, f1, f2, f3
       if (ios /= 0) exit
+      if (ai > size(M_mol)) call terminate('MOLDEN file contains too many atoms')
+      if (b < 1 .or. b > element_count) call terminate('MOLDEN file contains an unsupported element')
       M_mol(ai)%atom_number = b
       M_mol(ai)%pos(1) = f1
       M_mol(ai)%pos(2) = f2
@@ -464,7 +470,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     read(14,*) line
     M_cbdm = 0
     M_sbdm = 0
-    allocate(M_cbdata(3*cbdm))
+    if (allocated(M_cbdata)) deallocate(M_cbdata)
+    allocate(M_cbdata(max(128, cbdm)))
     do
       read(14,*,iostat=ios) e, a
       if (ios /= 0) exit
@@ -484,6 +491,17 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           aj = aj + 1
           cycle
       end select
+      if (a < 1 .or. a > size(expo)) then
+        call terminate('MOLDEN file: contraction length exceeds supported storage')
+      end if
+      if (aj > M_atom_count) call terminate('MOLDEN file: basis centre exceeds atom count')
+      if (tomol .and. aj > atom_count) call terminate('MOLDEN projection: basis centre exceeds target atom count')
+      required_size = ai + (b*(b+1))/2 - 1
+      if (required_size > size(M_cbdata)) then
+        allocate(M_cbdata_tmp(max(2*size(M_cbdata), required_size)))
+        M_cbdata_tmp(1:ai-1) = M_cbdata(1:ai-1)
+        call move_alloc(M_cbdata_tmp, M_cbdata)
+      end if
       M_cbdm = M_cbdm + (b*(b+1))/2
       M_sbdm = M_sbdm + 2*b-1
       do al = 1, a
@@ -509,6 +527,11 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       end do
     end do
     close(14)
+    if (M_cbdm < size(M_cbdata)) then
+      allocate(M_cbdata_tmp(M_cbdm))
+      M_cbdata_tmp = M_cbdata(1:M_cbdm)
+      call move_alloc(M_cbdata_tmp, M_cbdata)
+    end if
   end subroutine Load_geombasis_MOLDEN
 
 !-----------------------------------------------------------------------
@@ -568,8 +591,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           moa(jj+8,:) = -moa(jj+8,:)
           mob(jj+8,:) = -mob(jj+8,:)
         end if
-        ii = ii + (M_cbdata(ii)%L*(M_cbdata(ii)%L+1))/2
-        jj = jj + 2*M_cbdata(ii)%L-1
+        a = M_cbdata(ii)%L
+        ii = ii + (a*(a+1))/2
+        jj = jj + 2*a-1
       end do
     end if
   end subroutine Load_MOs_MOLDEN
@@ -652,8 +676,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
           moa(jj+8) = -moa(jj+8)
           mob(jj+8) = -mob(jj+8)
         end if
-        ii = ii + (M_cbdata(ii)%L*(M_cbdata(ii)%L+1))/2
-        jj = jj + 2*M_cbdata(ii)%L-1
+        a = M_cbdata(ii)%L
+        ii = ii + (a*(a+1))/2
+        jj = jj + 2*a-1
       end do
     end if
   end subroutine Load_1MO_MOLDEN
@@ -666,6 +691,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     integer              :: ai, aj, ak, al ! loop variables Get_basis_count
     ai = 0
     aj = 0
+    ak = 0
+    ios = 0
+    shell_in_element = 0
     open(13,file = address_basis,status = "old",action = "read")
     do
       read(13,'(A200)') line
@@ -704,6 +732,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     end do
     close(13)
     basis_count = ai
+    if (basis_count > size(atom_basis)) then
+      call terminate('basis file contains more shells than supported storage')
+    end if
   end subroutine Get_basis_count
 
 !-----------------------------------------------------------------------
@@ -721,6 +752,7 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     integer            :: L                    ! angular quantum number of |AO>
     integer            :: M                    ! magnetic quantum number of |AO>
     integer            :: ai, aj, ak           ! loop variables Load_geom_xyz
+    real(dp)           :: extra_pos(3)
     if(index(address_xyz,'.xyz') == 0) address_xyz = trim(address_xyz)//'.xyz'
     inquire(file=address_xyz, exist=exists)
     if (.not. exists) &
@@ -738,6 +770,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
         call terminate("use '!' tag for comments in .xyz file")
       end if
     end do
+    if (atom_count < 1 .or. atom_count > size(mol)) then
+      call terminate('geometry file: atom count exceeds supported storage')
+    end if
     read(12,*)
     do aj = 1, atom_count, 1
       read(12,*,iostat=ios) mol_element_name, mol(aj)%pos(1:3)
@@ -758,10 +793,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       end do
       mol(aj) % basis_number = ak
       mol(aj) % atom_number = ai
-      mol(aj) % rad = 0.836_dp*real(element_massnumber(ai))**(1.0/3.0) + 0.57_dp
+      mol(aj) % rad = 0.836_dp*real(element_massnumber(ai),dp)**(1.0_dp/3.0_dp) + 0.57_dp
     end do
-    read(12,*,iostat=ios) mol_element_name, &
-    mol(atom_count+1)%pos(1:3)
+    read(12,*,iostat=ios) mol_element_name, extra_pos
     if (ios == 0) call terminate(&
     'read geometry file failed, may caused by redundancy of atoms')
     close(12)
@@ -950,8 +984,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
             pVp2e = .true.
             write(60,"(A)") "  one-electron pVp potential will be considered"
             write(60,"(A)") "  two-electron pVp potential will be considered"
-          else if (trim(keyword) == 'pppvp') then
-            pppVp = .true.
+          else if (trim(keyword) == 'srtp') then
+            srtp = .true.
             write(60,"(A)") &
             "  Second Relativized Thomas Precession will be considered"
           else if (index(keyword,'cuts') == 1) then
@@ -1078,6 +1112,20 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
               call terminate(&
               "Convergence tolerence setting should be written as "//&
               "'convertol=n', no scientific notation")
+            end if
+          else if (index(keyword,'residualtol') == 1) then
+            if (index(keyword,'=') /= 0) then
+              read(keyword(index(keyword,'=') + 1 : len(trim(keyword))),&
+              "(F20.12)",iostat = ios) residual_tol
+              if (ios /= 0) call terminate(&
+              "SCF residual tolerance should be written as "//&
+              "'residualtol=n', no scientific notation")
+              write(60,'(A,E10.3,A)') &
+              '  SCF residual tolerance changed to ',residual_tol,' Eh'
+            else
+              call terminate(&
+              "SCF residual tolerance should be written as "//&
+              "'residualtol=n', no scientific notation")
             end if
           else if (index(keyword,'nodiis') == 1) then
             if (index(keyword,'=') /= 0) then
@@ -1305,7 +1353,10 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
       call terminate('Unrecognisable initial guess setting.')
     end if
     electron_count = electron_count - charge
-    if (electron_count <= 0) call terminate('charge is set incorrectly.')
+    if (electron_count <= 0) &
+    call terminate('charge is set incorrectly, no electron in system!')
+    if (electron_count == 1) call terminate(&
+    '1e systems invalidate SCF formalism, may cause numerical instability.')
     if (spin_mult == 675) then  ! default lowest spin
       if (mod(electron_count,2) == 0) then
         spin_mult = 1
@@ -1329,8 +1380,8 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     Nbeta  = (electron_count-(spin_mult-1))/2
     if (cspin/='n' .and. cspin/='d' .and. cspin/='f') call terminate(&
     'unrecognized constrained spin mode')
-    if (.not. pVp1e .and. pppVp) call terminate(&
-    'pppVp must be used in conjunction with pVp1e')
+    if (.not. pVp1e .and. srtp) call terminate(&
+    'srtp must be used in conjunction with pVp1e')
     if (.not. pVp1e .and. pVp2e) call terminate(&
     'pVp2e must be used in conjunction with pVp1e')
     if (schwarz < 0.0_dp) call terminate('Schwarz should be non-negative')
@@ -1338,6 +1389,9 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     if (subsp <= 1) call terminate('subsp too small')
     if (nodiis - subsp < 2) call terminate('nodiis should be set larger')
     if (maxiter <= 0) call terminate('maxiter should be positive')
+    if (threads <= 0) call terminate('threads should be positive')
+    if (conver_tol <= 0.0_dp) call terminate('SCF convergence tolerance should be positive')
+    if (residual_tol <= 0.0_dp) call terminate('SCF residual tolerance should be positive')
     if (subsp >= maxiter) call terminate('subsp should be smaller than maxiter')
     if (nodiis >= maxiter) call terminate(&
     'nodiis should be smaller than maxiter')
@@ -1348,17 +1402,12 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     'diisdamp shall be in range [0,1]')
     if (cutdiis < 0.0) call terminate('cutdiis should be larger than 0')
     if (cutS < 0.0) call terminate('cutS should be larger than 0')
-    if (fxc_id /= -1 .and. fx_id /= -1) call terminate("&
-    there's a conflict between xcid and xid")
-    if (beta(1) < 0.0 .or. beta(1) >= 1.0) call terminate("&
-    betax should be in range [0,1)")
-    if (beta(2) < 0.0 .or. beta(2) >= 1.0) call terminate("&
-    betay should be in range [0,1)")
-    if (beta(3) < 0.0 .or. beta(3) >= 1.0) call terminate("&
-    betaz should be in range [0,1)")
+    if (fxc_id /= -1 .and. fx_id /= -1) call terminate("there's a conflict between xcid and xid")
+    if (beta(1) < 0.0_dp .or. beta(1) >= 1.0_dp) call terminate('betax should be in range [0,1)')
+    if (beta(2) < 0.0_dp .or. beta(2) >= 1.0_dp) call terminate('betay should be in range [0,1)')
+    if (beta(3) < 0.0_dp .or. beta(3) >= 1.0_dp) call terminate('betaz should be in range [0,1)')
     beta2 = sum(beta(:)**2)
-    if (beta2 < 0.0 .or. beta2 >= 1.0) call terminate("&
-    beta2 should be in range [0,1)")
+    if (beta2 < 0.0_dp .or. beta2 >= 1.0_dp) call terminate('beta2 should be in range [0,1)')
     gamma = (1.0_dp-beta2)**(-0.5_dp)
     if (lshift < 0.0) call terminate('level shift should be non-negative')
     write(60,"(A)") 'Module Atoms:'

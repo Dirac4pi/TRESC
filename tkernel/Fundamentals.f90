@@ -76,7 +76,7 @@ module Fundamentals
   character(len=200)  :: address_fch
   character(len=200)  :: wd = ''                    ! working directory
   character(len=50)   :: usrname = ''
-  character(len=10),parameter :: version = 'main'    ! TRESC version
+  character(len=10),parameter :: version = 'dev'    ! TRESC version
   
 !-----------------------------------------------------------------------
 ! definitions of physical and mathematical parameters
@@ -97,7 +97,7 @@ module Fundamentals
   !-----------------<module Hamiltonian>-----------------
   logical(kind=4) :: pVp1e       = .false.! one-electron pVp potetial (spinor)
   logical(kind=4) :: pVp2e       = .false.! two-electron pVp potetial (spinor)
-  logical(kind=4) :: pppVp       = .false.! Second Relativized Thomas Precession
+  logical(kind=4) :: srtp        = .false.! Second Relativized Thomas Precession
   real(dp)        :: cutS        = 1E-7   ! threshold of evl(i_j)
   !--------------------<module Atoms>--------------------
   integer         :: charge      = 0      ! charge of the system
@@ -110,6 +110,7 @@ module Fundamentals
   real(dp)        :: DMschwarz   = safmin
   integer         :: maxiter     = 128    ! upper limit of convergence loops
   real(dp)        :: conver_tol  = 1E-6   ! convergence tolerence of energy
+  real(dp)        :: residual_tol = 1.0E-6_dp ! RMS generalized SCF residual tolerance (Eh)
   real(dp)        :: damp        = 0.0    ! dynamical damp (-(dE)^damp+1)
   real(dp)        :: damp_
   integer         :: nodiis      = 8      ! initial iteration steps without DIIS
@@ -186,15 +187,20 @@ module Fundamentals
     module procedure cmplx_sort
   end interface sort
 
+  interface svd
+    module procedure real_svd
+    module procedure cmplx_svd
+  end interface svd
+
   private :: dump_matrix_real, dump_matrix_cmplx, load_matrix_real
   private :: load_matrix_cmplx, real_symm_inverse, cmplx_inverse
   private :: real_symm_diag, cmplx_diag, real_matmul, cmplx_matmul
   private :: real_matvec, cmplx_matvec, real_fbnorm, cmplx_fbnorm
   private :: real_det, cmplx_det, real_swap, cmplx_swap, int_swap
-  private :: real_sort, cmplx_sort
+  private :: real_sort, cmplx_sort, real_svd, cmplx_svd
   public  :: dump_matrix, load_matrix, generate_output, terminate
   public  :: matmul, norm, lowercase, is_alpha, diag, inverse
-  public  :: can_orth, symm_orth, atnz2block, Wigner_d
+  public  :: can_orth, symm_orth, atnz2block, Wigner_d, svd
   public  :: factorial, det, Hermite_poly, swap, quicksort, sort, Identity
 
   contains
@@ -234,7 +240,7 @@ module Fundamentals
     write(60,"(A)") "  TRESC is a molecular electronic-structure solver"
     write(60,"(A)") "  For more: https://github.com/Dirac4pi/TRESC"
     write(60,"(A)") "  All results default to Atomic Units (A.U.)"
-    write(60,"(A)") "  Best wishes for a successful run (^ω^ʃƪ) (^ω^ʃƪ)"
+    write(60,"(A)") "  And Hey, best wishes for a successful run! ^ω^"
     write(60,*)
     write(60,"(A)") "External libs:"
     write(60,"(A)") "  IFPORT: cross-platform Fortran development"
@@ -509,6 +515,7 @@ module Fundamentals
     do fi = 1, dm
       do fj = fi, dm
         mat_u(fi,fj) = (mat(fi,fj)+conjg(mat(fj,fi)))/2.0_dp
+        !mat_u(fi,fj) = mat(fi,fj)
       end do
     end do
     call zheevr('V','A','U',dm,mat_u,dm,0.0_dp,0.0_dp,0,0,safmin,&
@@ -1163,6 +1170,75 @@ module Fundamentals
       if (pivot+1 < r) call quicksort(arr, pivot+1, r)
     end if
   end subroutine quicksort
+
+!------------------------------------------------------------
+!> perform SVD on a general complex matrix.
+subroutine cmplx_svd(A_in, S, U, VT)
+  implicit none
+  complex(dp), intent(in)  :: A_in(:,:) ! input complex matrix
+  real(dp),    intent(out) :: S(:)      ! singular values, descending order
+  complex(dp), intent(out) :: U(:,:)    ! left singular vector matrix
+  complex(dp), intent(out) :: VT(:,:)   ! daggered right singular vector matrix
+  integer                  :: m, n, info, lwork ! A_in(m,n)
+  complex(dp), allocatable :: A_copy(:,:)! copy of A_in
+  complex(dp), allocatable :: work(:)
+  real(dp),    allocatable :: rwork(:)
+  complex(dp)              :: wkopt      ! receive the optimal lwork size
+  
+  m = size(A_in, 1)
+  n = size(A_in, 2)
+  allocate(A_copy(m, n))
+  A_copy = A_in
+  allocate(rwork(5 * min(m, n)))
+  lwork = -1
+  call ZGESVD('A', 'A', m, n, A_copy, m, S, U, m, VT, n, wkopt, lwork, rwork, info)
+  if (info /= 0) then
+    call terminate('cmplx_svd: ZGESVD workspace query failed.')
+  end if
+  lwork = int(wkopt)
+  allocate(work(lwork))
+  ! A = U * S * V^dagger
+  call ZGESVD('A', 'A', m, n, A_copy, m, S, U, m, VT, n, work, lwork, rwork, info)
+  if (info > 0) then
+    call terminate('cmplx_svd: ZGESVD did not converge.')
+  else if (info < 0) then
+    call terminate('cmplx_svd: ZGESVD received illegal arguments.')
+  end if
+  deallocate(A_copy, work, rwork)
+end subroutine cmplx_svd
+
+!------------------------------------------------------------
+!> perform SVD on a general real matrix
+subroutine real_svd(A_in, S, U, VT)
+  implicit none
+  real(dp), intent(in)  :: A_in(:,:)    ! input real matrix
+  real(dp), intent(out) :: S(:)         ! singular values, descending order
+  real(dp), intent(out) :: U(:,:)       ! left singular vector matrix
+  real(dp), intent(out) :: VT(:,:)      ! daggered right singular vector matrix
+  integer               :: m, n, info, lwork ! A_in(m,n)
+  real(dp), allocatable :: A_copy(:,:)  ! copy of A_in
+  real(dp), allocatable :: work(:)
+  real(dp)              :: wkopt        ! receive the optimal lwork size
+  
+  m = size(A_in, 1)
+  n = size(A_in, 2)
+  allocate(A_copy(m, n))
+  A_copy = A_in
+  lwork = -1
+  call DGESVD('A', 'A', m, n, A_copy, m, S, U, m, VT, n, wkopt, lwork, info)
+  if (info /= 0) then
+    call terminate('real_svd: DGESVD workspace query failed.')
+  end if
+  lwork = int(wkopt)
+  allocate(work(lwork))
+  call DGESVD('A', 'A', m, n, A_copy, m, S, U, m, VT, n, work, lwork, info)
+  if (info > 0) then
+    call terminate('real_svd: DGESVD did not converge.')
+  else if (info < 0) then
+    call terminate('real_svd: DGESVD received illegal arguments.')
+  end if
+  deallocate(A_copy, work)
+end subroutine real_svd
 
 !------------------------------------------------------------
 !> calculate (reduced) Wigner d-matrix d^S_MK(theta) for specific quantum number

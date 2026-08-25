@@ -12,6 +12,7 @@ module SCF
   use Atoms
   use Fundamentals
   use Representation
+  use omp_lib, only: omp_get_thread_num
   
   ! spinor MO coefficients, in order of (AO1,0), (0,AO1), ... (AOn,0), (0,AOn)
   !DIR$ ATTRIBUTES ALIGN:align_size :: AO2MO, AO2MOalpha, AO2MObeta
@@ -23,7 +24,9 @@ module SCF
   real(dp),allocatable    :: M_AO2MO_b(:,:) ! beta MO coeff read form MOLDEN
   real(dp),allocatable    :: T_AO2MO_b(:,:) ! transfered beta MO coeff
   complex(dp),allocatable :: rho_m(:,:)     ! density matrix, complex Hermitian
+  complex(dp),allocatable :: rho_fock_input(:,:) ! density used to construct the current Fock matrix
   real(dp)                :: RMSDP, maxDP
+  real(dp)                :: RMSR, maxR
   real(dp),allocatable    :: AOsupp(:,:)
   complex(dp),allocatable :: Fock(:,:)      ! Fock matrix
   complex(dp),allocatable :: Fock_shift(:,:)! Fock matrix after level shift
@@ -34,30 +37,20 @@ module SCF
   !--------------<one-electron Fock>--------------
   !DIR$ ATTRIBUTES ALIGN:align_size :: Fock1, oper1, oper2, oper3
   !DIR$ ATTRIBUTES ALIGN:align_size :: oper4, oper5, oper6, Ve
-  !DIR$ ATTRIBUTES ALIGN:align_size :: pxVepx, pyVepy, pzVepz, pxVepy
-  !DIR$ ATTRIBUTES ALIGN:align_size :: pyVepx, pxVepz, pzVepx, pyVepz
-  !DIR$ ATTRIBUTES ALIGN:align_size :: pzVepy, Ap, ApRp, SRp, ARVRA
+  !DIR$ ATTRIBUTES ALIGN:align_size :: Ap, ApRp, ARVRA
   !DIR$ ATTRIBUTES ALIGN:align_size :: ARVeRA, AVA, AVeA, exAO2p2
   complex(dp),allocatable :: Fock1(:,:)     ! one-electron Fock matrix
+  complex(dp),allocatable :: SRTPFock(:,:)  ! SRTP-DKH1 Fock matrix
+  ! Spin-Polarization Second-Moment Tensor
+  real(dp)                :: spinT(3,3)
   real(dp),allocatable    :: oper1(:,:)     ! operator matrix
   real(dp),allocatable    :: oper2(:,:)     ! operator matrix
   complex(dp),allocatable :: oper3(:,:)     ! operator matrix
   complex(dp),allocatable :: oper4(:,:)     ! operator matrix
   complex(dp),allocatable :: oper5(:,:)     ! operator matrix
   complex(dp),allocatable :: oper6(:,:)     ! operator matrix
-  real(dp),allocatable    :: Ve(:,:)        ! V/(E+E')
-  real(dp),allocatable    :: pxVepx(:,:)    ! pxVpx/(E+E')
-  real(dp),allocatable    :: pyVepy(:,:)    ! pyVpy/(E+E')
-  real(dp),allocatable    :: pzVepz(:,:)    ! pzVpz/(E+E')
-  real(dp),allocatable    :: pxVepy(:,:)    ! pxVpy/(E+E')
-  real(dp),allocatable    :: pyVepx(:,:)    ! pyVpx/(E+E')
-  real(dp),allocatable    :: pxVepz(:,:)    ! pxVpz/(E+E')
-  real(dp),allocatable    :: pzVepx(:,:)    ! pzVpx/(E+E')
-  real(dp),allocatable    :: pyVepz(:,:)    ! pyVpz/(E+E')
-  real(dp),allocatable    :: pzVepy(:,:)    ! pzVpy/(E+E')
   real(dp),allocatable    :: Ap(:,:)        ! Ap
   real(dp),allocatable    :: ApRp(:,:)      ! ApRp
-  complex(dp),allocatable :: SRp(:,:)       ! ApRp(1+p^2/4c^2)
   complex(dp),allocatable :: ARVRA(:,:)     ! ApRpVRpAp
   complex(dp),allocatable :: ARVeRA(:,:)    ! ApRp(V/(E+E'))RpAp
   complex(dp),allocatable :: AVA(:,:)       ! ApVAp
@@ -103,11 +96,10 @@ module SCF
   real(dp)                :: T              ! kinetic energy
   real(dp)                :: V              ! electron-nuclear attraction energy
   real(dp)                :: EpVp           ! 1e pVp-related energy
-  real(dp)                :: ESR            ! SRTP and radiation energy
+  real(dp)                :: ESR            ! SRTP energy
   real(dp)                :: EpVpcol        ! 2e pvp-related Coulomb energy
   real(dp)                :: EpVpexc        ! 2e pvp-related Exchange energy
   real(dp)                :: emd4           ! dispersion energy calc by DFT-D4
-  real(dp)                :: scf_kappa      ! deviation parameter from TRS
 
   !DIR$ ATTRIBUTES ALIGN:align_size :: rho_pre, rho_history, Rsd
   ! damping & DIIS(AX=B)
@@ -118,7 +110,55 @@ module SCF
   complex(dp),allocatable :: DIISmat(:,:)      ! A
   real(dp)                :: damp_coe          ! damp coeff of direct/DIIS SCF
   
+
+  !DIR$ ATTRIBUTES ALIGN:align_size :: KramersPairs, KramersSV
+  ! Kramers pairs and singular values
+  complex(dp),allocatable :: KramersPairs(:,:) ! MO coefficients of Kramers pairs
+  complex(dp),allocatable :: sKramersPairs(:,:)! spherical KramersPairs
+  complex(dp),allocatable :: Kramersall(:,:)
+  real(dp),allocatable    :: KramersSV(:)      ! Kramers singular values
+
   contains
+
+!------------------------------------------------------------
+!> add complex values with separate Neumaier compensation of real and imaginary parts
+  pure subroutine Neumaier_Add_Complex(sum, correction, term)
+    implicit none
+    complex(dp),intent(inout) :: sum, correction
+    complex(dp),intent(in)    :: term
+    real(dp)                  :: sum_re, sum_im, correction_re, correction_im
+
+    sum_re = real(sum, dp)
+    sum_im = aimag(sum)
+    correction_re = real(correction, dp)
+    correction_im = aimag(correction)
+    call Neumaier_Add(sum_re, correction_re, real(term, dp))
+    call Neumaier_Add(sum_im, correction_im, aimag(term))
+    sum = cmplx(sum_re, sum_im, dp)
+    correction = cmplx(correction_re, correction_im, dp)
+  end subroutine Neumaier_Add_Complex
+
+!------------------------------------------------------------
+!> merge per-thread Fock contributions in a fixed thread-number order
+  subroutine Reduce_Thread_Fock(thread_fock, fock)
+    implicit none
+    complex(dp),intent(in)  :: thread_fock(:,:,:)
+    complex(dp),intent(out) :: fock(:,:)
+    complex(dp),allocatable :: correction(:,:)
+    integer                 :: row, col, tid
+
+    allocate(correction(size(fock, 1), size(fock, 2)), source=c0)
+    fock = c0
+    do tid = 1, size(thread_fock, 3)
+      do col = 1, size(fock, 2)
+        do row = 1, size(fock, 1)
+          call Neumaier_Add_Complex(fock(row, col), correction(row, col), thread_fock(row, col, tid))
+        end do
+      end do
+    end do
+    fock = fock + correction
+    deallocate(correction)
+  end subroutine Reduce_Thread_Fock
 
 !------------------------------------------------------------
 !> initialization of global variables
@@ -129,12 +169,14 @@ module SCF
     deallocate(oper4, oper6)
     deallocate(Rsd, DIISmat)
     deallocate(rho_history, rho_pre)
+    if (allocated(rho_fock_input)) deallocate(rho_fock_input)
     deallocate(iijj_V)
     if (pVp2e) then
       deallocate(iijj_pxVpx, iijj_pyVpy, iijj_pzVpz)
       deallocate(ijij_pxVpx, ijij_pyVpy, ijij_pzVpz)
     end if
     deallocate(Fock1, mHFexc, mHFcol)
+    if (srtp) deallocate(SRTPFock)
     if (pVp2e) then
       deallocate(mpVpexc_11, mpVpcol_11, mpVpexc_22, mpVpcol_22)
     end if
@@ -153,9 +195,19 @@ module SCF
     if (kill) deallocate(AO2MO, rho_m, Fock, orbE, oper3, occindex)
     ini_rho = .true.
     deallocate(AVA)
+    if (allocated(KramersSV)) deallocate(KramersSV)
+    if (allocated(KramersPairs)) deallocate(KramersPairs)
+    if (allocated(sKramersPairs)) deallocate(sKramersPairs)
+    if (allocated(Kramersall)) deallocate(Kramersall)
     if (pVp1e) then
-      deallocate(expVp, AO2p2, evl_p2, Ap, ApRp, SRp, ARVRA, exAO2p2)
-      if (pppVp) deallocate(exSR)
+      deallocate(expVp, AO2p2, evl_p2, Ap, ApRp, ARVRA, exAO2p2)
+      deallocate(pxVpx, pyVpy, pzVpz, pxVpy, pyVpx)
+      deallocate(pxVpz, pzVpx, pyVpz, pzVpy)
+      if (srtp) then
+        deallocate(pxpx, pypy, pzpz)
+        deallocate(pxpy, pypx, pypz, pzpy)
+        deallocate(pxpz, pzpx)
+      end if
     end if
     deallocate(cbdata)
     deallocate(sbdata)
@@ -306,18 +358,53 @@ module SCF
   end subroutine Density_mixing
 
 !------------------------------------------------------------
+!> preserve the spherical-basis density used to construct the current Fock matrix
+  subroutine Capture_SCF_Density()
+    implicit none
+    if (allocated(rho_fock_input)) deallocate(rho_fock_input)
+    allocate(rho_fock_input(size(rho_m,1),size(rho_m,2)))
+    rho_fock_input = rho_m
+  end subroutine Capture_SCF_Density
+
+!------------------------------------------------------------
+!> calculate the SCF commutator residual in the final orthonormal basis
+  subroutine Assign_SCF_Residual()
+    implicit none
+    integer                  :: dm, df, ii, jj
+    complex(dp),allocatable  :: rho_f(:,:), work_f(:,:), work_r(:,:), residual(:,:)
+
+    dm = 2*sbdm
+    df = 2*fbdm
+    if (.not. allocated(rho_fock_input)) call terminate('SCF residual density was not captured')
+    allocate(rho_f(df,df), work_f(df,dm), work_r(df,df), residual(df,df))
+    call matmul('N', 'N', exf2s, rho_fock_input, work_f)
+    call matmul('N', 'C', work_f, exf2s, rho_f)
+    call matmul('N', 'N', Fock, rho_f, residual)
+    call matmul('N', 'N', rho_f, Fock, work_r)
+    residual = residual - work_r
+    maxR = maxval(abs(residual))
+    RMSR = 0.0_dp
+    do jj = 1, df
+      do ii = 1, df
+        RMSR = RMSR + real(residual(ii,jj)*conjg(residual(ii,jj)),dp)
+      end do
+    end do
+    RMSR = dsqrt(RMSR) / real(df,dp)
+    write(60,'(A,E10.3,A)') '  -- max|FP-PF|             ', maxR, ' Eh'
+    write(60,'(A,E10.3,A)') '  -- RMS(FP-PF)             ', RMSR, ' Eh'
+  end subroutine Assign_SCF_Residual
+
+!------------------------------------------------------------
 !> SCF convergence check
 !!
 !! returns .True. or .False.
 pure function Check_SCF_Conv() result(conv)
   implicit none
   logical             :: conv
-  if (abs(molE-molE_pre) < conver_tol   .and. &
-  (abs(RMSDP) < 0.5*abs(molE-molE_pre)  .or.  &
-  ! orbital degeneracy induces density matrix oscillations
-  abs(RMSDP) > 10.0*abs(molE-molE_pre)) .and. &
-  (damp_coe < 0.01                      .or.  &
-  damp_coe < 0.1*(log10(conver_tol)-log10(abs(molE-molE_pre))))) then
+  real(dp)            :: delta_energy
+  delta_energy = abs(molE-molE_pre)
+  if (delta_energy < conver_tol .and. abs(RMSDP) < conver_tol .and. &
+      RMSR < residual_tol) then
     conv = .True.
   else
     conv = .False.
@@ -328,6 +415,8 @@ end function Check_SCF_Conv
 !> initialize variables and print SCF settings before SCF process
   subroutine Before_SCF_print()
     implicit none
+    if (electron_count < 1) call terminate('SCF requires at least one electron')
+    if (electron_count > 2*fbdm) call terminate('electron count exceeds the spin-orbital dimension')
     if (.not.allocated(Fock)) allocate(Fock(2*fbdm,2*fbdm))
     if (.not.allocated(orbE)) allocate(orbE(2*fbdm))
     if (.not.allocated(oper6)) allocate(oper6(2*fbdm,2*fbdm))
@@ -357,6 +446,8 @@ end function Check_SCF_Conv
     '               !!'
     write(60,'(A,E10.3,A)') '        !!-- conv_tol  =',  conver_tol, &
     '         !!'
+    write(60,'(A,E10.3,A)') '        !!-- res_tol   =', residual_tol, &
+    ' Eh      !!'
     write(60,'(A,F6.3,A)')  '        !!-- damp      =',  damp, &
     '             !!'
     write(60,'(A,E10.3,A)') '        !!-- cutdamp   =',  cutdamp, &
@@ -383,18 +474,39 @@ end function Check_SCF_Conv
   subroutine During_SCF_print()
     implicit none
     integer             :: jj   ! loop variable for During_SCF_print
+    integer             :: homo_index, lumo_index
+    real(dp)            :: spinT_current(3,3)
+    complex(dp),allocatable :: SRTPFock_current(:,:)
     ! frontier orbital energy
+    homo_index = occindex(1)
+    do jj = 2, electron_count
+      if (orbE(occindex(jj)) > orbE(homo_index)) homo_index = occindex(jj)
+    end do
+    lumo_index = 0
+    do jj = 1, 2*fbdm
+      if (.not. any(occindex == jj)) then
+        if (lumo_index == 0) then
+          lumo_index = jj
+        else if (orbE(jj) < orbE(lumo_index)) then
+          lumo_index = jj
+        end if
+      end if
+    end do
     write(60,'(A)') '  frontier orbital energy (A.U.)'
-    call Calc_S2HForb(occindex(electron_count))
+    call Calc_S2HForb(homo_index)
     write(60,'(A,I3,F12.6,A,F6.3)') &
-    '  -- HOMO ', occindex(electron_count), orbE(occindex(electron_count)), &
+    '  -- HOMO ', homo_index, orbE(homo_index), &
     ' <Sz> = ',Szorb
-    call Calc_S2HForb(occindex(electron_count)+1)
-    write(60,'(A,I3,F12.6,A,F6.3)') &
-    '  -- LUMO ',occindex(electron_count)+1,orbE(occindex(electron_count)+1),&
-    ' <Sz> = ',Szorb
-    write(60,'(A,F12.6)') '  -- gap ',&
-    orbE(occindex(electron_count)+1)-orbE(occindex(electron_count))
+    if (lumo_index > 0) then
+      call Calc_S2HForb(lumo_index)
+      write(60,'(A,I3,F12.6,A,F6.3)') &
+      '  -- LUMO ',lumo_index,orbE(lumo_index),&
+      ' <Sz> = ',Szorb
+      write(60,'(A,F12.6)') '  -- gap ',&
+      orbE(lumo_index)-orbE(homo_index)
+    else
+      write(60,'(A)') '  -- no unoccupied spin orbital is available'
+    end if
     ! energy components calculation
     write(60,'(A)') '  calculate energy components (A.U.)'
     Ecore = 0.0_dp
@@ -402,7 +514,11 @@ end function Check_SCF_Conv
     V = 0.0_dp
     EpVp = 0.0_dp
     ESR = 0.0_dp
-    call matmul('C', 'N', oper3, Fock1, oper6)
+    if (srtp) then
+      call matmul('C', 'N', oper3, Fock1+SRTPFock, oper6)
+    else
+      call matmul('C', 'N', oper3, Fock1, oper6)
+    end if
     call matmul('N', 'N', oper6, oper3, oper4)
     do jj = 1, electron_count
       Ecore = Ecore + real(oper4(occindex(jj),occindex(jj)))
@@ -425,19 +541,24 @@ end function Check_SCF_Conv
       do jj = 1, electron_count
         EpVp = EpVp + real(oper4(occindex(jj),occindex(jj)))
       end do
-      if (pppVp) then
-        call matmul('C', 'N', oper3, exSR, oper6)
+      if (srtp) then
+        ! Rebuild a diagnostic SRTP-DKH1 matrix from the output orbitals.
+        ! The SCF matrix remains untouched, so this does not change mixing.
+        call Build_SRTPFock(SRTPFock_current, spinT_current)
+        oper4 = SRTPFock_current - AVA - expVp
+        call matmul('C', 'N', oper3, oper4, oper6)
         call matmul('N', 'N', oper6, oper3, oper4)
         do jj = 1, electron_count
           ESR = ESR + real(oper4(occindex(jj),occindex(jj)))
         end do
+        deallocate(SRTPFock_current)
       end if
     end if
     write(60,'(A,F12.6)') '  -- One-electron (core) energy           ', Ecore
     write(60,'(A,F12.6)') '  -- -- Kinetic                           ', T
     write(60,'(A,F12.6)') '  -- -- Electron-nuclear attraction       ', V
     write(60,'(A,F12.6)') '  -- -- pVp-related                       ', EpVp
-    write(60,'(A,F12.6)') '  -- -- pppVp-related                     ', ESR
+    write(60,'(A,F12.6)') '  -- -- SRTP correction                   ', ESR
     E2e = 0.0_dp
     HFCol = 0.0_dp
     HFexc = 0.0_dp
@@ -490,7 +611,7 @@ end function Check_SCF_Conv
     molE = nucE + Ecore + E2e + KSexc + KScor + KSexccor
 
     ! (non-relativistic) Virial ratio
-    Virial = -(nucE+Ecore-T-EpVp-ESR+0.5_dp*(HFCol+x_HF*HFexc)+&
+    Virial = -(nucE+V+0.5_dp*(HFCol+x_HF*HFexc)+&
                KSexc+KScor+KSexccor) / T
     write(60,'(A,F12.6)') &
     '  -- -<V>/<T>                             ', Virial
@@ -507,7 +628,7 @@ end function Check_SCF_Conv
     write(60,*)
     write(60,'(A)') &
     '  ============================================================='
-    write(60,'(A)') '                           MOL INFO'
+    write(60,'(A)') '                     Molecular Information'
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A,F12.6)') &
@@ -523,7 +644,7 @@ end function Check_SCF_Conv
     write(60,'(A,F12.6)') &
     '  -- pVp-related energy / Eh                    ...',EpVp
     write(60,'(A,F12.6)') &
-    '  -- pppVp-related energy / Eh                  ...',ESR
+    '  -- SRTP correction energy / Eh                ...',ESR
     write(60,'(A,F12.6)') &
     '  Two-electron energy / Eh                      ...',E2e
     write(60,'(A,F12.6)') &
@@ -561,14 +682,12 @@ end function Check_SCF_Conv
       write(60,'(A)') '  -- Note: there is little theoretical justification'
       write(60,'(A)') '  -- to calculate <S**2> in a DFT calculation.'
     end if
-    scf_kappa = Krammers()
-    write(60,'(A)') '  Time Reversal Symmetry (TRS) deviation parameter'
-    write(60,'(A,E12.5)') '  -- kappa     =', scf_kappa
-    write(60,'(A,E12.5)') '  -- ref kappa =', dsqrt(real(Nalpha-Nbeta,dp))
-    write(60,'(A,E12.5)') '  -- SOC kappa =', &
-    scf_kappa - dsqrt(real(Nalpha-Nbeta,dp))
     write(60,'(A)') &
     '  ============================================================='
+    write(60,*)
+    write(60,*)
+    write(60,*)
+    call Kramers()
     write(60,*)
     write(60,*)
     write(60,*)
@@ -579,7 +698,7 @@ end function Check_SCF_Conv
     write(60,'(A)') &
     '  ============================================================='
     write(60,'(A)') &
-    '                       CANONICAL ORB INFO'
+    '                 Canonical Orbital Information'
     write(60,'(A)') &
     '  ============================================================='
     do ii = 1, electron_count
@@ -648,7 +767,7 @@ end function Check_SCF_Conv
         end do
       end if
     end do
-    do ii = electron_count+1, electron_count+5
+    do ii = electron_count+1, min(electron_count+5,2*fbdm)
       if (ii == electron_count + 1) then
         call Calc_S2HForb(ii)
         write(60,'(A,A,F12.6)') &
@@ -718,12 +837,22 @@ end function Check_SCF_Conv
     '  ============================================================='
     write(60,*)
     if (molden) then
-      write(60,'(A)') '  dumping AO2MO to '//trim(address_job)//'.molden.d'
+      write(60,'(A)') '  dumping canonical orbits to .molden.d'
       if (.not. pVp1e) then
         write(60,'(A)') &
         '  -- Note: for scalar MOs, only realpart will be generated.'
       end if
-      call Dump_MOLDEN()
+      call Dump_MOLDEN(AO2MO, 'Canonical')
+      if (pVp1e) then
+        ! dump Kramers pairs to molden.d
+        allocate(sKramersPairs(2*sbdm, electron_count))
+        call matmul('N', 'N', exs2f, KramersPairs, sKramersPairs)
+        allocate(Kramersall(2*sbdm, 2*fbdm))
+        Kramersall(1:2*sbdm, 1:electron_count) = sKramersPairs
+        Kramersall(1:2*sbdm, electron_count+1:2*fbdm) = &
+        AO2MO(1:2*sbdm, electron_count+1:2*fbdm)
+        call Dump_MOLDEN(Kramersall, 'Kramers')
+      end if
       write(60,'(A)') '  complete!'
     end if
     write(60,'(A)') 'exit module SCF'
@@ -737,6 +866,7 @@ end function Check_SCF_Conv
     implicit none
     integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_V2e
     logical             :: converged            ! flag of SCF convergence
+    converged = .false.
     write(60,'(A)') 'Module SCF:'
     write(60,'(A)') '  construct one-electron Fock matrix'
     call Assign_Fock_1e()
@@ -760,14 +890,22 @@ end function Check_SCF_Conv
       end if
       ! construct 2e Fock matrices
       write(60,'(A)') '  construct V-2e Fock matrices'
-      call Assign_Fock_V2e()
+      call Capture_SCF_Density()
+      call Assign_Fock_V2e_vec()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      ! construct SRTP Fock matrix
+      if (srtp) then
+        write(60,'(A)') '  construct SRTP Fock matrix'
+        call Assign_SRTPFock()
+        write(60,'(A)') '  complete! stored in SRTPFock'
+      end if
       ! construct Fock matrix and solve for orbits
       call Assign_Fock()
       call Assign_Orbit()
       ! construct new density matrix
       write(60,'(A)') '  construct new density matrix'
       call Assign_DM()
+      call Assign_SCF_Residual()
       write(60,'(A)') '  complete! stored in rho_m'
       call During_SCF_print()
       ! convergence check
@@ -795,11 +933,8 @@ end function Check_SCF_Conv
       call Density_mixing()
       rho_pre = rho_m
     end do
-    if (converged) then
-      write(60,'(A)') '  SCF succeed!'
-    else
-      write(60,'(A)') '  SCF failed!'
-    end if
+    if (.not. converged) call terminate('SCF failed to converge')
+    write(60,'(A)') '  SCF succeed!'
     if (d4) then
       emd4 = DFTD4()
       molE = molE + emd4
@@ -815,6 +950,7 @@ end function Check_SCF_Conv
     implicit none
     integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_AVA2e
     logical             :: converged            ! flag of SCF convergence
+    converged = .false.
     write(60,'(A)') 'Module SCF:'
     write(60,'(A)') '  construct one-electron Fock matrix'
     call Assign_Fock_1e()
@@ -838,14 +974,22 @@ end function Check_SCF_Conv
       end if
       ! construct 2e Fock matrices
       write(60,'(A)') '  construct AVA-2e Fock matrices'
+      call Capture_SCF_Density()
       call Assign_Fock_AVA2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      ! construct SRTP Fock matrix
+      if (srtp) then
+        write(60,'(A)') '  construct SRTP Fock matrix'
+        call Assign_SRTPFock()
+        write(60,'(A)') '  complete! stored in SRTPFock'
+      end if
       ! construct Fock matrix and solve for orbits
       call Assign_Fock()
       call Assign_Orbit()
       ! construct new density matrix
       write(60,'(A)') '  construct new density matrix'
       call Assign_DM()
+      call Assign_SCF_Residual()
       write(60,'(A)') '  complete! stored in rho_m'
       call During_SCF_print()
       ! convergence check
@@ -873,11 +1017,8 @@ end function Check_SCF_Conv
       call Density_mixing()
       rho_pre = rho_m
     end do
-    if (converged) then
-      write(60,'(A)') '  SCF succeed!'
-    else
-      write(60,'(A)') '  SCF failed!'
-    end if
+    if (.not. converged) call terminate('SCF failed to converge')
+    write(60,'(A)') '  SCF succeed!'
     if (d4) then
       emd4 = DFTD4()
       molE = molE + emd4
@@ -893,6 +1034,7 @@ end function Check_SCF_Conv
     implicit none
     integer             :: ii, jj, kk, ll, mm   ! loop variable SCF_ARVRA2e
     logical             :: converged            ! flag of SCF convergence
+    converged = .false.
     write(60,'(A)') 'Module SCF:'
     write(60,'(A)') '  construct one-electron Fock matrix'
     call Assign_Fock_1e()
@@ -920,14 +1062,22 @@ end function Check_SCF_Conv
       end if
       ! construct 2e Fock matrices
       write(60,'(A)') '  construct AVA-2e Fock matrices'
+      call Capture_SCF_Density()
       call Assign_Fock_AVA2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
+      ! construct SRTP Fock matrix
+      if (srtp) then
+        write(60,'(A)') '  construct SRTP Fock matrix'
+        call Assign_SRTPFock()
+        write(60,'(A)') '  complete! stored in SRTPFock'
+      end if
       ! construct Fock matrix and solve for orbits
       call Assign_Fock()
       call Assign_Orbit()
       ! construct new density matrix
       write(60,'(A)') '  construct new density matrix'
       call Assign_DM()
+      call Assign_SCF_Residual()
       write(60,'(A)') '  complete! stored in rho_m'
       call During_SCF_print()
       ! convergence check
@@ -949,17 +1099,14 @@ end function Check_SCF_Conv
       call Density_mixing()
       rho_pre = rho_m
     end do
-    if (converged) then
-      write(60,'(A)') '  SCF succeed!'
-    else
-      write(60,'(A)') '  SCF failed! Skip ARVRA convergence stage!'
-      return
-    end if
+    if (.not. converged) call terminate('AVA SCF failed to converge; ARVRA stage was not started')
+    write(60,'(A)') '  AVA SCF succeed!'
     !=========================<ARVRA convergence stage>=========================
     pVp2e = .True.
     if (damp_ < 0.7) damp = 0.7_dp
     if (diisdamp_ < 0.7) diisdamp = 0.7_dp
     call Before_SCF_print()
+    converged = .false.
     do iter = 1, maxiter
       write(60,*)
       write(60,*)
@@ -971,15 +1118,23 @@ end function Check_SCF_Conv
       end if
       ! construct 2e Fock matrices
       write(60,'(A)') '  construct AVA- ARVRA- 2e Fock matrices'
+      call Capture_SCF_Density()
       call Assign_Fock_ARVRA2e()
       write(60,'(A)') '  complete! stored in mHFcol, mHFexc'
       write(60,'(A)') '  mpVpcol_11, mpVpexc_11, mpVpcol_22, mpVpexc_22'
+      ! construct SRTP Fock matrix
+      if (srtp) then
+        write(60,'(A)') '  construct SRTP Fock matrix'
+        call Assign_SRTPFock()
+        write(60,'(A)') '  complete! stored in SRTPFock'
+      end if
       ! construct Fock matrix and solve for orbits
       call Assign_Fock()
       call Assign_Orbit()
       ! construct new density matrix
       write(60,'(A)') '  construct new density matrix'
       call Assign_DM()
+      call Assign_SCF_Residual()
       write(60,'(A)') '  complete! stored in rho_m'
       call During_SCF_print()
       ! convergence check
@@ -1007,11 +1162,8 @@ end function Check_SCF_Conv
       call Density_mixing()
       rho_pre = rho_m
     end do
-    if (converged) then
-      write(60,'(A)') '  SCF succeed!'
-    else
-      write(60,'(A)') '  SCF failed!'
-    end if
+    if (.not. converged) call terminate('ARVRA SCF failed to converge')
+    write(60,'(A)') '  SCF succeed!'
     if (d4) then
       emd4 = DFTD4()
       molE = molE + emd4
@@ -1023,41 +1175,49 @@ end function Check_SCF_Conv
 !> Assign Fock matix
 !!
 !! should be called after Assign_Fock_1e and Assign_Fock_2e
+!!
+!! and Assign_SRTPFock
   subroutine Assign_Fock()
     implicit none
+    complex(dp)  :: Fock1full(2*fbdm, 2*fbdm)
+    if (srtp) then
+      Fock1full = Fock1 + SRTPFock
+    else
+      Fock1full = Fock1
+    end if
     if (.not. pvp2e) then
       if (fx_id /= -1) then
         KSexccor = 0.0_dp
         write(60,'(A)') '  mKSexc, mKScor'
-        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor
+        Fock = Fock1full + mHFcol + x_HF*mHFexc + mKSexc + mKScor
       else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
         write(60,'(A)') '  mKSexccor'
-        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor
+        Fock = Fock1full + mHFcol + x_HF*mHFexc + mKSexccor
       else    ! pure Hartree-Fock
         KScor = 0.0_dp
         KSexc = 0.0_dp
         KSexccor = 0.0_dp
-        Fock = Fock1 + mHFcol + mHFexc
+        Fock = Fock1full + mHFcol + mHFexc
       end if
     else
       if (fx_id /= -1) then
         KSexccor = 0.0_dp
         write(60,'(A)') '  mKSexc, mKScor'
-        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexc + mKScor + &
+        Fock = Fock1full + mHFcol + x_HF*mHFexc + mKSexc + mKScor + &
         mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
       else if (fxc_id /= -1) then
         KScor = 0.0_dp
         KSexc = 0.0_dp
         write(60,'(A)') '  mKSexccor'
-        Fock = Fock1 + mHFcol + x_HF*mHFexc + mKSexccor +&
+        Fock = Fock1full + mHFcol + x_HF*mHFexc + mKSexccor +&
         mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
       else    ! pure Hartree-Fock
         KScor = 0.0_dp
         KSexc = 0.0_dp
         KSexccor = 0.0_dp
-        Fock = Fock1 + mHFcol + mHFexc + &
+        Fock = Fock1full + mHFcol + mHFexc + &
         mpVpcol_11 + mpVpexc_11 + mpVpcol_22 + mpVpexc_22
       end if
     end if
@@ -1101,8 +1261,8 @@ end function Check_SCF_Conv
         allocate(T_AO2MO_b(sbdm,M_sbdm))
         call load_MO_MOLDEN(M_AO2MO_a, M_AO2MO_b)
         write(60,'(A)') '  -- MO coeffs in MOLDEN were loaded'
-        call M_basis_proj(M_AO2MO_a, T_AO2MO_a)
-        call M_basis_proj(M_AO2MO_b, T_AO2MO_b)
+        call M_basis_proj(M_AO2MO_a, T_AO2MO_a, Nalpha)
+        call M_basis_proj(M_AO2MO_b, T_AO2MO_b, Nbeta)
         write(60,'(A)') '  -- MO coeffs were projected to job basis'
 
         do ii = 1,sbdm
@@ -1117,7 +1277,12 @@ end function Check_SCF_Conv
             end do
           end do
         end do
-        ! For meta-GGAs, initial occupied MO coefficients is required
+        ! For SRTP-DKH Hamiltonian and meta-GGAs, initial occupied MO
+        ! coefficients is required
+        ! Unlike the gauge-invariant density matrix, molecular orbital
+        ! coefficients possess arbitrary phases from diagonalization that
+        ! can cause catastrophic destructive interference during linear mixing,
+        ! so AO2MO does not mix upon mixing of the density matrices.
         do ii = 1, Nalpha
           AO2MO(1:sbdm,ii) = T_AO2MO_a(1:sbdm,ii)
         end do
@@ -1159,16 +1324,18 @@ end function Check_SCF_Conv
       .and. abs((totalpha-real(Nalpha,dp))-(real(Nbeta,dp)-totbeta)) < 0.1) then
         write(60,'(A)') &
         '  -- order of degenerate frontier alpha/beta orbitals changed'
+        degenlow = 1
+        degenhigh = 2*fbdm
         do ii = electron_count-1, 1, -1
           if (abs(orbE(ii)-orbE(electron_count)) /&
-          abs(orbE(electron_count)) > 0.04) then
+          max(abs(orbE(electron_count)),safmin) > 0.04_dp) then
             degenlow = ii + 1
             exit
           end if
         end do
-        do ii = electron_count+1, 6*electron_count
+        do ii = electron_count+1, 2*fbdm
           if (abs(orbE(ii)-orbE(electron_count)) /&
-          abs(orbE(electron_count)) > 0.04) then
+          max(abs(orbE(electron_count)),safmin) > 0.04_dp) then
             degenhigh = ii - 1
             exit
           end if
@@ -1787,9 +1954,8 @@ end function Check_SCF_Conv
     implicit none
     real(dp)    :: temp_pool(fbdm, fbdm)
     integer     :: ii, jj               ! loop variables for Assign_Fock_1e
-    complex(dp) :: itm(fbdm)
     real(dp)    :: edc(fbdm)            ! (p2+c2)^0.5
-    real(dp)    :: coe                  ! coefficient for pVp-related terms
+    real(dp)    :: denom                ! c * (edc(ii) + edc(jj))
     real(dp)    :: i_V_j_p2(fbdm, fbdm) ! i_V_j in p^2 eigenbasis
     allocate(Fock1(2*fbdm,2*fbdm), exi_T_j(2*fbdm,2*fbdm), &
     exi_V_j(2*fbdm,2*fbdm), source = c0)
@@ -1803,24 +1969,11 @@ end function Check_SCF_Conv
       allocate(AVA(2*fbdm,2*fbdm), source = c0)
       AVA = exi_V_j
     else
-      if (.not. pVp2e) then
-        write(60,'(A)') '  -- only 1e pVp enabled, we typically approximate'
-        write(60,'(A)') '  -- the equivalent pVp-related matrix elements as'
-        write(60,'(A)') '  -- half of the 1e pVp-related matrix elements.'
-        coe = 0.5_dp
-      else
-        coe = 1.0_dp
-      end if
       allocate(oper1(fbdm,fbdm), oper2(fbdm,fbdm), oper3(2*fbdm,2*fbdm))
       allocate(oper4(2*fbdm,2*fbdm), oper5(2*fbdm,2*fbdm), source = c0)
       allocate(Ap(fbdm,fbdm), ApRp(fbdm,fbdm), source = 0.0_dp) ! ApRp = RpAp
-      allocate(SRp(2*fbdm,2*fbdm), source = c0)
       allocate(ARVRA(2*fbdm,2*fbdm), AVA(2*fbdm,2*fbdm), source = c0)
       allocate(ARVeRA(2*fbdm,2*fbdm), AVeA(2*fbdm,2*fbdm), source = c0)
-      allocate(Ve(fbdm,fbdm))
-      allocate(pxVepx(fbdm,fbdm), pyVepy(fbdm,fbdm), pzVepz(fbdm,fbdm))
-      allocate(pxVepy(fbdm,fbdm), pyVepx(fbdm,fbdm), pxVepz(fbdm,fbdm))
-      allocate(pzVepx(fbdm,fbdm), pyVepz(fbdm,fbdm), pzVepy(fbdm,fbdm))
       allocate(exAO2p2(2*fbdm,2*fbdm), expVp(2*fbdm,2*fbdm), source = c0)
       edc = dsqrt(evl_p2 + c2)
       !----------------------
@@ -1829,12 +1982,6 @@ end function Check_SCF_Conv
       (2.0_dp * dsqrt(evl_p2(ii)/c2 + 1.0_dp)) )
       !----------------------
       forall (ii=1:fbdm) ApRp(ii,ii) = Ap(ii,ii) / (edc(ii)+c)
-      !----------------------
-      itm = (1.0_dp + evl_p2/(4.0_dp*c2) + QED_rad) * c1
-      forall (ii = 1:fbdm)
-        SRp(ii, ii) = itm(ii)
-        SRp(fbdm+ii, fbdm+ii)   = itm(ii)
-      end forall
       !----------------------
       ! Ap V Ap
       exi_V_j(1:fbdm,1:fbdm) = i_V_j
@@ -1885,141 +2032,28 @@ end function Check_SCF_Conv
       ARVRA(fbdm+1:2*fbdm,1:fbdm) = ARVRA(fbdm+1:2*fbdm,1:fbdm) + oper1 * ci
       ARVRA(1:fbdm,fbdm+1:2*fbdm) = ARVRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * ci
       !----------------------
-      Fock1 = Fock1 + AVA
-      if (pppVp) then
-        call matmul('N', 'N', SRp, ARVRA, oper3)
-        call matmul('N', 'N', oper3, SRp, oper4)
-        Fock1 = Fock1 + coe*oper4
-        expVp = coe*oper4
-      else
-        Fock1 = Fock1 + coe*ARVRA
-        expVp = coe*ARVRA
+      if (.not. srtp) then
+        ! The DKH1 contribution incorporating SRTP effects
+        ! will be calculated separately
+        Fock1 = Fock1 + AVA
+        Fock1 = Fock1 + ARVRA
       end if
-      if (pppVp) then
-        allocate(exSR(2*fbdm,2*fbdm), source = c0)
-        !----------------------
-        ! ApRp (px3Vpx+py3Vpy+pz3Vpz+pxVpx3+pyVpy3+pzVpz3) ApRp
-        temp_pool = px3Vpx+py3Vpy+pz3Vpz+transpose(px3Vpx+py3Vpy+pz3Vpz)
-        call matmul('N', 'T', ApRp, AO2p2, oper2)
-        call matmul('N', 'N', oper2, temp_pool, oper1)
-        call matmul('N', 'N', oper1, AO2p2, oper2)
-        call matmul('N', 'N', oper2, ApRp, oper1)
-        Fock1(1:fbdm,1:fbdm) = &
-        Fock1(1:fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-        Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        exSR(1:fbdm,1:fbdm) = &
-        exSR(1:fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        exSR(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-        exSR(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        !----------------------
-        ! ApRp (px3Vpy-py3Vpx+pxVpy3-pyVpx3) ApRp
-        temp_pool = px3Vpy-py3Vpx+transpose(py3Vpx-px3Vpy)
-        call matmul('N', 'T', ApRp, AO2p2, oper2)
-        call matmul('N', 'N', oper2, temp_pool, oper1)
-        call matmul('N', 'N', oper1, AO2p2, oper2)
-        call matmul('N', 'N', oper2, ApRp, oper1)
-        Fock1(1:fbdm,1:fbdm) = &
-        Fock1(1:fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * ci
-        Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-        Fock1(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + coe*oper1/(2.0_dp*c2) * ci
-        exSR(1:fbdm,1:fbdm) = &
-        exSR(1:fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * ci
-        exSR(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-        exSR(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + coe*oper1/(2.0_dp*c2) * ci
-        !----------------------
-        ! ApRp (pz3Vpx-px3Vpz+pzVpx3-pxVpz3) ApRp
-        temp_pool = pz3Vpx-px3Vpz+transpose(px3Vpz-pz3Vpx)
-        call matmul('N', 'T', ApRp, AO2p2, oper2)
-        call matmul('N', 'N', oper2, temp_pool, oper1)
-        call matmul('N', 'N', oper1, AO2p2, oper2)
-        call matmul('N', 'N', oper2, ApRp, oper1)
-        Fock1(fbdm+1:2*fbdm,1:fbdm) = &
-        Fock1(fbdm+1:2*fbdm,1:fbdm) + coe*oper1/(2.0_dp*c2) * c1
-        Fock1(1:fbdm,fbdm+1:2*fbdm) = &
-        Fock1(1:fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        exSR(fbdm+1:2*fbdm,1:fbdm) = &
-        exSR(fbdm+1:2*fbdm,1:fbdm) + coe*oper1/(2.0_dp*c2) * c1
-        exSR(1:fbdm,fbdm+1:2*fbdm) = &
-        exSR(1:fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * c1
-        !----------------------
-        ! ApRp (py3Vpz-pz3Vpy+pyVpz3-pzVpy3) ApRp
-        temp_pool = py3Vpz-pz3Vpy+transpose(pz3Vpy-py3Vpz)
-        call matmul('N', 'T', ApRp, AO2p2, oper2)
-        call matmul('N', 'N', oper2, temp_pool, oper1)
-        call matmul('N', 'N', oper1, AO2p2, oper2)
-        call matmul('N', 'N', oper2, ApRp, oper1)
-        Fock1(fbdm+1:2*fbdm,1:fbdm) = &
-        Fock1(fbdm+1:2*fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * ci
-        Fock1(1:fbdm,fbdm+1:2*fbdm) = &
-        Fock1(1:fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * ci
-        exSR(fbdm+1:2*fbdm,1:fbdm) = &
-        exSR(fbdm+1:2*fbdm,1:fbdm) - coe*oper1/(2.0_dp*c2) * ci
-        exSR(1:fbdm,fbdm+1:2*fbdm) = &
-        exSR(1:fbdm,fbdm+1:2*fbdm) - coe*oper1/(2.0_dp*c2) * ci
-      end if
+      expVp = ARVRA
       !----------------------
-      ! start building Fock1
+      ! construct AVeA, ARVeRA from the already p^2-basis matrices AVA, ARVRA
       do jj = 1, fbdm
         do ii = 1, fbdm
-          Ve(ii,jj) = i_V_j_p2(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pxVepx(ii,jj) = pxVpx(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pyVepy(ii,jj) = pyVpy(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pzVepz(ii,jj) = pzVpz(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pxVepy(ii,jj) = pxVpy(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pyVepx(ii,jj) = pyVpx(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pxVepz(ii,jj) = pxVpz(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pzVepx(ii,jj) = pzVpx(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pyVepz(ii,jj) = pyVpz(ii,jj) / (c*(edc(ii) + edc(jj)))
-          pzVepy(ii,jj) = pzVpy(ii,jj) / (c*(edc(ii) + edc(jj)))
+          ! Energy denominator for DKH2 W1 generator
+          denom = c * (edc(ii) + edc(jj))
+          AVeA(ii, jj) = AVA(ii, jj) / denom
+          AVeA(fbdm+ii, fbdm+jj) = AVA(fbdm+ii, fbdm+jj) / denom
+          ! ARVeRA is simply ARVRA / denom (handles all scalar and SOC blocks!)
+          ARVeRA(ii, jj) = ARVRA(ii, jj) / denom
+          ARVeRA(fbdm+ii, fbdm+jj) = ARVRA(fbdm+ii, fbdm+jj) / denom
+          ARVeRA(ii, fbdm+jj) = ARVRA(ii, fbdm+jj) / denom
+          ARVeRA(fbdm+ii, jj) = ARVRA(fbdm+ii, jj) / denom
         end do
       end do
-      !----------------------
-      ! Ap Ve Ap
-      call matmul('N', 'T', Ap, AO2p2, oper2)
-      call matmul('N', 'N', oper2, Ve, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
-      call matmul('N', 'N', oper2, Ap, oper1)
-      AVeA(1:fbdm,1:fbdm) = oper1 * c1
-      AVeA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = oper1 * c1
-      !----------------------
-      ! ApRp pxVepx+pyVepy+pzVepz ApRp
-      temp_pool = pxVepx+pyVepy+pzVepz
-      call matmul('N', 'T', ApRp, AO2p2, oper2)
-      call matmul('N', 'N', oper2, temp_pool, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
-      call matmul('N', 'N', oper2, ApRp, oper1)
-      ARVeRA(1:fbdm,1:fbdm) = ARVeRA(1:fbdm,1:fbdm) + oper1 * c1
-      ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-      ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) + oper1 * c1
-      !----------------------
-      ! ApRp pxVepy-pyVepx ApRp
-      temp_pool = pxVepy-pyVepx
-      call matmul('N', 'T', ApRp, AO2p2, oper2)
-      call matmul('N', 'N', oper2, temp_pool, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
-      call matmul('N', 'N', oper2, ApRp, oper1)
-      ARVeRA(1:fbdm,1:fbdm) = ARVeRA(1:fbdm,1:fbdm) + oper1 * ci
-      ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) = &
-      ARVeRA(fbdm+1:2*fbdm,fbdm+1:2*fbdm) - oper1 * ci
-      !----------------------
-      ! ApRp pzVepx-pxVepz ApRp
-      temp_pool = pzVepx-pxVepz
-      call matmul('N', 'T', ApRp, AO2p2, oper2)
-      call matmul('N', 'N', oper2, temp_pool, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
-      call matmul('N', 'N', oper2, ApRp, oper1)
-      ARVeRA(fbdm+1:2*fbdm,1:fbdm) = ARVeRA(fbdm+1:2*fbdm,1:fbdm) - oper1 * c1
-      ARVeRA(1:fbdm,fbdm+1:2*fbdm) = ARVeRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * c1
-      !----------------------
-      ! ApRp pyVepz-pzVepy ApRp
-      temp_pool = pyVepz-pzVepy
-      call matmul('N', 'T', ApRp, AO2p2, oper2)
-      call matmul('N', 'N', oper2, temp_pool, oper1)
-      call matmul('N', 'N', oper1, AO2p2, oper2)
-      call matmul('N', 'N', oper2, ApRp, oper1)
-      ARVeRA(fbdm+1:2*fbdm,1:fbdm) = ARVeRA(fbdm+1:2*fbdm,1:fbdm) + oper1 * ci
-      ARVeRA(1:fbdm,fbdm+1:2*fbdm) = ARVeRA(1:fbdm,fbdm+1:2*fbdm) + oper1 * ci
       !----------------------
       ! term of order c^-4, negative terms, no RI insertion
       forall (ii = 1:2*fbdm)
@@ -2027,16 +2061,16 @@ end function Check_SCF_Conv
       end forall
       call matmul('N', 'N', ARVeRA, oper5, oper3)
       call matmul('N', 'N', oper3, AVA, oper4)
-      Fock1 = Fock1 - coe*oper4
+      Fock1 = Fock1 - oper4
       call matmul('N', 'N', ARVRA, oper5, oper3)
       call matmul('N', 'N', oper3, AVeA, oper4)
-      Fock1 = Fock1 - coe*oper4
+      Fock1 = Fock1 - oper4
       call matmul('N', 'N', AVeA, oper5, oper3)
       call matmul('N', 'N', oper3, ARVRA, oper4)
-      Fock1 = Fock1 - coe*oper4
+      Fock1 = Fock1 - oper4
       call matmul('N', 'N', AVA, oper5, oper3)
       call matmul('N', 'N', oper3, ARVeRA, oper4)
-      Fock1 = Fock1 - coe*oper4
+      Fock1 = Fock1 - oper4
       !----------------------
       ! term of order c^-4, positive terms
       ! RI insertion: I = sigma.Pi(1/P^2)sigma.Pj
@@ -2047,20 +2081,20 @@ end function Check_SCF_Conv
       end forall
       call matmul('N', 'N', ARVeRA, oper5, oper3)
       call matmul('N', 'N', oper3, ARVRA, oper4)
-      Fock1 = Fock1 + coe*oper4
+      Fock1 = Fock1 + oper4
       call matmul('N', 'N', ARVRA, oper5, oper3)
       call matmul('N', 'N', oper3, ARVeRA, oper4)
-      Fock1 = Fock1 + coe*oper4
+      Fock1 = Fock1 + oper4
       forall (ii = 1:fbdm) ! RI extract
         oper5(ii,ii) = 0.5_dp * (evl_p2(ii)/(edc(ii)+c)**2) * c1
         oper5(fbdm+ii,fbdm+ii) = 0.5_dp * (evl_p2(ii)/(edc(ii)+c)**2) * c1
       end forall
       call matmul('N', 'N', AVeA, oper5, oper3)
       call matmul('N', 'N', oper3, AVA, oper4)
-      Fock1 = Fock1 + coe*oper4
+      Fock1 = Fock1 + oper4
       call matmul('N', 'N', AVA, oper5, oper3)
       call matmul('N', 'N', oper3, AVeA, oper4)
-      Fock1 = Fock1 + coe*oper4
+      Fock1 = Fock1 + oper4
       !----------------------
       ! kinetic energy
       forall (ii = 1:fbdm) ! RI extract
@@ -2085,22 +2119,207 @@ end function Check_SCF_Conv
       call matmul('N', 'T', oper3, exAO2p2, expVp)
       call matmul('N', 'N', exAO2p2, AVA, oper3)
       call matmul('N', 'T', oper3, exAO2p2, AVA)
-      if (pppVp) then
-        call matmul('N', 'N', exAO2p2, exSR, oper3)
-        call matmul('N', 'T', oper3, exAO2p2, exSR)
-      end if
-      deallocate(Ve, pxVepx, pyVepy, pzVepz, pxVepy, pyVepx)
-      deallocate(pxVepz, pzVepx, pyVepz, pzVepy, ARVeRA, AVeA)
+      deallocate(ARVeRA, AVeA)
       deallocate(oper1, oper2, oper3, oper4, oper5)
-      ! deallocate one-electron ints to reduce memory usage
-      deallocate(pxVpx, pyVpy, pzVpz, pxVpy, pyVpx)
-      deallocate(pxVpz, pzVpx, pyVpz, pzVpy)
-      if (pppVp) then
-        deallocate(px3Vpx, py3Vpy, pz3Vpz, px3Vpy, py3Vpx)
-        deallocate(px3Vpz, pz3Vpx, py3Vpz, pz3Vpy)
-      end if
     end if
   end subroutine Assign_Fock_1e
+
+!------------------------------------------------------------
+!> prepare one-electron SRTP-DKH1 Fock matrix (SRTPFock)
+!!
+!! see 'SRTP_Hamiltonian-Correction_to_the_DKH2_Hamiltonian_Based_on
+!!
+!! Anisotropic_Precession'
+  subroutine Assign_SRTPFock()
+    implicit none
+    if (.not. srtp) return
+    call Build_SRTPFock(SRTPFock, spinT)
+  end subroutine Assign_SRTPFock
+
+!------------------------------------------------------------
+!> construct an SRTP-DKH1 matrix from the current spinor orbitals
+  subroutine Build_SRTPFock(fock_out, spinT_out)
+    implicit none
+    complex(dp),allocatable,intent(out) :: fock_out(:,:)
+    real(dp),intent(out)                :: spinT_out(3,3)
+    integer                 :: i, k, j, idx
+    complex(dp),allocatable :: C_alpha(:), C_beta(:)
+    complex(dp),allocatable :: v_alpha(:), v_beta(:)
+    complex(dp)             :: val_A, val_B, val_C
+    real(dp)                :: sx, sy, sz
+    real(dp),allocatable    :: Wi(:)
+    real(dp),allocatable    :: ui(:)
+    real(dp)                :: tPxx, tPyy, tPzz, tPxy, tPxz, tPyz
+    real(dp)                :: numerator, denominator
+    real(dp)                :: uik, uij
+    real(dp),allocatable    :: weight(:,:)
+    real(dp),allocatable    :: A_fac(:), R_fac(:)
+    real(dp),allocatable    :: S_p2(:,:), V_p2(:,:)
+    real(dp),allocatable    :: Vx_p2(:,:), Vy_p2(:,:), Vz_p2(:,:)
+    real(dp),allocatable    :: temp(:,:)
+    real(dp)                :: Ei, fac_sf, fac_sd, Vx, Vy, Vz
+    complex(dp),allocatable :: H_p2(:,:), temp_c(:,:)
+
+    if (.not. srtp) call terminate('Build_SRTPFock requires srtp=.true.')
+    if (.not. allocated(AO2MO)) call terminate('Build_SRTPFock: AO2MO not allocated')
+    ! assign spinT tensor
+    allocate(C_alpha(sbdm), C_beta(sbdm))
+    allocate(v_alpha(sbdm), v_beta(sbdm))
+    spinT_out = 0.0_dp
+    do i = 1, electron_count
+      idx = occindex(i)
+      C_alpha(:) = AO2MO(1:sbdm, idx)
+      C_beta(:)  = AO2MO(sbdm+1:2*sbdm, idx)
+      ! S * C vector
+      v_alpha = c0
+      v_beta  = c0
+      do k = 1, sbdm
+        do j = 1, sbdm
+          v_alpha(j) = v_alpha(j) + i_j_s(j, k) * C_alpha(k)
+          v_beta(j)  = v_beta(j)  + i_j_s(j, k) * C_beta(k)
+        end do
+      end do
+      ! inner-product C^dag * (S * C)
+      val_A = dot_product(C_alpha, v_alpha)  ! <alpha | S | alpha>
+      val_B = dot_product(C_beta,  v_beta)   ! <beta  | S | beta>
+      val_C = dot_product(C_alpha, v_beta)   ! <alpha | S | beta>
+      ! x, y, z components of the local spin polarization vector
+      ! note: the 1/2 factor comes from the Pauli matrices (s = 1/2)
+      sx = real(val_C, dp)
+      sy = aimag(val_C)
+      sz = 0.5_dp * real(val_A - val_B, dp)
+      ! assign spinT
+      spinT_out(1, 1) = spinT_out(1, 1) + sx * sx
+      spinT_out(1, 2) = spinT_out(1, 2) + sx * sy
+      spinT_out(1, 3) = spinT_out(1, 3) + sx * sz
+      spinT_out(2, 2) = spinT_out(2, 2) + sy * sy
+      spinT_out(2, 3) = spinT_out(2, 3) + sy * sz
+      spinT_out(3, 3) = spinT_out(3, 3) + sz * sz
+    end do
+    spinT_out(2, 1) = spinT_out(1, 2)
+    spinT_out(3, 1) = spinT_out(1, 3)
+    spinT_out(3, 2) = spinT_out(2, 3)
+    if (electron_count > 0) then ! normalize
+      spinT_out = spinT_out / real(electron_count, dp)
+    end if
+    deallocate(C_alpha, C_beta)
+    deallocate(v_alpha, v_beta)
+    allocate(Wi(fbdm), ui(fbdm))
+    allocate(weight(fbdm,fbdm))
+    ! calculate the state-dependent factor W_i for each momentum state
+    do i = 1, fbdm
+      ! SRTP requires calculating the geometric overlap between the
+      ! "trajectory shape" of this specific microstate and the external
+      ! "macroscopic spin polarization field"; therefore, it does not
+      ! introduce new coupling between different p^2 states.
+      ui(:) = AO2p2(:, i)
+      tPxx = 0.0_dp
+      tPyy = 0.0_dp
+      tPzz = 0.0_dp
+      tPxy = 0.0_dp
+      tPxz = 0.0_dp
+      tPyz = 0.0_dp
+      ! ui^T * Pab * ui
+      do k = 1, fbdm
+        uik = ui(k)
+        do j = 1, fbdm
+          uij = ui(j)
+          tPxx = tPxx + uij * pxpx(j, k) * uik
+          tPyy = tPyy + uij * pypy(j, k) * uik
+          tPzz = tPzz + uij * pzpz(j, k) * uik
+          tPxy = tPxy + uij * pxpy(j, k) * uik
+          tPxz = tPxz + uij * pxpz(j, k) * uik
+          tPyz = tPyz + uij * pypz(j, k) * uik
+        end do
+      end do
+      ! numerical p_i^2 denominator
+      denominator = tPxx + tPyy + tPzz
+      if (abs(denominator) < safmin) then
+        Wi(i) = 1.0_dp
+      else
+        ! Inner product of momentum tensor and the spinT tensor:
+        ! sum_{a,b} T_{ab} P_{ab,ii}
+        numerator = spinT_out(1,1)*tPxx + spinT_out(2,2)*tPyy + spinT_out(3,3)*tPzz + &
+              2.0_dp*(spinT_out(1,2)*tPxy + spinT_out(1,3)*tPxz + spinT_out(2,3)*tPyz)
+        ! W_i = 2 - (1 / s^2) * (Numerator / p_i^2)
+        Wi(i) = 2.0_dp - 4.0_dp * (numerator / denominator)
+      end if
+    end do
+    ! W_ij = 0.5*(W_i+W_j)
+    do j = 1, fbdm
+      do i = 1, fbdm
+        weight(i, j) = 0.5_dp * (Wi(i) + Wi(j))
+      end do
+    end do
+    deallocate(Wi, ui)
+
+    ! Transform static integrals to the p^2 eigenbasis
+    allocate(temp(fbdm, fbdm), V_p2(fbdm, fbdm), S_p2(fbdm, fbdm))
+    allocate(Vx_p2(fbdm, fbdm), Vy_p2(fbdm, fbdm), Vz_p2(fbdm, fbdm))
+    ! V_p2 = U^T * i_V_j * U
+    call matmul('T', 'N', AO2p2, i_V_j, temp)
+    call matmul('N', 'N', temp, AO2p2, V_p2)
+    ! S_p2 = U^T * (pxVpx + pyVpy + pzVpz) * U
+    temp = pxVpx + pyVpy + pzVpz
+    call matmul('T', 'N', AO2p2, temp, S_p2)
+    temp = S_p2 ! use S_p2 as scratch to avoid alloc
+    call matmul('N', 'N', temp, AO2p2, S_p2)
+    ! Vx_p2 = U^T * (pyVpz - pzVpy) * U
+    temp = pyVpz - pzVpy
+    call matmul('T', 'N', AO2p2, temp, Vx_p2)
+    temp = Vx_p2
+    call matmul('N', 'N', temp, AO2p2, Vx_p2)
+    ! Vy_p2 = U^T * (pzVpx - pxVpz) * U
+    temp = pzVpx - pxVpz
+    call matmul('T', 'N', AO2p2, temp, Vy_p2)
+    temp = Vy_p2
+    call matmul('N', 'N', temp, AO2p2, Vy_p2)
+    ! Vz_p2 = U^T * (pxVpy - pyVpx) * U
+    temp = pxVpy - pyVpx
+    call matmul('T', 'N', AO2p2, temp, Vz_p2)
+    temp = Vz_p2
+    call matmul('N', 'N', temp, AO2p2, Vz_p2)
+    deallocate(temp)
+
+    ! Evaluate kinematic factors A_i and R_i
+    allocate(A_fac(fbdm), R_fac(fbdm))
+    do i = 1, fbdm
+      Ei = c * dsqrt(evl_p2(i) + c2)
+      A_fac(i) = dsqrt((Ei + c2) / (2.0_dp * Ei))
+      R_fac(i) = c / (Ei + c2)
+    end do
+    allocate(H_p2(2*fbdm, 2*fbdm))
+    H_p2 = c0
+
+    ! Assemble the complex SRTP-DKH1 Hamiltonian in p^2 representation
+    do j = 1, fbdm
+      do i = 1, fbdm
+        ! spin-dependent potential vectors with SRTP weight
+        Vx = weight(i,j) * Vx_p2(i,j)
+        Vy = weight(i,j) * Vy_p2(i,j)
+        Vz = weight(i,j) * Vz_p2(i,j)
+        ! spin-free DKH1
+        fac_sf = A_fac(i) * V_p2(i,j) * A_fac(j) + &
+                 A_fac(i) * R_fac(i) * S_p2(i,j) * R_fac(j) * A_fac(j)
+        ! spin-dependent DKH1
+        fac_sd = A_fac(i) * R_fac(i) * R_fac(j) * A_fac(j)
+        ! i * sigma dot V_vector_with_weight
+        H_p2(i, j)           = cmplx(fac_sf, fac_sd*Vz, dp)     ! Alpha-Alpha
+        H_p2(i+fbdm, j+fbdm) = cmplx(fac_sf, -fac_sd*Vz, dp)    ! Beta-Beta
+        H_p2(i, j+fbdm)      = cmplx(fac_sd*Vy, fac_sd*Vx, dp)  ! Alpha-Beta
+        H_p2(i+fbdm, j)      = cmplx(-fac_sd*Vy, fac_sd*Vx, dp) ! Beta-Alpha
+      end do
+    end do
+    deallocate(weight, A_fac, R_fac)
+    deallocate(V_p2, S_p2, Vx_p2, Vy_p2, Vz_p2)
+
+    ! Transform back from p^2 eigenbasis to the orthogonal AO basis
+    allocate(fock_out(2*fbdm, 2*fbdm), source=c0)
+    allocate(temp_c(2*fbdm, 2*fbdm))
+    call matmul('N', 'N', exAO2p2, H_p2, temp_c)
+    call matmul('N', 'T', temp_c, exAO2p2, fock_out)
+    deallocate(temp_c, H_p2)
+  end subroutine Build_SRTPFock
 
 !------------------------------------------------------------
 !> screen of non-relativistic 4-indicator integrals based on the Cauchy–Schwarz
@@ -2234,10 +2453,10 @@ end function Check_SCF_Conv
     allocate(iijj_pyVpy(cbdm,cbdm), iijj_pzVpz(cbdm,cbdm), source=0.0_dp)
     allocate(ijij_pxVpx(cbdm,cbdm), ijij_pyVpy(cbdm,cbdm), source=0.0_dp)
     allocate(ijij_pzVpz(cbdm,cbdm), source=0.0_dp)
-    !$omp parallel num_threads(threads) default(shared) private(i,ui,numi,  &
+    !$omp parallel num_threads(new_threads) default(shared) private(i,ui,numi,  &
     !$omp& uj,um,un,uo,up,ii,ii2,contri,coei,faci,codi,contrj,coej,facj,codj,&
     !$omp& A,Gii,Gimii,codA,B,Gjj,Gimjj,codB,AB,Gij,Gimij,codAB,facdx_i,&
-    !$omp& facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,tl) if(threads < nproc)
+    !$omp& facdy_i,facdz_i,coedx_i,coedy_i,coedz_i,tl) if(new_threads > 1)
     allocate(tl%iijj_V(cbdm,cbdm), tl%iijj_pxVpx(cbdm,cbdm), source=0.0_dp)
     allocate(tl%iijj_pyVpy(cbdm,cbdm), tl%iijj_pzVpz(cbdm,cbdm), source=0.0_dp)
     allocate(tl%ijij_pxVpx(cbdm,cbdm), tl%ijij_pyVpy(cbdm,cbdm), source=0.0_dp)
@@ -2256,8 +2475,8 @@ end function Check_SCF_Conv
       coedy_i(1:2*contri) = cbdata(ui) % coedy(1:2*contri)
       coedz_i(1:2*contri) = cbdata(ui) % coedz(1:2*contri)
       A(1:contri,1:contri) = AOpair(ui,ui) % sumexpo
-      Gij(:,1:contri,1:contri) = AOpair(ui,ui) % Gij
-      Gimij(:,1:contri,1:contri) = AOpair(ui,ui) % Gimij
+      Gii(:,1:contri,1:contri) = AOpair(ui,ui) % Gij
+      Gimii(:,1:contri,1:contri) = AOpair(ui,ui) % Gimij
       codA(:,1:contri,1:contri) = AOpair(ui,ui) % cod
       do uj = 1, cbdm
         ! no need to differentiate |AOj>
@@ -2429,10 +2648,10 @@ end function Check_SCF_Conv
     if (allocated(mHFexc)) deallocate(mHFexc)
     allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp parallel num_threads(new_threads) default(shared) private(i,j,ui,uj,uk,&
     !$omp& ul,intV,contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,&
     !$omp& fack,codk,contrl,coel,facl,codl,A,B,Gij,Gkl,Gimij,Gimkl,codA,codB,&
-    !$omp& HFcol_mic,HFexc_mic,DMcoe) if(threads < nproc)
+    !$omp& HFcol_mic,HFexc_mic,DMcoe) if(new_threads > 1)
     HFcol_mic = c0
     HFexc_mic = c0
     !$omp do schedule(dynamic,5) collapse(2)
@@ -2536,10 +2755,11 @@ end function Check_SCF_Conv
 !! should be called in each SCF iteration
   subroutine Assign_Fock_V2e_vec()
     implicit none
+    integer,parameter :: v2e_vec_batch = 256
     integer     :: i, j                ! for parallel computation, ui=i, uk=j
     integer     :: ui, uj, uk, ul      ! loop variables
-    integer     :: um, un, uo, up
-    real(dp)    :: intV                ! scalar integral
+    integer     :: um, un, uo, up, tid
+    real(dp)    :: intV, intV_correction ! scalar integral and contraction correction
     real(dp)    :: DMcoe               ! DM coefficient for Schwarz screening
     !----------PRISM parameters of <AOi|AOj>----------
     integer     :: contri              ! contr of atom_i, shell_i
@@ -2549,8 +2769,8 @@ end function Check_SCF_Conv
     integer     :: facj(3)             ! xyz factor of |AOj>
     real(dp)    :: codj(3)             ! coordinate of center of |AOj>
     !DIR$ ATTRIBUTES ALIGN:align_size :: A, codA
-    real(dp)    :: A(160000)           ! PRISM parameters
-    real(dp)    :: codA(160000,3)      ! PRISM parameters
+    real(dp)    :: A(v2e_vec_batch)    ! vectorised OS batch parameters
+    real(dp)    :: codA(v2e_vec_batch,3)
     !----------PRISM parameters of <AOk|AOl>----------
     integer     :: contrk              ! contr of atom_k, shell_k
     integer     :: fack(3)             ! xyz factor of |AOk>
@@ -2559,18 +2779,20 @@ end function Check_SCF_Conv
     integer     :: facl(3)             ! xyz factor of |AOl>
     real(dp)    :: codl(3)             ! coordinate of center of |AOl>
     !DIR$ ATTRIBUTES ALIGN:align_size :: B, G, Gim, codB, coe
-    real(dp)    :: B(160000)           ! PRISM parameters
-    real(dp)    :: G(160000,3)         ! PRISM parameters
-    real(dp)    :: Gim(160000,3)       ! PRISM parameters
-    real(dp)    :: codB(160000,3)      ! PRISM parameters
-    real(dp)    :: coe(160000)         ! coefficient
+    real(dp)    :: B(v2e_vec_batch)    ! vectorised OS batch parameters
+    real(dp)    :: G(v2e_vec_batch,3)
+    real(dp)    :: Gim(v2e_vec_batch,3)
+    real(dp)    :: codB(v2e_vec_batch,3)
+    real(dp)    :: coe(v2e_vec_batch)
     !DIR$ ATTRIBUTES ALIGN:align_size :: HFcol_mic, HFexc_mic, supp, cAO2MO
     integer     :: contr
     complex(dp) :: HFcol_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
     complex(dp) :: HFexc_mic(2*cbdm,2*cbdm)  ! micro 2e Fock matrix
+    complex(dp),allocatable :: HFcol_thread(:,:,:), HFexc_thread(:,:,:)
     complex(dp) :: supp(2*sbdm,2*cbdm)
     complex(dp) :: cAO2MO(2*cbdm,2*fbdm)     ! Cartesian AO to MO coeff
     real(dp)    :: maxrho(cbdm,cbdm)         ! max elements in density matrix
+    type(V2eVecScratch) :: scratch
     ! transform rho_m to Cartesian basis
     call scgo(rho_m)
     call Find_maxDM(rho_m, maxrho)
@@ -2578,14 +2800,17 @@ end function Check_SCF_Conv
     allocate(mHFcol(2*cbdm,2*cbdm), source=c0)
     if (allocated(mHFexc)) deallocate(mHFexc)
     allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
+    allocate(HFcol_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(HFexc_thread(2*cbdm,2*cbdm,new_threads), source=c0)
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
-    !$omp& ul,um,un,uo,up,intV,contri,faci,codi,contrj,facj,codj,contrk,&
+    !$omp parallel num_threads(new_threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp& ul,um,un,uo,up,intV,intV_correction,contri,faci,codi,contrj,facj,codj,contrk,&
     !$omp& fack,codk,contrl,coe,facl,codl,A,B,G,Gim,codA,codB,contr,&
-    !$omp& HFcol_mic,HFexc_mic,DMcoe) if(threads < nproc)
+    !$omp& HFcol_mic,HFexc_mic,DMcoe,tid) firstprivate(scratch) if(new_threads > 1)
     HFcol_mic = c0
     HFexc_mic = c0
-    !$omp do schedule(dynamic,5) collapse(2)
+    tid = omp_get_thread_num() + 1
+    !$omp do schedule(static) collapse(2)
     ! utilizing permutation symmetry:(11|22)
     ! (ij|kl)=(ji|kl)=(ij|lk)=(ji|lk)=(kl|ij)=(kl|ji)=(lk|ij)=(lk|ji)
     do i = cbdm, 1, -1
@@ -2619,11 +2844,14 @@ end function Check_SCF_Conv
             facl   = cbdata(ul) % fac
             codl   = cbdata(ul) % pos
             !===========================(ij|kl)===============================
-            contr = 1
+            intV = 0.0_dp
+            intV_correction = 0.0_dp
+            contr = 0
             do um = 1, contri
               do un = 1, contrj
                 do uo = 1, contrk
                   do up = 1, contrl
+                    contr = contr + 1
                     coe(contr)    = cbdata(ui)%Ncoe(um)*cbdata(uj)%Ncoe(un)*&
                                     cbdata(uk)%Ncoe(uo)*cbdata(ul)%Ncoe(up)
                     A(contr)      = AOpair(ui,uj)%sumexpo(um,un)
@@ -2634,28 +2862,21 @@ end function Check_SCF_Conv
                                     AOpair(uk,ul)%Gij(:,uo,up)
                     Gim(contr,:)  = AOpair(ui,uj)%Gimij(:,um,un) * &
                                     AOpair(uk,ul)%Gimij(:,uo,up)
-                    contr = contr + 1
+                    if (contr == v2e_vec_batch) then
+                      call Integral_V_2e_OS_PRISM_vec(scratch, contr, coe, codi, codj, codk, codl, &
+                        codA, codB, A, B, G, Gim, faci, facj, fack, facl, intV, intV_correction)
+                      contr = 0
+                    end if
                   end do
                 end do
               end do
             end do
-            contr = contr - 1
-            intV = 0.0_dp
-            do um = 1, contr, 256
-              if (um+255 >= contr) then
-                intV = intV + Integral_V_2e_OS_vec(&
-                  contr-um+1, coe(um:contr), codi, codj, codk, codl, &
-                  codA(um:contr,:), codB(um:contr,:), &
-                  A(um:contr), B(um:contr), G(um:contr,:), Gim(um:contr,:),&
-                  faci, facj, fack, facl)
-              else
-                intV = intV + Integral_V_2e_OS_vec(&
-                  256, coe(um:um+255), codi, codj, codk, codl, &
-                  codA(um:um+255,:), codB(um:um+255,:), &
-                  A(um:um+255), B(um:um+255), G(um:um+255,:), Gim(um:um+255,:),&
-                  faci, facj, fack, facl)
-              end if
-            end do
+            if (contr > 0) then
+              call Integral_V_2e_OS_PRISM_vec(scratch, contr, coe, codi, codj, codk, codl, &
+                codA(1:contr,:), codB(1:contr,:), A(1:contr), B(1:contr), G(1:contr,:), Gim(1:contr,:), &
+                faci, facj, fack, facl, intV, intV_correction)
+            end if
+            intV = intV + intV_correction
             ! assign two-electron Fock matrices
             !------------------------<COULOMB>------------------------
             call Assign_Coulomb(HFcol_mic,rho_m,intV,ui,uj,uk,ul)
@@ -2666,12 +2887,13 @@ end function Check_SCF_Conv
       end do
     end do
     !$omp end do
-    !-------------<thread sync>-------------
-    !$omp critical
-    mHFcol = mHFcol + HFcol_mic
-    mHFexc = mHFexc + HFexc_mic
-    !$omp end critical
+    HFcol_thread(:,:,tid) = HFcol_mic
+    HFexc_thread(:,:,tid) = HFexc_mic
+    call Release_V2eVecScratch(scratch)
     !$omp end parallel
+    call Reduce_Thread_Fock(HFcol_thread, mHFcol)
+    call Reduce_Thread_Fock(HFexc_thread, mHFexc)
+    deallocate(HFcol_thread, HFexc_thread)
     ! assign Kohn-Sham matrices
     if (fx_id /= -1) then
       if (allocated(mKSexc)) deallocate(mKSexc)
@@ -2703,7 +2925,7 @@ end function Check_SCF_Conv
 !! should be called in each SCF iteration
   subroutine Assign_Fock_AVA2e()
     implicit none
-    integer     :: i, j                ! for parallel computation, ui=i, uk=j
+    integer     :: i, j, tid           ! for parallel computation, ui=i, uk=j
     integer     :: ui, uj, uk, ul      ! loop variables for Assign_Fock_V2e
     real(dp)    :: intV                ! scalar integral
     real(dp)    :: DMcoe               ! DM coefficient for Schwarz screening
@@ -2738,6 +2960,7 @@ end function Check_SCF_Conv
     !DIR$ ATTRIBUTES ALIGN:align_size :: Vcol_mic, Vexc_mic
     complex(dp) :: Vcol_mic(2*cbdm,2*cbdm)     ! micro ApVAp Coulomb matrix
     complex(dp) :: Vexc_mic(2*cbdm,2*cbdm)     ! micro ApVAp Exchange matrix
+    complex(dp),allocatable :: Vcol_thread(:,:,:), Vexc_thread(:,:,:)
     !DIR$ ATTRIBUTES ALIGN:align_size :: rho_Ap, suppff
     complex(dp),allocatable :: rho_Ap(:,:)     ! D' = D * Ap * Ap
     real(dp)    :: maxrhoAp(cbdm,cbdm)         ! max elements in rho_Ap
@@ -2773,14 +2996,17 @@ end function Check_SCF_Conv
     allocate(mHFcol(2*cbdm,2*cbdm), source=c0)
     if (allocated(mHFexc)) deallocate(mHFexc)
     allocate(mHFexc(2*cbdm,2*cbdm), source=c0)
+    allocate(Vcol_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(Vexc_thread(2*cbdm,2*cbdm,new_threads), source=c0)
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp parallel num_threads(new_threads) default(shared) private(i,j,ui,uj,uk,&
     !$omp& ul,intV,contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,&
     !$omp& fack,codk,contrl,coel,facl,codl,A,B,Gij,Gkl,Gimij,Gimkl,codA,codB,&
-    !$omp& Vcol_mic,Vexc_mic,DMcoe) if(threads < nproc)
+    !$omp& Vcol_mic,Vexc_mic,DMcoe,tid) if(new_threads > 1)
     Vcol_mic = c0
     Vexc_mic = c0
-    !$omp do schedule(dynamic,5) collapse(2)
+    tid = omp_get_thread_num() + 1
+    !$omp do schedule(static) collapse(2)
     ! utilizing permutation symmetry:(11|22)
     ! (ij|kl)=(ji|kl)=(ij|lk)=(ji|lk)=(kl|ij)=(kl|ji)=(lk|ij)=(lk|ji)
     do i = cbdm, 1, -1
@@ -2844,12 +3070,12 @@ end function Check_SCF_Conv
       end do
     end do
     !$omp end do
-    !-------------<thread sync>-------------
-    !$omp critical
-    mHFcol = mHFcol + Vcol_mic
-    mHFexc = mHFexc + Vexc_mic
-    !$omp end critical
+    Vcol_thread(:,:,tid) = Vcol_mic
+    Vexc_thread(:,:,tid) = Vexc_mic
     !$omp end parallel
+    call Reduce_Thread_Fock(Vcol_thread, mHFcol)
+    call Reduce_Thread_Fock(Vexc_thread, mHFexc)
+    deallocate(Vcol_thread, Vexc_thread)
     call Assign_matrices_2e(mHFcol,Ap)
     call Assign_matrices_2e(mHFexc,Ap)
     ! assign Kohn-Sham matrices
@@ -2884,7 +3110,7 @@ end function Check_SCF_Conv
 !! should be called in each SCF iteration
   subroutine Assign_Fock_ARVRA2e()
     implicit none
-    integer     :: i, j                ! for parallel computation, ui=i, uk=j
+    integer     :: i, j, tid           ! for parallel computation, ui=i, uk=j
     integer     :: ui, uj              ! loop variables for Assign_Fock_ARVRA2e
     integer     :: uk, ul
     real(dp)    :: intV, intCpxVpx     ! scalar integrals
@@ -2954,6 +3180,9 @@ end function Check_SCF_Conv
     complex(dp) :: R1VR1exc_mic(2*cbdm,2*cbdm) ! micro ApRiVRiAp Exchange matrix
     complex(dp) :: R2VR2col_mic(2*cbdm,2*cbdm) ! micro ApRjVRjAp Coulomb matrix
     complex(dp) :: R2VR2exc_mic(2*cbdm,2*cbdm) ! micro ApRjVRjAp Exchange matrix
+    complex(dp),allocatable :: Vcol_thread(:,:,:), Vexc_thread(:,:,:)
+    complex(dp),allocatable :: R1VR1col_thread(:,:,:), R1VR1exc_thread(:,:,:)
+    complex(dp),allocatable :: R2VR2col_thread(:,:,:), R2VR2exc_thread(:,:,:)
     complex(dp) :: suppff(2*fbdm,2*fbdm)
     complex(dp),allocatable :: rho_Ap(:,:)     ! D' = D * Ap * Ap
     complex(dp),allocatable :: rho_ApRp(:,:)   ! D' = D * ApRp * ApRp
@@ -3011,9 +3240,15 @@ end function Check_SCF_Conv
     allocate(mpVpcol_22(2*cbdm,2*cbdm), source=c0)
     if (allocated(mpVpexc_22)) deallocate(mpVpexc_22)
     allocate(mpVpexc_22(2*cbdm,2*cbdm), source=c0)
+    allocate(Vcol_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(Vexc_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(R1VR1col_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(R1VR1exc_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(R2VR2col_thread(2*cbdm,2*cbdm,new_threads), source=c0)
+    allocate(R2VR2exc_thread(2*cbdm,2*cbdm,new_threads), source=c0)
 
     ! parallel zone, running results consistent with serial
-    !$omp parallel num_threads(threads) default(shared) private(i,j,ui,uj,uk,&
+    !$omp parallel num_threads(new_threads) default(shared) private(i,j,ui,uj,uk,&
     !$omp& ul,intV,intCpxVpx,intCpyVpy,intCpzVpz,intCpxVpy,intCpxVpz,intCpyVpz,&
     !$omp& intXpxVpx,intXpyVpy,intXpzVpz,intXpxVpy,intXpxVpz,intXpyVpz,&
     !$omp& contri,coei,faci,codi,contrj,coej,facj,codj,contrk,coek,fack,codk,&
@@ -3021,14 +3256,15 @@ end function Check_SCF_Conv
     !$omp& coedy_i,coedz_i,facdx_i,facdy_i,facdz_i,coedx_j,coedy_j,coedz_j,&
     !$omp& facdx_j,facdy_j,facdz_j,coedx_k,coedy_k,coedz_k,facdx_k,facdy_k,&
     !$omp& facdz_k,Vcol_mic,Vexc_mic,R1VR1col_mic,R1VR1exc_mic,R2VR2col_mic,&
-    !$omp& R2VR2exc_mic,DMApcoe,DMApRpcoe) if(threads < nproc)
+    !$omp& R2VR2exc_mic,DMApcoe,DMApRpcoe,tid) if(new_threads > 1)
     Vcol_mic = c0
     Vexc_mic = c0
     R1VR1col_mic = c0
     R1VR1exc_mic = c0
     R2VR2col_mic = c0
     R2VR2exc_mic = c0
-    !$omp do schedule(dynamic,5) collapse(2)
+    tid = omp_get_thread_num() + 1
+    !$omp do schedule(static) collapse(2)
     ! have to calculate all (ij|kl) to get SOC terms correctly
     do i = 1, cbdm
       do j = 1, cbdm
@@ -3327,16 +3563,21 @@ end function Check_SCF_Conv
       end do
     end do
     !$omp end do
-    !-------------<thread sync>-------------
-    !$omp critical
-    mHFcol = mHFcol + Vcol_mic
-    mHFexc = mHFexc + Vexc_mic
-    mpVpcol_11 = mpVpcol_11 + R1VR1col_mic
-    mpVpexc_11 = mpVpexc_11 + R1VR1exc_mic
-    mpVpcol_22 = mpVpcol_22 + R2VR2col_mic
-    mpVpexc_22 = mpVpexc_22 + R2VR2exc_mic
-    !$omp end critical
+    Vcol_thread(:,:,tid) = Vcol_mic
+    Vexc_thread(:,:,tid) = Vexc_mic
+    R1VR1col_thread(:,:,tid) = R1VR1col_mic
+    R1VR1exc_thread(:,:,tid) = R1VR1exc_mic
+    R2VR2col_thread(:,:,tid) = R2VR2col_mic
+    R2VR2exc_thread(:,:,tid) = R2VR2exc_mic
     !$omp end parallel
+    call Reduce_Thread_Fock(Vcol_thread, mHFcol)
+    call Reduce_Thread_Fock(Vexc_thread, mHFexc)
+    call Reduce_Thread_Fock(R1VR1col_thread, mpVpcol_11)
+    call Reduce_Thread_Fock(R1VR1exc_thread, mpVpexc_11)
+    call Reduce_Thread_Fock(R2VR2col_thread, mpVpcol_22)
+    call Reduce_Thread_Fock(R2VR2exc_thread, mpVpexc_22)
+    deallocate(Vcol_thread, Vexc_thread, R1VR1col_thread, R1VR1exc_thread)
+    deallocate(R2VR2col_thread, R2VR2exc_thread)
     call Assign_matrices_2e(mHFcol,Ap)
     call Assign_matrices_2e(mHFexc,Ap)
     call Assign_matrices_2e(mpVpcol_11,ApRp)
@@ -3568,7 +3809,9 @@ subroutine RGI()
   ! (transition matrix elements) between states are not zero only if they
   ! satisfies the 2 conditions. For more see RGI_Configurations
   spinproj = c0
-  orb_i = oper3(:,1:electron_count)
+  do ii = 1, electron_count
+    orb_i(:,ii) = oper3(:,occindex(ii))
+  end do
   ! To construct the pure states of S^2 and S_z, it is necessary to first obtain
   ! the components with the same S_z from the projected 2-component state, and
   ! then perform rotation projection. 
@@ -3958,39 +4201,123 @@ end subroutine RGI
 !-----------------------------------------------------------------------
 !> calculate molecule deviations from time-reversal symmetry
 !!
-!! (Krammers degeneration)
+!! (orbitals deviations from Kramers pairs)
 !!
-!! kappa = norm(k2.conjg(k2)+I)
-!!
-!! k2 = <MO_i|-i*sigma_y|MO_j>
-real(dp) function Krammers() result(kappa)
+!! Kramers mat = <activespace|-i*sigma_y*K|occspace>
+subroutine Kramers()
   implicit none
-  integer           :: ii            ! loop variables
-  complex(dp)       :: ci_j(fbdm, fbdm)
-  complex(dp)       :: k1(fbdm, electron_count)
-  complex(dp)       :: k1TR(fbdm, electron_count)
-  complex(dp)       :: supp(electron_count, electron_count)
-  complex(dp)       :: k2(electron_count, electron_count)
-  complex(dp)       :: conjgk2(electron_count, electron_count)
-  complex(dp)       :: k2k2pI(electron_count, electron_count)
-  kappa = 0.0_dp
-  ci_j = i_j * c1
-  k1 = oper3(1:fbdm,1:electron_count)
-  k1TR = -conjg(oper3(fbdm+1:2*fbdm,1:electron_count))
-  call matmul('C', 'N', k1, k1TR, supp)
-  k2 = supp
+  integer                 :: ii, jj, active_count       ! loop variables
+  integer                 :: active_index(2*fbdm)
+  real(dp)                :: kappa                      ! degree of TRS breaking
+  logical                 :: occupied(2*fbdm), space_found
+  complex(dp)             :: ci_j(2*fbdm, 2*fbdm)
+  complex(dp),allocatable :: active(:,:)                ! active space
+  complex(dp)             :: occ(2*fbdm, electron_count)! occupied orbs
+  ! time-reversal of occupied space
+  complex(dp)             :: occTR(2*fbdm, electron_count)
+  complex(dp),allocatable :: Kmat(:,:)          !Kramers overlap matrix
+  complex(dp),allocatable :: supp(:,:)
+  real(dp)                :: S(electron_count)
+  ! transfer matrix of active space
+  complex(dp),allocatable :: U(:,:)
+  ! transfer matrix of time-reversed occupied orbs
+  complex(dp)             :: VT(electron_count, electron_count)
 
-  k1 = oper3(fbdm+1:2*fbdm,1:electron_count)
-  k1TR = conjg(oper3(1:fbdm,1:electron_count))
-  call matmul('C', 'N', k1, k1TR, supp)
-  k2 = k2 + supp
+  write(60,'(A)') &
+  '  ============================================================='
+  write(60,'(A)') &
+  '                  Time-Reversal Symmetry Space'
+  write(60,'(A)') &
+  '  ============================================================='
+  ! prepare the Kramers pairs
+  allocate(Kmat(electron_count, electron_count))
+  allocate(supp(electron_count, 2*fbdm))
+  allocate(U(electron_count, electron_count))
+  occupied = .false.
+  active_count = electron_count
+  do jj = 1, electron_count
+    if (occindex(jj) < 1 .or. occindex(jj) > 2*fbdm) then
+      call terminate('Kramers: occupied orbital index is out of bounds')
+    end if
+    if (occupied(occindex(jj))) call terminate('Kramers: duplicate occupied orbital index')
+    occupied(occindex(jj)) = .true.
+    active_index(jj) = occindex(jj)
+    occ(:,jj) = oper3(:,occindex(jj))
+  end do
+  do jj = 1, 2*fbdm
+    if (.not. occupied(jj)) then
+      active_count = active_count + 1
+      active_index(active_count) = jj
+    end if
+  end do
+  occTR(1:fbdm,1:electron_count) = &
+  -conjg(occ(fbdm+1:2*fbdm,1:electron_count))
+  occTR(fbdm+1:2*fbdm,1:electron_count) = &
+  conjg(occ(1:fbdm,1:electron_count))
+  ci_j = c0
+  do ii = 1, 2*fbdm
+    ci_j(ii,ii) = c1
+  end do
+  ! Kmat = active^dagger * ci_j * occTR
+  call matmul('C', 'N', occ, ci_j, supp)
+  call matmul('N', 'N', supp, occTR, Kmat)
+  ! perform SVD
+  call SVD(Kmat, S, U, VT)
+  allocate(KramersSV(electron_count))
+  KramersSV = S
+  allocate(KramersPairs(2*fbdm, electron_count))
+  call matmul('N', 'N', occ, U, KramersPairs)
+  kappa = real(electron_count,dp)
+  do jj = 1, electron_count
+    kappa = kappa - S(jj)
+  end do
+  ! dump lambdas
+  write(60,'(A)') &
+  '  singular vales (lambdas) of Kramers overlap matrix:'
+  write(60, '(2x, 5F13.6)') KramersSV
 
-  conjgk2 = conjg(k2)
-  call matmul('N', 'N', k2, conjgk2, k2k2pI)
-
-  forall(ii=1:electron_count) k2k2pI(ii,ii) = k2k2pI(ii,ii) + c1
-  kappa = norm(k2k2pI)
-end function Krammers
+  ! find the minimal space that guarantees time-reversal symmetry
+  if (S(electron_count) >= 0.98_dp) then
+    write(60,'(A)') &
+    '  occupied space already satisfies time-reversal symmetry'
+  else
+    space_found = .false.
+    do ii = 1, 10
+      if (electron_count + ii > 2*fbdm) exit
+      deallocate(Kmat, supp, U)
+      if (allocated(active)) deallocate(active)
+      allocate(active(2*fbdm, electron_count+ii))
+      allocate(Kmat(electron_count+ii, electron_count))
+      allocate(supp(electron_count+ii, 2*fbdm))
+      allocate(U(electron_count+ii, electron_count+ii))
+      do jj = 1, electron_count+ii
+        active(:,jj) = oper3(:,active_index(jj))
+      end do
+      call matmul('C', 'N', active, ci_j, supp)
+      call matmul('N', 'N', supp, occTR, Kmat)
+      ! perform SVD
+      call SVD(Kmat, S, U, VT)
+      kappa = real(electron_count,dp)
+      do jj = 1, electron_count
+        kappa = kappa - S(jj)
+      end do
+      write(60,'(A,I2.2,A,E12.5,A,E12.5)') &
+      '  HOMO+', ii, ':  N-sum(lambda) = ', kappa,&
+      'lowest_lambda = ', S(electron_count)
+      if (S(electron_count) >= 0.98_dp) then
+        space_found = .true.
+        exit
+      end if
+    end do
+    if (.not. space_found) then
+      write(60,'(A)') '  find time-reversal symmetry space failed ...'
+    else
+      write(60,'(A)') '  find time-reversal symmetry space succeed'
+    end if
+  end if
+  write(60,'(A)') &
+  '  ============================================================='
+end subroutine Kramers
 
 !-----------------------------------------------------------------------
 !> calculate dispersion correction by Grimme's DFT-D4
@@ -4046,10 +4373,11 @@ end function DFTD4
 !! cB = i_j_s^(-1).M_i_j.cA
 !!
 !! cA(M_sbdm, M_sbdm) -> cB(sbdm, M_sbdm) number of project MOs is M_sbdm
-  subroutine M_basis_proj(cA, cB)
+  subroutine M_basis_proj(cA, cB, nocc)
     implicit none
     real(dp),intent(in)  :: cA(M_sbdm, M_sbdm)
     real(dp),intent(out) :: cB(sbdm, M_sbdm)
+    integer,intent(in)   :: nocc
     integer              :: ii, jj, kk, mm
     integer              :: contri, contrj
     integer              :: faci(3), facj(3)
@@ -4059,6 +4387,11 @@ end function DFTD4
     real(dp)             :: spp(sbdm,M_sbdm)
     real(dp)             :: i_j_inv(sbdm,sbdm)
     real(dp)             :: M_min_evl
+    real(dp),allocatable :: projected_occ(:,:), s_projected(:,:)
+    real(dp),allocatable :: occ_overlap(:,:), occ_orth(:,:)
+    if (nocc < 0 .or. nocc > min(sbdm,M_sbdm)) then
+      call terminate('M_basis_proj: occupied-space dimension is invalid')
+    end if
     if (.not. allocated(M_i_j)) then
       ! assign M_i_j
       allocate(M_i_j(cbdm,M_cbdm), source=0.0_dp)
@@ -4088,25 +4421,41 @@ end function DFTD4
     end if
     i_j_inv = i_j_s
     call inverse(i_j_inv, sbdm)
-    ! cB = i_j_s^(-1).M_i_j.cA, cB is not orthogonal, and no need to
+    ! cB = i_j_s^(-1).M_i_j.cA
     call matmul('N', 'N', M_i_j, cA, spp)
     call matmul('N', 'N', i_j_inv, spp, cB)
+    if (nocc > 0) then
+      allocate(projected_occ(sbdm,nocc), s_projected(sbdm,nocc))
+      allocate(occ_overlap(nocc,nocc), occ_orth(nocc,nocc))
+      projected_occ = cB(:,1:nocc)
+      call matmul('N', 'N', i_j_s, projected_occ, s_projected)
+      call matmul('T', 'N', projected_occ, s_projected, occ_overlap)
+      occ_overlap = 0.5_dp*(occ_overlap + transpose(occ_overlap))
+      call symm_orth(occ_overlap, nocc, occ_orth, M_min_evl)
+      if (M_min_evl < cutS) then
+        call terminate('M_basis_proj: projected occupied space is rank deficient')
+      end if
+      call matmul('N', 'N', projected_occ, occ_orth, cB(:,1:nocc))
+      deallocate(projected_occ, s_projected, occ_overlap, occ_orth)
+    end if
   end subroutine M_basis_proj
 
 !-----------------------------------------------------------------------
 !> dump spinor orbitals to .molden.d
-  subroutine Dump_MOLDEN()
+  subroutine Dump_MOLDEN(orbmat, moldenname)
     implicit none
-    character(len=200)     :: dir
-    integer                :: channel
-    integer                :: dmi, dmj, dmk     ! loop variables
-    dir = trim(address_job)//'.molden.d'
+    complex(dp),intent(in)      :: orbmat(2*sbdm, 2*fbdm)
+    character(len=*),intent(in) :: moldenname
+    character(len=200)          :: dir
+    character(len=200)          :: fullname
+    integer                     :: channel
+    integer                     :: dmi, dmj, dmk     ! loop variables
+    dir = trim(address_job)//'_'//trim(moldenname)//'.molden.d'
+    fullname = trim(jobname)//'_'//trim(moldenname)
     call execute_command_line('mkdir -p '//trim(dir), wait=.true., exitstat=ios)
     if (ios /= 0) call terminate(&
     "dump to MOLDEN failed, molden.d can't be created")
-    if (.not. allocated(AO2MO)) &
-    call terminate('dump to MOLDEN failed, AO2MO is empty')
-    write(60,'(A)') "  AO2MO is like:"
+    write(60,'(A)') "  Orbit is like:"
     write(60,'(A)') "  MO 1 2 3      ...       fbdm         ...       2*fbdm"
     write(60,'(A)') "  AO1                       |                       |"
     write(60,'(A)') "  AO2                       |                       |"
@@ -4125,14 +4474,14 @@ end function DFTD4
     write(60,'(A)') "    |                       |                       |"
     write(60,'(A)') "  2*sbdm____________________|_______________________|"
     
-    ! MOLDEN file contains the real part1 of AO2MO
-    open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+    ! MOLDEN file contains the real part1 of orbmat
+    open(newunit=channel, file=trim(dir)//'/'//trim(fullname)//&
     '-realpart1.molden.input', status='replace', action='write', iostat=ios)
     if (ios /= 0) call terminate('creat .molden.input failed')
     write(channel, '(A)') '[Molden Format]'
     write(channel, '(A)') '[Title]'
     write(channel, '(A)') &
-    'generated by TRESC, real part1 of MOs of job '//trim(address_job)
+    'generated by TRESC, real part1 of MOs of '//trim(fullname)
     write(channel, *)
     ! mol geometry
     write(channel, '(A)') '[Atoms] AU'
@@ -4186,7 +4535,7 @@ end function DFTD4
         write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
-        write(channel, '(I4,F20.12)') dmj, real(AO2MO(dmj, dmi))
+        write(channel, '(I4,F20.12)') dmj, real(orbmat(dmj, dmi))
       end do
     end do
     do dmi = 1, fbdm
@@ -4199,19 +4548,19 @@ end function DFTD4
         write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
-        write(channel, '(I4,F20.12)') dmj, real(AO2MO(sbdm+dmj, dmi))
+        write(channel, '(I4,F20.12)') dmj, real(orbmat(sbdm+dmj, dmi))
       end do
     end do
     close(channel)
 
-    ! MOLDEN file contains the real part2 of AO2MO
-    open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+    ! MOLDEN file contains the real part2 of orbmat
+    open(newunit=channel, file=trim(dir)//'/'//trim(fullname)//&
     '-realpart2.molden.input', status='replace', action='write', iostat=ios)
     if (ios /= 0) call terminate('creat .molden.input failed')
     write(channel, '(A)') '[Molden Format]'
     write(channel, '(A)') '[Title]'
     write(channel, '(A)') &
-    'generated by TRESC, real part2 of MOs of job '//trim(address_job)
+    'generated by TRESC, real part2 of MOs of '//trim(fullname)
     write(channel, *)
     ! mol geometry
     write(channel, '(A)') '[Atoms] AU'
@@ -4265,7 +4614,7 @@ end function DFTD4
         write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
-        write(channel, '(I4,F20.12)') dmj, real(AO2MO(dmj, dmi))
+        write(channel, '(I4,F20.12)') dmj, real(orbmat(dmj, dmi))
       end do
     end do
     do dmi = fbdm+1, 2*fbdm
@@ -4278,20 +4627,20 @@ end function DFTD4
         write(channel, '(A)') ' Occup=    0.000000'
       end if
       do dmj = 1, sbdm
-        write(channel, '(I4,F20.12)') dmj, real(AO2MO(sbdm+dmj, dmi))
+        write(channel, '(I4,F20.12)') dmj, real(orbmat(sbdm+dmj, dmi))
       end do
     end do
     close(channel)
     
     if (pVp1e) then
-      ! MOLDEN file contains the imaginary part1 of AO2MO
-      open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+      ! MOLDEN file contains the imaginary part1 of orbmat
+      open(newunit=channel, file=trim(dir)//'/'//trim(fullname)//&
       '-imgpart1.molden.input', status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('creat .molden.input failed')
       write(channel, '(A)') '[Molden Format]'
       write(channel, '(A)') '[Title]'
       write(channel, '(A)') &
-      'generated by TRESC, imaginary part1 of MOs of job '//trim(address_job)
+      'generated by TRESC, imaginary part1 of MOs of '//trim(fullname)
       write(channel, *)
       ! mol geometry
       write(channel, '(A)') '[Atoms] AU'
@@ -4345,7 +4694,7 @@ end function DFTD4
           write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
-          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(dmj, dmi))
+          write(channel, '(I4,F20.12)') dmj, aimag(orbmat(dmj, dmi))
         end do
       end do
       do dmi = 1, fbdm
@@ -4358,19 +4707,19 @@ end function DFTD4
           write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
-          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(sbdm+dmj, dmi))
+          write(channel, '(I4,F20.12)') dmj, aimag(orbmat(sbdm+dmj, dmi))
         end do
       end do
       close(channel)
 
-      ! MOLDEN file contains the imaginary part2 of AO2MO
-      open(newunit=channel, file=trim(dir)//'/'//trim(jobname)//&
+      ! MOLDEN file contains the imaginary part2 of orbmat
+      open(newunit=channel, file=trim(dir)//'/'//trim(fullname)//&
       '-imgpart2.molden.input', status='replace', action='write', iostat=ios)
       if (ios /= 0) call terminate('creat .molden.input failed')
       write(channel, '(A)') '[Molden Format]'
       write(channel, '(A)') '[Title]'
       write(channel, '(A)') &
-      'generated by TRESC, imaginary part2 of MOs of job '//trim(address_job)
+      'generated by TRESC, imaginary part2 of MOs of '//trim(fullname)
       write(channel, *)
       ! mol geometry
       write(channel, '(A)') '[Atoms] AU'
@@ -4424,7 +4773,7 @@ end function DFTD4
           write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
-          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(dmj, dmi))
+          write(channel, '(I4,F20.12)') dmj, aimag(orbmat(dmj, dmi))
         end do
       end do
       do dmi = fbdm+1, 2*fbdm
@@ -4437,7 +4786,7 @@ end function DFTD4
           write(channel, '(A)') ' Occup=    0.000000'
         end if
         do dmj = 1, sbdm
-          write(channel, '(I4,F20.12)') dmj, aimag(AO2MO(sbdm+dmj, dmi))
+          write(channel, '(I4,F20.12)') dmj, aimag(orbmat(sbdm+dmj, dmi))
         end do
       end do
       close(channel)

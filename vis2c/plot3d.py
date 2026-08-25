@@ -110,7 +110,6 @@ def cmplx_orb_plot_cub(title: str, atoms, amp, pha, x, y, z, isovalue: float):
   cb.title_text_property.bold = False
   cb.label_text_property.italic = False
   cb.label_text_property.bold = False
-
   mlab.view(figure=fig)
   fig.scene.show_axes = True
   return isovalue, fig
