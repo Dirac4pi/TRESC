@@ -371,7 +371,7 @@ real3d.py density.cub potential.cub -slice
 ```
 
 <p align="center">
-  <img src="docs/IGMH_of_ethanol_and_water.png"
+  <img src="docs/IGMH_of_ethanol_and_water.jpg"
   alt="docs/IGMH_of_ethanol_and_water.png" width="400">
   <br>
   <em>Visualization of weak interactions between ethanol and water.</em>
@@ -432,7 +432,7 @@ H   0.000000   0.000000   1.080000    0.120  -0.015
 ```
 
 <p align="center">
-  <img src="docs/Atomic_dg_for_ethanol_and_water.png"
+  <img src="docs/Atomic_dg_for_ethanol_and_water.jpg"
   alt="docs/Atomic_dg_for_ethanol_and_water.png" width="400">
   <br>
   <em>Contributions of individual atoms to the weak interactions between
