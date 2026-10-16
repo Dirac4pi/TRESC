@@ -349,23 +349,35 @@ def main(argv=None) -> None:
                    "Use --help for details.\n")
 
   parser = OperationParser(
-    description="Align the probe cube to the reference cube and operate "
-                "on their overlapping region. Difference means ref - probe.",
+    description=(
+      "Align the probe cube to the reference cube and operate "
+      "on their overlapping region. "
+      "All differences are defined as aligned probe minus reference."
+    ),
     allow_abbrev=False,
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog=(
+      "Definitions:\n"
+      "  R = reference field\n"
+      "  P = probe field after alignment to the reference\n"
+      "  Both fields are sampled on the output grid before the operation.\n\n"
       "Operations (choose exactly one):\n"
-      "  --add      ref + aligned probe\n"
-      "  --diff     ref - aligned probe\n"
-      "  --avg      (ref + aligned probe) / 2\n"
-      "  --posdiff  max(ref - aligned probe, 0)\n"
-      "  --negdiff  max(aligned probe - ref, 0)\n"
-      "  --absdiff  abs(ref - aligned probe)\n\n"
+      "  --add      P + R\n"
+      "  --diff     P - R\n"
+      "  --avg      (P + R) / 2\n"
+      "  --posdiff  max(P - R, 0)\n"
+      "  --negdiff  max(R - P, 0)\n"
+      "             Nonnegative magnitude of the negative part of P - R.\n"
+      "  --absdiff  abs(P - R)\n\n"
       "Examples:\n"
       "  cuboper.py --add ref.cub probe.cub\n"
-      "  cuboper.py --diff ref.cub probe.cub -o ref_minus_probe.cub\n\n"
+      "  cuboper.py --diff ref.cub probe.cub "
+      "-o probe_minus_ref.cub\n\n"
+      "The first input is the reference; the second input is the probe.\n"
       "The inputs must be Gaussian .cub or .cube files, not XYZ files.\n"
-      "The fitting atom indices are requested interactively."
+      "The input fields must have compatible physical meanings and units.\n"
+      "Fitting atom indices are requested interactively; enter mcs for "
+      "automatic matching."
     )
   )
   operations = parser.add_mutually_exclusive_group(required=True)
@@ -376,9 +388,9 @@ def main(argv=None) -> None:
   operations.add_argument("--avg", dest="operation", action="store_const",
                           const="average", help="Average both aligned fields.")
   operations.add_argument("--posdiff", dest="operation", action="store_const",
-                          const="positive_difference", help="Positive part of ref - probe.")
+                          const="positive_difference", help="Positive part of probe - ref.")
   operations.add_argument("--negdiff", dest="operation", action="store_const",
-                          const="negative_difference", help="Positive part of probe - ref.")
+                          const="negative_difference", help="Positive part of ref - probe.")
   operations.add_argument("--absdiff", dest="operation", action="store_const",
                           const="absolute_difference", help="Absolute ref - probe.")
   parser.add_argument("ref_cube", type=Path, help="Reference .cub or .cube file.")
