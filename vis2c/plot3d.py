@@ -5,6 +5,8 @@ author:Dirac4pi
 env:vis2c
 '''
 
+from functools import lru_cache
+from pathlib import Path
 from os import environ
 import numpy as np
 from json import load as jsload
@@ -12,9 +14,27 @@ import qcelemental as qcel
 qcel.CovalentRadii("ALVAREZ2008")
 from mayavi import mlab
 from scipy.ndimage import gaussian_filter
+from tvtk.api import tvtk
+from mendeleev.mendeleev import element
+from typing import Optional, cast
 
 dtol = 0.01 # tolerance of delaunay
 maxpoints = 1e5 # max grid points
+
+#------------------------------------------------------------------------------
+@lru_cache(maxsize=118)
+def _display_vdw_radius_pm(z: int) -> float:
+  """Return H=120 pm or the Batsanov radius; reject missing data."""
+  z = int(z)
+  if z == 1:
+    return 120.0
+  if z in (2, 10, 18, 36, 54, 86, 118):
+    raise ValueError(f"Noble-gas display radius is not configured: Z={z}.")
+  el = element(z)
+  radius = cast(Optional[float], el.vdw_radius_batsanov)
+  if radius is None:
+    raise ValueError(f"No Batsanov van der Waals radius for Z={z}.")
+  return float(radius)
 
 #-------------------------------------------------------------------------------
 def sync_camera(fig1, fig2, sync_coe:float) -> None:
@@ -28,6 +48,7 @@ def sync_camera(fig1, fig2, sync_coe:float) -> None:
   fig2.scene.camera.view_up = fig1.scene.camera.view_up
   fig2.scene.render()
 
+#------------------------------------------------------------------------------
 def cmplx_orb_plot_cub(title: str, atoms, amp, pha, x, y, z, isovalue: float):
   '''
   Plot amplitude (contour) and phase (color) of scalar complex structured grid.
@@ -246,35 +267,82 @@ def real_orb_plot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   contourpos = mlab.contour3d(x, y, z, val_smoothed, \
                               contours=[isovalue], opacity=1.0)
   contourpos.actor.mapper.scalar_visibility = True
-  lut = contourpos.module_manager.scalar_lut_manager.lut
-  lut.table = [(0, 151, 141, 180)] * 256
-  contourpos.actor.property.interpolation = 'phong'
-  contourpos.actor.property.ambient  = 0.3
-  contourpos.actor.property.diffuse  = 0.85
-  contourpos.actor.property.specular = 0.35
-  contourpos.actor.property.specular_power = 20
-  # lut.table = [(191, 29, 45, 180)] * 256
-  # contourpos.actor.property.interpolation = 'phong'
-  # contourpos.actor.property.ambient  = 0.25
-  # contourpos.actor.property.diffuse  = 0.75
-  # contourpos.actor.property.specular = 0.35
-  # contourpos.actor.property.specular_power = 20
+  lutpos = contourpos.module_manager.scalar_lut_manager.lut
   contourneg = mlab.contour3d(x, y, z, val_smoothed, \
                               contours=[-isovalue], opacity=1.0)
   contourneg.actor.mapper.scalar_visibility = True
-  lut = contourneg.module_manager.scalar_lut_manager.lut
-  lut.table = [(0, 91, 160, 180)] * 256
+  lutneg = contourneg.module_manager.scalar_lut_manager.lut
+ 
+  #-- Scheme 1: Blue / Green,  Science Classic
+  
+  lutpos.table = [(0, 151, 141, 180)] * 256
+  contourpos.actor.property.interpolation = 'phong'
+  contourpos.actor.property.ambient = 0.30
+  contourpos.actor.property.diffuse = 0.85
+  contourpos.actor.property.specular = 0.35
+  contourpos.actor.property.specular_power = 25
+  contourpos.actor.property.specular_color = (1.0, 1.0, 1.0)
+
+  lutneg.table = [(0, 91, 160, 180)] * 256
   contourneg.actor.property.interpolation = 'phong'
-  contourneg.actor.property.ambient  = 0.2
-  contourneg.actor.property.diffuse  = 0.7
+  contourneg.actor.property.ambient = 0.30
+  contourneg.actor.property.diffuse = 0.85
+  contourneg.actor.property.specular = 0.35
+  contourneg.actor.property.specular_power = 25
+  contourneg.actor.property.specular_color = (1.0, 1.0, 1.0)
+  
+
+  # -- Scheme 2: Red / Blue, Nat. Chem. & VMD Classic
+  '''
+  lutpos.table = [(214, 39, 40, 180)] * 256
+  contourpos.actor.property.interpolation = 'phong'
+  contourpos.actor.property.ambient  = 0.25
+  contourpos.actor.property.diffuse  = 0.75
+  contourpos.actor.property.specular = 0.35
+  contourpos.actor.property.specular_power = 20
+  
+  lutneg.table = [(31, 119, 180, 180)] * 256
+  contourneg.actor.property.interpolation = 'phong'
+  contourneg.actor.property.ambient  = 0.3
+  contourneg.actor.property.diffuse  = 0.8
   contourneg.actor.property.specular = 0.35
   contourneg.actor.property.specular_power = 20
-  # lut.table = [(41, 56, 144, 180)] * 256
-  # contourneg.actor.property.interpolation = 'phong'
-  # contourneg.actor.property.ambient  = 0.3
-  # contourneg.actor.property.diffuse  = 0.8
-  # contourneg.actor.property.specular = 0.35
-  # contourneg.actor.property.specular_power = 20
+  '''
+
+  # -- Scheme 3: Blue / Amber, ACS & Avogadro Community
+  '''
+  lutpos.table = [(66, 134, 244, 180)] * 256
+  contourpos.actor.property.interpolation = 'phong'
+  contourpos.actor.property.ambient = 0.20
+  contourpos.actor.property.diffuse = 0.80
+  contourpos.actor.property.specular = 0.15
+  contourpos.actor.property.specular_power = 35
+
+  lutneg.table = [(226, 153, 34, 180)] * 256
+  contourneg.actor.property.interpolation = 'phong'
+  contourneg.actor.property.ambient = 0.20
+  contourneg.actor.property.diffuse = 0.80
+  contourneg.actor.property.specular = 0.15
+  contourneg.actor.property.specular_power = 35
+  '''
+
+  # -- Scheme 4:  Custom Scheme
+  '''
+  lutpos.table = [(61, 159, 60, 180)] * 256
+  contourpos.actor.property.interpolation = 'phong'
+  contourpos.actor.property.ambient  = 0.25
+  contourpos.actor.property.diffuse  = 0.75
+  contourpos.actor.property.specular = 0.15
+  contourpos.actor.property.specular_power = 25
+  
+  lutneg.table = [(54, 125, 176, 180)] * 256
+  contourneg.actor.property.interpolation = 'phong'
+  contourneg.actor.property.ambient  = 0.25
+  contourneg.actor.property.diffuse  = 0.75
+  contourneg.actor.property.specular = 0.15
+  contourneg.actor.property.specular_power = 25
+  '''
+
   # -------------<plot atoms>-------------
   atom_list = atoms['index']
   atomx = atoms['x']
@@ -428,7 +496,7 @@ def slice_cub(title:str, atoms, x, y, z, dat, colormap:str,\
 #-------------------------------------------------------------------------------
 def real_orb_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   '''
-  plot scalar real structured grid (amplitude only)
+  plot scalar real structured grid for orbital (amplitude only)
   --
   title: title of figure\n
   atoms: atom information\n
@@ -448,12 +516,32 @@ def real_orb_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   # amplitude of MO not amplitude of linear combine of AO
   val_amp = np.abs(val)
   val_smoothed = gaussian_filter(val_amp, sigma=1.0)
-  if isovalue > 0.5*val_smoothed.max():
-    isovalue = 0.5 * (val_smoothed.max() + val_smoothed.min())
-    print(f"Adjust isovalue to {isovalue} (mid-range)")
-  elif isovalue < 2*val_smoothed.min():
-    isovalue = 0.5 * (val_smoothed.max() + val_smoothed.min())
-    print(f"Adjust isovalue to {isovalue} (mid-range)")
+  # adjust isovalue if needed
+  data = np.asarray(val_smoothed)
+  if not np.all(np.isfinite(data)):
+    raise ValueError("The smoothed field contains non-finite values.")
+  if isovalue > 0:
+    positive = data[data > 0]
+    if positive.size == 0:
+      raise ValueError("The field contains no positive values.")
+    maximum = positive.max()
+    if isovalue > 0.8 * maximum:
+      smallest_positive = positive.min()
+      isovalue = 0.5 * (maximum + smallest_positive)
+      print(f"Adjusted positive isovalue to {isovalue:g}")
+  elif isovalue < 0:
+    negative = data[data < 0]
+    if negative.size == 0:
+      raise ValueError("The field contains no negative values.")
+    minimum = negative.min()
+    if isovalue < 0.8 * minimum:
+      closest_to_zero_negative = negative.max()
+      isovalue = 0.5 * (minimum + closest_to_zero_negative)
+      print(f"Adjusted negative isovalue to {isovalue:g}")
+  src = _structured_grid_source(
+    x, y, z, val_smoothed, fig1, name="amplitude"
+  )
+
   contour = mlab.contour3d(x, y, z, val_smoothed, figure=fig1, \
                            contours=[isovalue], opacity=1.0)
   contour.actor.mapper.scalar_visibility = True
@@ -465,17 +553,91 @@ def real_orb_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
   contour.actor.property.specular = 0.35
   contour.actor.property.specular_power = 20
   # -------------<plot atoms>-------------
-  if (title.startswith('real')):
+  if title.startswith('real'): # real space function needs to plot atoms
     atom_list = atoms['index']
     atomx = atoms['x']
     atomy = atoms['y']
     atomz = atoms['z']
     mlab.figure(fig1)
     atoms_plot(atom_list, atomx, atomy, atomz)
-  elif (title.startswith('momentum')):
+  elif title.startswith('momentum'): # momentum space function don't need
     mlab.points3d(0.0, 0.0, 0.0, figure=fig1, \
                   scale_factor=0.3, resolution=20, \
                   color=(0.0,0.0,0.0), opacity=1.0, scale_mode='none')
+  fig1.scene.show_axes = True
+  return isovalue
+
+#-------------------------------------------------------------------------------
+def real_func_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float:
+  '''
+  plot scalar real structured grid for real-space functions (amplitude only)
+  amplitude can be positive or negative\n
+  Note: This is capable of plotting a non-axis-aligned cube.
+  --
+  title: title of figure\n
+  atoms: atom information\n
+  val: grid value of function\n
+  x: x grid points\n
+  y: y grid points\n
+  z: z grid points\n
+  isovalue: isovalue of val\n
+  Return: final isovalue
+  '''
+  # -------------<plot func>-------------
+  fig1 = mlab.figure(figure=f'{title}', size=(400,400), \
+    fgcolor=(0,0,0), bgcolor=(1,1,1))
+  mlab.clf(fig1)
+  atoms_plot(
+    atoms["index"], atoms["x"], atoms["y"], atoms["z"]
+  )
+  val_smoothed = gaussian_filter(val, sigma=1.0)
+  # adjust isovalue if needed
+  data = np.asarray(val_smoothed)
+  if not np.all(np.isfinite(data)):
+    raise ValueError("The smoothed field contains non-finite values.")
+  if isovalue > 0:
+    positive = data[data > 0]
+    if positive.size == 0:
+      raise ValueError("The field contains no positive values.")
+    maximum = positive.max()
+    if isovalue > 0.8 * maximum:
+      smallest_positive = positive.min()
+      isovalue = 0.5 * (maximum + smallest_positive)
+      print(f"Adjusted positive isovalue to {isovalue:g}")
+  elif isovalue < 0:
+    negative = data[data < 0]
+    if negative.size == 0:
+      raise ValueError("The field contains no negative values.")
+    minimum = negative.min()
+    if isovalue < 0.8 * minimum:
+      closest_to_zero_negative = negative.max()
+      isovalue = 0.5 * (minimum + closest_to_zero_negative)
+      print(f"Adjusted negative isovalue to {isovalue:g}")
+  src = _structured_grid_source(
+    x, y, z, val_smoothed, fig1, name="amplitude"
+  )
+
+  contour_filter = mlab.pipeline.contour(src, figure=fig1)
+  contour_filter.filter.contours = [isovalue]
+  # Select one isosurface color.
+  # surface_hex = "168A89"  # Deep teal
+  # surface_hex = "267F9D"  # Blue teal
+  # surface_hex = "7565A7"  # Blue violet
+  surface_hex = "D89B24"  # Amber
+  surface_rgb = tuple(channel / 255. for channel in hex2rgb(surface_hex))
+  contour = mlab.pipeline.surface(
+    contour_filter,
+    figure=fig1,
+    color=surface_rgb,
+    opacity=1.0
+  )
+  contour.actor.mapper.scalar_visibility = False
+  contour.actor.property.interpolation = 'phong'
+  contour.actor.property.ambient = 0.25
+  contour.actor.property.diffuse = 0.75
+  contour.actor.property.specular = 0.20
+  contour.actor.property.specular_power = 30
+  contour.actor.property.specular_color = (1.0, 1.0, 1.0)
   fig1.scene.show_axes = True
   return isovalue
 
@@ -492,16 +654,17 @@ def hex2rgb(hexcolor:str) -> tuple[int,int,int]:
   return rgb
 
 #-------------------------------------------------------------------------------
-def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
-  '''
+def atoms_plot(atom_list, atomx, atomy, atomz, opacity:float=1.0) -> None:
+  """
   plot spherical model of atoms in current figure.
   --
   atom_list: atomic number of each atom.\n
   atomx: x coordinate of each atom.\n
   atomy: y coordinate of each atom.\n
   atomz: z coordinate of each atom.\n
+  opacity: opacity of the ploted atoms\n
   Returns: None
-  '''
+  """
   # load standard data
   json_address = environ.get('TRESC') + '/vis2c/PubChemElements_all.json'
   with open(json_address,'r',encoding='utf-8') as f:
@@ -520,16 +683,26 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
       if i == int(j['Cell'][0]):
         atom_symbol.append(j["Cell"][1])
         atom_color.append(j["Cell"][4])
+        """
+        Covalent radius is a suitable criterion but is not ideal for visualization.
+        Bondi van der Waals radii for transition metals are too small.
+        """
         atom_coradius.append(qcel.covalentradii.get(i)) # covalent (CSD)
-        atom_radius.append(float(j["Cell"][7])/150.) # Van der Waal
+        # atom_radius.append(float(j["Cell"][7])/150.)    # Bondi VdW
+        atom_radius.append(_display_vdw_radius_pm(i) / 150.0) # Batsanov VdW
         break
   # plot atoms
   fig = mlab.gcf()
+  brightness = {1: 0.88, 8: 0.90, 16: 0.85}
   for i in range(num_atom):
-    RGB = tuple(np.array(hex2rgb(atom_color[i])) / 255.0)
-    mlab.points3d(atomx[i], atomy[i], atomz[i], figure=fig, \
-                  scale_factor=atom_radius[i], resolution=20, \
-                  color=RGB, opacity=1., scale_mode='none')
+    base_rgb = np.array(hex2rgb(atom_color[i]), dtype=float) / 255.0
+    factor = brightness.get(int(atom_list[i]), 1.0)
+    RGB = tuple(base_rgb * factor)
+    mlab.points3d(
+      atomx[i], atomy[i], atomz[i], figure=fig,
+      scale_factor=atom_radius[i], resolution=20,
+      color=RGB, opacity=opacity, scale_mode='none'
+    )
     for j in range(i): # atoms will not bond to themselves
       pointi = np.array([atomx[i], atomy[i], atomz[i]])
       pointj = np.array([atomx[j], atomy[j], atomz[j]])
@@ -543,7 +716,7 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
         split_point = pointi + dir_ij * (distance * ratio)
         color_i = tuple(np.array(hex2rgb(atom_color[i])) / 255.0)
         color_j = tuple(np.array(hex2rgb(atom_color[j])) / 255.0)
-        mlab.plot3d( 
+        linei = mlab.plot3d( 
           [pointi[0], split_point[0]],
           [pointi[1], split_point[1]],
           [pointi[2], split_point[2]],
@@ -551,7 +724,8 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
           tube_sides=20,
           color=color_i
         )
-        mlab.plot3d(
+        linei.actor.property.opacity = opacity
+        linej = mlab.plot3d(
           [split_point[0], pointj[0]],
           [split_point[1], pointj[1]],
           [split_point[2], pointj[2]],
@@ -559,7 +733,82 @@ def atoms_plot(atom_list, atomx, atomy, atomz) -> None:
           tube_sides=20,
           color=color_j
         )
+        linej.actor.property.opacity = opacity
   fig.scene.background = (1.0,1.0,1.0)
+
+#------------------------------------------------------------------------------
+def _structured_grid_source(x, y, z, values, figure,
+                            name="amplitude", mapping=None,
+                            mapping_name="mapping"):
+  """Create a StructuredGrid with physical positions and optional mapping."""
+  arrays = (np.asarray(x), np.asarray(y),
+            np.asarray(z), np.asarray(values))
+  shape = arrays[3].shape
+  if len(shape) != 3 or any(a.shape != shape for a in arrays[:3]):
+    raise ValueError("x, y, z and values must have identical 3D shapes.")
+  if min(shape) < 2:
+    raise ValueError("Each grid dimension needs at least 2 points.")
+  if any(not np.all(np.isfinite(a)) for a in arrays):
+    raise ValueError("Grid coordinates and values must be finite.")
+  if mapping is not None:
+    mapping = np.asarray(mapping)
+    if mapping.shape != shape or not np.all(np.isfinite(mapping)):
+      raise ValueError("mapping must match values and contain finite data.")
+  points = np.empty(shape + (3,), dtype=np.float64)
+  points[..., 0] = arrays[0]
+  points[..., 1] = arrays[1]
+  points[..., 2] = arrays[2]
+  points = points.transpose(2, 1, 0, 3).copy().reshape(-1, 3)
+  scalars = np.ascontiguousarray(
+    arrays[3].transpose(2, 1, 0)
+  ).ravel()
+  grid = tvtk.StructuredGrid(dimensions=shape, points=points)
+  grid.point_data.scalars = scalars
+  grid.point_data.scalars.name = name
+  if mapping is not None:
+    mapping_values = np.ascontiguousarray(
+      mapping.transpose(2, 1, 0)
+    ).ravel()
+    grid.point_data.add_array(mapping_values)
+    grid.point_data.get_array(1).name = mapping_name
+  return mlab.pipeline.add_dataset(grid, figure=figure)
+
+#------------------------------------------------------------------------------
+def plot_signed_cube_structured(title, atoms, values, x, y, z, isovalue):
+  """Plot signed cube values on their actual grid coordinates, including rotations.
+
+  Parameters:
+    title: Mayavi window title.
+    atoms: Structured atomic records with index, x, y and z fields in the
+      same length unit as x, y and z.
+    values: Signed 3D scalar field on the cube grid.
+    x, y, z: Physical positions of each grid point, shaped like values.
+    isovalue: Positive magnitude of the positive/negative contour levels.
+
+  Returns:
+    The created Mayavi figure. This function does not call mlab.show().
+  """
+  if not np.isfinite(isovalue) or isovalue <= 0:
+    raise ValueError("isovalue must be positive and finite.")
+  values = np.asarray(values)
+  vmin, vmax = float(np.min(values)), float(np.max(values))
+  if isovalue >= vmax or -isovalue <= vmin:
+    raise ValueError(
+      f"Both signed levels must lie within the data range [{vmin}, {vmax}]."
+    )
+  figure = mlab.figure(figure=title, size=(600, 600),
+                       fgcolor=(0, 0, 0), bgcolor=(1, 1, 1))
+  mlab.clf(figure)
+  source = _structured_grid_source(x, y, z, values, figure)
+  mlab.pipeline.iso_surface(source, contours=[isovalue],
+                            color=(0.0, 0.59, 0.55), figure=figure)
+  mlab.pipeline.iso_surface(source, contours=[-isovalue],
+                            color=(0.0, 0.36, 0.63), figure=figure)
+  mlab.figure(figure)
+  atoms_plot(atoms['index'], atoms['x'], atoms['y'], atoms['z'])
+  mlab.view(figure=figure)
+  return figure
+
 
 #===============================================================================
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ author:Dirac4pi
 env:vis2c
 '''
 
+import numpy as np
 import viskit as vk
 import plot3d as p3
 from mayavi import mlab
@@ -14,6 +15,31 @@ from traitsui.api import View, Item
 from os import path
 
 doslice = False
+
+#-------------------------------------------------------------------------------
+def _check_mapping_grid(ampdat, mapdat, tolerance=1e-5):
+  """Require matching physical points before using a second cube for color.
+
+  Parameters:
+    ampdat: Structured grid returned by vk.load_cube for the isosurface.
+    mapdat: Structured grid returned by vk.load_cube for color mapping.
+    tolerance: Maximum allowed absolute coordinate difference, in Bohr.
+
+  Returns:
+    None; raises ValueError if the two grid point sets are incompatible.
+  """
+  if ampdat.shape != mapdat.shape:
+    raise ValueError(
+      f"Mapping grid shape {mapdat.shape} differs from amplitude grid "
+      f"{ampdat.shape}; resample the mapping cube onto the amplitude grid."
+    )
+  for axis in ('x', 'y', 'z'):
+    difference = np.max(np.abs(ampdat[axis] - mapdat[axis]))
+    if not np.isfinite(difference) or difference > tolerance:
+      raise ValueError(
+        f"Mapping and amplitude grid positions differ on {axis} "
+        f"(maximum {difference:.6g} Bohr); resampling is required."
+      )
 
 #-------------------------------------------------------------------------------
 def real3d(ampcube:str, mapcube:str, isovalue:float=0.05,\
@@ -44,7 +70,8 @@ def real3d(ampcube:str, mapcube:str, isovalue:float=0.05,\
   z = ampdat['z']
   ar = ampdat['value']
   print(f'loading real space grid mapping data from {mapcube}...')
-  atoms, mapdat = vk.load_cube(mapcube)
+  _, mapdat = vk.load_cube(mapcube)
+  _check_mapping_grid(ampdat, mapdat)
   mr = mapdat['value']
   # plot the real space function with colormap
   print('plotting...')
