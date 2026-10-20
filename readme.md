@@ -632,7 +632,20 @@ export PATH="$TRESC/build:$PATH"
 export PATH="$TRESC/vis2c:$PATH"
 alias TRESC='tshell.sh'
 alias tshell='tshell.sh'
+export VIS2C_PYTHON="/path/to/vis2c/python/executable"
 ```
+
+If you use agent skill `vis2c`, you need to install
+[Blender](https://download.blender.org/release/Blender3.0/) and
+[Multiwfn](http://sobereva.com/multiwfn/), then add:
+
+```shell
+export MULTIWFN_EXE="/path/to/multiwfn/executable"
+export BLENDER_BIN="/path/to/blender/binary"
+```
+
+Simply submit `vis2c/SKILL.md` to `.agents/skills/vis2c/SKILL.md` to make this
+skill available.
 
 # Upcoming
 
