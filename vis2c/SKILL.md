@@ -1,13 +1,32 @@
 ---
 name: vis2c
-description: Perform end-to-end wavefunction-analysis visualization, from electronic-structure results and Multiwfn analysis through validated numerical data, model export and Blender rendering. Use for all types of wavefunction-analysis visualization, including orbitals, IGMH, electrostatic potentials, other real-space fields, atomic/bond properties, field comparisons and figure refinement. These are examples, not an exhaustive scope. Select tools by the requested quantity and representation, preserve scientific meaning, and document any representation that requires an extension beyond the supplied exporters.
+description: Perform end-to-end wavefunction analysis, quantitative comparison, and
+  scientific visualization using Multiwfn, TRESC/vis2c (cub1c, real3damp,
+  real3d, cuboper, alignmol, atomic, bond), and Blender. Trigger when a task
+  calls for generating, extracting, validating, analyzing, comparing, or
+  visualizing wavefunction-derived properties or 3D real-space fields,
+  preparing the numerical data for these tasks, or refining existing
+  scientific figures. Common tasks include plotting canonical, natural,
+  natural-transition, natural-bond, singly occupied natural, or localized
+  orbitals (HOMO/LUMO/SOMO, NO, NTO, NBO, SONO) from suitable Molden files
+  with configurable orbital grids ($TRESC/gridsettings.ini); analyzing or
+  rendering scalar fields and mapped surfaces such as electron/spin
+  density, ESP, IGMH, ELF, LOL, and Fukui/dual descriptors; investigating
+  substituent effects or conformational property differences through
+  aligned field comparisons or atomic/bond-property tables; aligning
+  molecular structures or fields; and improving figure views, colors,
+  legends, lighting, and layout. These examples are not exhaustive,
+  route other wavefunction-analysis quantities by their scientific
+  definition and required representation. Reuse valid existing results,
+  complete supported figure requests through rendering and actual visual
+  review, and stop at validated numerical data when requested.
 ---
 
 # vis2c: From Electronic-Structure Results to Scientific Figures
 
 ## 1. One workflow, selectable stopping point
 
-This skill covers visualization for ALL types of wavefunction analysis. Orbital images, IGMH, electrostatic potential (ESP), density/spin-density surfaces, atomic/bond properties and substituent comparisons below are illustrative scientific questions, not a closed list of supported applications. Apply the same reasoning to other wavefunction-derived quantities: establish their definitions and source requirements, compute the required data, choose a scientifically appropriate representation, and complete the requested visualization where the tools support it.
+This skill connects numerical preparation, comparison, and visualization for wavefunction-derived analyses. Its scientific examples are open-ended, but execution and completion are limited by verified numerical generators and representation capabilities. Orbital images, IGMH, electrostatic potential (ESP), density/spin-density surfaces, atomic/bond properties and substituent comparisons below are illustrative scientific questions, not a closed list of supported applications. Apply the same reasoning to other wavefunction-derived quantities: establish their definitions and source requirements, compute the required data, choose a scientifically appropriate representation, and complete the requested visualization where the tools support it.
 
 Distinguish broad scientific scope from concrete exporter capabilities. The three supplied model exporters implement signed real orbitals, one scalar contour, and a scalar contour colored by a second field. These are reusable representation primitives for many analyses, not three permitted scientific topics. A new descriptor fitting one of these primitives needs no new rendering adapter. A vector/tensor display, topology graph, complex phase representation, section, or other representation outside those primitives may require a task-local extension or a documented data handoff; never silently replace it with an unrelated scalar image.
 
@@ -34,11 +53,31 @@ Select the stopping point from the request:
 
 Reuse any already valid stage. Do not rerun SCF when an appropriate wavefunction exists, generate a duplicate cube before cub1c generates it internally, or re-export a model just to change lighting.
 
+### Trigger boundaries and route-specific reading
+
+Trigger for a concrete request to generate, validate, compare, export, or visualize supported numerical data. Do not start numerical jobs solely because a conceptual question mentions wavefunction analysis. Do not turn every substituent or conformer comparison into cube subtraction. A data-only request is a first-class endpoint, not an incomplete figure task.
+
+Read sections 1-3 and 14 for task scope, deployment, routing, authority, and honest completion. Then read the applicable sections completely before execution; retrieve further passages if a tool truncates them. Do not load unrelated API examples merely to execute a simple route.
+
+| Selected route | Additional sections to read |
+|---|---|
+| Numerical generation or validation | Relevant parts of section 4 and any selected downstream route |
+| Molden real orbital | Sections 4.3-4.5, 7, and shared bundle rules in 9.4 |
+| Geometry-only fitting | Section 5 |
+| Aligned scalar-field arithmetic | Sections 4.4-4.5, 5-6; include property-specific definitions from section 4 |
+| Single-contour surface | Sections 4.4-4.5, 8, and 9.4 |
+| Quantitatively mapped surface | Sections 4.4-4.6 and 9; include 4.2 for IGMH |
+| Any supported rendered figure | Section 10 and the applicable exporter section; section 13 when its playbook is relevant |
+| Atomic or bond-property handoff | Relevant numerical preparation plus section 11 or 12 |
+
+Configured deployment paths do not require repeated discovery. However, this document does not override observed runtime behavior: verify relevant help, signatures, or implementation when compatibility is uncertain or an actual mismatch appears. Record the discrepancy and do not invent flags or weaken validation to continue. Reuse version-appropriate verified recipes within a session when their identity and applicability remain established.
+
 ## 2. Deployment and task environment
 
 Use the guaranteed deployment facts directly, without repeatedly checking script existence, locating alternate copies, enumerating Python environments or inspecting shebangs:
 
 - `$TRESC` is the installation root.
+- `$TRESC/gridsettings.ini` is the documented orbital-grid configuration for `cub1c.py` / `tshell.sh -cub1c`, with `rgrid` and `edge` settings. Read and record applicable values when generating orbital cubes. This is a shared installation resource, not unconditional permission to edit it; follow section 7.4. Verify parameter semantics against the installed implementation before changing values.
 - The plotting/export tools are `$TRESC/vis2c/cub1c.py`, `real3damp.py`, `real3d.py` and `render_obj.py`.
 - `$VIS2C_PYTHON` is the executable for project numerical/export scripts, with their dependencies configured.
 - `$BLENDER_BIN` is the user-provided Blender executable path, with its matching bundled resources and color management.
@@ -88,12 +127,12 @@ All command examples below are patterns to instantiate for the actual task, not 
 
 | Goal | Numerical/model chain | Endpoint |
 |---|---|---|
-| Real HOMO/LUMO/SOMO image | Calculation or existing result -> Molden -> cub1c -> render_obj | Signed orbital image and provenance |
+| Selected real orbital (canonical, natural, natural-transition, natural-bond, singly occupied natural, or localized, when faithfully exported) | Suitable result -> validated Molden and index mapping -> verify orbital-grid settings (section 7.4) -> cub1c -> render_obj only if requested | Signed orbital cube and provenance; rendered image when requested |
 | One density/spin-density/other field surface | Wavefunction -> numerical generator -> cube -> real3damp -> render_obj | One-contour image |
 | IGMH surface with sign(lambda_2)*rho colors | Wavefunction -> Multiwfn paired cubes -> real3d -> render_obj | Quantitative mapped image and legend |
 | ESP mapped onto a density-defined molecular surface | Wavefunction -> Multiwfn density + ESP on matching grids -> real3d -> render_obj | ESP-colored surface, actual density contour and ESP legend/unit |
 | Another wavefunction-analysis quantity | Establish definition/source -> Multiwfn or a verified suitable generator -> appropriate data/model representation | Requested analysis visualization, or a precise representation-extension requirement |
-| Substituent-induced field change | Comparable wavefunctions/fields -> cuboper alignment + arithmetic -> difference cube -> real3damp -> render_obj | Signed change views and comparison record |
+| Aligned pointwise scalar-field comparison for a defined substituent or conformer question | Comparable fields -> justified shared-scaffold fit -> cuboper arithmetic -> validate difference, overlap, and interpolation -> render only if requested | Signed difference cube, domain-qualified statistics, comparison record, and optional sign-complete views |
 | Common-fragment geometry fit | XYZ pair -> alignmol numerical API | Aligned XYZ, transformation and fit record |
 | Atomic scalar-property visualization | Calculate/extract properties -> XYZQ | Data plus user-run atomic.py command |
 | Bond/pair-property visualization | Calculate/extract properties -> XYZ + square matrix | Data plus user-run bond.py command |
@@ -264,6 +303,12 @@ Do not apply an angstrom translation directly to Bohr cube coordinates. Rotating
 
 ## 6. cuboper.py: align, interpolate and combine scalar fields
 
+Use `cuboper.py` when the scientific question explicitly requires pointwise arithmetic on real scalar fields after a justified rigid alignment. Substituent and conformer studies are possible applications, not automatic triggers. Compare atom/bond tables, existing numerical summaries, or other observables directly when they answer the question without volumetric subtraction.
+
+Before subtraction, establish compatible field definitions, units, computational conventions, state, and a meaningful reference frame. Record why the fitting region is suitable and how registration affects interpretation. For ESP comparisons, establish compatible potential-reference conventions; for orbital amplitudes, establish orbital correspondence and phase conventions. When these conditions cannot be established, do not present subtraction as a physically resolved property change.
+
+Different composition, electron count, optimized geometries, or fragment definitions can change the meaning of a difference. Explicitly distinguish the requested total change from an attempted isolated substituent contribution. Range and truncated-domain integral statistics describe the processed field and sampling domain; they do not automatically establish charge transfer, interaction energy, or a causal substituent effect.
+
 First input = reference R; second input = probe P. Probe is aligned to reference before sampling and arithmetic. Differences mean aligned probe MINUS reference.
 
 | CLI | Python operation | Formula |
@@ -379,7 +424,11 @@ Label signs as descriptor increase/decrease for P-R, not as orbital phase. Color
 
 ### 7.1 Purpose, arguments and execution modes
 
-Use this route for a selected real scalar orbital from a suitable Molden source. It generates the orbital cube and constructs both signed contours plus the molecular skeleton. It does not accept a pre-existing cube as its input, select HOMO/LUMO automatically, generate a density image, or visualize a complex spinor.
+Use this route for a selected real scalar orbital faithfully represented in a suitable Molden source (`.molden.input` or `.molden`). Possible source orbital types include canonical orbitals (including HOMO/LUMO/SOMO, core, and virtual orbitals), natural orbitals (NO), natural transition orbitals (NTO), natural bond orbitals (NBO), singly occupied natural orbitals (SONO), and localized molecular orbitals. These are examples of source identities, not a claim that the exporter computes or recognizes each analysis automatically.
+
+Verify that the source actually contains the requested coefficients and that basis order, normalization, angular-function conventions, spin labels, and 1-based generator index are compatible. Preserve analysis-specific metadata, including NTO hole/particle pairing and weights when relevant; a rendered orbital alone does not supply those relationships. An unsupported or unverified conversion is a blocker, not permission to relabel another orbital.
+
+`cub1c.py` generates the selected orbital cube and constructs signed contours plus the molecular skeleton. It does not accept a pre-existing cube as input, select HOMO/LUMO automatically, generate the requested orbital family from canonical coefficients, produce electron density by relabeling amplitude, or visualize a complex spinor.
 
 Interface and direct usage example:
 
@@ -449,6 +498,29 @@ Only for a requested user-operated interactive session:
 ```
 
 Changing the controller redraws the viewer; it is not an automated figure-export or cube-only mode. For cube-only work use section 4.3 instead.
+
+### 7.4 Grid accuracy and box-margin control ($TRESC/gridsettings.ini)
+
+The documented orbital-cube generator uses `rgrid` for grid resolution and `edge` for bounding-box margin. Verify the installed parser's syntax, units, allowed values, and actual behavior before adjustment; do not assume that an undocumented value or numeric direction gives the intended spacing. Record both configuration values and the resulting cube's physical spacing and extent.
+
+Preserve current settings unless the task requires a change. When choosing a new margin, normally prefer documented `edge = auto`, but do not reset an existing explicit margin merely because it is not auto. Respect user/project settings and check actual spatial coverage, especially for diffuse orbitals. Finer image pixels or more Blender samples do not improve the numerical orbital grid.
+
+Use the following configuration precedence:
+
+1. Prefer an installed, documented task-local configuration or override mechanism, if one exists. Verify that the generator reads it. Do not invent flags, environment variables, alternate-root behavior, or local-file discovery rules.
+2. If only the shared installation file is supported, modify it only within explicit user/project authorization and a reliable exclusive-use arrangement covering all relevant readers and writers, including other sessions. A lock used only by this agent does not protect jobs that ignore it. Do not hold a shared edit across unattended or asynchronously launched work without controlled ownership and recovery.
+3. If authorization or exclusivity cannot be established, do not edit the shared file. Use unchanged settings only if scientifically adequate; otherwise report the blocker and request a narrowly scoped decision. Existing validated cubes need no configuration edits.
+
+For an authorized shared edit:
+
+- Save the original complete file bytes and a hash in the task records, preserve permissions, and record the exact intended key changes. Inspect the INI section structure and change only required `rgrid` and/or `edge` entries; retain unrelated values and formatting. Do not replace the file with a generic template.
+- Establish cleanup before editing. Use controlled synchronous execution with restoration in a `finally` block or equivalent shell traps for normal completion and catchable errors/signals. Such mechanisms cannot guarantee recovery after SIGKILL, host failure, or power loss; retain the backup, ownership record, and explicit recovery instructions.
+- Hold the exclusive-use arrangement until all affected cube-generation processes have terminated and restoration has been verified. Do not run conflicting grid jobs concurrently.
+- Before restoration, verify the live file still equals the agent's expected edited content. If another actor changed it, do not overwrite their changes. Preserve both versions, report the conflict immediately, and resolve it within authority.
+- With no conflict, restore the original bytes and verify the original hash. Record restoration success or failure explicitly. Never claim cleanup succeeded merely because the analysis finished.
+- Record original, requested, effective, and restored configuration states, generator identity, commands, and actual cube-grid metadata in `workflow.json` and `reproduction.md`. Archive an exact copy of the effective configuration for reproducibility.
+
+For quantitative comparisons, keep numerical settings comparable where justified and disclose resampling or extent differences. For surface figures, inspect coverage and contour stability where they affect the conclusion. Do not change a scientific contour or smooth the numerical input merely to hide an inadequate grid.
 
 ## 8. real3damp.py: one scalar-field contour -> model
 
@@ -890,9 +962,9 @@ Geometry/results -> authorized QC + Molden if needed
 -> OBJ/MTL/scene.json -> render_task.py previews -> final image
 ```
 
-### B. Methyl-substitution effect on intramolecular weak-interaction descriptors
+### B. Substituent or conformational effect on real-space descriptors (e.g., methyl-substitution IGMH comparison)
 
-1. Define reference R as parent and probe P as methyl-substituted, unless the user specifies otherwise. State that the requested difference is P-R.
+1. Define reference R (e.g., parent molecule or reference conformer) and probe P (e.g., substituted molecule or target conformer), unless the user specifies otherwise. State that the requested difference is P-R.
 2. Obtain comparable wavefunctions using consistent computational choices. Define the exact IGMH dg variant and chemically corresponding fragment partitions for BOTH molecules. Define the shared-scaffold fitting region separately.
 3. Run verified Multiwfn recipes in separate directories to generate the two comparable dg cubes. Match resolution/coverage as far as practical; cuboper can handle different physical grids but cannot make different definitions comparable.
 4. Copy them to `$TASK/work/cube_ops/reference_dg.cub` and `probe_dg.cub`; protect XYZ sidecars. Run the cuboper CLI with a PTY or its local API wrapper. Inspect/save the actual atom mapping, RMSD and overlap/spacing/boundary logs. Do not run a redundant alignmol CLI first.
@@ -996,3 +1068,7 @@ Reproduction:
 ```
 
 For data-only or unsupported-rendering branches, explicitly state no image was generated and provide the user-run commands where applicable. For completed rendering, do not falsely retain a blanket "no visualization performed" statement. Call the output a publication-oriented candidate when appropriate, not guaranteed journal compliance or human approval.
+
+## 15. Language maintenance
+
+Keep this SKILL.md in English in future revisions, including frontmatter, headings, instructions, comments, and examples. Preserve literal filenames, paths, technical identifiers, and existing mathematical notation. This artifact-language requirement does not constrain conversation, captions, or report language.
