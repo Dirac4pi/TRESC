@@ -376,6 +376,8 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
   mlab.clf(fig)
   fig_try = mlab.figure(675)
   amp_smooth = gaussian_filter(amp, sigma=1)
+  vmax=mapo.max()
+  vmin=mapo.min()
   try:
     mlab.contour3d(x, y, z, amp_smooth, figure=fig_try, contours=[isovalue])
   except Exception as e:
@@ -410,9 +412,9 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
                                              point_scalars='phase', figure=fig)
   # rainbow, jet, bwr colormap are usually suitable for non-periodic data,
   # while hsv is suitable for periodic data like phase
-  surf = mlab.pipeline.surface(contourpha2, colormap='jet', figure=fig,
-                               vmax=0.05, vmin=-0.05)
-  surf.module_manager.scalar_lut_manager.data_range = [-0.05, 0.05]
+  surf = mlab.pipeline.surface(contourpha2, colormap='bwr', figure=fig,
+                               vmax=vmax, vmin=vmin)
+  surf.module_manager.scalar_lut_manager.data_range = [vmin, vmax]
   # Increase opacity for richer colors, but keep backface_culling
   # so the inner wall doesn't occlude the central atoms.
   surf.actor.property.opacity = 0.65

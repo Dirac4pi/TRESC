@@ -11,7 +11,8 @@ description: Perform end-to-end wavefunction analysis, quantitative comparison, 
   orbitals (HOMO/LUMO/SOMO, NO, NTO, NBO, SONO) from suitable Molden files
   with configurable orbital grids ($TRESC/gridsettings.ini); analyzing or
   rendering scalar fields and mapped surfaces such as electron/spin
-  density, ESP, IGMH, ELF, LOL, and Fukui/dual descriptors; investigating
+  density, ESP, IGMH, ELF, LOL, and Fukui/dual descriptors based on common
+  wavefunction file formats (e.g., .fch, .molden.input, etc.); investigating
   substituent effects or conformational property differences through
   aligned field comparisons or atomic/bond-property tables; aligning
   molecular structures or fields; and improving figure views, colors,
@@ -231,7 +232,11 @@ Paired fields need matching physical coordinates, not merely matching shape. Rec
 
 ### 4.6 ESP and other analyses: generalize the numerical plan
 
-For an ESP-colored molecular surface, compute a surface-defining field (commonly the selected electron density) and the ESP mapping field with Multiwfn on the same physical grid. Verify that both refer to the intended structure/electronic state and that the selected ESP definition/unit is the one used in labels. Choose a positive contour of the defining field and an appropriate signed mapping range. The contour threshold belongs to the defining field; the colorbar belongs to ESP. An ESP isosurface instead uses ESP as the contour field, and a negative ESP contour must follow a route that actually supports signed levels, such as real3damp for a fixed-color single contour.
+For an ESP-colored molecular surface, compute the surface-defining electron-density cube and the ESP mapping cube with Multiwfn using the same grid-quality/resolution settings and the same physical grid: origin, grid vectors, point counts and spatial extent must match. Selecting the same nominal quality preset alone is not sufficient; validate the exported grids as described in section 9. Verify that both fields refer to the intended structure/electronic state and that the selected ESP definition/unit is the one used in labels.
+
+For this ESP-on-density workflow, explicitly set the density-surface `--isovalue=0.001` as the recommended starting value in the density cube's standard atomic-unit convention; do not leave the generic software default of 0.05 in effect. Verify the density unit and record any scientifically justified alternative. This threshold belongs to electron density, not ESP; choose the ESP color range separately. Under the user-tested installed workflow, ionic systems use the same preparation and `real3d` rendering route as neutral systems: the script already accounts for them, so no ion-specific preprocessing, neutralization, or ad hoc ESP offset is required. Preserve the intended charged-state source data and normal validation.
+
+An ESP isosurface instead uses ESP as the contour field, and a negative ESP contour must follow a route that actually supports signed levels, such as real3damp for a fixed-color single contour. The recommended density threshold above does not apply to an ESP contour.
 
 For an unlisted analysis, consult the relevant Multiwfn manual section and determine the mathematical output and meaningful representation first. A scalar field can use the single-contour or mapped-field routes; atom-resolved scalar values can use XYZQ; pair-resolved values can use a matrix plus XYZ. For vector/tensor/complex outputs, retain the required components and explicitly define any scalar projection, component or invariant being visualized. For topology or other non-field outputs, retain the actual analysis data and choose a suitable task-local representation instead of forcing it into a misleading cube. The examples guide this decision; they do not restrict the analyses the skill can undertake.
 
@@ -554,6 +559,8 @@ There is no `-slice`, map-range, colormap, output-image or automatic two-sign op
 
 The finite level may be signed; handling/adjustment follows the existing plotting function. This is one contour, not an automatic signed pair or second-field map. Do not universally reuse orbital/density thresholds for IGMH or difference data.
 
+For an electron localization function (ELF) isosurface, use the validated ELF cube directly through this normal `real3damp` route; no ELF-specific preprocessing is needed. Based on the user-tested workflow, explicitly choose an ELF `--isovalue` in the recommended range 0.6-0.8, for example `--isovalue=0.7`, rather than inheriting the generic 0.05 default. Treat this range as a practical starting recommendation, not a mandatory cutoff; respect a specified scientific threshold and record the requested/effective value. Continue with the same model export, Blender rendering and visual review steps.
+
 Exactly one nonempty amplitude surface is identified, with role isosurface; skeleton is molecular_geometry. Explicit obj_group/mtl_material, RGB/opacity and contour are recorded. Negative field contours stay generic surfaces, not orbital_negative. The wrapper passes the full physical x/y/z coordinate arrays to plot3d. For non-axis-aligned cuboper outputs, verify that the installed viskit/plot3d retain those coordinates correctly; the wrapper alone does not certify every external grid convention. Scientific quantity/unit must come from provenance when JSON fields are null.
 
 No scalar-texture mapping is added by this route; ambiguous, textured or unhandled scalar-colored actors are rejected. Export mode skips its controller and does not invoke Blender.
@@ -662,7 +669,7 @@ Mapping semantics preserved by exporter/renderer:
 
 LUT RGB/alpha is sampled into lossless 8-bit PNG textures. Transfer retains the numerical range and scalar interpolation convention with that finite LUT precision; it does not promise pixel-identical VTK and Blender lighting or optical transparency. Arbitrary pre-textured actors, direct-RGB scalar arrays, nonlinear LUTs, special above/below-range colors and unclassified scalar-colored skeleton actors are not silently translated by this exporter. Diagnose the actual incompatibility rather than remove quantitative coloring.
 
-For ESP mapping, substitute the validated density cube for AMPCUBE and ESP cube for MAPCUBE. Set an appropriate density contour and a justified ESP range/label/unit, not the IGMH example's values. A series should use comparable surface definitions, mapping ranges, LUT and view/scale conventions; disclose any intentional differences.
+For ESP mapping, use the validated electron-density cube as AMPCUBE (FIRST input) and the ESP cube as MAPCUBE (SECOND input). Generate both cubes at matching grid quality/resolution and verify matching physical grids, not merely identical nominal quality settings. Explicitly pass `--isovalue=0.001` for the density-defined surface as the recommended starting value in standard density atomic units; do not use the generic 0.05 default or copy the IGMH contour. Set the ESP mapping range, label and unit independently. As established for the user-tested workflow in section 4.6, ions follow the same route as neutral molecules; do not introduce special ion preprocessing or change the source charge. A series should use comparable surface definitions, mapping ranges, LUT and view/scale conventions; disclose any intentional differences.
 
 ### 9.3 Python API and interactive handoff
 
