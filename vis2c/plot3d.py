@@ -367,7 +367,8 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
   y: y grid points\n
   z: z grid points\n
   isovalue: isovalue of val\n
-  Return: final isovalue
+  Color range: finite mapo values interpolated onto the extracted isosurface.
+  Return: final isovalue, figure
   '''
   if isovalue <= 0.0:
     raise RuntimeError('isovalue should be positive')
@@ -376,8 +377,6 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
   mlab.clf(fig)
   fig_try = mlab.figure(675)
   amp_smooth = gaussian_filter(amp, sigma=1)
-  vmax=mapo.max()
-  vmin=mapo.min()
   try:
     mlab.contour3d(x, y, z, amp_smooth, figure=fig_try, contours=[isovalue])
   except Exception as e:
@@ -408,13 +407,53 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
                                             figure=fig)
   contourpha = mlab.pipeline.contour(src2, figure=fig)
   contourpha.filter.contours = [isovalue]
+  
+  # Update the Mayavi pipeline, then retrieve the contour output dataset.
+  contourpha.update_pipeline()
+  surface_outputs = mlab.pipeline.get_vtk_src(
+    contourpha, stop_at_filter=True
+  )
+  if not surface_outputs:
+    raise RuntimeError("Could not retrieve the isosurface output dataset.")
+  surface_data = surface_outputs[0]
+
+  if surface_data.number_of_points == 0:
+    raise ValueError(
+      f"No isosurface was generated for isovalue={isovalue:g}."
+    )
+  surface_array = surface_data.point_data.get_array('phase')
+  if surface_array is None:
+    raise RuntimeError(
+      "The isosurface output does not contain the mapping array 'phase'."
+    )
+  surface_values = np.asarray(surface_array.to_array())
+  if surface_values.size == 0:
+    raise ValueError("The isosurface mapping array is empty.")
+  if not np.all(np.isfinite(surface_values)):
+    raise ValueError("The isosurface mapping contains non-finite values.")
+  surface_vmin = float(surface_values.min())
+  surface_vmax = float(surface_values.max())
+  vmin, vmax = surface_vmin, surface_vmax
+  # A constant mapping needs a non-degenerate LUT interval.
+  if vmin == vmax:
+    padding = max(abs(vmin) * 1e-6, 1e-12)
+    vmin = surface_vmin - padding
+    vmax = surface_vmax + padding
+  print(
+    f"Isosurface mapo range (isovalue={isovalue:g}, "
+    f"points={surface_data.number_of_points}): "
+    f"[{surface_vmin:.8g}, {surface_vmax:.8g}]; "
+    f"LUT range: [{vmin:.8g}, {vmax:.8g}]"
+  )
   contourpha2 = mlab.pipeline.set_active_attribute(contourpha, 
                                              point_scalars='phase', figure=fig)
   # rainbow, jet, bwr colormap are usually suitable for non-periodic data,
   # while hsv is suitable for periodic data like phase
   surf = mlab.pipeline.surface(contourpha2, colormap='bwr', figure=fig,
                                vmax=vmax, vmin=vmin)
-  surf.module_manager.scalar_lut_manager.data_range = [vmin, vmax]
+  lut_manager = surf.module_manager.scalar_lut_manager
+  lut_manager.use_default_range = False
+  lut_manager.data_range = [vmin, vmax]
   # Increase opacity for richer colors, but keep backface_culling
   # so the inner wall doesn't occlude the central atoms.
   surf.actor.property.opacity = 0.65
@@ -425,8 +464,7 @@ def real_func_plot_cub(title:str, atoms, amp, mapo, \
   surf.actor.property.diffuse  = 0.85
   surf.actor.property.specular = 0.20
   surf.actor.property.specular_power = 15
-  cb = mlab.colorbar(object=surf, title='sign(lambda_2)*rho\n', \
-                     orientation='vertical', nb_labels=5)
+  cb = mlab.colorbar(object=surf, orientation='vertical', nb_labels=5)
   cb.label_text_property.color = (0, 0, 0)
   cb.title_text_property.color = (0, 0, 0)
   cb.scalar_bar.label_format = '%.3f'       # format of colorbar labels

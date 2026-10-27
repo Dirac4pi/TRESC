@@ -614,7 +614,7 @@ real3d.py AMPCUBE MAPCUBE [-slice] [--isovalue FLOAT]
 | `AMPCUBE` | First cube: defines the isosurface and supplies the scene's atom geometry. |
 | `MAPCUBE` | Second cube: supplies the scalar used for surface colors; it does not define the contour. |
 | `--isovalue FLOAT` | Positive finite surface-defining level; default 0.05. This wrapper does not accept negative/zero contours. |
-| `--map-min FLOAT`, `--map-max FLOAT` | Optional paired finite mapping bounds, min < max. If neither is supplied, retain the plotting function's actual range. |
+| `--map-min FLOAT`, `--map-max FLOAT` | Optional paired finite mapping bounds, min < max. If omitted, automatically use the minimum and maximum of the mapping field interpolated onto the vertices of the actual generated isosurface, not the extrema of the full mapping cube. Explicit bounds override this automatic surface-based range. |
 | `--colormap NAME` | Optional Mayavi LUT name; omission preserves the plotter's colormap. A Matplotlib-only name is not necessarily accepted. |
 | `--map-label TEXT` | Meaning of the mapped quantity; export default is `Mapping value`, which should normally be replaced with an informative physical label. |
 | `--map-unit TEXT` | Unit of the mapped quantity; omitted by default. Record the contour field's unit separately. |
@@ -626,21 +626,32 @@ Both cubes must be existing `.cub`/`.cube` files with finite, matching-shaped x/
 
 ### 9.2 Export, validation and quantitative transfer
 
+#### Automatic surface-based mapping range
+
+- When neither `--map-min` nor `--map-max` is supplied, the color range is the minimum and maximum of the mapping field interpolated onto the vertices of the actual generated isosurface. It is not the minimum/maximum over the full mapping cube, nor over a tolerance-selected shell of original grid points.
+- The range is evaluated after the plotter's amplitude smoothing and any contour adjustment, using the effective surface actually generated. It includes all components and all sides of that surface, not only the camera-visible region. The mapping field itself is not smoothed.
+- Preserve this automatic behavior unless the user requests explicit limits or the scientific task justifies a documented alternative, such as a common range across comparison panels. Do not precompute full-cube extrema and pass them as mapping bounds merely to populate optional arguments.
+- Explicit `--map-min` and `--map-max` must be supplied together, be finite, and satisfy min < max. They override the automatic surface-based range. Record the reason and actual limits when overriding.
+- For a constant surface mapping, the plotter slightly expands the display range to avoid a degenerate LUT interval; the actual surface-value range remains constant.
+- In exported metadata, `color_mapping.range` is the effective color range, the mapped actor's `mapped_vertex_range` is the actual exported surface-value range, and `mapping_raw_range` describes the full input mapping cube. Do not confuse these fields. Use the effective color range and matching LUT for the rendered legend.
+
+#### Export example and validation
+
 Usage example for an IGMH figure, after validating the actual fields and definitions:
 
 ```bash
 "${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3d.py" \
   "$DG_CUBE" "$SL2R_CUBE" --isovalue="$DG_LEVEL" \
-  --map-min="$MAP_MIN" --map-max="$MAP_MAX" \
   --colormap jet --map-label 'sign(lambda_2)*rho' --map-unit "$MAP_UNIT" \
   --export-obj "$TASK/models/igmh.obj" \
   > "$TASK/logs/export_igmh.log" 2>&1
 ```
 
+This example uses the automatic surface-based mapping range. Add `--map-min="$MAP_MIN" --map-max="$MAP_MAX"` only for an explicitly selected override, such as a justified common range for a comparison series; record that decision.
+
 Colormap is illustrative. Omit the unit option when unknown/inapplicable and disclose this; never invent it. Label the actual selected delta_g variant in provenance/caption.
 
 - First cube determines contour geometry, second determines colors. Contour must be positive and finite.
-- --map-min/--map-max must be supplied together, finite, min < max. If omitted, read the actual range retained by the plotter; it is not guaranteed to be raw min/max or a suitable comparison range.
 - Array shapes AND physical x/y/z points must match within 1e-5 in the loader's Bohr convention. No automatic resampling is performed. Do not reshape or relabel a grid to force compatibility.
 - Existing amplitude smoothing is preserved; the mapped array is not smoothed by this export path. Record processing and effective contour.
 - The mapped role is mapped_isosurface, not a fixed-color isosurface. Array name phase does not make the property quantum phase.
@@ -695,7 +706,7 @@ manifest = export_obj(
 )
 ```
 
-Bind variables to actual task settings; optional values may be None. API export shares CLI validation, no-overwrite and display requirements and does not accept `slice`. Export progress is not a serialized result on stdout. A requested user-operated viewer uses the same positional cubes/options with `--export-obj` omitted; add `-slice` only for the intended interactive first-field sections.
+Bind variables to actual task settings; optional values may be None. Set both `mapping_min` and `mapping_max` to `None` to retain the automatic surface-based range; do not derive them from full-cube extrema by default. API export shares CLI validation, no-overwrite and display requirements and does not accept `slice`. Export progress is not a serialized result on stdout. A requested user-operated viewer uses the same positional cubes/options with `--export-obj` omitted; add `-slice` only for the intended interactive first-field sections.
 
 ### 9.4 Shared exporter API setup, bundle handling and limitations
 
@@ -814,6 +825,8 @@ The renderer checks every imported material against the manifest's supported rol
 The template uses an RGBA 8-bit PNG, fixed seed 0, Standard view transform, neutral look where available, exposure 0 and gamma 1. It records the active color settings rather than assume all installations behave identically. Changes to these display conventions belong in the task copy and reproduction record.
 
 ### 10.2 Quantitative colorbar and mapping fidelity
+
+For real3d bundles, use `color_mapping.range` as exported. With automatic bounds, this is the surface-based range defined in section 9.2, not `mapping_raw_range`; do not recompute or independently autoscale the legend.
 
 The mapped colorbar is ON by default; default tick count 5, allowed 2-11. It uses the same LUT/range unlit, with low at bottom, high at top, label and unit. It reserves right-side frame space by camera adjustment, not molecular displacement. Example optional control is `--colorbar-ticks 7`.
 
@@ -991,9 +1004,11 @@ An integrand comparison or attractive-looking isosurface does not by itself isol
 
 ### C. IGMH dg surface colored by sl2r
 
+By default, omit mapping-bound options and use the surface-based range defined in section 9.2. For quantitative comparison panels, deliberately choose and document either independent automatic ranges or a justified common explicit range; identical colors across independently autoscaled panels do not imply identical values.
+
 1. Obtain a suitable wavefunction and choose the intended dg variant/fragment partition.
 2. Use a verified Multiwfn numerical export to generate dg and sign(lambda_2)*rho cubes on identical physical grids. Do not confuse a total, intra- or interfragment dg file.
-3. Set DG_CUBE and SL2R_CUBE accordingly; select DG_LEVEL, a justified MAP_MIN/MAP_MAX, label and unit. For a series, use consistent thresholds and mapping conventions unless explicitly disclosed.
+3. Set DG_CUBE and SL2R_CUBE accordingly; select DG_LEVEL, label and unit. Retain the automatic surface-based mapping range by default; set MAP_MIN/MAP_MAX only for a documented explicit override. For a series, use consistent thresholds and deliberately selected mapping conventions unless explicitly disclosed.
 4. Run the real3d example: dg FIRST, sl2r SECOND. Retain all textures and effective range/contour metadata.
 5. Set MODEL to the mapped OBJ; run the native renderer in manifest mode with its colorbar enabled. Inspect the model region, full mapped color variation, LUT alpha, legend endpoints/direction/label, and any out-of-range saturation.
 6. Refine only task-local display choices while preserving quantitative mapping. Final-render and deliver source definitions, complete model bundle, image/legend and reproduction records.
@@ -1006,20 +1021,23 @@ Wavefunction -> Multiwfn dg + sl2r on the same physical grid
 
 ### D. Electrostatic potential mapped onto a density surface
 
+By default, omit mapping-bound options and use the surface-based range defined in section 9.2. For quantitative comparison panels, deliberately choose and document either independent automatic ranges or a justified common explicit range; identical colors across independently autoscaled panels do not imply identical values.
+
 1. Establish the intended structure/electronic state and a wavefunction adequate for the requested density and ESP analysis. Reuse valid source data when available.
 2. Consult the relevant online/local Multiwfn manual sections and execute verified numerical exports through `"$MULTIWFN_EXE"`. Generate density and ESP on the same physical grid and retain both fields' definitions and units.
-3. Choose the density surface level, ESP color range, LUT and ESP label/unit from the scientific purpose. A density-contour unit is not the ESP unit. For comparisons, use consistent surface/mapping definitions and record any deliberate exceptions.
+3. Choose the density surface level, LUT and ESP label/unit from the scientific purpose. Use the automatic surface-based ESP color range unless explicit limits are requested or justified and documented. A density-contour unit is not the ESP unit. For comparisons, use consistent surface/mapping definitions and record any deliberate exceptions.
 4. Set the following variables to the actual task data/settings and export:
 
 ```bash
 "${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3d.py" \
   "$DENSITY_CUBE" "$ESP_CUBE" --isovalue="$DENSITY_LEVEL" \
-  --map-min="$ESP_MIN" --map-max="$ESP_MAX" \
   --colormap "$ESP_COLORMAP" \
   --map-label 'Electrostatic potential' --map-unit "$ESP_UNIT" \
   --export-obj "$TASK/models/esp.obj" \
   > "$TASK/logs/export_esp.log" 2>&1
 ```
+
+The example retains the automatic surface-based ESP range. Add `--map-min="$ESP_MIN" --map-max="$ESP_MAX"` only for a documented explicit override.
 
 5. Validate the complete mapped bundle and set MODEL to `$TASK/models/esp.obj`. Use the section 10 Blender workflow in manifest mode, retaining the matching quantitative colorbar.
 6. Inspect actual surface color variation, saturation, sign labels, visible chemical regions and legend legibility. Refine the task-local view/lighting/layout, final-render, and deliver both source fields, bundle, figure and reproduction records.
