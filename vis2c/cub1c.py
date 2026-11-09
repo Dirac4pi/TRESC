@@ -1,6 +1,6 @@
 #!/home/lky/miniconda3/envs/vis2c/bin/python
 """
-Visualize a real scalar orbital or export a fixed-material OBJ bundle.
+List frontier character and same-spin near levels, visualize an orbital, or export OBJ.
 author: Dirac4pi
 env: vis2c
 """
@@ -292,7 +292,7 @@ def _write_bundle(stage, stem, actors):
   obj_path, mtl_path = stage / f'{stem}.obj', stage / f'{stem}.mtl'
   records, offset, vertex_count, face_count = [], 0, 0, 0
   with obj_path.open('w', encoding='utf-8') as obj, \
-       mtl_path.open('w', encoding='utf-8') as mtl:
+        mtl_path.open('w', encoding='utf-8') as mtl:
     obj.write('# cub1c signed orbital scene; OBJ coordinates preserve source units\n')
     obj.write(f'mtllib {stem}.mtl\n')
     mtl.write('# Standard dissolve: d=0 is transparent; d=1 is opaque\n')
@@ -482,7 +482,7 @@ def export_obj(molden: str, index: str, isovalue: float = 0.05, *, filename):
         },
         'atoms': [
           {'atomic_number': int(a['index']),
-           'position': [float(a[key]) for key in ('x', 'y', 'z')]}
+            'position': [float(a[key]) for key in ('x', 'y', 'z')]}
           for a in atoms
         ],
         'construction': {
@@ -534,29 +534,48 @@ def export_obj(molden: str, index: str, isovalue: float = 0.05, *, filename):
 # Command-line interface
 
 def main(argv=None) -> None:
-  """Preserve the original CLI and add an explicit OBJ export branch."""
+  """Inspect orbitals when INDEX is omitted; otherwise preserve plotting/export."""
+  from cub1c_list import add_analysis_arguments, run_analysis
+
   parser = argparse.ArgumentParser(
-    description='Visualize a signed scalar orbital, or export OBJ/MTL/JSON and exit.',
+    description=(
+      'With INDEX: visualize/export one signed real orbital. '
+      'Without INDEX: print frontier SCPA character, same-spin near levels, '
+      'and optional fragment matches.'
+    ),
     allow_abbrev=False,
   )
   parser.add_argument('molden', help='Existing .molden.input/.molden file, or basename.')
-  parser.add_argument('index', help='Explicit 1-based orbital/spin index, e.g. 35A or 35b.')
+  parser.add_argument('index', nargs='?',
+                      help='Optional original within-spin MO index, e.g. 35A or 35b.')
   parser.add_argument('-slice', action='store_true', dest='do_slice',
-                      help='Add interactive cross-sections; incompatible with --export-obj.')
-  parser.add_argument('--isovalue', type=float, default=0.05,
-                      help='Positive contour magnitude (default: 0.05).')
+                      help='Interactive cross-sections in plotting mode only.')
+  parser.add_argument('--isovalue', type=float, default=None,
+                      help='Positive plotting contour magnitude (plotting default: 0.05).')
   parser.add_argument('--export-obj', metavar='FILE.obj',
-                      help='Export signed surfaces and geometry without a GUI loop. No overwrite.')
-  args = parser.parse_args(argv)
-  if args.export_obj and args.do_slice:
-    parser.error('-slice is interactive only; do not combine it with --export-obj.')
+                      help='Export geometry/materials in plotting mode. No overwrite.')
+  analysis_options = add_analysis_arguments(parser)
+  tokens = list(sys.argv[1:] if argv is None else argv)
+  args = parser.parse_args(tokens)
+  if args.index is None:
+    if args.export_obj or args.do_slice or args.isovalue is not None:
+      parser.error('Plotting options require INDEX. Omit them for orbital inspection.')
+  else:
+    if any(token.split('=',1)[0] in analysis_options for token in tokens):
+      parser.error('Inspection options require omitted INDEX; keep analysis and plotting calls separate.')
+    if args.export_obj and args.do_slice:
+      parser.error('-slice is interactive-only; do not combine it with --export-obj.')
   try:
-    if args.export_obj:
-      export_obj(args.molden, args.index, args.isovalue, filename=args.export_obj)
+    if args.index is None:
+      run_analysis(args.molden,args)
     else:
-      cub1c(args.molden, args.index, args.isovalue, slice=args.do_slice)
+      level = 0.05 if args.isovalue is None else args.isovalue
+      if args.export_obj:
+        export_obj(args.molden,args.index,level,filename=args.export_obj)
+      else:
+        cub1c(args.molden,args.index,level,slice=args.do_slice)
   except Exception as exc:
-    parser.exit(2, f'{parser.prog}: {type(exc).__name__}: {exc}\n')
+    parser.exit(2,f'{parser.prog}: {type(exc).__name__}: {exc}\n')
   return None
 
 

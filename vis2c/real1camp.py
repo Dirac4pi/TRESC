@@ -69,7 +69,7 @@ def _make_plotter(title, atoms, data, mlab):
 
 #------------------------------------------------------------------------------
 # Interactive entrypoint
-def real3damp(ampcube: str, isovalue: float = 0.05) -> None:
+def real1camp(ampcube: str, isovalue: float = 0.05) -> None:
   """Original interactive API and None return value; no export side effects."""
   cube, atoms, data, level = _read_cube(ampcube, isovalue)
   from mayavi import mlab
@@ -209,7 +209,7 @@ def _collect_actors(renderer, contour):
       'renderer_actor_index': index,
       'role': 'isosurface' if is_surface else 'molecular_geometry',
       'role_basis': 'amplitude point-data array' if is_surface else
-                    'non-amplitude polygon actor in the reviewed real3damp scene',
+                    'non-amplitude polygon actor in the reviewed real1camp scene',
       'source_points': int(data.GetNumberOfPoints()),
       'source_cells': int(data.GetNumberOfCells()),
       'point_data_arrays': arrays,
@@ -250,7 +250,7 @@ def _write_bundle(stage, stem, actors):
     obj_path.open('w', encoding='utf-8') as obj,
     mtl_path.open('w', encoding='utf-8') as mtl,
   ):
-    obj.write('# real3damp single-surface scene; OBJ coordinates preserve source units\n')
+    obj.write('# real1camp single-surface scene; OBJ coordinates preserve source units\n')
     obj.write(f'mtllib {stem}.mtl\n')
     mtl.write('# Standard dissolve: d=0 is transparent; d=1 is opaque\n')
     for number, (actor, style) in enumerate(actors):
@@ -452,7 +452,7 @@ def export_obj(ampcube: str, isovalue: float = 0.05, *, filename):
     from tvtk.api import tvtk
     actor_pairs = _collect_actors(tvtk.to_vtk(figure.scene.renderer), used)
     with tempfile.TemporaryDirectory(
-      prefix='.real3damp-obj-', dir=target.parent,
+      prefix='.real1camp-obj-', dir=target.parent,
     ) as temporary:
       stage = Path(temporary)
       actor_records, counts = _write_bundle(stage, target.stem, actor_pairs)
@@ -466,7 +466,7 @@ def export_obj(ampcube: str, isovalue: float = 0.05, *, filename):
       plot3d_path = Path(plot3d.__file__)
       manifest = {
         'schema_version': 2,
-        'scene_type': 'real3damp_single_isosurface',
+        'scene_type': 'real1camp_single_isosurface',
         'material_mapping_schema': 'vis2c.obj-material-map.v1',
         'input_cube': str(cube), 'input_sha256': cube_hash,
         'script_sha256': _hash(__file__),
@@ -559,7 +559,7 @@ def main(argv=None) -> None:
   args = parser.parse_args(argv)
   try:
     if args.export_obj is None:
-      real3damp(args.ampcube, args.isovalue)
+      real1camp(args.ampcube, args.isovalue)
     else:
       # Progress stays on stderr; stdout is not an image or JSON stream.
       with redirect_stdout(sys.stderr):

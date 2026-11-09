@@ -1,8 +1,8 @@
 ---
 name: vis2c
 description: Perform end-to-end wavefunction analysis, quantitative comparison, and
-  scientific visualization using Multiwfn, TRESC/vis2c (cub1c, real3damp,
-  real3d, cuboper, alignmol, atomic, bond), and Blender. Trigger when a task
+  scientific visualization using Multiwfn, TRESC/vis2c (cub1c, real1camp,
+  real1c, cuboper, alignmol, atomic, bond), and Blender. Trigger when a task
   calls for generating, extracting, validating, analyzing, comparing, or
   visualizing wavefunction-derived properties or 3D real-space fields,
   preparing the numerical data for these tasks, or refining existing
@@ -79,7 +79,7 @@ Use the guaranteed deployment facts directly, without repeatedly checking script
 
 - `$TRESC` is the installation root.
 - `$TRESC/gridsettings.ini` is the documented orbital-grid configuration for `cub1c.py` / `tshell.sh -cub1c`, with `rgrid` and `edge` settings. Read and record applicable values when generating orbital cubes. This is a shared installation resource, not unconditional permission to edit it; follow section 7.4. Verify parameter semantics against the installed implementation before changing values.
-- The plotting/export tools are `$TRESC/vis2c/cub1c.py`, `real3damp.py`, `real3d.py` and `render_obj.py`.
+- The plotting/export tools are `$TRESC/vis2c/cub1c.py`, `real1camp.py`, `real1c.py` and `render_obj.py`.
 - `$VIS2C_PYTHON` is the executable for project numerical/export scripts, with their dependencies configured.
 - `$BLENDER_BIN` is the user-provided Blender executable path, with its matching bundled resources and color management.
 - `$MULTIWFN_EXE` is the user-provided executable entrypoint for Multiwfn. It may be the Multiwfn binary OR an executable user-written shell wrapper. Invoke this entrypoint as supplied; do not replace it with a discovered binary or bypass its initialization.
@@ -129,9 +129,9 @@ All command examples below are patterns to instantiate for the actual task, not 
 | Goal | Numerical/model chain | Endpoint |
 |---|---|---|
 | Selected real orbital (canonical, natural, natural-transition, natural-bond, singly occupied natural, or localized, when faithfully exported) | Suitable result -> validated Molden and index mapping -> verify orbital-grid settings (section 7.4) -> cub1c -> render_obj only if requested | Signed orbital cube and provenance; rendered image when requested |
-| One density/spin-density/other field surface | Wavefunction -> numerical generator -> cube -> real3damp -> render_obj | One-contour image |
-| IGMH surface with sign(lambda_2)*rho colors | Wavefunction -> Multiwfn paired cubes -> real3d -> render_obj | Quantitative mapped image and legend |
-| ESP mapped onto a density-defined molecular surface | Wavefunction -> Multiwfn density + ESP on matching grids -> real3d -> render_obj | ESP-colored surface, actual density contour and ESP legend/unit |
+| One density/spin-density/other field surface | Wavefunction -> numerical generator -> cube -> real1camp -> render_obj | One-contour image |
+| IGMH surface with sign(lambda_2)*rho colors | Wavefunction -> Multiwfn paired cubes -> real1c -> render_obj | Quantitative mapped image and legend |
+| ESP mapped onto a density-defined molecular surface | Wavefunction -> Multiwfn density + ESP on matching grids -> real1c -> render_obj | ESP-colored surface, actual density contour and ESP legend/unit |
 | Another wavefunction-analysis quantity | Establish definition/source -> Multiwfn or a verified suitable generator -> appropriate data/model representation | Requested analysis visualization, or a precise representation-extension requirement |
 | Aligned pointwise scalar-field comparison for a defined substituent or conformer question | Comparable fields -> justified shared-scaffold fit -> cuboper arithmetic -> validate difference, overlap, and interpolation -> render only if requested | Signed difference cube, domain-qualified statistics, comparison record, and optional sign-complete views |
 | Common-fragment geometry fit | XYZ pair -> alignmol numerical API | Aligned XYZ, transformation and fit record |
@@ -234,9 +234,9 @@ Paired fields need matching physical coordinates, not merely matching shape. Rec
 
 For an ESP-colored molecular surface, compute the surface-defining electron-density cube and the ESP mapping cube with Multiwfn using the same grid-quality/resolution settings and the same physical grid: origin, grid vectors, point counts and spatial extent must match. Selecting the same nominal quality preset alone is not sufficient; validate the exported grids as described in section 9. Verify that both fields refer to the intended structure/electronic state and that the selected ESP definition/unit is the one used in labels.
 
-For this ESP-on-density workflow, explicitly set the density-surface `--isovalue=0.001` as the recommended starting value in the density cube's standard atomic-unit convention; do not leave the generic software default of 0.05 in effect. Verify the density unit and record any scientifically justified alternative. This threshold belongs to electron density, not ESP; choose the ESP color range separately. Under the user-tested installed workflow, ionic systems use the same preparation and `real3d` rendering route as neutral systems: the script already accounts for them, so no ion-specific preprocessing, neutralization, or ad hoc ESP offset is required. Preserve the intended charged-state source data and normal validation.
+For this ESP-on-density workflow, explicitly set the density-surface `--isovalue=0.001` as the recommended starting value in the density cube's standard atomic-unit convention; do not leave the generic software default of 0.05 in effect. Verify the density unit and record any scientifically justified alternative. This threshold belongs to electron density, not ESP; choose the ESP color range separately. Under the user-tested installed workflow, ionic systems use the same preparation and `real1c` rendering route as neutral systems: the script already accounts for them, so no ion-specific preprocessing, neutralization, or ad hoc ESP offset is required. Preserve the intended charged-state source data and normal validation.
 
-An ESP isosurface instead uses ESP as the contour field, and a negative ESP contour must follow a route that actually supports signed levels, such as real3damp for a fixed-color single contour. The recommended density threshold above does not apply to an ESP contour.
+An ESP isosurface instead uses ESP as the contour field, and a negative ESP contour must follow a route that actually supports signed levels, such as real1camp for a fixed-color single contour. The recommended density threshold above does not apply to an ESP contour.
 
 For an unlisted analysis, consult the relevant Multiwfn manual section and determine the mathematical output and meaningful representation first. A scalar field can use the single-contour or mapped-field routes; atom-resolved scalar values can use XYZQ; pair-resolved values can use a matrix plus XYZ. For vector/tensor/complex outputs, retain the required components and explicitly define any scalar projection, component or invariant being visualized. For topology or other non-field outputs, retain the actual analysis data and choose a suitable task-local representation instead of forcing it into a misleading cube. The examples guide this decision; they do not restrict the analyses the skill can undertake.
 
@@ -403,17 +403,17 @@ Numerical and safety limits:
 
 ### Signed-difference rendering
 
-A difference cube is not fully represented by one positive real3damp contour. Inspect its range and requested scientific meaning.
+A difference cube is not fully represented by one positive real1camp contour. Inspect its range and requested scientific meaning.
 
 Default complete handoff: retain the signed difference cube, and visualize both positive and negative regions with a common justified magnitude c. If one sign is genuinely absent, report it instead of fabricating a surface. Example model exports:
 
 ```bash
-"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3damp.py" \
+"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real1camp.py" \
   "$DIFFERENCE_CUBE" --isovalue="$POS_LEVEL" \
   --export-obj "$TASK/models/change_positive.obj" \
   > "$TASK/logs/export_change_positive.log" 2>&1
 
-"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3damp.py" \
+"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real1camp.py" \
   "$DIFFERENCE_CUBE" --isovalue="$NEG_LEVEL" \
   --export-obj "$TASK/models/change_negative.obj" \
   > "$TASK/logs/export_change_negative.log" 2>&1
@@ -527,7 +527,7 @@ For an authorized shared edit:
 
 For quantitative comparisons, keep numerical settings comparable where justified and disclose resampling or extent differences. For surface figures, inspect coverage and contour stability where they affect the conclusion. Do not change a scientific contour or smooth the numerical input merely to hide an inadequate grid.
 
-## 8. real3damp.py: one scalar-field contour -> model
+## 8. real1camp.py: one scalar-field contour -> model
 
 ### 8.1 Purpose and full CLI
 
@@ -536,7 +536,7 @@ Use for any scientifically defined real scalar field when one contour is the int
 Interface and usage example:
 
 ```text
-real3damp.py AMPCUBE [--isovalue FLOAT] [--export-obj FILE.obj]
+real1camp.py AMPCUBE [--isovalue FLOAT] [--export-obj FILE.obj]
 ```
 
 | Argument/option | Meaning, default and constraints |
@@ -551,7 +551,7 @@ There is no `-slice`, map-range, colormap, output-image or automatic two-sign op
 ### 8.2 Model export and effective scientific representation
 
 ```bash
-"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3damp.py" \
+"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real1camp.py" \
   "$CUBE" --isovalue="$ISOVALUE" \
   --export-obj "$TASK/models/scalar.obj" \
   > "$TASK/logs/export_scalar.log" 2>&1
@@ -559,7 +559,7 @@ There is no `-slice`, map-range, colormap, output-image or automatic two-sign op
 
 The finite level may be signed; handling/adjustment follows the existing plotting function. This is one contour, not an automatic signed pair or second-field map. Do not universally reuse orbital/density thresholds for IGMH or difference data.
 
-For an electron localization function (ELF) isosurface, use the validated ELF cube directly through this normal `real3damp` route; no ELF-specific preprocessing is needed. Based on the user-tested workflow, explicitly choose an ELF `--isovalue` in the recommended range 0.6-0.8, for example `--isovalue=0.7`, rather than inheriting the generic 0.05 default. Treat this range as a practical starting recommendation, not a mandatory cutoff; respect a specified scientific threshold and record the requested/effective value. Continue with the same model export, Blender rendering and visual review steps.
+For an electron localization function (ELF) isosurface, use the validated ELF cube directly through this normal `real1camp` route; no ELF-specific preprocessing is needed. Based on the user-tested workflow, explicitly choose an ELF `--isovalue` in the recommended range 0.6-0.8, for example `--isovalue=0.7`, rather than inheriting the generic 0.05 default. Treat this range as a practical starting recommendation, not a mandatory cutoff; respect a specified scientific threshold and record the requested/effective value. Continue with the same model export, Blender rendering and visual review steps.
 
 Exactly one nonempty amplitude surface is identified, with role isosurface; skeleton is molecular_geometry. Explicit obj_group/mtl_material, RGB/opacity and contour are recorded. Negative field contours stay generic surfaces, not orbital_negative. The wrapper passes the full physical x/y/z coordinate arrays to plot3d. For non-axis-aligned cuboper outputs, verify that the installed viskit/plot3d retain those coordinates correctly; the wrapper alone does not certify every external grid convention. Scientific quantity/unit must come from provenance when JSON fields are null.
 
@@ -574,14 +574,14 @@ This route does not infer two signs. To represent a signed difference completely
 ### 8.3 Python API and interactive handoff
 
 ```text
-real3damp(ampcube: str, isovalue: float = 0.05) -> None
+real1camp(ampcube: str, isovalue: float = 0.05) -> None
 export_obj(ampcube: str, isovalue: float = 0.05, *, filename)
 ```
 
 The first API opens the controller; the second writes the bundle and returns its manifest. With the import setup in section 9.4, a numerical-to-model wrapper may use:
 
 ```python
-from real3damp import export_obj
+from real1camp import export_obj
 
 manifest = export_obj(cube_path, isovalue, filename=output_obj)
 ```
@@ -591,10 +591,10 @@ Use `"$VIS2C_PYTHON"`, an appropriate display context, new output paths and norm
 For a requested user-operated viewer, omit the export option:
 
 ```bash
-"$VIS2C_PYTHON" "$TRESC/vis2c/real3damp.py" "$CUBE" --isovalue="$ISOVALUE"
+"$VIS2C_PYTHON" "$TRESC/vis2c/real1camp.py" "$CUBE" --isovalue="$ISOVALUE"
 ```
 
-## 9. real3d.py: paired fields -> quantitative mapped model
+## 9. real1c.py: paired fields -> quantitative mapped model
 
 ### 9.1 Ordered inputs, arguments and defaults
 
@@ -603,7 +603,7 @@ This generic mapping route applies to any suitable pair of real scalar fields. I
 Interface:
 
 ```text
-real3d.py AMPCUBE MAPCUBE [-slice] [--isovalue FLOAT]
+real1c.py AMPCUBE MAPCUBE [-slice] [--isovalue FLOAT]
           [--export-obj FILE.obj]
           [--map-min FLOAT --map-max FLOAT]
           [--colormap NAME] [--map-label TEXT] [--map-unit TEXT]
@@ -640,7 +640,7 @@ Both cubes must be existing `.cub`/`.cube` files with finite, matching-shaped x/
 Usage example for an IGMH figure, after validating the actual fields and definitions:
 
 ```bash
-"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3d.py" \
+"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real1c.py" \
   "$DG_CUBE" "$SL2R_CUBE" --isovalue="$DG_LEVEL" \
   --colormap jet --map-label 'sign(lambda_2)*rho' --map-unit "$MAP_UNIT" \
   --export-obj "$TASK/models/igmh.obj" \
@@ -667,7 +667,7 @@ scene.<mapped-material>.color.png
 scene.<mapped-material>.alpha.png   # present only when LUT alpha is nonopaque
 ```
 
-Keep all manifest-referenced files together. Do not rename a single member or discard apparently auxiliary textures. Scene schema is version 3, with scene_type `real3d_mapped_isosurface`; the scalar-to-color definition is recorded in `color_mapping` and the relevant actor record. Fixed-material cub1c and real3damp manifests have schema versions 1 and 2 respectively; do not require all exporters to have one identical schema version.
+Keep all manifest-referenced files together. Do not rename a single member or discard apparently auxiliary textures. Scene schema is version 3, with scene_type `real1c_mapped_isosurface`; the scalar-to-color definition is recorded in `color_mapping` and the relevant actor record. Fixed-material cub1c and real1camp manifests have schema versions 1 and 2 respectively; do not require all exporters to have one identical schema version.
 
 Mapping semantics preserved by exporter/renderer:
 
@@ -685,7 +685,7 @@ For ESP mapping, use the validated electron-density cube as AMPCUBE (FIRST input
 ### 9.3 Python API and interactive handoff
 
 ```text
-real3d(ampcube: str, mapcube: str, isovalue: float = 0.05,
+real1c(ampcube: str, mapcube: str, isovalue: float = 0.05,
        slice: bool = False, *, map_min=None, map_max=None,
        colormap=None, map_label=None, map_unit=None) -> None
 
@@ -697,7 +697,7 @@ export_obj(ampcube, mapcube, isovalue=0.05, *, filename,
 The first is an interactive API; the export API returns the manifest. Example wrapper body after the common setup below:
 
 ```python
-from real3d import export_obj
+from real1c import export_obj
 
 manifest = export_obj(
   amplitude_cube, mapping_cube, isovalue, filename=output_obj,
@@ -826,7 +826,7 @@ The template uses an RGBA 8-bit PNG, fixed seed 0, Standard view transform, neut
 
 ### 10.2 Quantitative colorbar and mapping fidelity
 
-For real3d bundles, use `color_mapping.range` as exported. With automatic bounds, this is the surface-based range defined in section 9.2, not `mapping_raw_range`; do not recompute or independently autoscale the legend.
+For real1c bundles, use `color_mapping.range` as exported. With automatic bounds, this is the surface-based range defined in section 9.2, not `mapping_raw_range`; do not recompute or independently autoscale the legend.
 
 The mapped colorbar is ON by default; default tick count 5, allowed 2-11. It uses the same LUT/range unlit, with low at bottom, high at top, label and unit. It reserves right-side frame space by camera adjustment, not molecular displacement. Example optional control is `--colorbar-ticks 7`.
 
@@ -866,6 +866,8 @@ Do not change scientific geometry, source normals/fields, atom positions or cont
 ### 10.4 Preview and final QA
 
 Actually open each image claimed as reviewed. Logs, JSON and pixel extrema are not vision. Without image-reading tools, deliver limited candidates as unreviewed rather than claim autonomous optimization.
+
+If opening an image fails with a server or tool error, preserve the existing output and retry the same image once after a short delay. Do not rerender or change scientific or display settings solely because image reading failed. If the retry also fails, stop and report visual review as incomplete; if it succeeds, continue normal review.
 
 Suggested budget: one baseline, at most two refinement rounds with up to three candidates each, then a selected final render. Use low-cost previews, one process at a time, configured threads, bounded runtime and an explicit total budget for multi-panel/multi-molecule tasks. Do not endlessly rerun or repeatedly regenerate numerical data.
 
@@ -989,14 +991,14 @@ Geometry/results -> authorized QC + Molden if needed
 3. Run verified Multiwfn recipes in separate directories to generate the two comparable dg cubes. Match resolution/coverage as far as practical; cuboper can handle different physical grids but cannot make different definitions comparable.
 4. Copy them to `$TASK/work/cube_ops/reference_dg.cub` and `probe_dg.cub`; protect XYZ sidecars. Run the cuboper CLI with a PTY or its local API wrapper. Inspect/save the actual atom mapping, RMSD and overlap/spacing/boundary logs. Do not run a redundant alignmol CLI first.
 5. Validate the signed difference cube. Positive means increased selected descriptor in aligned P relative to R; negative means decreased. Do not call it an interaction-energy difference.
-6. Export positive and negative contours of the SAME difference cube with real3damp, using matched actual magnitudes. No second alignment is needed. For a one-sign request, explicitly label partial coverage.
+6. Export positive and negative contours of the SAME difference cube with real1camp, using matched actual magnitudes. No second alignment is needed. For a one-sign request, explicitly label partial coverage.
 7. Render the two sign panels in a common frame/scale or implement a validated combined-bundle task renderer. Distinguish increase/decrease colors and captions; do not call them orbital phases. Inspect whether apparent features are boundary/registration artifacts or direct substituent-density contributions.
 8. Deliver difference cube, alignment/definition records, sign-complete figure(s) and interpretation limits, including geometry/electronic effects and truncated sampling.
 
 ```text
 Parent/P wavefunctions -> matching Multiwfn dg definitions
 -> cuboper --diff R P (built-in fragment alignment and resampling)
--> signed dg difference cube -> real3damp at +c and -c
+-> signed dg difference cube -> real1camp at +c and -c
 -> common-frame Blender sign panels or validated overlay -> final figure(s)
 ```
 
@@ -1009,13 +1011,13 @@ By default, omit mapping-bound options and use the surface-based range defined i
 1. Obtain a suitable wavefunction and choose the intended dg variant/fragment partition.
 2. Use a verified Multiwfn numerical export to generate dg and sign(lambda_2)*rho cubes on identical physical grids. Do not confuse a total, intra- or interfragment dg file.
 3. Set DG_CUBE and SL2R_CUBE accordingly; select DG_LEVEL, label and unit. Retain the automatic surface-based mapping range by default; set MAP_MIN/MAP_MAX only for a documented explicit override. For a series, use consistent thresholds and deliberately selected mapping conventions unless explicitly disclosed.
-4. Run the real3d example: dg FIRST, sl2r SECOND. Retain all textures and effective range/contour metadata.
+4. Run the real1c example: dg FIRST, sl2r SECOND. Retain all textures and effective range/contour metadata.
 5. Set MODEL to the mapped OBJ; run the native renderer in manifest mode with its colorbar enabled. Inspect the model region, full mapped color variation, LUT alpha, legend endpoints/direction/label, and any out-of-range saturation.
 6. Refine only task-local display choices while preserving quantitative mapping. Final-render and deliver source definitions, complete model bundle, image/legend and reproduction records.
 
 ```text
 Wavefunction -> Multiwfn dg + sl2r on the same physical grid
--> real3d --export-obj (geometry + quantitative LUT/UV/textures)
+-> real1c --export-obj (geometry + quantitative LUT/UV/textures)
 -> native manifest rendering + matching unlit colorbar -> final image
 ```
 
@@ -1029,7 +1031,7 @@ By default, omit mapping-bound options and use the surface-based range defined i
 4. Set the following variables to the actual task data/settings and export:
 
 ```bash
-"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real3d.py" \
+"${EXPORT_RUNNER[@]}" "$VIS2C_PYTHON" "$TRESC/vis2c/real1c.py" \
   "$DENSITY_CUBE" "$ESP_CUBE" --isovalue="$DENSITY_LEVEL" \
   --colormap "$ESP_COLORMAP" \
   --map-label 'Electrostatic potential' --map-unit "$ESP_UNIT" \
@@ -1044,7 +1046,7 @@ The example retains the automatic surface-based ESP range. Add `--map-min="$ESP_
 
 ```text
 Wavefunction -> Multiwfn density + ESP on matching physical grids
--> real3d (density defines geometry; ESP defines color)
+-> real1c (density defines geometry; ESP defines color)
 -> native Blender material reconstruction + ESP legend -> final image
 ```
 

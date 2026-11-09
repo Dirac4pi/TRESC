@@ -119,7 +119,7 @@ def _configure_mapping(figure, low=None, high=None, colormap=None,
   return module
 
 
-def real3d(ampcube: str, mapcube: str, isovalue: float = 0.05,
+def real1c(ampcube: str, mapcube: str, isovalue: float = 0.05,
             slice: bool = False, *, map_min=None, map_max=None,
             colormap=None, map_label=None, map_unit=None) -> None:
   """Keep the original interactive API, with optional explicit mapping settings."""
@@ -300,7 +300,7 @@ def _write_bundle(stage, stem, actors):
   offset, face_total, records = 0, 0, []
   with (stage / f'{stem}.obj').open('w', encoding='utf-8') as obj, \
         (stage / f'{stem}.mtl').open('w', encoding='utf-8') as mtl:
-    obj.write(f'# real3d mapped scalar surface\nmtllib {stem}.mtl\n')
+    obj.write(f'# real1c mapped scalar surface\nmtllib {stem}.mtl\n')
     for number, (actor, original) in enumerate(actors):
       style = dict(original)
       transform = vtkTransform()
@@ -485,7 +485,7 @@ def export_obj(ampcube, mapcube, isovalue=0.05, *, filename,
   source_hashes = [_hash(v) for v in source_paths]
   from mayavi import mlab
   previous, figure = mlab.options.offscreen, None
-  title = f'real3d mapped surface [obj-{uuid.uuid4().hex}]'
+  title = f'real1c mapped surface [obj-{uuid.uuid4().hex}]'
   try:
     mlab.options.offscreen = False
     paths, atoms, amp, mapped, level = _load(ampcube, mapcube, isovalue)
@@ -504,7 +504,7 @@ def export_obj(ampcube, mapcube, isovalue=0.05, *, filename,
       map_label or 'Mapping value', map_unit,
       str(module.module_manager.scalar_lut_manager.lut_mode),
     )
-    with tempfile.TemporaryDirectory(prefix='.real3d-obj-', dir=target.parent) as name:
+    with tempfile.TemporaryDirectory(prefix='.real1c-obj-', dir=target.parent) as name:
       stage = Path(name)
       records, counts = _write_bundle(stage, target.stem, actors)
       check = _validate_bundle(stage, target.stem, records)
@@ -514,7 +514,7 @@ def export_obj(ampcube, mapcube, isovalue=0.05, *, filename,
         raise RuntimeError('Input cube changed during export.')
       mapping = next(r['color_mapping'] for r in records if r['role'] == 'mapped_isosurface')
       manifest = {
-        'schema_version': 3, 'scene_type': 'real3d_mapped_isosurface',
+        'schema_version': 3, 'scene_type': 'real1c_mapped_isosurface',
         'material_mapping_schema': 'vis2c.obj-material-map.v1',
         'amplitude_cube': str(paths[0]), 'amplitude_sha256': source_hashes[0],
         'mapping_cube': str(paths[1]), 'mapping_sha256': source_hashes[1],
@@ -587,7 +587,7 @@ def main(argv=None):
         export_obj(args.ampcube, args.mapcube, args.isovalue,
                     filename=args.export_obj, **options)
     else:
-      real3d(args.ampcube, args.mapcube, args.isovalue, slice=args.do_slice, **options)
+      real1c(args.ampcube, args.mapcube, args.isovalue, slice=args.do_slice, **options)
   except Exception as exc:
     parser.exit(2, f'{parser.prog}: {type(exc).__name__}: {exc}\n')
 
