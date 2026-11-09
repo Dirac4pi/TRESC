@@ -225,12 +225,12 @@ def operate_cubes(ref_cube: str, probe_cube: str, operation: str,
   probe_origin, probe_axes, probe_shape = _load_cube_metadata(str(probe_path))
   ref_atoms, ref_grid = vk.load_cube(str(ref_path))
   probe_atoms, probe_grid = vk.load_cube(str(probe_path))
-  if ref_grid.shape != ref_shape or probe_grid.shape != probe_shape:
+  ref_values = np.asarray(ref_grid['value'])
+  probe_values = np.asarray(probe_grid['value'])
+  if ref_values.shape != ref_shape or probe_values.shape != probe_shape:
     raise ValueError("vk.load_cube shape differs from cube header counts.")
   if len(ref_atoms) == 0 or len(probe_atoms) == 0:
     raise ValueError("Cube file contains no atomic geometry.")
-  ref_values = ref_grid['value']
-  probe_values = probe_grid['value']
   if not np.all(np.isfinite(ref_values)) or not np.all(np.isfinite(probe_values)):
     raise ValueError("Cube values must be finite.")
   ref_box = GridBox(ref_origin, ref_axes, ref_shape)
@@ -439,7 +439,7 @@ def main(argv=None) -> None:
     parser.exit(1, f"{parser.prog}: {type(exc).__name__}: {exc}\n"
                    "No valid result was produced. Use --help for usage.\n")
   print(f"Output cube: {written}")
-  print(f"If you want to visualize it, use real3damp.py {written}")
+  print(f"If you want to visualize it, use real1camp.py {written}")
   return None
 
 
