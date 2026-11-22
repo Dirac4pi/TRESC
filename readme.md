@@ -212,11 +212,11 @@ states predicted by the Wigner-Eckart theorem.
 
 ### Time-Reversal Symmetry (TRS) breaking analysis
 
-&nbsp;&nbsp;&nbsp;&nbsp;TRESC obtains Kramers-unrestricted orbitals after
-2c-SCF, which spontaneously break TRS. To quantify the breaking, TRESC performs
-a Singular Value Decomposition (SVD) on the Kramers overlap matrix $`K`$. The
-TRS breaking parameter $`\kappa`$ (representing the effective number of
-electrons involved in the symmetry breaking) is defined as follows:
+&nbsp;&nbsp;&nbsp;&nbsp;TRESC obtains Kramers-unrestricted canonical orbitals
+after 2c-SCF, which spontaneously break TRS. To quantify the breaking, TRESC
+performs a Singular Value Decomposition (SVD) on the Kramers overlap matrix
+$`K`$. The TRS breaking parameter $`\kappa`$ (representing the effective number
+of electrons involved in the symmetry breaking) is defined as follows:
 
 $$
 \begin{aligned}
@@ -233,7 +233,32 @@ decomposition. TRESC projects the time-reversal spinors onto the occupied space
 to generate Kramers pairs (similar to the biorthogonalization of UHF/UKS orbits),
 and projects the time-reversal orbit onto the virtual space to find the minimum
 space that satisfies TRS. Keep in mind that all real systems satisfy TRS in the
-absence of an external magnetic field.
+absence of an external magnetic field.<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;Taking the sextet [FeO]+ as an example—a prototypical
+system that helped give rise to the concept of two-state reactivity(TSR)—it also
+exhibits the phenomenon of SOMO-HOMO inversion, with a a distinctive Kramers
+orbital pattern.<br>
+
+<p align="center">
+<img src="docs/Spin_phase_of_sextet_FeO+_HOMO_Kramers.png"
+alt="docs/Spin_phase_of_sextet_FeO+_HOMO_Kramers.png" width="500">
+<br>
+<em>The HOMO Kramers pair of the sextet [FeO]+, frontier orbitals, the spin
+phases are complementary, and the spatial shapes are identical</em>
+</p>
+
+<p align="center">
+<img src="docs/Spin_phase_of_sextet_FeO+_SOMOs.png"
+alt="docs/Spin_phase_of_sextet_FeO+_SOMOs.png" width="500">
+<br>
+<em>The five SOMOs of the sextet [FeO]+, below the HOMO, nearly pure alpha-spin
+orbitals</em>
+</p>
+
+> TRESC supports performing the two aforementioned analysis on external
+Molden-format files: `tshell -moana xxx.molden`, see `/examples/MOANA4MOLDENs`
+
 
 ## Visualisation of real scalar / complex spinor MOs
 
@@ -637,8 +662,7 @@ scripts in any scenario. Append to `~/.bashrc` when everything is done:<br>
 export TRESC="/path/to/TRESC"
 export PATH="$TRESC/build:$PATH"
 export PATH="$TRESC/vis2c:$PATH"
-alias TRESC='tshell.sh'
-alias tshell='tshell.sh'
+alias tshell="$TRESC/tshell.sh"
 export VIS2C_PYTHON="/path/to/vis2c/python/executable"
 ```
 

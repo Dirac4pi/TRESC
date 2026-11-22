@@ -1068,7 +1068,8 @@ module Fundamentals
           insertkey = arr(ii)
           insertindex = arrindex(ii)
           jj = ii - 1
-          do while (jj >= l .and. arr(jj) > insertkey)
+          do while (jj >= l)
+            if (arr(jj) <= insertkey) exit
             arr(jj+1) = arr(jj)
             arrindex(jj+1) = arrindex(jj)
             jj = jj - 1
@@ -1127,7 +1128,8 @@ module Fundamentals
         do ii = l+1, r
           insertkey = arr(ii)
           jj = ii - 1
-          do while (jj >= l .and. arr(jj) > insertkey)
+          do while (jj >= l)
+            if (arr(jj) <= insertkey) exit
             arr(jj+1) = arr(jj)
             jj = jj - 1
           end do

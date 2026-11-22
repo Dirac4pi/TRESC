@@ -1075,6 +1075,45 @@ module Hamiltonian
     end do
   end subroutine Calc_Ncoe
 
+!-----------------------------------------------------------------------
+!> Prepare Cartesian Gaussian coefficients (Ncoe) from Molden basis data.
+  subroutine Normalize_Molden_Basis(bdata, ncart, from_orca)
+    implicit none
+    type(basis_data), intent(inout) :: bdata(:)
+    integer, intent(in)             :: ncart
+    logical, intent(in)             :: from_orca
+    integer                         :: i, k, nprim
+    integer                         :: fac(3), ref(3)
+    real(dp)                        :: expo_k
+    if (.not. from_orca) then
+      ! The GTF coefficients in the ORCA MOLDEN file are already
+      ! normalized at the GTO level, only normalize for other MOLDENs
+      call Calc_Ncoe(bdata, ncart)
+      return
+    end if
+    ! ORCA MOLDEN uses a strange normalization convention for d/f components
+    ! which necessitates a conversion ...  <-_->
+    do i = 1, ncart
+      nprim = bdata(i)%contr
+      bdata(i)%Ncoe(1:nprim) = bdata(i)%coe(1:nprim)
+      select case (bdata(i)%L)
+      case (3)  ! d: xy reference
+        ref = [1, 1, 0]
+      case (4)  ! f: xyz reference
+        ref = [1, 1, 1]
+      case default
+        cycle
+      end select
+      fac = bdata(i)%fac
+      do k = 1, nprim
+        expo_k = bdata(i)%expo(k)
+        bdata(i)%Ncoe(k) = bdata(i)%coe(k) * &
+          AON(expo_k, fac(1), fac(2), fac(3)) / &
+          AON(expo_k, ref(1), ref(2), ref(3))
+      end do
+    end do
+  end subroutine Normalize_Molden_Basis
+
 !------------------------------------------------------------
 !> initialising Integral_V_1e and Integral_V_2e_OS and initialising Pairwise
 !!

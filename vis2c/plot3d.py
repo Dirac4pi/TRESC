@@ -669,7 +669,7 @@ def real_func_ampplot_cub(title:str, atoms, val, x, y, z, isovalue:float)->float
     contour_filter,
     figure=fig1,
     color=surface_rgb,
-    opacity=1.0
+    opacity=0.7
   )
   contour.actor.mapper.scalar_visibility = False
   contour.actor.property.interpolation = 'phong'

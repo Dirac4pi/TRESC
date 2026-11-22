@@ -621,8 +621,8 @@ end function Check_SCF_Conv
 !> print molecular and orbital information after SCF process
   subroutine After_SCF_print()
     implicit none
-    integer :: iatom, ishell
-    integer :: ii, jj              ! loop variable After_SCF_print
+    integer          :: iatom, ishell
+    integer          :: ii, jj ! loop variable After_SCF_print
     close(80)
     write(60,*)
     write(60,*)
@@ -687,7 +687,7 @@ end function Check_SCF_Conv
     write(60,*)
     write(60,*)
     write(60,*)
-    call Kramers()
+    call Kramers(moana=.false.)
     write(60,*)
     write(60,*)
     write(60,*)
@@ -1230,7 +1230,7 @@ end function Check_SCF_Conv
   subroutine Assign_DM()
     implicit none
     integer              :: ii, jj, kk     ! loop variables for Assign_DM
-    integer              :: Na, Nb
+    integer              :: Na, Nb, MoldenNa, MoldenNb
     integer              :: degenlow, degenhigh, load  ! degenerat region
     real(dp)             :: maxval
     integer              :: imax
@@ -1244,22 +1244,18 @@ end function Check_SCF_Conv
         call load_geombasis_MOLDEN(.true.)
         if (M_atom_count /= atom_count) call terminate(&
         'n_atoms in MOLDEN is not consistent with n_atoms in .xyz')
-        if (isorca) then
-          ! The GTF coefficients in the ORCA MOLDEN file are
-          ! already normalized at the GTO level
-          do ii = 1, M_cbdm
-            M_cbdata(ii)%Ncoe = M_cbdata(ii)%coe
-          end do
-        else
-          call Calc_Ncoe(M_cbdata, M_cbdm)
-        end if
+        call Normalize_Molden_Basis(M_cbdata, M_cbdm, isorca)
         write(60,'(A)') '  -- basis and geometry in MOLDEN were loaded'
         write(60,'(A,I4,A,I4)') '  -- M_cbdm / M_sbdm: ',M_cbdm, ' /', M_sbdm
         allocate(M_AO2MO_a(M_sbdm,M_sbdm))
         allocate(M_AO2MO_b(M_sbdm,M_sbdm))
         allocate(T_AO2MO_a(sbdm,M_sbdm))
         allocate(T_AO2MO_b(sbdm,M_sbdm))
-        call load_MO_MOLDEN(M_AO2MO_a, M_AO2MO_b)
+        call load_MO_MOLDEN(M_AO2MO_a, M_AO2MO_b, MoldenNa, MoldenNb)
+        if (MoldenNa /= Nalpha .or. MoldenNb /= Nbeta) then
+          write(60,'(A)') '  -- Alpha or Beta occupation in MOLDEN'
+          write(60,'(A)') '  -- dismatch with keywords'
+        end if
         write(60,'(A)') '  -- MO coeffs in MOLDEN were loaded'
         call M_basis_proj(M_AO2MO_a, T_AO2MO_a, Nalpha)
         call M_basis_proj(M_AO2MO_b, T_AO2MO_b, Nbeta)
@@ -4204,19 +4200,18 @@ end subroutine RGI
 !! (orbitals deviations from Kramers pairs)
 !!
 !! Kramers mat = <activespace|-i*sigma_y*K|occspace>
-subroutine Kramers()
+subroutine Kramers(moana)
   implicit none
+  logical,intent(in)      :: moana             ! MOANA / Ele_Struc_Calc
   integer                 :: ii, jj, active_count       ! loop variables
   integer                 :: active_index(2*fbdm)
-  real(dp)                :: kappa                      ! degree of TRS breaking
+  real(dp)                :: kappa             ! degree of TRS breaking
   logical                 :: occupied(2*fbdm), space_found
-  complex(dp)             :: ci_j(2*fbdm, 2*fbdm)
   complex(dp),allocatable :: active(:,:)                ! active space
   complex(dp)             :: occ(2*fbdm, electron_count)! occupied orbs
   ! time-reversal of occupied space
   complex(dp)             :: occTR(2*fbdm, electron_count)
   complex(dp),allocatable :: Kmat(:,:)          !Kramers overlap matrix
-  complex(dp),allocatable :: supp(:,:)
   real(dp)                :: S(electron_count)
   ! transfer matrix of active space
   complex(dp),allocatable :: U(:,:)
@@ -4231,7 +4226,6 @@ subroutine Kramers()
   '  ============================================================='
   ! prepare the Kramers pairs
   allocate(Kmat(electron_count, electron_count))
-  allocate(supp(electron_count, 2*fbdm))
   allocate(U(electron_count, electron_count))
   occupied = .false.
   active_count = electron_count
@@ -4254,13 +4248,9 @@ subroutine Kramers()
   -conjg(occ(fbdm+1:2*fbdm,1:electron_count))
   occTR(fbdm+1:2*fbdm,1:electron_count) = &
   conjg(occ(1:fbdm,1:electron_count))
-  ci_j = c0
-  do ii = 1, 2*fbdm
-    ci_j(ii,ii) = c1
-  end do
+  ! The overlap matrix ci_j, once orbits were orthogonalized (oper3), becomes identity
   ! Kmat = active^dagger * ci_j * occTR
-  call matmul('C', 'N', occ, ci_j, supp)
-  call matmul('N', 'N', supp, occTR, Kmat)
+  call matmul('C', 'N', occ, occTR, Kmat)
   ! perform SVD
   call SVD(Kmat, S, U, VT)
   allocate(KramersSV(electron_count))
@@ -4276,43 +4266,49 @@ subroutine Kramers()
   '  singular vales (lambdas) of Kramers overlap matrix:'
   write(60, '(2x, 5F13.6)') KramersSV
 
-  ! find the minimal space that guarantees time-reversal symmetry
-  if (S(electron_count) >= 0.98_dp) then
+  if (moana) then
+    write(60,'(A)') '  ***'
     write(60,'(A)') &
-    '  occupied space already satisfies time-reversal symmetry'
+    '  A value close to 0.0 signifies a prominent single-electron configuration;'
+    write(60,'(A)') &
+    '  a value close to 1.0 signifies a prominent closed-shell configuration.'
   else
-    space_found = .false.
-    do ii = 1, 10
-      if (electron_count + ii > 2*fbdm) exit
-      deallocate(Kmat, supp, U)
-      if (allocated(active)) deallocate(active)
-      allocate(active(2*fbdm, electron_count+ii))
-      allocate(Kmat(electron_count+ii, electron_count))
-      allocate(supp(electron_count+ii, 2*fbdm))
-      allocate(U(electron_count+ii, electron_count+ii))
-      do jj = 1, electron_count+ii
-        active(:,jj) = oper3(:,active_index(jj))
-      end do
-      call matmul('C', 'N', active, ci_j, supp)
-      call matmul('N', 'N', supp, occTR, Kmat)
-      ! perform SVD
-      call SVD(Kmat, S, U, VT)
-      kappa = real(electron_count,dp)
-      do jj = 1, electron_count
-        kappa = kappa - S(jj)
-      end do
-      write(60,'(A,I2.2,A,E12.5,A,E12.5)') &
-      '  HOMO+', ii, ':  N-sum(lambda) = ', kappa,&
-      'lowest_lambda = ', S(electron_count)
-      if (S(electron_count) >= 0.98_dp) then
-        space_found = .true.
-        exit
-      end if
-    end do
-    if (.not. space_found) then
-      write(60,'(A)') '  find time-reversal symmetry space failed ...'
+    ! find the minimal space that guarantees time-reversal symmetry
+    if (S(electron_count) >= 0.98_dp) then
+      write(60,'(A)') &
+      '  occupied space already satisfies time-reversal symmetry'
     else
-      write(60,'(A)') '  find time-reversal symmetry space succeed'
+      space_found = .false.
+      do ii = 1, 10
+        if (electron_count + ii > 2*fbdm) exit
+        deallocate(Kmat, U)
+        if (allocated(active)) deallocate(active)
+        allocate(active(2*fbdm, electron_count+ii))
+        allocate(Kmat(electron_count+ii, electron_count))
+        allocate(U(electron_count+ii, electron_count+ii))
+        do jj = 1, electron_count+ii
+          active(:,jj) = oper3(:,active_index(jj))
+        end do
+        call matmul('C', 'N', active, occTR, Kmat)
+        ! perform SVD
+        call SVD(Kmat, S, U, VT)
+        kappa = real(electron_count,dp)
+        do jj = 1, electron_count
+          kappa = kappa - S(jj)
+        end do
+        write(60,'(A,I2.2,A,E12.5,A,E12.5)') &
+        '  HOMO+', ii, ':  N-sum(lambda) = ', kappa,&
+        'lowest_lambda = ', S(electron_count)
+        if (S(electron_count) >= 0.98_dp) then
+          space_found = .true.
+          exit
+        end if
+      end do
+      if (.not. space_found) then
+        write(60,'(A)') '  find time-reversal symmetry space failed ...'
+      else
+        write(60,'(A)') '  find time-reversal symmetry space succeed'
+      end if
     end if
   end if
   write(60,'(A)') &

@@ -538,33 +538,65 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
 !> load all MO coeffs from .MOLDEN file
 !!
 !! default and only: spher-harmo segment contr basis
-  subroutine Load_MOs_MOLDEN(moa, mob)
+!!
+!! Orbitals are arranged in descending order of their occupancy numbers;
+!! this ordering applies to both canonical orbitals and natural orbitals
+!! (for ground or excited states).
+  subroutine Load_MOs_MOLDEN(moa, mob, aocc, bocc, enea, eneb)
     implicit none
-    real(dp),intent(out)  ::  moa(:,:)   ! alpha orbitals
-    real(dp),intent(out)  ::  mob(:,:)   ! beta orbitals
-    integer               ::  ii, jj, kk ! loop variables
-    character(len=200)    ::  line
-    integer               ::  a
+    real(dp),intent(out) :: moa(:,:)   ! alpha orbitals (M_sbdm, M_sbdm)
+    real(dp),intent(out) :: mob(:,:)   ! beta orbitals (M_sbdm, M_sbdm)
+    integer,intent(out)  :: aocc       ! alpha occupation number
+    integer,intent(out)  :: bocc       ! beta occupation number
+    real(dp),optional    :: enea(:)    ! orbital energy of alpha orbits
+    real(dp),optional    :: eneb(:)    ! orbital energy of beta orbits
+    integer              :: ii, jj, kk ! loop variables
+    character(len=200)   :: line
+    integer              :: a
+    real(dp)             :: occnum, orbene
 
     open(14, file=address_MOLDEN, status="old", action="read", iostat=ios)
     if (ios /= 0) call terminate(&
     'MOLDEN file '//address_MOLDEN//' could not be read')
     ii = 1
     jj = 1
+    aocc = 0
+    bocc = 0
+    if (present(enea) .and. present(eneb)) then
+      enea = 0.0_dp
+      eneb = 0.0_dp
+    end if
     do
       read(14,'(A)',iostat=ios) line
       if (ios /= 0) exit
+      if (index(line,'Ene=')/=0) read(line(index(line,'=')+1:),*) orbene
       if (index(line,'=')/=0 .and. index(line,'Alpha')/=0) then
-        read(14,'(A)') line
+        read(14,*) line, occnum  ! Alpha occupation
+        if (occnum > 1.8) then
+          aocc = aocc + 1
+          bocc = bocc + 1
+        else if (occnum > 0.8 .and. occnum < 1.2) then
+          aocc = aocc + 1
+        end if
         do kk = 1, M_sbdm
           read(14,*) a, moa(kk,ii)
         end do
+        if (present(enea)) enea(ii) = orbene
+        if (occnum > 1.8) then
+          mob(1:M_sbdm,jj) = moa(1:M_sbdm,ii)
+          if (present(eneb)) eneb(jj) = orbene
+          jj = jj + 1
+        end if
         ii = ii + 1
       else if (index(line,'=')/=0 .and. index(line,'Beta')/=0) then
-        read(14,'(A)') line
+        read(14,*) line, occnum  ! Beta occupation
+        if (occnum > 0.8 .and. occnum < 1.2) then
+          bocc = bocc + 1
+        end if
         do kk = 1, M_sbdm
           read(14,*) a, mob(kk,jj)
         end do
+        if (present(eneb)) eneb(jj) = orbene
         jj = jj + 1
       end if
     end do

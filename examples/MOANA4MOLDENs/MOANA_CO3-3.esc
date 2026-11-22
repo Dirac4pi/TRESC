@@ -1,0 +1,55 @@
+Job execution start: 2026.11.18  15:36
+WD = /home/lky/Code_TRESC/TRESC/tests/moana
+PID = 3775347;  username = lky
+This file is the output file of job MOANA
+Program/version: TRESC/dev
+ 
+Acknowledge: 
+  TRESC is a molecular electronic-structure solver
+  For more: https://github.com/Dirac4pi/TRESC
+  All results default to Atomic Units (A.U.)
+  And Hey, best wishes for a successful run! ^ω^
+ 
+External libs:
+  IFPORT: cross-platform Fortran development
+  Intel MKL: numerical linear algebra operations
+  OpenMP: multithreaded parallel calculation
+  Libxc: exchange and correlation functionals
+ 
+ 
+  Note: MOANA does not read unoccupied orbitals;
+        if you need to select for active space,
+        better choose RO orbitals, natural orbitals,
+        or biorthogonalized orbitals, etc.
+ 
+  =============================================================
+                  Time-Reversal Symmetry Space
+  =============================================================
+  singular vales (lambdas) of Kramers overlap matrix:
+       1.000000     1.000000     1.000000     1.000000     1.000000
+       1.000000     1.000000     1.000000     0.999984     0.999984
+       0.999936     0.999936     0.999935     0.999935     0.999899
+       0.999899     0.999803     0.999803     0.999676     0.999676
+       0.999650     0.999650     0.999468     0.999468     0.998604
+       0.998604     0.980811     0.980811     0.000000     0.000000
+  ***
+  A value close to 0.0 signifies a prominent single-electron configuration;
+  a value close to 1.0 signifies a prominent closed-shell configuration.
+  =============================================================
+ 
+ 
+  =============================================================
+                   Rotation Group Integration
+  =============================================================
+  basical S_mult = 3, S_z = 2/2
+  |S^0|                                         ... 0.32375E-17
+  |T^1|  (basical configuration)                ... 0.98900E+00
+  |T^0|                                         ... 0.71450E-18
+  |5^2|                                         ... 0.26840E-16
+  |5^1|                                         ... 0.10984E-01
+  |5^0|                                         ... 0.11979E-16
+  =============================================================
+ 
+----------<NORMAL TERMINATION>----------
+Job  CPU  time:   00 h 03 min 36 s
+Job clock time:   00 h 00 min 03 s
