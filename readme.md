@@ -67,7 +67,7 @@ orbital components.
 Grimme's group.
 
 > For mathematical and algorithmic details, see
-`docs/Mathematics_and_Algorithms.pdf`.
+`docs/TRESC_Mathematics_and_Algorithms.md`.
 
 # Characteristic
 

@@ -1838,5 +1838,39 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     allocate(m(sbdm,M_sbdm))
     call matmul('T', 'N', c2s, sphoper, m)
   end subroutine M_csgo
-  
+
+!-----------------------------------------------------------------------
+!> In some MOLDEN files, data have been processed,
+!!
+!! we need to check the orthogonalization residuals.
+  subroutine occ_orth_residual(s_ao, c_alpha, c_beta, residual)
+    implicit none
+    real(dp), intent(in)  :: s_ao(:,:), c_alpha(:,:), c_beta(:,:)
+    real(dp), intent(out) :: residual
+    real(dp), allocatable :: sc(:,:), gram(:,:)
+    integer               :: ispin, nocc, ii
+    residual = 0.0_dp
+    do ispin = 1, 2
+      if (ispin == 1) then
+        nocc = size(c_alpha, 2)
+      else
+        nocc = size(c_beta, 2)
+      end if
+      if (nocc == 0) cycle
+      allocate(sc(size(s_ao, 1), nocc), gram(nocc, nocc))
+      if (ispin == 1) then
+        call matmul('N', 'N', s_ao,    c_alpha, sc)
+        call matmul('T', 'N', c_alpha, sc,      gram)
+      else
+        call matmul('N', 'N', s_ao,   c_beta, sc)
+        call matmul('T', 'N', c_beta, sc,     gram)
+      end if
+      do ii = 1, nocc
+        gram(ii,ii) = gram(ii,ii) - 1.0_dp
+      end do
+      residual = max(residual, maxval(abs(gram)))
+      deallocate(sc, gram)
+    end do
+  end subroutine occ_orth_residual
+
 end module Atoms

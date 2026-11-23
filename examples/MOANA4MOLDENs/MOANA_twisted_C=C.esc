@@ -1,6 +1,6 @@
-Job execution start: 2026.11.18  15:33
-WD = /home/lky/Code_TRESC/TRESC/tests/moana
-PID = 3775064;  username = lky
+Job execution start: 2026.11.23  18:11
+WD = /home/lky/coops/yangrt
+PID = 3987371;  username = lky
 This file is the output file of job MOANA
 Program/version: TRESC/dev
  
@@ -17,10 +17,13 @@ External libs:
   Libxc: exchange and correlation functionals
  
  
-  Note: MOANA does not read unoccupied orbitals;
-        if you need to select for active space,
-        better choose RO orbitals, natural orbitals,
-        or biorthogonalized orbitals, etc.
+Notes for MOANA:
+  MOANA does not read unoccupied orbitals;
+  if you need to select for active space,
+  better choose RO orbitals, natural orbitals,
+  or biorthogonalized orbitals, etc.
+  Molden occupied-orbital orthonormality:
+  max|C^H S_spin C - I| =   7.528951E-09
  
   =============================================================
                   Time-Reversal Symmetry Space
@@ -75,5 +78,5 @@ External libs:
   =============================================================
  
 ----------<NORMAL TERMINATION>----------
-Job  CPU  time:   02 h 15 min 10 s
-Job clock time:   00 h 02 min 06 s
+Job  CPU  time:   02 h 12 min 58 s
+Job clock time:   00 h 02 min 04 s

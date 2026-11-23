@@ -325,6 +325,7 @@ subroutine MOANA(kill_)
   real(dp)                  :: coej(16)    ! coefficient of |AOj>
   real(dp)                  :: codi(3)     ! coordinate of center of |AOi>
   real(dp)                  :: codj(3)     ! coordinate of center of |AOj>
+  real(dp)                  :: residual
 
   call get_command_argument(2, cmd2, status=ios)
   if (ios > 0) then
@@ -386,10 +387,14 @@ subroutine MOANA(kill_)
   address_tre = 'MOANA.tre'
   call generate_output()
   write(60,*)
-  write(60,'(A)') "  Note: MOANA does not read unoccupied orbitals;"
-  write(60,'(A)') "        if you need to select for active space,"
-  write(60,'(A)') "        better choose RO orbitals, natural orbitals,"
-  write(60,'(A)') "        or biorthogonalized orbitals, etc."
+  write(60,'(A)') "Notes for MOANA:"
+  write(60,'(A)') "  MOANA does not read unoccupied orbitals;"
+  write(60,'(A)') "  if you need to select for active space,"
+  write(60,'(A)') "  better choose RO orbitals, natural orbitals,"
+  write(60,'(A)') "  or biorthogonalized orbitals, etc."
+  write(60,'(A,ES14.6)') '  Molden occupied-orbital orthonormality:'
+  call occ_orth_residual(i_j, moa(:,1:MoldenNa), mob(:,1:MoldenNb), residual)
+  write(60,'(A,ES14.6)') '  max|C^H S_spin C - I| = ', residual
   write(60,*)
   call matmul('N', 'N', exf2s, AO2MO, oper3)
   call Calc_S2HF()
@@ -401,4 +406,5 @@ subroutine MOANA(kill_)
   deallocate(occene, occcoe, sortocc, sortedoccene)
   if (kill_) call terminate('normal')
 end subroutine MOANA
+
 
