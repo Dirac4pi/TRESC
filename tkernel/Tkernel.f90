@@ -37,6 +37,20 @@ program Tkernel
     !  do batch calculation, plot with batch_plot.py
     !end do
     !===========================================================
+  else if (cmd_count == 2) then
+    call get_command_argument(1, cmd1, status=stat1)
+    if (stat1 > 0) then
+      call terminate('1st argument retrieval fails')
+    else if (stat1 < 0) then
+      call terminate('1st argument too long')
+    end if
+    if (trim(cmd1) == '-moana' .or. trim(cmd1) == '--moana') then
+      call MOANA(.true.)
+    else if (trim(cmd1) == '-MOANA' .or. trim(cmd1) == '--MOANA') then
+      call MOANA(.true.)
+    else
+      call terminate('unknown argument '//trim(cmd1))
+    end if
   else if (cmd_count == 3) then
     call get_command_argument(1, cmd1, status=stat1)
     if (stat1 > 0) then
@@ -77,7 +91,7 @@ subroutine Printversion()
   integer            :: max_threads
   integer            :: vmajor, vminor, vmicro
   write(*,*) '***Thomas Relativistic Electronic Structure Calculation***'
-  write(*,*) '        ***https://github.com/dirac4pi/TRESC***'
+  write(*,*) '***         https://github.com/dirac4pi/TRESC          ***'
   write(*,*) 'tkernel version: '//trim(version)
   call getenv('TRESC',env_TRESC)
   if (env_TRESC == '') then
@@ -158,13 +172,7 @@ subroutine Grid2c(cube, kill_)
   cbdm = 5000
   allocate(cbdata(3*cbdm))
   call Load_geombasis_MOLDEN(.false.)
-  if (isorca) then
-    ! The GTF coefficients in the ORCA MOLDEN file are
-    ! already normalized at the GTO level
-    forall (ii=1:M_cbdm) M_cbdata(ii)%Ncoe(:) = M_cbdata(ii)%coe(:)
-  else
-    call Calc_Ncoe(M_cbdata, M_cbdm)
-  end if
+  call Normalize_Molden_Basis(M_cbdata, M_cbdm, isorca)
   cbdm = M_cbdm
   sbdm = M_sbdm
   cbdata = M_cbdata
@@ -237,13 +245,7 @@ subroutine Grid1c(cube, kill_)
   cbdm = 5000
   allocate(cbdata(3*cbdm))
   call Load_geombasis_MOLDEN(.false.)
-  if (isorca) then
-    ! The GTF coefficients in the ORCA MOLDEN file are
-    ! already normalized at the GTO level
-    forall (ii=1:M_cbdm) M_cbdata(ii)%Ncoe(:) = M_cbdata(ii)%coe(:)
-  else
-    call Calc_Ncoe(M_cbdata, M_cbdm)
-  end if
+  call Normalize_Molden_Basis(M_cbdata, M_cbdm, isorca)
   cbdm = M_cbdm
   sbdm = M_sbdm
   cbdata = M_cbdata
@@ -291,3 +293,118 @@ subroutine Grid1c(cube, kill_)
   deallocate(arr, arr2)
   if (kill_) call terminate('normal')
 end subroutine Grid1c
+
+!-----------------------------------------------------------------------
+!> Molecular Orbital ANAlysis
+!!
+!! spin pure states decomposition and TRS-breaking analysis for
+!! molden input files
+subroutine MOANA(kill_)
+  use Fundamentals
+  use Atoms
+  use Hamiltonian
+  use SCF
+  implicit none
+  logical,intent(in)        :: kill_
+  real(dp),allocatable      :: moa(:,:), mob(:,:)
+  real(dp),allocatable      :: enea(:), eneb(:)
+  real(dp),allocatable      :: occene(:)
+  real(dp),allocatable      :: sortedoccene(:)
+  real(dp),allocatable      :: occcoe(:,:)
+  integer,allocatable       :: sortocc(:)
+  character(len=60)         :: cmd2
+  integer                   :: MoldenNa, MOldenNb
+  integer                   :: ii, jj, kk, ll
+  integer                   :: contri      ! contr of atoMi, shelLi
+  integer                   :: faci(3)     ! xyz factor of |AOi>
+  integer                   :: contrj      ! contr of atoMj, shelLj
+  integer                   :: facj(3)     ! xyz factor of |AOj>
+  real(dp)                  :: expi(16)    ! expo of |AOi>
+  real(dp)                  :: expj(16)    ! expo of |AOj>
+  real(dp)                  :: coei(16)    ! coefficient of |AOi>
+  real(dp)                  :: coej(16)    ! coefficient of |AOj>
+  real(dp)                  :: codi(3)     ! coordinate of center of |AOi>
+  real(dp)                  :: codj(3)     ! coordinate of center of |AOj>
+  real(dp)                  :: residual
+
+  call get_command_argument(2, cmd2, status=ios)
+  if (ios > 0) then
+    call terminate('2nd argument retrieval fails')
+  else if (ios < 0) then
+    call terminate('2nd argument too long')
+  end if
+  address_MOLDEN = trim(cmd2)
+  cbdm = 5000
+  allocate(cbdata(3*cbdm))
+  call Load_geombasis_MOLDEN(.false.)
+  call Normalize_Molden_Basis(M_cbdata, M_cbdm, isorca)
+  cbdm = M_cbdm
+  sbdm = M_sbdm
+  cbdata = M_cbdata
+  mol = M_mol
+  atom_count = M_atom_count
+  !-------------<basis overlap integral>-------------
+  allocate(i_j(cbdm, cbdm), source = 0.0_dp)
+  do ii = 1, cbdm
+    contri = cbdata(ii) % contr
+    faci   = cbdata(ii) % fac
+    expi(1:contri) = cbdata(ii) % expo(1:contri)
+    coei(1:contri) = cbdata(ii) % Ncoe(1:contri)
+    codi   = cbdata(ii) % pos
+    do jj = 1, cbdm
+      contrj = cbdata(jj) % contr
+      facj   = cbdata(jj) % fac
+      expj(1:contrj) = cbdata(jj) % expo(1:contrj)
+      coej(1:contrj) = cbdata(jj) % Ncoe(1:contrj)
+      codj   = cbdata(jj) % pos
+      do kk = 1, contri
+        do ll = 1, contrj
+          i_j(ii,jj) = i_j(ii,jj) + Integral_S_1e(&
+          coei(kk)*coej(ll),faci,facj,expi(kk),expj(ll),codi,codj)
+        end do
+      end do
+    end do
+  end do
+  call Assign_csf(i_j)
+  allocate(moa(M_sbdm,M_sbdm), mob(M_sbdm, M_sbdm))
+  allocate(enea(M_sbdm), eneb(M_sbdm))
+  call Load_MO_MOLDEN(moa, mob, MoldenNa, MoldenNb, enea, eneb)
+  electron_count = MoldenNa + MoldenNb
+  allocate(occindex(electron_count), occene(electron_count))
+  allocate(sortedoccene(electron_count))
+  allocate(sortocc(electron_count))
+  allocate(occcoe(2*M_sbdm, electron_count), source=0.0_dp)
+  forall (ii=1:electron_count) occindex(ii) = ii
+  allocate(AO2MO(2*sbdm,electron_count), oper3(2*fbdm,electron_count), &
+           source=c0)
+  occene(1:MoldenNa) = enea(1:MoldenNa)
+  occcoe(1:M_sbdm, 1:MoldenNa) = moa(1:M_sbdm, 1:MoldenNa)
+  occene(MoldenNa+1:electron_count) = eneb(1:MoldenNb)
+  occcoe(M_sbdm+1:2*M_sbdm, MoldenNa+1:electron_count) = mob(1:M_sbdm, 1:MoldenNb)
+  call sort(occene, sortedoccene, sortocc)
+  forall (ii=1:electron_count) AO2MO(1:2*sbdm, sortocc(ii)) = &
+      occcoe(1:2*sbdm, sortocc(ii)) * c1
+  address_tre = 'MOANA.tre'
+  call generate_output()
+  write(60,*)
+  write(60,'(A)') "Notes for MOANA:"
+  write(60,'(A)') "  MOANA does not read unoccupied orbitals;"
+  write(60,'(A)') "  if you need to select for active space,"
+  write(60,'(A)') "  better choose RO orbitals, natural orbitals,"
+  write(60,'(A)') "  or biorthogonalized orbitals, etc."
+  write(60,'(A,ES14.6)') '  Molden occupied-orbital orthonormality:'
+  call occ_orth_residual(i_j, moa(:,1:MoldenNa), mob(:,1:MoldenNb), residual)
+  write(60,'(A,ES14.6)') '  max|C^H S_spin C - I| = ', residual
+  write(60,*)
+  call matmul('N', 'N', exf2s, AO2MO, oper3)
+  call Calc_S2HF()
+  call Kramers(moana=.true.)
+  write(60,*)
+  write(60,*)
+  call RGI()
+  deallocate(i_j, AO2MO, oper3, moa, mob, enea, eneb, occindex)
+  deallocate(occene, occcoe, sortocc, sortedoccene)
+  if (kill_) call terminate('normal')
+end subroutine MOANA
+
+

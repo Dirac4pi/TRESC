@@ -9,7 +9,9 @@ description: Perform end-to-end wavefunction analysis, quantitative comparison, 
   scientific figures. Common tasks include plotting canonical, natural,
   natural-transition, natural-bond, singly occupied natural, or localized
   orbitals (HOMO/LUMO/SOMO, NO, NTO, NBO, SONO) from suitable Molden files
-  with configurable orbital grids ($TRESC/gridsettings.ini); analyzing or
+  with configurable orbital grids ($TRESC/gridsettings.ini); inspecting
+  frontier and fragment orbital character by calling cub1c with only a Molden
+  file to guide orbital selection or provide standalone orbital analysis; analyzing or
   rendering scalar fields and mapped surfaces such as electron/spin
   density, ESP, IGMH, ELF, LOL, and Fukui/dual descriptors based on common
   wavefunction file formats (e.g., .fch, .molden.input, etc.); investigating
@@ -48,6 +50,7 @@ Select the stopping point from the request:
 
 - A figure request means complete the supported chain through rendering; do not stop at a cube and tell the user to draw it.
 - A data-only request ends at validated numerical files. Do not render against the user's stated preference.
+- An orbital-analysis-only request can end at the cub1c inspection report and its interpretation (section 7.5); no cube, model export or rendering is required. When orbital selection for a figure is unclear, first run cub1c with the Molden file and no INDEX, inspect frontier and relevant fragment character, and use the report to choose explicit orbital IDs for the next visualization call.
 - A geometry-alignment request may end at aligned XYZ and transformation/fit records.
 - Atomic/bond-property requests use the data-export paths documented below; their GUI scripts are not automatically compatible with the OBJ/Blender surface pipeline.
 - Unsupported representations must be disclosed rather than silently replaced with a superficially similar picture.
@@ -63,7 +66,8 @@ Read sections 1-3 and 14 for task scope, deployment, routing, authority, and hon
 | Selected route | Additional sections to read |
 |---|---|
 | Numerical generation or validation | Relevant parts of section 4 and any selected downstream route |
-| Molden real orbital | Sections 4.3-4.5, 7, and shared bundle rules in 9.4 |
+| Molden orbital inspection, fragment screening or orbital selection | Sections 4.5, 7.1 and 7.5; no rendering sections needed for analysis-only work |
+| Molden real orbital | Sections 4.3-4.5, 7 (including 7.5 when selection is unclear), and shared bundle rules in 9.4 |
 | Geometry-only fitting | Section 5 |
 | Aligned scalar-field arithmetic | Sections 4.4-4.5, 5-6; include property-specific definitions from section 4 |
 | Single-contour surface | Sections 4.4-4.5, 8, and 9.4 |
@@ -79,7 +83,7 @@ Use the guaranteed deployment facts directly, without repeatedly checking script
 
 - `$TRESC` is the installation root.
 - `$TRESC/gridsettings.ini` is the documented orbital-grid configuration for `cub1c.py` / `tshell.sh -cub1c`, with `rgrid` and `edge` settings. Read and record applicable values when generating orbital cubes. This is a shared installation resource, not unconditional permission to edit it; follow section 7.4. Verify parameter semantics against the installed implementation before changing values.
-- The plotting/export tools are `$TRESC/vis2c/cub1c.py`, `real1camp.py`, `real1c.py` and `render_obj.py`.
+- The plotting/export tools are `$TRESC/vis2c/cub1c.py`, `real1camp.py`, `real1c.py` and `render_obj.py`. The existing no-INDEX orbital-analysis mode of `cub1c.py` delegates to `cub1c_list.py` in the same installation directory. Use the cub1c CLI as the normal entrypoint; no additional analysis tool or recipe is required.
 - `$VIS2C_PYTHON` is the executable for project numerical/export scripts, with their dependencies configured.
 - `$BLENDER_BIN` is the user-provided Blender executable path, with its matching bundled resources and color management.
 - `$MULTIWFN_EXE` is the user-provided executable entrypoint for Multiwfn. It may be the Multiwfn binary OR an executable user-written shell wrapper. Invoke this entrypoint as supplied; do not replace it with a discovered binary or bypass its initialization.
@@ -128,6 +132,7 @@ All command examples below are patterns to instantiate for the actual task, not 
 
 | Goal | Numerical/model chain | Endpoint |
 |---|---|---|
+| Near-frontier/fragment orbital analysis, or choosing which orbitals to visualize | Molden -> cub1c without INDEX -> frontier and optional fragment reports -> interpret and select original MO_IDs | Standalone orbital analysis; continue with explicit-INDEX export/rendering only when a figure is requested |
 | Selected real orbital (canonical, natural, natural-transition, natural-bond, singly occupied natural, or localized, when faithfully exported) | Suitable result -> validated Molden and index mapping -> verify orbital-grid settings (section 7.4) -> cub1c -> render_obj only if requested | Signed orbital cube and provenance; rendered image when requested |
 | One density/spin-density/other field surface | Wavefunction -> numerical generator -> cube -> real1camp -> render_obj | One-contour image |
 | IGMH surface with sign(lambda_2)*rho colors | Wavefunction -> Multiwfn paired cubes -> real1c -> render_obj | Quantitative mapped image and legend |
@@ -212,7 +217,7 @@ tshell.sh -cub2c "$SPINOR_MOLDEN_DIR" 15
 
 Replace example orbital indices using actual metadata. Expected component names for the examples are `35A-real.cub` and `15-rar.cub`, `15-rai.cub`, `15-rbr.cub`, `15-rbi.cub`; verify actual generated files.
 
-For a scalar-orbital FIGURE, call cub1c.py --export-obj directly instead of generating the same cube once more beforehand. Its normal no-export CLI is interactive, not a cube-only command. Complex spinor components must not be reduced silently to one modulus/density cube.
+For a scalar-orbital FIGURE, call cub1c.py --export-obj directly instead of generating the same cube once more beforehand. With INDEX supplied, its no-export CLI is interactive, not a cube-only command. With INDEX omitted, it instead performs numerical orbital inspection (section 7.5), without generating a cube or opening the orbital viewer. Complex spinor components must not be reduced silently to one modulus/density cube.
 
 ### 4.4 Numerical validation before analysis or export
 
@@ -222,7 +227,7 @@ Paired fields need matching physical coordinates, not merely matching shape. Rec
 
 ### 4.5 Orbital identity, components and surface definitions
 
-- Determine HOMO/LUMO/SOMO from the actual energies, occupations, spin and orbital type in the source. Neither cub1c nor the renderer infers them. Do not use electron_count/2 or unverified file order as a universal selection rule.
+- Determine HOMO/LUMO/SOMO from the actual energies, occupations, spin and orbital type in the source. The no-INDEX cub1c inspection mode reports occupation/energy-ranked frontier labels per spin (section 7.5); verify their meaning for the source orbital type. The indexed plotting/export mode still requires an explicit MO_ID and the renderer does not select orbitals. Do not use electron_count/2 or unverified file order as a universal selection rule.
 - For open-shell systems, identify alpha/beta channels and state which channel or cross-channel convention defines the requested orbital. Resolve degeneracy, fractional occupations, natural/localized orbital labels and noncanonical ordering explicitly when relevant.
 - Map the selected orbital to the numerical generator's index convention. A label in a caption does not verify that the correct coefficients were exported.
 - Real signed amplitude, absolute amplitude, squared modulus, electron density and spin density are different quantities. Preserve all required real/imaginary and spin components of complex/two-component data. Define any derived scalar before computing it.
@@ -425,26 +430,27 @@ The existing render CLI accepts ONE bundle, not an undocumented --input2. Defaul
 
 Label signs as descriptor increase/decrease for P-R, not as orbital phase. Color choices and captions must preserve that distinction. A user-requested one-sign plot is allowed if explicitly labeled as partial.
 
-## 7. cub1c.py: Molden -> signed orbital model
+## 7. cub1c.py: Molden orbital analysis or signed orbital model
 
 ### 7.1 Purpose, arguments and execution modes
 
-Use this route for a selected real scalar orbital faithfully represented in a suitable Molden source (`.molden.input` or `.molden`). Possible source orbital types include canonical orbitals (including HOMO/LUMO/SOMO, core, and virtual orbitals), natural orbitals (NO), natural transition orbitals (NTO), natural bond orbitals (NBO), singly occupied natural orbitals (SONO), and localized molecular orbitals. These are examples of source identities, not a claim that the exporter computes or recognizes each analysis automatically.
+Use `cub1c.py MOLDEN` without INDEX for orbital inspection, frontier/fragment analysis and evidence-based orbital selection (section 7.5). Use the indexed route below for a selected real scalar orbital faithfully represented in a suitable Molden source (`.molden.input` or `.molden`). Possible source orbital types include canonical orbitals (including HOMO/LUMO/SOMO, core, and virtual orbitals), natural orbitals (NO), natural transition orbitals (NTO), natural bond orbitals (NBO), singly occupied natural orbitals (SONO), and localized molecular orbitals. These are examples of source identities, not a claim that the exporter computes or recognizes each analysis automatically.
 
 Verify that the source actually contains the requested coefficients and that basis order, normalization, angular-function conventions, spin labels, and 1-based generator index are compatible. Preserve analysis-specific metadata, including NTO hole/particle pairing and weights when relevant; a rendered orbital alone does not supply those relationships. An unsupported or unverified conversion is a blocker, not permission to relabel another orbital.
 
-`cub1c.py` generates the selected orbital cube and constructs signed contours plus the molecular skeleton. It does not accept a pre-existing cube as input, select HOMO/LUMO automatically, generate the requested orbital family from canonical coefficients, produce electron density by relabeling amplitude, or visualize a complex spinor.
+`cub1c.py` has two separate modes. Without INDEX it analyzes the Molden orbitals and prints numerical reports; it does not generate a cube or plot. With INDEX it generates the selected orbital cube and constructs signed contours plus the molecular skeleton. The indexed route does not accept a pre-existing cube as input, automatically choose an orbital to plot, generate the requested orbital family from canonical coefficients, produce electron density by relabeling amplitude, or visualize a complex spinor.
 
 Interface and direct usage example:
 
 ```text
+cub1c.py MOLDEN [analysis options]                  # INDEX omitted: analysis only
 cub1c.py MOLDEN INDEX [-slice] [--isovalue FLOAT] [--export-obj FILE.obj]
 ```
 
 | Argument/option | Meaning, default and constraints |
 |---|---|
 | `MOLDEN` | Existing `.molden.input` or `.molden` path; a basename is also accepted and tried with `.molden.input` then `.molden`. Use an absolute source path. |
-| `INDEX` | Explicit 1-based positive integer followed by A/B, e.g. `35A` or `35b`; case becomes uppercase. A bare integer, HOMO string or zero is invalid. |
+| `INDEX` | Optional: omit it for numerical orbital analysis (section 7.5). When supplied, use an explicit 1-based positive integer followed by A/B, e.g. `35A` or `35b`; case becomes uppercase. A bare integer, HOMO string or zero is invalid. |
 | `--isovalue FLOAT` | Positive finite amplitude magnitude; default 0.05. Requested contours are +c and -c; the plotting function may adjust the effective magnitude. |
 | `--export-obj FILE.obj` | Export OBJ/MTL/scene JSON and exit without a GUI controller. No overwrite; parent must already exist. Blender is not run. |
 | `-slice` | Add interactive sections in the ordinary viewer; incompatible with `--export-obj`. This is one hyphen, not an invented `--slice`. |
@@ -470,7 +476,7 @@ The model contains explicitly mapped orbital_positive/orbital_negative/molecular
 
 The exporter identifies signs by the actual IsoSurface contour and VTK actor identity, not actor order or color. It requires both sign modules to be identifiable, but a sign may contribute no polygon geometry; at least one nonempty orbital surface is required. Report actual exported signs and investigate a missing sign rather than assume that a successful command guarantees a complete two-sign picture. Textured actors and unclassified scalar-colored geometry are rejected by this fixed-material route.
 
--slice is interactive-only and incompatible with --export-obj. Always use export mode for unattended work; the ordinary CLI opens a controller. This route is not a two-component spinor renderer.
+-slice is interactive-only and incompatible with --export-obj. For unattended indexed visualization use export mode; with INDEX but no export option the CLI opens a controller. No-INDEX inspection is a separate numerical-only mode and should use --no-prompt for unattended work. This route is not a two-component spinor renderer.
 
 ### 7.3 Python API and interactive handoff
 
@@ -526,6 +532,85 @@ For an authorized shared edit:
 - Record original, requested, effective, and restored configuration states, generator identity, commands, and actual cube-grid metadata in `workflow.json` and `reproduction.md`. Archive an exact copy of the effective configuration for reproducibility.
 
 For quantitative comparisons, keep numerical settings comparable where justified and disclose resampling or extent differences. For surface figures, inspect coverage and contour stability where they affect the conclusion. Do not change a scientific contour or smooth the numerical input merely to hide an inadequate grid.
+
+### 7.5 No-INDEX orbital inspection: analyze first, then select or stop
+
+The existing command `cub1c.py MOLDEN` is an orbital-analysis entrypoint, not an incomplete plotting command. INDEX is optional at the CLI: omitting it invokes `cub1c_list.run_analysis` and reports orbital information from the supplied real GTO Molden file. This mode performs no SCF, orbital optimization/localization, cube generation, Mayavi scene construction, OBJ export or Blender rendering. It does not require a graphics/display runner or orbital-grid configuration edits. The Python viewer function `cub1c(molden, index, ...)` still requires an index; use the CLI for the no-INDEX mode.
+
+#### Required agent behavior and endpoints
+
+- If the user wants orbital visualization but the relevant orbital IDs are not known, the agent must first call cub1c with the Molden file and no INDEX. Do not guess an index or ask the user to choose orbital numbers that this report can resolve.
+- Read the near-frontier energies, occupations, spin labels, relative frontier ranks and main atom/angular-shell contributions. For an identified fragment of interest, also run an explicit fragment query and inspect which orbitals carry its target character. Select the relevant occupied and/or virtual orbitals according to the scientific question, not merely the first printed match.
+- Use the reported original `MO_ID` values, including A/B, in separate subsequent indexed visualization/export calls. Explain why those orbitals were chosen. Analysis does not automatically plot its candidates, and the plotting call must not include inspection-only options.
+- Standalone orbital analysis is an equally valid use of this feature. If the request is only to analyze frontier orbitals, fragment participation or orbital character, interpret and deliver the numerical report and stop. Do not generate cubes or figures just to make the analysis appear complete.
+- The agent may use this existing report to support reasoned active-space candidate suggestions when requested, with explicit orbital IDs, character, occupations and limitations. This is interpretation of the existing analysis, not a new automatic active-space selector or a requirement for an additional script/recipe.
+- Reuse an already applicable inspection report. If a supplied index is already unambiguous and verified, do not repeat screening unnecessarily.
+
+#### Commands and unattended operation
+
+Minimal invocation, with no orbital-number positional argument:
+
+```bash
+"$VIS2C_PYTHON" "$TRESC/vis2c/cub1c.py" "$MOLDEN"
+```
+
+It prints the frontier summary and same-spin energy-close/similar-character reminders before any optional fragment prompt. In an interactive terminal it can then accept fragment atom selections and count windows repeatedly. For agent jobs, explicitly use `--no-prompt`; this suppresses stdin questions but does not disable a supplied `--fragment` query.
+
+Initial unattended inspection, saving text and a new JSON record:
+
+```bash
+"$VIS2C_PYTHON" "$TRESC/vis2c/cub1c.py" "$MOLDEN" \
+  --no-prompt --json "$TASK/data/orbital_inspection.json" \
+  > "$TASK/logs/orbital_inspection.txt" 2>&1
+```
+
+Fragment query after verifying the actual [Atoms] row numbers and chemically relevant target channels:
+
+```bash
+# Bind FRAGMENT_ATOMS, TARGET_CHANNELS and both offsets to this task first.
+# Example syntax only: FRAGMENT_ATOMS='1-3,8'; TARGET_CHANNELS='1-3:d;8:p'.
+"$VIS2C_PYTHON" "$TRESC/vis2c/cub1c.py" "$MOLDEN" \
+  --fragment "$FRAGMENT_ATOMS" --target-l "$TARGET_CHANNELS" \
+  --window "$OCC_OFFSET" "$VIR_OFFSET" --no-prompt \
+  --json "$TASK/data/fragment_orbitals.json" \
+  > "$TASK/logs/fragment_orbitals.txt" 2>&1
+```
+
+Read the actual output files before deciding the next step; a successful command alone is not orbital interpretation. Output JSON must have a new destination and an existing parent. Keep separate output names for different fragment queries. For a figure, bind ORBITAL_INDEX to a chosen reported MO_ID and continue with section 7.2 in a separate per-orbital work directory. For analysis-only work, deliver the findings and the text/JSON without running section 7.2 or Blender.
+
+#### Main inspection controls and report conventions
+
+| Option | Meaning and defaults |
+|---|---|
+| `--no-prompt` | Finish without reading stdin; use for unattended agent work. |
+| `--json PATH` | Save the complete analysis/selection record to a new JSON file; terminal truncation/display limits are not the full record. |
+| `--frontier N` | Unfiltered summary from HOMO-N through LUMO+N inclusive, separately per spin; default 10. N=0 includes the endpoints. |
+| `--fragment ATOMS` | Select 1-based [Atoms] row numbers, e.g. `1,3-8,12`; not necessarily the source atom serials. Suppresses automatic fragment prompts. |
+| `--window N` or `--window OCC VIR` | Fragment candidate count-window offsets, default 20 20; includes HOMO and LUMO in addition to the offsets. Not an eV cutoff. |
+| `--target-profile dominant\|expanded` | Default dominant uses s/p/d targets by element block; expanded adds p-block s and d-block s. Set explicit channels where chemically needed; f-region targets require an override. |
+| `--target-l '1:ds;2-4:p'` | Override target channels for named atom rows; `ds` means d+s, not a periodic-table category. Shell labels do not resolve principal quantum number or individual d/p components. |
+| `--target-min F`, `--fragment-min F` | Whole-MO target-channel and all-channel fragment fraction gates, both default 0.30. Fractions, not percentage numbers. |
+| `--fragment-mode sum\|joint` | Default sum selects enrichment on the union, not participation of every atom. Joint also enforces per-atom or explicitly named group requirements. |
+| `--per-atom-min F`, `--require-target SPEC` | Joint-mode controls: default per-atom target minimum 0.05; explicit AND-group syntax such as `1-2:d:0.10;3:p:0.10`. Requirements must use selected atoms and enabled target channels. |
+| `--near-window N` or `--near-window OCC VIR` | Independent unfiltered near-level audit window, default 20 20; changing fragment `--window` does not change it. |
+| `--near-energy EV`, `--near-sim F` | Near-level reminder thresholds: default gap 0.05 eV and element+shell distribution similarity 0.90. Same-spin only; these are screening reminders, not symmetry/degeneracy proofs. |
+| `--energy-unit hartree\|eV`, `--occ-tol F` | Interpret input Ene units explicitly (default hartree); occupied means Occup > tolerance (default 1e-6). Verify source conventions rather than guessing. |
+| `--show-metal` or `--metals ATOMS` | Enable the optional d-character report; it is not enabled by default. |
+| `--orbital-metrics auto\|pyscf\|off` | Default auto uses PySCF or the supplied AO metric. Missing PySCF produces explicit unavailable/NA diagnostics; convention/numerical failures are not silently replaced by heuristics. Explicit pyscf requires that backend. |
+| `--ao-overlap PATH` | Optional matching original-Molden-order AO overlap matrix (.npy/.txt/.dat); use with auto and only with verified AO order/normalization conventions. |
+| `--show-pm` | Also show PM2_L/N_eff_L in terminal tables; computed JSON metrics retain these even without the option. |
+
+For less common controls consult `cub1c.py --help` or the supplied implementation. Do not mix any inspection-only flags with INDEX, and do not pass `--isovalue`, `-slice` or `--export-obj` without INDEX.
+
+#### Interpret the report before choosing orbitals
+
+1. `MO_ID` is the original 1-based within-spin file-order index plus A/B, suitable for the indexed cub1c call after verifying source/generator compatibility. `FileMO` is a separate overall file record number. `Ref` is an occupied/virtual energy-rank label, not a replacement index. Never construct the plotting index from a table-row number or an assumed HOMO offset.
+2. Frontier labels use input energies and occupations independently per spin. Partial occupations, placeholder/noncanonical energies, missing endpoints, degeneracy and non-energy-ordered files need explicit interpretation. A single available spin-labelled set does not establish a closed-shell state.
+3. Composition is SCPA: squared AO coefficients normalized over the whole MO, aggregated by atom and angular shell. Frag% sums all channels on the selected atoms; Target% sums only their enabled channels. These are whole-MO fractions, not fragment-renormalized populations or proof of bonding/antibonding. Inspect the complete target breakdown, not only the cutoff-limited main terms.
+4. Check composition matches before and after the rank window. If important fragment orbitals fall outside the window, widen the relevant window and rerun with recorded settings. No matches means no matches under the selected channels/gates/window, not that the fragment has no relevant orbitals. Keep tied groups together where necessary and do not interpret a small frontier window as a complete valence or active-space classifier.
+5. Energy-close reminders compare same-spin composition distributions; similar elemental character can conceal different atom-localization patterns. They do not establish equal spatial shape, phase, symmetry or true degeneracy.
+6. When available, ABpeer is the opposite-spin orbital with the same original within-spin index, not a best match or UCO. AB/self is the absolute spatial overlap divided by the current orbital's self overlap: directional, scale-dependent and possibly greater than one. AB|S| is the symmetric normalized absolute spatial overlap. Neither includes the spin-function overlap. PM2_L and N_eff_L describe existing-orbital population concentration, not a localization calculation. Unavailable metrics are NA, not zero. Do not rescale or rotate source orbitals to make the inspection pass.
+7. Report selected MO_IDs with spin, energy/occupation, frontier rank, fragment/target contributions, selection settings and reasons. For standalone analysis, explain the chemical information the data support and state that no figure was generated. For active-space suggestions, identify provisional candidates and unresolved electron-count/partner/state questions; the script does not itself compute a final CAS space.
 
 ## 8. real1camp.py: one scalar-field contour -> model
 
@@ -973,14 +1058,15 @@ Keep these examples as guides to scientific reasoning. For a different wavefunct
 ### A. HOMO of one molecule
 
 1. Establish structure, charge/spin and computational model. Reuse a converged suitable wavefunction or run the authorized calculation and export Molden using the program's validated workflow.
-2. Determine HOMO identity/spin from energies/occupations and map it to the TRESC/cub1c index. Resolve open-shell ambiguity rather than guessing.
+2. Run cub1c without INDEX (section 7.5) when the orbital ID is not already verified. Read the frontier report and, when relevant, a fragment query; determine HOMO identity/spin from the reported energies/occupations and map its MO_ID to the TRESC/cub1c index. Resolve open-shell ambiguity rather than guessing.
 3. Run the cub1c export example in an isolated orbital directory. This performs cube generation internally; retain that cube and provenance.
 4. Set MODEL to the exported orbital OBJ. Copy render_obj.py, run the baseline example in manifest mode, inspect both signs and the skeleton, refine the task copy if needed.
 5. Final-render the selected settings. Deliver signed-phase labels, actual contour, source identity, figure and reproduction records.
 
 ```text
 Geometry/results -> authorized QC + Molden if needed
--> explicit HOMO/spin selection -> cub1c --export-obj
+-> no-INDEX cub1c inspection when needed -> explicit HOMO/spin selection
+-> cub1c --export-obj
 -> OBJ/MTL/scene.json -> render_task.py previews -> final image
 ```
 
@@ -1052,6 +1138,19 @@ Wavefunction -> Multiwfn density + ESP on matching physical grids
 
 Use the same reasoning for any other descriptor-mapped surface: identify the two quantities independently and preserve their definitions through numerical generation, export, shading and labels. A shared representation primitive does not make their scientific interpretations interchangeable.
 
+### E. Frontier or fragment orbital analysis, with optional visualization
+
+1. Reuse a suitable Molden file and run the no-INDEX inspection command in section 7.5. Do not generate cubes merely to discover orbital IDs.
+2. Read the unfiltered frontier summary and near-level reminders. If the question names a molecular fragment, verify its atom rows and run the fragment query with appropriate channels, gates and count window.
+3. Interpret the report, widen the window where needed, and record the relevant original MO_IDs with their spin, occupations, energies and composition evidence.
+4. For analysis-only requests, deliver the numerical report and interpretation here. For requested figures, feed the chosen IDs into separate indexed cub1c export calls and complete the normal rendering/review chain.
+
+```text
+Molden -> cub1c without INDEX -> frontier/fragment orbital report
+-> standalone orbital analysis
+OR -> justified MO_ID selection -> indexed cub1c export -> rendering and review
+```
+
 ## 14. Safety, provenance and honest completion
 
 Use unique paths, preserve source files and project authorization boundaries, and check each stage before passing output forward. Python API examples use local patched input in a single non-concurrent process; do not patch input in a multithreaded service.
@@ -1093,6 +1192,8 @@ Verification and limitations:
 Reproduction:
 - Commands, inputs, logs and records needed to repeat the chosen result.
 ```
+
+For no-INDEX orbital inspection, retain the text/JSON report, input hash, fragment atom/channel definitions, thresholds/windows, metric availability and selection rationale. This is a complete analysis-only endpoint when requested; no extra audit script or recipe is required. If visualization follows, record which reported MO_IDs were passed to the indexed calls.
 
 For data-only or unsupported-rendering branches, explicitly state no image was generated and provide the user-run commands where applicable. For completed rendering, do not falsely retain a blanket "no visualization performed" statement. Call the output a publication-oriented candidate when appropriate, not guaranteed journal compliance or human approval.
 

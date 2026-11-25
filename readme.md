@@ -67,7 +67,7 @@ orbital components.
 Grimme's group.
 
 > For mathematical and algorithmic details, see
-`docs/Mathematics_and_Algorithms.pdf`.
+`docs/TRESC_Mathematics_and_Algorithms.md`.
 
 # Characteristic
 
@@ -90,7 +90,7 @@ magnitude $`s`$ is invariantly preserved as $`\hbar/2`$.<br>
 frame O, the Lorentz Boost (LB) and the ISB lead to different observations.<br>
 <p align="center">
 <img src="docs/Observation_of_2_transformations.png"
-alt="Observation of LB and ISB" width="500">
+alt="docs/Observation_of_2_transformations.png" width="500">
 <br>
 <em>Observation of LB and ISB</em>
 </p>
@@ -136,8 +136,17 @@ alters the form of Thomas precession, as this precession is intrinsically linked
 to the properties of reference frame transformations.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Following detailed derivations, we discovered that this
 precession (SRTP) occurs in an anisotropically stretched space modulated by
-electron motion—Spin Precession Space (SPS). The contribution of SRTP to the
-electronic energy in the low-velocity limit can be expressed as:<br>
+electron motion—Spin Precession Space (SPS).<br>
+<p align="center">
+<img src="docs/Dynamical_evolution_of_spin_precession_in_SPS.png"
+alt="docs/Dynamical_evolution_of_spin_precession_in_SPS.png"
+width="500">
+<br>
+<em>Dynamical evolution of spin precession in SPS</em>
+</p>
+
+&nbsp;&nbsp;&nbsp;&nbsp;The contribution of SRTP to the electronic energy in the
+low-velocity limit can be expressed as:<br>
 
 $$
 H_{\mathrm{SRTP}} = \frac{1}{2\beta^2} \vec{S}_\gamma \cdot (\dot{\vec{\beta}}
@@ -212,11 +221,11 @@ states predicted by the Wigner-Eckart theorem.
 
 ### Time-Reversal Symmetry (TRS) breaking analysis
 
-&nbsp;&nbsp;&nbsp;&nbsp;TRESC obtains Kramers-unrestricted orbitals after
-2c-SCF, which spontaneously break TRS. To quantify the breaking, TRESC performs
-a Singular Value Decomposition (SVD) on the Kramers overlap matrix $`K`$. The
-TRS breaking parameter $`\kappa`$ (representing the effective number of
-electrons involved in the symmetry breaking) is defined as follows:
+&nbsp;&nbsp;&nbsp;&nbsp;TRESC obtains Kramers-unrestricted canonical orbitals
+after 2c-SCF, which spontaneously break TRS. To quantify the breaking, TRESC
+performs a Singular Value Decomposition (SVD) on the Kramers overlap matrix
+$`K`$. The TRS breaking parameter $`\kappa`$ (representing the effective number
+of electrons involved in the symmetry breaking) is defined as follows:
 
 $$
 \begin{aligned}
@@ -233,7 +242,32 @@ decomposition. TRESC projects the time-reversal spinors onto the occupied space
 to generate Kramers pairs (similar to the biorthogonalization of UHF/UKS orbits),
 and projects the time-reversal orbit onto the virtual space to find the minimum
 space that satisfies TRS. Keep in mind that all real systems satisfy TRS in the
-absence of an external magnetic field.
+absence of an external magnetic field.<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;Taking the sextet [FeO]+ as an example—a prototypical
+system that helped give rise to the concept of two-state reactivity(TSR)—it also
+exhibits the phenomenon of SOMO-HOMO inversion, with a a distinctive Kramers
+orbital pattern.<br>
+
+<p align="center">
+<img src="docs/Spin_phase_of_sextet_FeO+_HOMO_Kramers.png"
+alt="docs/Spin_phase_of_sextet_FeO+_HOMO_Kramers.png" width="500">
+<br>
+<em>The HOMO Kramers pair of the sextet [FeO]+, frontier orbitals, the spin
+phases are complementary, and the spatial shapes are identical</em>
+</p>
+
+<p align="center">
+<img src="docs/Spin_phase_of_sextet_FeO+_SOMOs.png"
+alt="docs/Spin_phase_of_sextet_FeO+_SOMOs.png" width="500">
+<br>
+<em>The five SOMO spinors of the sextet [FeO]+, below the HOMO, nearly pure
+alpha-spin orbitals</em>
+</p>
+
+> TRESC supports performing the two aforementioned analysis on external
+Molden-format files: `tshell -moana xxx.molden`, see `/examples/MOANA4MOLDENs`
+
 
 ## Visualisation of real scalar / complex spinor MOs
 
@@ -259,7 +293,8 @@ cub2c.py molecule.molden.d 15 -slice
   <img src="docs/Ni-C2H4-3_HOMO-3.png"
   alt="docs/Ni-C2H4-3_HOMO-3.png" width="500">
   <br>
-  <em>HOMO-3 of triplet [Ni-C2H4], &lt;s^2&gt;=0.67 , &lt;s_z&gt;=-0.41</em>
+  <em>HOMO-3 spinor of triplet [Ni-C2H4],
+  &lt;s^2&gt;=0.67 , &lt;s_z&gt;=-0.41</em>
 </p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;The visualization displays both the spin and orbital
@@ -277,8 +312,8 @@ perturbations predominantly occur at the orbital phase boundaries.<br>
   <img src="docs/Ni-C2H4-3_HOMO-3_spin-phase-slice.png"
   alt="docs/Ni-C2H4-3_HOMO-3_spin-phase-slice.png" width="500">
   <br>
-  <em>spin-phase slice of HOMO-3 of triplet [Ni-C2H4], a distinctive hollow,
-  umbrella-shaped pattern</em>
+  <em>spin-phase slice of HOMO-3 spinor of triplet [Ni-C2H4], a distinctive
+  hollow, umbrella-shaped pattern</em>
 </p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;For real scalar molecular orbitals, `cub1c.py` supports
@@ -303,10 +338,10 @@ cub1c.py molecule.molden.input 15A -slice
 ```
 
 <p align="center">
-  <img src="docs/Fe-Ligand_HOMO.png"
-  alt="docs/Fe-Ligand_HOMO.png" width="500">
+  <img src="docs/Ni-C2H4-3_beta-HOMO-2.png"
+  alt="docs/Ni-C2H4-3_beta-HOMO-2.png" width="500">
   <br>
-  <em>HOMO of sextet [Fe-Ligand], localized on the ligand</em>
+  <em>β-HOMO-2 of triplet [Ni-C2H4], corresponds to the HOMO-3 spinor</em>
 </p>
 
 ### 2. Unstructured grid data: mog2c
@@ -345,8 +380,8 @@ pro2c.py molecule.molden.d 15
   <img src="docs/Ni-C2H4-3_HOMO-3_pro2c.png"
   alt="docs/Ni-C2H4-3_HOMO-3_pro2c.png" width="500">
   <br>
-  <em>HOMO-3 of triplet [Ni-C2H4], d-orbital in momentum space also has a
-  quatrefoil shape.</em>
+  <em>HOMO-3 spinor of triplet [Ni-C2H4], d-orbital in momentum space also has a
+  quatrefoil shape</em>
 </p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;The momentum-space projection of a bound-state orbital
@@ -379,9 +414,9 @@ real1c.py density.cub potential.cub -slice
 
 <p align="center">
   <img src="docs/IGMH_of_ethanol_and_water.jpg"
-  alt="docs/IGMH_of_ethanol_and_water.png" width="400">
+  alt="docs/IGMH_of_ethanol_and_water.jpg" width="400">
   <br>
-  <em>Visualization of weak interactions between ethanol and water.</em>
+  <em>Visualization of weak interactions between ethanol and water</em>
 </p>
 
 &nbsp;&nbsp;&nbsp;&nbsp;For displaying only the spatial shape of a function,
@@ -393,13 +428,6 @@ isovalue adjustment; the initial contour level can be set with
 ```Shell
 real1camp.py density.cub --isovalue 0.01
 ```
-
-<p align="center">
-  <img src="docs/OED_D1_aromatic_radical.png"
-  alt="docs/OED_D1_aromatic_radical.png" width="400">
-  <br>
-  <em>Odd Electron Density of the D1 state of a aromatic radical.</em>
-</p>
 
 ### 2. Visualization of bond properties: bond
 
@@ -440,10 +468,10 @@ H   0.000000   0.000000   1.080000    0.120  -0.015
 
 <p align="center">
   <img src="docs/Atomic_dg_for_ethanol_and_water.jpg"
-  alt="docs/Atomic_dg_for_ethanol_and_water.png" width="400">
+  alt="docs/Atomic_dg_for_ethanol_and_water.jpg" width="400">
   <br>
   <em>Contributions of individual atoms to the weak interactions between
-  ethanol and water.</em>
+  ethanol and water</em>
 </p>
 
 ### 4. Operations on real-space functions: cuboper
@@ -502,13 +530,6 @@ fitting-fragment RMSD, writes `probe_aligned.xyz` in the current directory,
 and overlays the reference and aligned probe in a single interactive 3D view.
 The probe is rendered semi-transparently so that structural deviations and
 substituent differences stand out immediately.<br>
-
-<p align="center">
-  <img src="docs/MCS_alignment_of_two_aromatic_molecules.png"
-  alt="docs/MCS_alignment_of_two_aromatic_molecules.png" width="400">
-  <br>
-  <em>MCS alignment of two aromatic molecules.</em>
-</p>
 
 # Options
 
@@ -637,8 +658,7 @@ scripts in any scenario. Append to `~/.bashrc` when everything is done:<br>
 export TRESC="/path/to/TRESC"
 export PATH="$TRESC/build:$PATH"
 export PATH="$TRESC/vis2c:$PATH"
-alias TRESC='tshell.sh'
-alias tshell='tshell.sh'
+alias tshell="$TRESC/tshell.sh"
 export VIS2C_PYTHON="/path/to/vis2c/python/executable"
 ```
 

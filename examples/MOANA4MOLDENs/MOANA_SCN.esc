@@ -1,0 +1,57 @@
+Job execution start: 2026.11.23  18:19
+WD = /home/lky/Code_TRESC/TRESC/tests/moana
+PID = 3988258;  username = lky
+This file is the output file of job MOANA
+Program/version: TRESC/dev
+ 
+Acknowledge: 
+  TRESC is a molecular electronic-structure solver
+  For more: https://github.com/Dirac4pi/TRESC
+  All results default to Atomic Units (A.U.)
+  And Hey, best wishes for a successful run! ^ω^
+ 
+External libs:
+  IFPORT: cross-platform Fortran development
+  Intel MKL: numerical linear algebra operations
+  OpenMP: multithreaded parallel calculation
+  Libxc: exchange and correlation functionals
+ 
+ 
+Notes for MOANA:
+  MOANA does not read unoccupied orbitals;
+  if you need to select for active space,
+  better choose RO orbitals, natural orbitals,
+  or biorthogonalized orbitals, etc.
+  Molden occupied-orbital orthonormality:
+  max|C^H S_spin C - I| =   7.570122E-11
+ 
+  =============================================================
+                  Time-Reversal Symmetry Space
+  =============================================================
+  singular vales (lambdas) of Kramers overlap matrix:
+       1.000000     1.000000     1.000000     1.000000     1.000000
+       1.000000     1.000000     1.000000     1.000000     1.000000
+       1.000000     1.000000     1.000000     1.000000     0.999991
+       0.999991     0.999988     0.999988     0.999906     0.999906
+       0.999861     0.999861     0.999562     0.999562     0.999091
+       0.999091     0.990808     0.990808     0.000000
+  ***
+  A value close to 0.0 signifies a prominent single-electron configuration;
+  a value close to 1.0 signifies a prominent closed-shell configuration.
+  =============================================================
+ 
+ 
+  =============================================================
+                   Rotation Group Integration
+  =============================================================
+  basical S_mult = 2, S_z = 1/2
+  |D^1/2| (basical configuration)               ... 0.99284E+00
+  |D^-1/2|                                      ... 0.11108E-16
+  |4^3/2|                                       ... 0.16032E-16
+  |4^1/2|                                       ... 0.71502E-02
+  |4^-1/2|                                      ... 0.15525E-16
+  =============================================================
+ 
+----------<NORMAL TERMINATION>----------
+Job  CPU  time:   00 h 03 min 11 s
+Job clock time:   00 h 00 min 02 s

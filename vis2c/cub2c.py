@@ -80,7 +80,7 @@ def cub2c(moldendir:str, index:str, isovalue:float=0.05,\
   mp = arctan2(mr, mi)
   if slice:
     p3.slice_cub(f"Spin-phase Slice", atoms, x, y, z, sp, \
-                 'viridis', pi, 0.0)
+                 'viridis', pi/2.0, 0.0)
     p3.slice_cub(f"Orbit Isosurfase Slice", atoms, x, y, z, mod, \
                  'CMRmap', mod.max(), mod.min())
   if spin_phase:

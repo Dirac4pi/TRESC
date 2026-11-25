@@ -63,6 +63,9 @@ case "$1" in
   echo "                       in real space" >&2
   echo "        -pro1c/-pro2c  generate 1c/2c structured MO grid" >&2
   echo "                       in real space and momentum space" >&2
+  echo "        -moana         TRS-breaking analysis and spin-pure" >&2
+  echo "                       states decomposition for a given" >&2
+  echo "                       configuration" >&2
   echo "        -d             debug (need tkerneld)" >&2
   echo "        -td            vtune threading analysis" >&2
   echo "        -hp            vtune hotspots analysis" >&2
@@ -80,6 +83,11 @@ case "$1" in
   export KMP_AFFINITY="granularity=fine,compact,1,0"
   export MKL_NUM_THREADS=16
   export OMP_STACKSIZE=256M
+  "$prog" "$@"
+  ;;
+#----------------------------------------------------------------------------
+# TRS-breaking analysis and spin-pure states decomposition for a given configuration
+"-moana" | "--moana" | "-MOANA" | "--MOANA")
   "$prog" "$@"
   ;;
 #----------------------------------------------------------------------------

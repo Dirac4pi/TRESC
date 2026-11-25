@@ -538,33 +538,65 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
 !> load all MO coeffs from .MOLDEN file
 !!
 !! default and only: spher-harmo segment contr basis
-  subroutine Load_MOs_MOLDEN(moa, mob)
+!!
+!! Orbitals are arranged in descending order of their occupancy numbers;
+!! this ordering applies to both canonical orbitals and natural orbitals
+!! (for ground or excited states).
+  subroutine Load_MOs_MOLDEN(moa, mob, aocc, bocc, enea, eneb)
     implicit none
-    real(dp),intent(out)  ::  moa(:,:)   ! alpha orbitals
-    real(dp),intent(out)  ::  mob(:,:)   ! beta orbitals
-    integer               ::  ii, jj, kk ! loop variables
-    character(len=200)    ::  line
-    integer               ::  a
+    real(dp),intent(out) :: moa(:,:)   ! alpha orbitals (M_sbdm, M_sbdm)
+    real(dp),intent(out) :: mob(:,:)   ! beta orbitals (M_sbdm, M_sbdm)
+    integer,intent(out)  :: aocc       ! alpha occupation number
+    integer,intent(out)  :: bocc       ! beta occupation number
+    real(dp),optional    :: enea(:)    ! orbital energy of alpha orbits
+    real(dp),optional    :: eneb(:)    ! orbital energy of beta orbits
+    integer              :: ii, jj, kk ! loop variables
+    character(len=200)   :: line
+    integer              :: a
+    real(dp)             :: occnum, orbene
 
     open(14, file=address_MOLDEN, status="old", action="read", iostat=ios)
     if (ios /= 0) call terminate(&
     'MOLDEN file '//address_MOLDEN//' could not be read')
     ii = 1
     jj = 1
+    aocc = 0
+    bocc = 0
+    if (present(enea) .and. present(eneb)) then
+      enea = 0.0_dp
+      eneb = 0.0_dp
+    end if
     do
       read(14,'(A)',iostat=ios) line
       if (ios /= 0) exit
+      if (index(line,'Ene=')/=0) read(line(index(line,'=')+1:),*) orbene
       if (index(line,'=')/=0 .and. index(line,'Alpha')/=0) then
-        read(14,'(A)') line
+        read(14,*) line, occnum  ! Alpha occupation
+        if (occnum > 1.8) then
+          aocc = aocc + 1
+          bocc = bocc + 1
+        else if (occnum > 0.8 .and. occnum < 1.2) then
+          aocc = aocc + 1
+        end if
         do kk = 1, M_sbdm
           read(14,*) a, moa(kk,ii)
         end do
+        if (present(enea)) enea(ii) = orbene
+        if (occnum > 1.8) then
+          mob(1:M_sbdm,jj) = moa(1:M_sbdm,ii)
+          if (present(eneb)) eneb(jj) = orbene
+          jj = jj + 1
+        end if
         ii = ii + 1
       else if (index(line,'=')/=0 .and. index(line,'Beta')/=0) then
-        read(14,'(A)') line
+        read(14,*) line, occnum  ! Beta occupation
+        if (occnum > 0.8 .and. occnum < 1.2) then
+          bocc = bocc + 1
+        end if
         do kk = 1, M_sbdm
           read(14,*) a, mob(kk,jj)
         end do
+        if (present(eneb)) eneb(jj) = orbene
         jj = jj + 1
       end if
     end do
@@ -1806,5 +1838,39 @@ integer, parameter :: AO_fac(3,5,15) = reshape( [                 &! (L,M)
     allocate(m(sbdm,M_sbdm))
     call matmul('T', 'N', c2s, sphoper, m)
   end subroutine M_csgo
-  
+
+!-----------------------------------------------------------------------
+!> In some MOLDEN files, data have been processed,
+!!
+!! we need to check the orthogonalization residuals.
+  subroutine occ_orth_residual(s_ao, c_alpha, c_beta, residual)
+    implicit none
+    real(dp), intent(in)  :: s_ao(:,:), c_alpha(:,:), c_beta(:,:)
+    real(dp), intent(out) :: residual
+    real(dp), allocatable :: sc(:,:), gram(:,:)
+    integer               :: ispin, nocc, ii
+    residual = 0.0_dp
+    do ispin = 1, 2
+      if (ispin == 1) then
+        nocc = size(c_alpha, 2)
+      else
+        nocc = size(c_beta, 2)
+      end if
+      if (nocc == 0) cycle
+      allocate(sc(size(s_ao, 1), nocc), gram(nocc, nocc))
+      if (ispin == 1) then
+        call matmul('N', 'N', s_ao,    c_alpha, sc)
+        call matmul('T', 'N', c_alpha, sc,      gram)
+      else
+        call matmul('N', 'N', s_ao,   c_beta, sc)
+        call matmul('T', 'N', c_beta, sc,     gram)
+      end if
+      do ii = 1, nocc
+        gram(ii,ii) = gram(ii,ii) - 1.0_dp
+      end do
+      residual = max(residual, maxval(abs(gram)))
+      deallocate(sc, gram)
+    end do
+  end subroutine occ_orth_residual
+
 end module Atoms
