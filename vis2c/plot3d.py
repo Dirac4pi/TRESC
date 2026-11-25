@@ -509,10 +509,21 @@ def slice_cub(title:str, atoms, x, y, z, dat, colormap:str,\
   atomz = atoms['z']
   atoms_plot(atom_list, atomx, atomy, atomz)
   src = mlab.pipeline.scalar_field(x, y, z, dat_smooth, figure=fig)
-  # slice is initially centered in the z-direction.
-  plane = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes', \
-                                           slice_index=50, vmin=vmin, vmax=vmax)
-  plane.module_manager.scalar_lut_manager.lut_mode = colormap 
+  xyz = np.column_stack((atomx, atomy, atomz)).astype(float)
+  r_ni, r_c1, r_c2 = xyz[[0, 1, 2]]   # !!! Three atom index used to define a slice !!!
+  normal = np.cross(r_c1 - r_ni, r_c2 - r_ni)
+  norm = np.linalg.norm(normal)
+  if norm < 1e-12:
+    raise ValueError("Three atoms are collinear or have duplicate coordinates")
+  normal /= norm
+  center = (r_ni + r_c1 + r_c2) / 3.0
+  plane = mlab.pipeline.scalar_cut_plane(
+      src, vmin=vmin, vmax=vmax, view_controls=False
+)
+  plane.implicit_plane.normal = tuple(normal)
+  plane.implicit_plane.origin = tuple(center)
+  plane.module_manager.scalar_lut_manager.lut_mode = colormap
+  plane.actor.property.lighting = False
   # mlab.outline(color=(0, 0, 0))
   cb = mlab.colorbar(object=plane, 
                    title=f"{title}\n", 
@@ -529,8 +540,18 @@ def slice_cub(title:str, atoms, x, y, z, dat, colormap:str,\
   cb.title_text_property.bold = False
   cb.label_text_property.italic = False
   cb.label_text_property.bold = False
-  mlab.view(figure=fig)
-  #fig.scene.show_axes = True
+  right = r_c2 - r_c1
+  right /= np.linalg.norm(right)
+  up = np.cross(normal, right)
+  scene = fig.scene
+  cam = scene.camera
+  distance = cam.distance
+  cam.focal_point = tuple(center)
+  cam.position = tuple(center + distance * normal)
+  cam.view_up = tuple(up)
+  cam.parallel_projection = True
+  scene.renderer.reset_camera_clipping_range()
+  scene.render()
   return None
 
 #-------------------------------------------------------------------------------
